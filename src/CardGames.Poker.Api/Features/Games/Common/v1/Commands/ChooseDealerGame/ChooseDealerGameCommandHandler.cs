@@ -1,10 +1,10 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Games;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -23,7 +23,7 @@ public class ChooseDealerGameCommandHandler(
 		// 1. Load the game with players
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -68,7 +68,7 @@ public class ChooseDealerGameCommandHandler(
 
 		var dcDealer = game.GamePlayers
 			.FirstOrDefault(gp => gp.SeatPosition == dcDealerPosition.Value
-								  && gp.Status == GamePlayerStatus.Active);
+			                      && gp.Status == GamePlayerStatus.Active);
 
 		if (dcDealer is null)
 		{
@@ -91,8 +91,8 @@ public class ChooseDealerGameCommandHandler(
 
 		var currentPlayer = game.GamePlayers
 			.FirstOrDefault(gp => gp.Player != null
-								  && gp.Player.Name.Equals(currentUserName, StringComparison.OrdinalIgnoreCase)
-								  && gp.Status == GamePlayerStatus.Active);
+			                      && gp.Player.Name.Equals(currentUserName, StringComparison.OrdinalIgnoreCase)
+			                      && gp.Status == GamePlayerStatus.Active);
 
 		if (currentPlayer is null || currentPlayer.SeatPosition != dcDealerPosition.Value)
 		{
@@ -161,7 +161,7 @@ public class ChooseDealerGameCommandHandler(
 		}
 
 		if (command.SmallBlind.HasValue && command.BigBlind.HasValue
-			&& command.BigBlind.Value < command.SmallBlind.Value)
+		                                && command.BigBlind.Value < command.SmallBlind.Value)
 		{
 			return new ChooseDealerGameError
 			{
@@ -188,7 +188,8 @@ public class ChooseDealerGameCommandHandler(
 			game.BigBlind = command.BigBlind.Value;
 
 		// For SYN in Dealer's Choice, snapshot DC chips and give each player 3 stacks.
-		if (string.Equals(command.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase)
+		if (string.Equals(command.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			    StringComparison.OrdinalIgnoreCase)
 		    && command.Ante > 0)
 		{
 			var synBuyIn = command.Ante * 3;
@@ -244,7 +245,7 @@ public class ChooseDealerGameCommandHandler(
 
 	private async Task<GameType> GetOrCreateGameTypeAsync(
 		string gameCode,
-		Poker.Games.PokerGameMetadataAttribute metadata,
+		PokerGameMetadataAttribute metadata,
 		CancellationToken cancellationToken)
 	{
 		var gameType = await context.GameTypes

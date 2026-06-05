@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformShowdown;
 
 /// <summary>
-/// Endpoint for performing the showdown in a Follow the Queen game.
+///     Endpoint for performing the showdown in a Follow the Queen game.
 /// </summary>
 public static class PerformShowdownEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for performing showdown.
+	///     Maps the POST endpoint for performing showdown.
 	/// </summary>
 	public static RouteGroupBuilder MapPerformShowdown(this RouteGroupBuilder group)
 	{
@@ -43,7 +43,7 @@ public static class PerformShowdownEndpoint
 				"- Payouts to each winning player\n" +
 				"- Evaluated hand information for all participating players\n" +
 				"- Whether the hand was won by fold (no showdown required)")
-			.Produces<PerformShowdownSuccessful>(StatusCodes.Status200OK)
+			.Produces<PerformShowdownSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);
 

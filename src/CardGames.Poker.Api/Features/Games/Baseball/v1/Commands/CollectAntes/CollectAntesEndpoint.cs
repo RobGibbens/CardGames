@@ -14,7 +14,7 @@ public static class CollectAntesEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							CollectAntesErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
@@ -26,7 +26,7 @@ public static class CollectAntesEndpoint
 			.WithName($"Baseball{nameof(MapCollectAntes).TrimPrefix("Map")}")
 			.WithSummary("Collect Antes")
 			.WithDescription("Collects the mandatory ante bet from all players to seed the pot before dealing.")
-			.Produces<CollectAntesSuccessful>(StatusCodes.Status200OK)
+			.Produces<CollectAntesSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);
 

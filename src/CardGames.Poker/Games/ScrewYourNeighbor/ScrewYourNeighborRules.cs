@@ -11,7 +11,8 @@ public static class ScrewYourNeighborRules
 		{
 			GameTypeCode = "SCREWYOURNEIGHBOR",
 			GameTypeName = "Screw Your Neighbor",
-			Description = "Each player is dealt one card. Players decide to keep their card or trade with the player to their left. Kings are blockers. Lowest card loses a stack. Last player standing wins.",
+			Description =
+				"Each player is dealt one card. Players decide to keep their card or trade with the player to their left. Kings are blockers. Lowest card loses a stack. Last player standing wins.",
 			MinPlayers = 3,
 			MaxPlayers = 10,
 			Phases = new List<GamePhaseDescriptor>
@@ -31,7 +32,8 @@ public static class ScrewYourNeighborRules
 				new()
 				{
 					PhaseId = "KeepOrTrade", Name = "Keep or Trade",
-					Description = "Each player decides to keep their card or trade with the next player. Kings are blockers.",
+					Description =
+						"Each player decides to keep their card or trade with the next player. Kings are blockers.",
 					Category = "Decision", RequiresPlayerAction = true
 				},
 				new()

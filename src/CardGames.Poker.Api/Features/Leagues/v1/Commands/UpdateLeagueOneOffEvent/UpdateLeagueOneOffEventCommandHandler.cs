@@ -1,14 +1,13 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Leagues.v1.Commands;
-using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueOneOffEventStatus = CardGames.Poker.Api.Data.Entities.LeagueOneOffEventStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.UpdateLeagueOneOffEvent;
 
@@ -18,48 +17,58 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<UpdateLeagueOneOffEventCommand, OneOf<Unit, UpdateLeagueOneOffEventError>>
 {
-	public async Task<OneOf<Unit, UpdateLeagueOneOffEventError>> Handle(UpdateLeagueOneOffEventCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, UpdateLeagueOneOffEventError>> Handle(UpdateLeagueOneOffEventCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.Unauthorized, "User is not authenticated.");
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.Name))
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, "One-off event name is required.");
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest,
+				"One-off event name is required.");
 		}
 
 		if (request.Request.ScheduledAtUtc == default)
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest,
+				"Scheduled date/time is required.");
 		}
 
 		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest,
+				LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
 		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.GameTypeCode))
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, "Game variant is required.");
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest,
+				"Game variant is required.");
 		}
 
-		if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var normalizedGameTypeCode, out var rules, out var gameTypeError))
+		if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var normalizedGameTypeCode,
+			    out var rules, out var gameTypeError))
 		{
 			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, gameTypeError!);
 		}
 
-		var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
+		var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet,
+			request.Request.SmallBlind, request.Request.BigBlind);
 		if (stakesError is not null)
 		{
 			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, stakesError);
 		}
 
-		var tournamentBuyInError = ValidateOneOffTournamentBuyIn(request.Request.EventType, request.Request.TournamentBuyIn);
+		var tournamentBuyInError =
+			ValidateOneOffTournamentBuyIn(request.Request.EventType, request.Request.TournamentBuyIn);
 		if (tournamentBuyInError is not null)
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, tournamentBuyInError);
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest,
+				tournamentBuyInError);
 		}
 
 		var leagueExists = await context.Leagues
@@ -68,7 +77,8 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 
 		if (!leagueExists)
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.LeagueNotFound, "League not found.");
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.LeagueNotFound,
+				"League not found.");
 		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
@@ -79,7 +89,8 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.Forbidden, "Only league managers or admins can update one-off events.");
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.Forbidden,
+				"Only league managers or admins can update one-off events.");
 		}
 
 		var oneOffEvent = await context.LeagueOneOffEvents
@@ -87,12 +98,14 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 
 		if (oneOffEvent is null)
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.EventNotFound, "One-off event not found in league.");
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.EventNotFound,
+				"One-off event not found in league.");
 		}
 
-		if (oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Planned || oneOffEvent.LaunchedGameId.HasValue)
+		if (oneOffEvent.Status != LeagueOneOffEventStatus.Planned || oneOffEvent.LaunchedGameId.HasValue)
 		{
-			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.Conflict, "Only planned, unlaunched one-off events can be edited.");
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.Conflict,
+				"Only planned, unlaunched one-off events can be edited.");
 		}
 
 		oneOffEvent.Name = request.Request.Name.Trim();
@@ -101,28 +114,31 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 		oneOffEvent.Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim();
 		oneOffEvent.GameTypeCode = normalizedGameTypeCode;
 		oneOffEvent.Ante = LeagueEventGameSettings.NormalizeAnte(rules!, request.Request.Ante);
-		oneOffEvent.MinBet = LeagueEventGameSettings.NormalizeMinBet(rules!, request.Request.MinBet, request.Request.BigBlind);
-		oneOffEvent.SmallBlind = LeagueEventGameSettings.NormalizeSmallBlind(rules!, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
-		oneOffEvent.BigBlind = LeagueEventGameSettings.NormalizeBigBlind(rules!, request.Request.MinBet, request.Request.BigBlind);
+		oneOffEvent.MinBet =
+			LeagueEventGameSettings.NormalizeMinBet(rules!, request.Request.MinBet, request.Request.BigBlind);
+		oneOffEvent.SmallBlind = LeagueEventGameSettings.NormalizeSmallBlind(rules!, request.Request.MinBet,
+			request.Request.SmallBlind, request.Request.BigBlind);
+		oneOffEvent.BigBlind =
+			LeagueEventGameSettings.NormalizeBigBlind(rules!, request.Request.MinBet, request.Request.BigBlind);
 		oneOffEvent.TournamentBuyIn = request.Request.TournamentBuyIn;
 
 		await context.SaveChangesAsync(cancellationToken);
-		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 		{
 			LeagueId = oneOffEvent.LeagueId,
 			EventId = oneOffEvent.Id,
-			SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff,
+			SourceType = LeagueEventSourceType.OneOff,
 			SeasonId = null,
-			ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.Updated,
+			ChangeKind = LeagueEventChangeKind.Updated,
 			ChangedAtUtc = DateTimeOffset.UtcNow
 		}, cancellationToken);
 
 		return Unit.Value;
 	}
 
-	private static string? ValidateOneOffTournamentBuyIn(CardGames.Poker.Api.Contracts.LeagueOneOffEventType eventType, int? tournamentBuyIn)
+	private static string? ValidateOneOffTournamentBuyIn(LeagueOneOffEventType eventType, int? tournamentBuyIn)
 	{
-		if (eventType == CardGames.Poker.Api.Contracts.LeagueOneOffEventType.Tournament)
+		if (eventType == LeagueOneOffEventType.Tournament)
 		{
 			if (!tournamentBuyIn.HasValue)
 			{

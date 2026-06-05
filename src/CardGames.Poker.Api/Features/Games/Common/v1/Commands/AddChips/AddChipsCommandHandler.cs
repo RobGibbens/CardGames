@@ -11,7 +11,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
 
 /// <summary>
-/// Handles the AddChips command to add chips to a player's stack in a game.
+///     Handles the AddChips command to add chips to a player's stack in a game.
 /// </summary>
 public sealed class AddChipsCommandHandler(
 	CardsDbContext context,
@@ -37,7 +37,7 @@ public sealed class AddChipsCommandHandler(
 		var game = await context.Games
 			.Include(g => g.GameType)
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -70,19 +70,23 @@ public sealed class AddChipsCommandHandler(
 				AddChipsErrorCode.PlayerNotInGame,
 				"Player is not part of this game.");
 		}
+
 		if (gamePlayer.Status == GamePlayerStatus.Left)
 		{
 			return new AddChipsError(
 				AddChipsErrorCode.PlayerNotInGame,
 				"Player has already left this game.");
 		}
+
 		// Determine if chips should be applied immediately.
 		// During chip-related pauses and between-hands waiting states, apply immediately so play can resume.
-		bool applyImmediately = string.Equals(game.GameType.Code, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase)
-			|| game.IsPausedForChipCheck
-			|| game.IsPausedForRebuyGrace
-			|| string.Equals(game.CurrentPhase, "BetweenHands", StringComparison.OrdinalIgnoreCase)
-			|| string.Equals(game.CurrentPhase, "WaitingForPlayers", StringComparison.OrdinalIgnoreCase);
+		bool applyImmediately = string.Equals(game.GameType.Code, PokerGameMetadataRegistry.KingsAndLowsCode,
+			                        StringComparison.OrdinalIgnoreCase)
+		                        || game.IsPausedForChipCheck
+		                        || game.IsPausedForRebuyGrace
+		                        || string.Equals(game.CurrentPhase, "BetweenHands", StringComparison.OrdinalIgnoreCase)
+		                        || string.Equals(game.CurrentPhase, "WaitingForPlayers",
+			                        StringComparison.OrdinalIgnoreCase);
 
 		string message;
 		if (applyImmediately)
@@ -93,6 +97,7 @@ public sealed class AddChipsCommandHandler(
 			{
 				gamePlayer.Status = GamePlayerStatus.Active;
 			}
+
 			message = $"{command.Amount} chips added to your stack.";
 			logger.LogInformation(
 				"Added {Amount} chips immediately to player {PlayerId} in game {GameId}",

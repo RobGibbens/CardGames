@@ -19,11 +19,13 @@ public sealed class UpdateFavoriteVariantsCommandHandler(
 	private const int DefaultAnte = 5;
 	private const int DefaultMinimumBet = 10;
 
-	public async Task<OneOf<FavoriteVariantsDto, UpdateFavoriteVariantsError>> Handle(UpdateFavoriteVariantsCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<FavoriteVariantsDto, UpdateFavoriteVariantsError>> Handle(
+		UpdateFavoriteVariantsCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new UpdateFavoriteVariantsError(UpdateFavoriteVariantsErrorCode.Unauthorized, "User is not authenticated.");
+			return new UpdateFavoriteVariantsError(UpdateFavoriteVariantsErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var normalizedFavoriteVariantCodes = NormalizeFavoriteVariantCodes(request.FavoriteVariantCodes);
@@ -40,7 +42,7 @@ public sealed class UpdateFavoriteVariantsCommandHandler(
 		{
 			var resolvedUserId = await ResolveLocalUserIdAsync(cancellationToken);
 			if (string.IsNullOrWhiteSpace(resolvedUserId)
-				|| string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
+			    || string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
 			{
 				throw;
 			}

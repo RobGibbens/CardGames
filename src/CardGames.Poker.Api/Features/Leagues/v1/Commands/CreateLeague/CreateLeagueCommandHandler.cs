@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using OneOf;
+using LeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 
@@ -13,7 +14,8 @@ public sealed class CreateLeagueCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<CreateLeagueCommand, OneOf<CreateLeagueResponse, CreateLeagueError>>
 {
-	public async Task<OneOf<CreateLeagueResponse, CreateLeagueError>> Handle(CreateLeagueCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<CreateLeagueResponse, CreateLeagueError>> Handle(CreateLeagueCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -27,7 +29,9 @@ public sealed class CreateLeagueCommandHandler(
 
 		var now = DateTimeOffset.UtcNow;
 		var trimmedName = request.Request.Name.Trim();
-		var trimmedDescription = string.IsNullOrWhiteSpace(request.Request.Description) ? null : request.Request.Description.Trim();
+		var trimmedDescription = string.IsNullOrWhiteSpace(request.Request.Description)
+			? null
+			: request.Request.Description.Trim();
 
 		var league = new League
 		{
@@ -43,7 +47,7 @@ public sealed class CreateLeagueCommandHandler(
 		{
 			LeagueId = league.Id,
 			UserId = currentUserService.UserId,
-			Role = CardGames.Poker.Api.Data.Entities.LeagueRole.Owner,
+			Role = LeagueRole.Owner,
 			IsActive = true,
 			JoinedAtUtc = now,
 			LeftAtUtc = null,
@@ -73,7 +77,7 @@ public sealed class CreateLeagueCommandHandler(
 			Description = league.Description,
 			CreatedAtUtc = league.CreatedAtUtc,
 			CreatedByUserId = league.CreatedByUserId,
-			MyRole = (CardGames.Poker.Api.Contracts.LeagueRole)LeagueGovernanceRules.ToCurrentUserProjectedRole(creatorMembership.Role)
+			MyRole = (Contracts.LeagueRole)LeagueGovernanceRules.ToCurrentUserProjectedRole(creatorMembership.Role)
 		};
 	}
 }

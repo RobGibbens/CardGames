@@ -17,7 +17,7 @@ public static class GetAvailablePokerGamesEndpoint
 			.WithSummary(nameof(MapGetAvailablePokerGames).TrimPrefix("Map"))
 			.WithDescription("Retrieve a list of all available poker game types.")
 			.MapToApiVersion(1.0)
-			.Produces<List<GetAvailablePokerGamesResponse>>(StatusCodes.Status200OK)
+			.Produces<List<GetAvailablePokerGamesResponse>>()
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
 		return group;

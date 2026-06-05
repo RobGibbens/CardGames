@@ -2,12 +2,15 @@
 
 <div class="table-overlay dealer-choice-waiting-overlay">
 	<div class="overlay-content">
-		<div class="overlay-icon"><i class="fa-thin fa-cards"></i></div>
+		<div class="overlay-icon">
+			<i class="fa-thin fa-cards"></i>
+		</div>
 		<h2>Dealer's Choice</h2>
 		<p>
 			@if (!string.IsNullOrWhiteSpace(DealerName))
 			{
-				<strong>@DealerName</strong> <text>is choosing the next game...</text>
+				<strong>@DealerName</strong>
+				<text>is choosing the next game...</text>
 			}
 			else
 			{
@@ -21,6 +24,5 @@
 </div>
 
 @code {
-	[Parameter]
-	public string? DealerName { get; set; }
+	[Parameter] public string? DealerName { get; set; }
 }

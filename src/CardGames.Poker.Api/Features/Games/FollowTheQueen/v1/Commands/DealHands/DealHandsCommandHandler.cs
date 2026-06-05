@@ -1,10 +1,8 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.SevenCardStud;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using OneOf;
 using BettingRoundEntity = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
@@ -13,7 +11,7 @@ using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 
 /// <summary>
-/// Handles the <see cref="DealHandsCommand"/> to deal cards for the current Follow the Queen street.
+///     Handles the <see cref="DealHandsCommand" /> to deal cards for the current Follow the Queen street.
 /// </summary>
 public class DealHandsCommandHandler(
 	CardsDbContext context,
@@ -66,7 +64,8 @@ public class DealHandsCommandHandler(
 
 			return new DealHandsError
 			{
-				Message = $"Cannot deal hands. Game is in '{game.CurrentPhase}' phase. Hands can only be dealt during street phases.",
+				Message =
+					$"Cannot deal hands. Game is in '{game.CurrentPhase}' phase. Hands can only be dealt during street phases.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
 		}
@@ -84,8 +83,8 @@ public class DealHandsCommandHandler(
 		// 4. Load remaining deck cards (pre-shuffled during StartHand)
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id &&
-						 gc.HandNumber == game.CurrentHandNumber &&
-						 gc.Location == CardLocation.Deck)
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -110,9 +109,9 @@ public class DealHandsCommandHandler(
 			// Query existing cards for this player to determine starting DealOrder
 			var existingCards = await context.GameCards
 				.Where(gc => gc.GamePlayerId == gamePlayer.Id &&
-							 gc.HandNumber == game.CurrentHandNumber &&
-							 gc.Location != CardLocation.Deck &&
-							 !gc.IsDiscarded)
+				             gc.HandNumber == game.CurrentHandNumber &&
+				             gc.Location != CardLocation.Deck &&
+				             !gc.IsDiscarded)
 				.Select(gc => new { gc.Symbol, gc.Suit, gc.DealOrder, gc.Location })
 				.ToListAsync(cancellationToken);
 
@@ -127,17 +126,17 @@ public class DealHandsCommandHandler(
 					"DealHands: Found {Count} STALE cards for player {PlayerName} ({GamePlayerId}) on ThirdStreet. " +
 					"This should not happen - cards should be deleted when hand starts. " +
 					"Stale cards: [{Cards}]. Deleting them now and resetting DealOrder to 1.",
-					existingCardCount, 
-					gamePlayer.Player.Name, 
+					existingCardCount,
+					gamePlayer.Player.Name,
 					gamePlayer.Id,
 					string.Join(", ", existingCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder})")));
 
 				// Delete the stale cards
 				var staleCards = await context.GameCards
 					.Where(gc => gc.GamePlayerId == gamePlayer.Id &&
-								 gc.HandNumber == game.CurrentHandNumber &&
-								 gc.Location != CardLocation.Deck &&
-								 !gc.IsDiscarded)
+					             gc.HandNumber == game.CurrentHandNumber &&
+					             gc.Location != CardLocation.Deck &&
+					             !gc.IsDiscarded)
 					.ToListAsync(cancellationToken);
 
 				if (staleCards.Count > 0)
@@ -156,11 +155,11 @@ public class DealHandsCommandHandler(
 				"DealHands: Player {PlayerName} (GamePlayerId={GamePlayerId}, Seat {SeatPosition}) - " +
 				"ExistingCardCount={ExistingCount}, StartingDealOrder={DealOrder}, Phase={Phase}, " +
 				"ExistingCards=[{ExistingCards}]",
-				gamePlayer.Player.Name, 
+				gamePlayer.Player.Name,
 				gamePlayer.Id,
-				gamePlayer.SeatPosition, 
-				existingCardCount, 
-				playerDealOrder, 
+				gamePlayer.SeatPosition,
+				existingCardCount,
+				playerDealOrder,
 				game.CurrentPhase,
 				string.Join(", ", existingCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder})")));
 
@@ -179,8 +178,10 @@ public class DealHandsCommandHandler(
 					}
 
 					var gameCard = deckCards[deckIndex++];
-					AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false, game.CurrentPhase, now);
-					dealtCards.Add(new DealtCard { Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder });
+					AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false,
+						game.CurrentPhase, now);
+					dealtCards.Add(new DealtCard
+						{ Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder });
 				}
 
 				if (deckIndex >= deckCards.Count)
@@ -193,8 +194,10 @@ public class DealHandsCommandHandler(
 				}
 
 				var boardGameCard = deckCards[deckIndex++];
-				AssignCardToPlayer(boardGameCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, game.CurrentPhase, now);
-				dealtCards.Add(new DealtCard { Suit = boardGameCard.Suit, Symbol = boardGameCard.Symbol, DealOrder = boardGameCard.DealOrder });
+				AssignCardToPlayer(boardGameCard, gamePlayer, CardLocation.Board, playerDealOrder++, true,
+					game.CurrentPhase, now);
+				dealtCards.Add(new DealtCard
+					{ Suit = boardGameCard.Suit, Symbol = boardGameCard.Symbol, DealOrder = boardGameCard.DealOrder });
 			}
 			else if (game.CurrentPhase == nameof(Phases.SeventhStreet))
 			{
@@ -209,8 +212,10 @@ public class DealHandsCommandHandler(
 				}
 
 				var gameCard = deckCards[deckIndex++];
-				AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false, game.CurrentPhase, now);
-				dealtCards.Add(new DealtCard { Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder });
+				AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false, game.CurrentPhase,
+					now);
+				dealtCards.Add(new DealtCard
+					{ Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder });
 			}
 			else
 			{
@@ -225,8 +230,10 @@ public class DealHandsCommandHandler(
 				}
 
 				var gameCard = deckCards[deckIndex++];
-				AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, game.CurrentPhase, now);
-				dealtCards.Add(new DealtCard { Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder });
+				AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, game.CurrentPhase,
+					now);
+				dealtCards.Add(new DealtCard
+					{ Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder });
 			}
 
 			playerHands.Add(new PlayerDealtCards
@@ -278,7 +285,8 @@ public class DealHandsCommandHandler(
 		else
 		{
 			// Other streets: player with the best visible hand acts first
-            firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, game.DealerPosition, context);
+			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber,
+				game.DealerPosition, context);
 		}
 
 		if (firstActorSeatPosition < 0)
@@ -288,8 +296,8 @@ public class DealHandsCommandHandler(
 
 		// 8. Determine min bet based on street (small bet for 3rd/4th, big bet for 5th/6th/7th)
 		var isSmallBetStreet = game.CurrentPhase == nameof(Phases.ThirdStreet) ||
-							   game.CurrentPhase == nameof(Phases.FourthStreet);
-		var minBet = isSmallBetStreet ? (game.SmallBet ?? game.MinBet ?? 0) : (game.BigBet ?? game.MinBet ?? 0);
+		                       game.CurrentPhase == nameof(Phases.FourthStreet);
+		var minBet = isSmallBetStreet ? game.SmallBet ?? game.MinBet ?? 0 : game.BigBet ?? game.MinBet ?? 0;
 
 		// 9. Create betting round record
 		var roundNumber = game.CurrentPhase switch
@@ -324,7 +332,8 @@ public class DealHandsCommandHandler(
 
 		logger.LogDebug(
 			"Creating betting round: Game {GameId}, Hand {HandNumber}, Round {RoundNumber}, Street {Street}, FirstActor {FirstActor}",
-			bettingRound.GameId, bettingRound.HandNumber, bettingRound.RoundNumber, bettingRound.Street, firstActorSeatPosition);
+			bettingRound.GameId, bettingRound.HandNumber, bettingRound.RoundNumber, bettingRound.Street,
+			firstActorSeatPosition);
 
 		context.BettingRounds.Add(bettingRound);
 
@@ -358,8 +367,8 @@ public class DealHandsCommandHandler(
 	}
 
 	/// <summary>
-	/// Finds the player with the lowest up card for bring-in determination.
-	/// In case of tie, use suit order: clubs (lowest), diamonds, hearts, spades (highest).
+	///     Finds the player with the lowest up card for bring-in determination.
+	///     In case of tie, use suit order: clubs (lowest), diamonds, hearts, spades (highest).
 	/// </summary>
 	private static int FindBringInPlayer(List<GamePlayer> activePlayers, List<PlayerDealtCards> playerHands)
 	{
@@ -386,8 +395,8 @@ public class DealHandsCommandHandler(
 	}
 
 	/// <summary>
-	/// Compares two cards for bring-in determination.
-	/// Lower value is "worse". For ties, use suit order (clubs lowest, spades highest).
+	///     Compares two cards for bring-in determination.
+	///     Lower value is "worse". For ties, use suit order (clubs lowest, spades highest).
 	/// </summary>
 	private static int CompareCardsForBringIn(DealtCard a, DealtCard b)
 	{
@@ -403,48 +412,55 @@ public class DealHandsCommandHandler(
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
 
-	private static int GetCardValue(CardSymbol symbol) => symbol switch
+	private static int GetCardValue(CardSymbol symbol)
 	{
-		CardSymbol.Deuce => 2,
-		CardSymbol.Three => 3,
-		CardSymbol.Four => 4,
-		CardSymbol.Five => 5,
-		CardSymbol.Six => 6,
-		CardSymbol.Seven => 7,
-		CardSymbol.Eight => 8,
-		CardSymbol.Nine => 9,
-		CardSymbol.Ten => 10,
-		CardSymbol.Jack => 11,
-		CardSymbol.Queen => 12,
-		CardSymbol.King => 13,
-		CardSymbol.Ace => 14,
-		_ => 0
-	};
+		return symbol switch
+		{
+			CardSymbol.Deuce => 2,
+			CardSymbol.Three => 3,
+			CardSymbol.Four => 4,
+			CardSymbol.Five => 5,
+			CardSymbol.Six => 6,
+			CardSymbol.Seven => 7,
+			CardSymbol.Eight => 8,
+			CardSymbol.Nine => 9,
+			CardSymbol.Ten => 10,
+			CardSymbol.Jack => 11,
+			CardSymbol.Queen => 12,
+			CardSymbol.King => 13,
+			CardSymbol.Ace => 14,
+			_ => 0
+		};
+	}
 
-	private static int GetSuitRank(CardSuit suit) => suit switch
+	private static int GetSuitRank(CardSuit suit)
 	{
-		CardSuit.Clubs => 0,
-		CardSuit.Diamonds => 1,
-		CardSuit.Hearts => 2,
-		CardSuit.Spades => 3,
-		_ => 0
-	};
+		return suit switch
+		{
+			CardSuit.Clubs => 0,
+			CardSuit.Diamonds => 1,
+			CardSuit.Hearts => 2,
+			CardSuit.Spades => 3,
+			_ => 0
+		};
+	}
 
 	/// <summary>
-	/// Finds the player with the best visible hand for first action on 4th+ streets.
-	/// Evaluates hand strength including pairs, trips, two pair, and high cards.
+	///     Finds the player with the best visible hand for first action on 4th+ streets.
+	///     Evaluates hand strength including pairs, trips, two pair, and high cards.
 	/// </summary>
-   private static int FindBestVisibleHandPlayer(List<GamePlayer> activePlayers, Guid gameId, int handNumber, int dealerSeatPosition, CardsDbContext context)
+	private static int FindBestVisibleHandPlayer(List<GamePlayer> activePlayers, Guid gameId, int handNumber,
+		int dealerSeatPosition, CardsDbContext context)
 	{
-       int bestSeatPosition = -1;
+		int bestSeatPosition = -1;
 		long bestStrength = -1;
 
 		var allVisibleBoardCards = context.GameCards
 			.Where(gc => gc.GameId == gameId &&
-						 gc.HandNumber == handNumber &&
-						 gc.Location == CardLocation.Board &&
-						 gc.IsVisible &&
-						 !gc.IsDiscarded)
+			             gc.HandNumber == handNumber &&
+			             gc.Location == CardLocation.Board &&
+			             gc.IsVisible &&
+			             !gc.IsDiscarded)
 			.Include(gc => gc.GamePlayer)
 			.ToList();
 
@@ -457,11 +473,11 @@ public class DealHandsCommandHandler(
 
 		foreach (var player in activePlayers)
 		{
-          var boardCards = byPlayerId.TryGetValue(player.Id, out var cards)
+			var boardCards = byPlayerId.TryGetValue(player.Id, out var cards)
 				? cards
 				: [];
 
-         var strength = EvaluateVisibleHand(boardCards, followTheQueenWildSymbols);
+			var strength = EvaluateVisibleHand(boardCards, followTheQueenWildSymbols);
 
 			if (strength > bestStrength)
 			{
@@ -490,20 +506,20 @@ public class DealHandsCommandHandler(
 	}
 
 	/// <summary>
-	/// Evaluates the strength of visible cards for determining betting order.
-	/// Higher values indicate better hands (pairs beat high cards, trips beat pairs, etc.)
+	///     Evaluates the strength of visible cards for determining betting order.
+	///     Higher values indicate better hands (pairs beat high cards, trips beat pairs, etc.)
 	/// </summary>
-  private static long EvaluateVisibleHand(List<GameCard> boardCards, HashSet<CardSymbol> wildSymbols)
+	private static long EvaluateVisibleHand(List<GameCard> boardCards, HashSet<CardSymbol> wildSymbols)
 	{
 		if (boardCards.Count == 0) return 0;
 
 		var cards = boardCards.OrderByDescending(c => GetCardValue(c.Symbol)).ToList();
-        var valueCounts = cards
+		var valueCounts = cards
 			.Where(c => !wildSymbols.Contains(c.Symbol))
 			.GroupBy(c => GetCardValue(c.Symbol))
 			.OrderByDescending(g => g.Count())
 			.ThenByDescending(g => g.Key)
-          .Select(g => new { Value = g.Key, Count = g.Count() })
+			.Select(g => new { Value = g.Key, Count = g.Count() })
 			.ToList();
 
 		var wildCount = cards.Count(c => wildSymbols.Contains(c.Symbol));
@@ -532,30 +548,30 @@ public class DealHandsCommandHandler(
 		long strength = 0;
 
 		// Check for pairs, trips, etc.
-     var maxCount = valueCounts.First().Count;
+		var maxCount = valueCounts.First().Count;
 
 		if (maxCount >= 4)
 		{
 			// Four of a kind
-          strength = 7_000_000 + valueCounts.First().Value * 1000;
+			strength = 7_000_000 + valueCounts.First().Value * 1000;
 		}
 		else if (maxCount >= 3)
 		{
 			// Three of a kind
-          strength = 4_000_000 + valueCounts.First().Value * 1000;
+			strength = 4_000_000 + valueCounts.First().Value * 1000;
 		}
 		else if (maxCount >= 2)
 		{
-            var pairs = valueCounts.Where(g => g.Count >= 2).ToList();
+			var pairs = valueCounts.Where(g => g.Count >= 2).ToList();
 			if (pairs.Count >= 2)
 			{
 				// Two pair
-             strength = 3_000_000 + pairs[0].Value * 1000 + pairs[1].Value * 10;
+				strength = 3_000_000 + pairs[0].Value * 1000 + pairs[1].Value * 10;
 			}
 			else
 			{
 				// One pair
-             strength = 2_000_000 + pairs[0].Value * 1000;
+				strength = 2_000_000 + pairs[0].Value * 1000;
 			}
 		}
 		else
@@ -565,7 +581,7 @@ public class DealHandsCommandHandler(
 		}
 
 		// Add kicker values for tie-breaking
-     var kickerValues = valueCounts
+		var kickerValues = valueCounts
 			.SelectMany(v => Enumerable.Repeat(v.Value, v.Count))
 			.OrderByDescending(v => v)
 			.Take(4)
@@ -578,7 +594,7 @@ public class DealHandsCommandHandler(
 
 		foreach (var kickerValue in kickerValues)
 		{
-           strength = strength * 15 + kickerValue;
+			strength = strength * 15 + kickerValue;
 		}
 
 		// Add suit rank for final tie-breaking (highest suit of the best card wins)
@@ -590,7 +606,8 @@ public class DealHandsCommandHandler(
 		return strength;
 	}
 
-	private static HashSet<CardSymbol> DetermineFollowTheQueenWildSymbols(List<GameCard> visibleBoardCards, int dealerSeatPosition)
+	private static HashSet<CardSymbol> DetermineFollowTheQueenWildSymbols(List<GameCard> visibleBoardCards,
+		int dealerSeatPosition)
 	{
 		var wildSymbols = new HashSet<CardSymbol> { CardSymbol.Queen };
 
@@ -621,18 +638,21 @@ public class DealHandsCommandHandler(
 		return wildSymbols;
 	}
 
-	private static int GetStreetPhaseOrder(string? phase) => phase switch
+	private static int GetStreetPhaseOrder(string? phase)
 	{
-		nameof(Phases.ThirdStreet) => 1,
-		nameof(Phases.FourthStreet) => 2,
-		nameof(Phases.FifthStreet) => 3,
-		nameof(Phases.SixthStreet) => 4,
-		nameof(Phases.SeventhStreet) => 5,
-		_ => 99
-	};
+		return phase switch
+		{
+			nameof(Phases.ThirdStreet) => 1,
+			nameof(Phases.FourthStreet) => 2,
+			nameof(Phases.FifthStreet) => 3,
+			nameof(Phases.SixthStreet) => 4,
+			nameof(Phases.SeventhStreet) => 5,
+			_ => 99
+		};
+	}
 
 	/// <summary>
-	/// Assigns a deck card to a player by updating its properties.
+	///     Assigns a deck card to a player by updating its properties.
 	/// </summary>
 	private static void AssignCardToPlayer(
 		GameCard gameCard,

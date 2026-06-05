@@ -1,4 +1,3 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
@@ -17,7 +16,7 @@ public class GetLeagueDetailQueryHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-detail-query-user";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createResult = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createResult = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Detail Query League"
 		}));
@@ -40,7 +39,7 @@ public class GetLeagueDetailQueryHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-detail-creator-fallback-user";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createResult = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createResult = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Detail Query Creator Fallback League"
 		}));
@@ -67,7 +66,7 @@ public class GetLeagueDetailQueryHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-detail-creator-user";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createResult = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createResult = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Detail Query Forbidden League"
 		}));

@@ -1,4 +1,3 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
@@ -30,7 +29,7 @@ public class GetLeagueMembershipHistoryQueryHandlerTests : IntegrationTestBase
 			x.ActorUserId == "league-history-user" &&
 			x.UserDisplayName == "league-history-user" &&
 			x.ActorDisplayName == "league-history-user" &&
-			x.EventType == CardGames.Poker.Api.Contracts.LeagueMembershipHistoryEventType.MemberJoined);
+			x.EventType == LeagueMembershipHistoryEventType.MemberJoined);
 	}
 
 	[Fact]

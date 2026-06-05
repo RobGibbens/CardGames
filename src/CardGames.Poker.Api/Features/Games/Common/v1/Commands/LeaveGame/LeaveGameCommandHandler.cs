@@ -9,7 +9,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
 
 /// <summary>
-/// Handles the LeaveGame command to remove a player from a game table.
+///     Handles the LeaveGame command to remove a player from a game table.
 /// </summary>
 public sealed class LeaveGameCommandHandler(
 	CardsDbContext context,
@@ -27,7 +27,7 @@ public sealed class LeaveGameCommandHandler(
 		// 1. Get the current authenticated user
 		var currentUserId = currentUserService.UserId;
 		var currentUserName = currentUserService.UserName;
-		
+
 		if (string.IsNullOrWhiteSpace(currentUserId) || string.IsNullOrWhiteSpace(currentUserName))
 		{
 			return new LeaveGameError("User not authenticated");
@@ -36,9 +36,9 @@ public sealed class LeaveGameCommandHandler(
 		// 2. Load the game with related entities
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Cards)
+			.ThenInclude(gp => gp.Cards)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game == null)
@@ -48,8 +48,8 @@ public sealed class LeaveGameCommandHandler(
 
 		// 3. Find the player's GamePlayer record
 		var gamePlayer = game.GamePlayers
-			.FirstOrDefault(gp => 
-				gp.Player.Name.Equals(currentUserName, StringComparison.OrdinalIgnoreCase) && 
+			.FirstOrDefault(gp =>
+				gp.Player.Name.Equals(currentUserName, StringComparison.OrdinalIgnoreCase) &&
 				gp.Status != GamePlayerStatus.Left);
 
 		if (gamePlayer == null)

@@ -2,9 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.Poker.Api.Contracts;
-using FluentAssertions;
 
 namespace CardGames.IntegrationTests.Api;
 
@@ -32,13 +30,15 @@ public class LeaguesApiMembershipHistoryTests(ApiWebApplicationFactory factory) 
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var historyResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>($"/api/v1/leagues/{league!.LeagueId}/members/history", JsonOptions);
+		var historyResponse =
+			await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>(
+				$"/api/v1/leagues/{league!.LeagueId}/members/history", JsonOptions);
 
 		historyResponse.Should().NotBeNull();
 		historyResponse!.Should().ContainSingle(x =>
 			x.UserId == "league-history-admin" &&
 			x.ActorUserId == "league-history-admin" &&
-			x.EventType == CardGames.Poker.Api.Contracts.LeagueMembershipHistoryEventType.MemberJoined);
+			x.EventType == LeagueMembershipHistoryEventType.MemberJoined);
 	}
 
 	[Fact]

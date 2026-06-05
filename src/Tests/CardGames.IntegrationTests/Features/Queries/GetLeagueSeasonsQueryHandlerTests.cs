@@ -1,5 +1,5 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueSeasons;
@@ -16,7 +16,7 @@ public class GetLeagueSeasonsQueryHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-season-query-user";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Season Query League"
 		}));
@@ -24,7 +24,7 @@ public class GetLeagueSeasonsQueryHandlerTests : IntegrationTestBase
 		createLeague.IsT0.Should().BeTrue();
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonRequest
+		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CreateLeagueSeasonRequest
 		{
 			Name = "Autumn 2026"
 		}));

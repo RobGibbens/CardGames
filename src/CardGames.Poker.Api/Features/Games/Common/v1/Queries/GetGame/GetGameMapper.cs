@@ -56,10 +56,14 @@ public static partial class GetGameMapper
 		};
 	}
 
-	public static IQueryable<GetGameResponse> ProjectToResponse(this IQueryable<Game> query, int minimumNumberOfPlayers, int maximumNumberOfPlayers)
+	public static IQueryable<GetGameResponse> ProjectToResponse(this IQueryable<Game> query, int minimumNumberOfPlayers,
+		int maximumNumberOfPlayers)
 	{
-		return query.Select(model => ToResponse(model, minimumNumberOfPlayers, maximumNumberOfPlayers));
+		return query.Select(model => model.ToResponse(minimumNumberOfPlayers, maximumNumberOfPlayers));
 	}
 
-	private static string MapRowVersion(byte[] rowVersion) => rowVersion.ToBase64String();
+	private static string MapRowVersion(byte[] rowVersion)
+	{
+		return rowVersion.ToBase64String();
+	}
 }

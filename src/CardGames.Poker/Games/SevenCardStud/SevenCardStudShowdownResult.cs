@@ -5,7 +5,7 @@ using CardGames.Poker.Hands.StudHands;
 namespace CardGames.Poker.Games.SevenCardStud;
 
 /// <summary>
-/// Result of a Seven Card Stud showdown.
+///     Result of a Seven Card Stud showdown.
 /// </summary>
 public class SevenCardStudShowdownResult
 {

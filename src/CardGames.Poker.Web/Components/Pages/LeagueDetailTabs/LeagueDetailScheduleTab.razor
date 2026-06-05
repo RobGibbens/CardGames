@@ -129,50 +129,35 @@
 </div>
 
 @code {
-	[Parameter]
-	public Guid LeagueId { get; set; }
+	[Parameter] public Guid LeagueId { get; set; }
 
-	[Parameter]
-	public bool CanManageLeague { get; set; }
+	[Parameter] public bool CanManageLeague { get; set; }
 
-	[Parameter, EditorRequired]
-	public List<LeagueSeasonDto> Seasons { get; set; } = [];
+	[Parameter, EditorRequired] public List<LeagueSeasonDto> Seasons { get; set; } = [];
 
-	[Parameter]
-	public Guid? SelectedSeasonId { get; set; }
+	[Parameter] public Guid? SelectedSeasonId { get; set; }
 
-	[Parameter, EditorRequired]
-	public LeagueOneOffEventsPageDto OneOffEventsPage { get; set; } = EmptyOneOffEventsPage();
+	[Parameter, EditorRequired] public LeagueOneOffEventsPageDto OneOffEventsPage { get; set; } = EmptyOneOffEventsPage();
 
-	[Parameter]
-	public bool IsLoadingOneOffEventsPage { get; set; }
+	[Parameter] public bool IsLoadingOneOffEventsPage { get; set; }
 
-	[Parameter]
-	public Guid? LaunchingOneOffEventId { get; set; }
+	[Parameter] public Guid? LaunchingOneOffEventId { get; set; }
 
-	[Parameter]
-	public string BrowserTimeZoneId { get; set; } = "UTC";
+	[Parameter] public string BrowserTimeZoneId { get; set; } = "UTC";
 
-	[Parameter]
-	public EventCallback OpenSeasonModal { get; set; }
+	[Parameter] public EventCallback OpenSeasonModal { get; set; }
 
-	[Parameter]
-	public EventCallback<Guid> OpenTable { get; set; }
+	[Parameter] public EventCallback<Guid> OpenTable { get; set; }
 
-	[Parameter]
-	public EventCallback OpenOneOffModal { get; set; }
+	[Parameter] public EventCallback OpenOneOffModal { get; set; }
 
-	[Parameter]
-	public EventCallback<LeagueOneOffEventDto> EditOneOffEvent { get; set; }
+	[Parameter] public EventCallback<LeagueOneOffEventDto> EditOneOffEvent { get; set; }
 
-	[Parameter]
-	public EventCallback<LeagueOneOffEventDto> DeleteOneOffEvent { get; set; }
+	[Parameter] public EventCallback<LeagueOneOffEventDto> DeleteOneOffEvent { get; set; }
 
-	[Parameter]
-	public EventCallback<Guid> LaunchOneOffEvent { get; set; }
+	[Parameter] public EventCallback<Guid> LaunchOneOffEvent { get; set; }
 
-	[Parameter]
-	public EventCallback<int> LoadOneOffEventsPage { get; set; }
+	[Parameter] public EventCallback<int> LoadOneOffEventsPage { get; set; }
 
 	private string FormatDate(DateTimeOffset? value)
 	{
@@ -211,4 +196,5 @@
 			TotalPages = 1
 		};
 	}
+
 }

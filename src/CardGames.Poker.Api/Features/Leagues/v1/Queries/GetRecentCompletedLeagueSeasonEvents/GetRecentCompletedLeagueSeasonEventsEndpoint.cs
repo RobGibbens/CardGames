@@ -8,9 +8,13 @@ public static class GetRecentCompletedLeagueSeasonEventsEndpoint
 	public static RouteGroupBuilder MapGetRecentCompletedLeagueSeasonEvents(this RouteGroupBuilder group)
 	{
 		group.MapGet("{leagueId:guid}/seasons/{seasonId:guid}/events/recent-completed",
-				async (Guid leagueId, Guid seasonId, IMediator mediator, int? take = null, CancellationToken cancellationToken = default) =>
+				async (Guid leagueId, Guid seasonId, IMediator mediator, int? take = null,
+					CancellationToken cancellationToken = default) =>
 				{
-					var result = await mediator.Send(new GetRecentCompletedLeagueSeasonEventsQuery(leagueId, seasonId, Math.Clamp(take ?? 5, 1, 20)), cancellationToken);
+					var result =
+						await mediator.Send(
+							new GetRecentCompletedLeagueSeasonEventsQuery(leagueId, seasonId,
+								Math.Clamp(take ?? 5, 1, 20)), cancellationToken);
 
 					return result.Match(
 						success => Results.Ok(success),
@@ -25,7 +29,7 @@ public static class GetRecentCompletedLeagueSeasonEventsEndpoint
 			.WithName("GetRecentCompletedLeagueSeasonEvents")
 			.WithSummary("Get recent completed season events")
 			.WithDescription("Returns the most recent completed events for a selected league season.")
-			.Produces<IReadOnlyList<LeagueSeasonEventDto>>(StatusCodes.Status200OK)
+			.Produces<IReadOnlyList<LeagueSeasonEventDto>>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.Produces(StatusCodes.Status404NotFound)

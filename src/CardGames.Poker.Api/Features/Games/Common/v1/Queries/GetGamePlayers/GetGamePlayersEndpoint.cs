@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGamePlayers;
 
 /// <summary>
-/// Endpoint for retrieving all players in a specific game.
+///     Endpoint for retrieving all players in a specific game.
 /// </summary>
 public static class GetGamePlayersEndpoint
 {
@@ -20,7 +20,7 @@ public static class GetGamePlayersEndpoint
 			.WithSummary(nameof(MapGetGamePlayers).TrimPrefix("Map"))
 			.WithDescription("Retrieve all players in a specific game.")
 			.MapToApiVersion(1.0)
-			.Produces<List<GetGamePlayersResponse>>(StatusCodes.Status200OK)
+			.Produces<List<GetGamePlayersResponse>>()
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
 		return group;

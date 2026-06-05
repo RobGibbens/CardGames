@@ -2,14 +2,6 @@
 
 public class PagedResponse<T> where T : class
 {
-	public IEnumerable<T> Data { get; }
-	public int PageNumber { get; }
-	public int PageSize { get; }
-	public int TotalCount { get; }
-	public int TotalPages { get; }
-	public bool HasPreviousPage { get; }
-	public bool HasNextPage { get; }
-
 	public PagedResponse(
 		IEnumerable<T>? data,
 		int pageNumber,
@@ -29,4 +21,12 @@ public class PagedResponse<T> where T : class
 		HasPreviousPage = PageNumber > 1;
 		HasNextPage = PageNumber < TotalPages;
 	}
+
+	public IEnumerable<T> Data { get; }
+	public int PageNumber { get; }
+	public int PageSize { get; }
+	public int TotalCount { get; }
+	public int TotalPages { get; }
+	public bool HasPreviousPage { get; }
+	public bool HasNextPage { get; }
 }

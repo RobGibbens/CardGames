@@ -1,10 +1,9 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
-using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.PromoteLeagueMemberToAdmin;
 using CardGames.Poker.Api.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+using LeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -18,7 +17,7 @@ public class PromoteLeagueMemberToAdminCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-manager";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Promotion League"
 		}));
@@ -58,7 +57,7 @@ public class PromoteLeagueMemberToAdminCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-manager";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Admin Promotion League"
 		}));
@@ -107,7 +106,7 @@ public class PromoteLeagueMemberToAdminCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-manager";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Member Forbidden Promotion League"
 		}));
@@ -137,7 +136,8 @@ public class PromoteLeagueMemberToAdminCommandHandlerTests : IntegrationTestBase
 		await DbContext.SaveChangesAsync();
 
 		fakeCurrentUser.UserId = "league-member-actor";
-		var promoteResult = await Mediator.Send(new PromoteLeagueMemberToAdminCommand(leagueId, "league-member-target"));
+		var promoteResult =
+			await Mediator.Send(new PromoteLeagueMemberToAdminCommand(leagueId, "league-member-target"));
 
 		promoteResult.IsT1.Should().BeTrue();
 		promoteResult.AsT1.Code.Should().Be(PromoteLeagueMemberToAdminErrorCode.Forbidden);

@@ -2,22 +2,15 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.Poker.Api.Contracts;
-using FluentAssertions;
+using LeagueInviteStatus = CardGames.Poker.Api.Contracts.LeagueInviteStatus;
+using LeagueJoinRequestStatus = CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus;
+using LeagueRole = CardGames.Poker.Api.Contracts.LeagueRole;
 
 namespace CardGames.IntegrationTests.Api;
 
 public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegrationTestBase(factory)
 {
-	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-	{
-		Converters =
-		{
-			new JsonStringEnumConverter()
-		}
-	};
-
 	private const string InvalidInviteMessage = "Invite token is invalid.";
 	private const string ExpiredInviteMessage = "Invite has expired.";
 	private const string RevokedInviteMessage = "Invite has been revoked.";
@@ -25,6 +18,14 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 	private const string AlreadyApprovedMessage = "Join request has already been approved.";
 	private const string AlreadyDeniedMessage = "Join request has already been denied.";
 	private const int JoinRequestFlowPermitLimit = 10;
+
+	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+	{
+		Converters =
+		{
+			new JsonStringEnumConverter()
+		}
+	};
 
 	[Fact]
 	public async Task LeagueCreator_DetailProjection_AllowsImmediateInviteCreation()
@@ -44,12 +45,13 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var detail = await detailResponse.Content.ReadFromJsonAsync<LeagueDetailDto>(JsonOptions);
 		detail.Should().NotBeNull();
-		detail!.MyRole.Should().Be(CardGames.Poker.Api.Contracts.LeagueRole.Manager);
+		detail!.MyRole.Should().Be(LeagueRole.Manager);
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 	}
@@ -68,21 +70,27 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
 
-		var revokeResponse = await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite!.InviteId}/revoke", content: null);
+		var revokeResponse =
+			await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite!.InviteId}/revoke",
+				content: null);
 		revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-		var invitesResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueInviteSummaryDto>>($"/api/v1/leagues/{league.LeagueId}/invites", JsonOptions);
+		var invitesResponse =
+			await Client.GetFromJsonAsync<IReadOnlyList<LeagueInviteSummaryDto>>(
+				$"/api/v1/leagues/{league.LeagueId}/invites", JsonOptions);
 		invitesResponse.Should().NotBeNull();
-		invitesResponse!.Should().ContainSingle(x => x.InviteId == invite.InviteId && x.Status == CardGames.Poker.Api.Contracts.LeagueInviteStatus.Revoked);
+		invitesResponse!.Should()
+			.ContainSingle(x => x.InviteId == invite.InviteId && x.Status == LeagueInviteStatus.Revoked);
 	}
 
 	[Fact]
@@ -98,10 +106,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -120,7 +129,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		joinResult!.LeagueId.Should().Be(league.LeagueId);
 		joinResult.Joined.Should().BeFalse();
 		joinResult.RequestSubmitted.Should().BeTrue();
-		joinResult.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Pending);
+		joinResult.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Pending);
 	}
 
 	[Fact]
@@ -136,10 +145,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -147,7 +157,8 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var token = invite!.InviteUrl.Split('/').Last();
 		SetUser("league-api-member");
 
-		var previewResponse = await Client.GetAsync($"/api/v1/leagues/join-preview?token={Uri.EscapeDataString(token)}");
+		var previewResponse =
+			await Client.GetAsync($"/api/v1/leagues/join-preview?token={Uri.EscapeDataString(token)}");
 		previewResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		var preview = await previewResponse.Content.ReadFromJsonAsync<LeagueJoinPreviewDto>(JsonOptions);
@@ -183,10 +194,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -216,11 +228,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		firstResult!.Joined.Should().BeFalse();
 		firstResult.AlreadyMember.Should().BeFalse();
 		firstResult.RequestSubmitted.Should().BeTrue();
-		firstResult.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Pending);
+		firstResult.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Pending);
 		secondResult!.Joined.Should().BeFalse();
 		secondResult.AlreadyMember.Should().BeFalse();
 		secondResult.RequestSubmitted.Should().BeTrue();
-		secondResult.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Pending);
+		secondResult.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Pending);
 		secondResult.JoinRequestId.Should().Be(firstResult.JoinRequestId);
 
 		var activeMembershipCount = DbContext.LeagueMembersCurrent
@@ -242,10 +254,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -285,10 +298,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -328,10 +342,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -344,7 +359,9 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		});
 		joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-		var revokeResponse = await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite.InviteId}/revoke", content: null);
+		var revokeResponse =
+			await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite.InviteId}/revoke",
+				content: null);
 		revokeResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 	}
 
@@ -360,10 +377,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var leagueA = await createLeagueAResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		leagueA.Should().NotBeNull();
 
-		var createInviteAResponse = await PostAsync($"/api/v1/leagues/{leagueA!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteAResponse = await PostAsync($"/api/v1/leagues/{leagueA!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteAResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var inviteA = await createInviteAResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		inviteA.Should().NotBeNull();
@@ -375,7 +393,9 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		});
 		createLeagueBResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-		var revokeResponse = await Client.PostAsync($"/api/v1/leagues/{leagueA.LeagueId}/invites/{inviteA!.InviteId}/revoke", content: null);
+		var revokeResponse =
+			await Client.PostAsync($"/api/v1/leagues/{leagueA.LeagueId}/invites/{inviteA!.InviteId}/revoke",
+				content: null);
 
 		revokeResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 	}
@@ -407,10 +427,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -445,15 +466,18 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
 
-		var revokeResponse = await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite!.InviteId}/revoke", content: null);
+		var revokeResponse =
+			await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite!.InviteId}/revoke",
+				content: null);
 		revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
 		var token = invite.InviteUrl.Split('/').Last();
@@ -482,10 +506,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -493,7 +518,8 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var token = invite!.InviteUrl.Split('/').Last();
 
 		SetUser("league-journey-member");
-		var previewResponse = await Client.GetAsync($"/api/v1/leagues/join-preview?token={Uri.EscapeDataString(token)}");
+		var previewResponse =
+			await Client.GetAsync($"/api/v1/leagues/join-preview?token={Uri.EscapeDataString(token)}");
 		previewResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var preview = await previewResponse.Content.ReadFromJsonAsync<LeagueJoinPreviewDto>(JsonOptions);
 		preview.Should().NotBeNull();
@@ -509,15 +535,17 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var join = await joinResponse.Content.ReadFromJsonAsync<JoinLeagueResponse>(JsonOptions);
 		join.Should().NotBeNull();
 		join!.RequestSubmitted.Should().BeTrue();
-		join.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Pending);
+		join.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Pending);
 		join.JoinRequestId.Should().NotBeNull();
 
 		SetUser("league-journey-admin");
 		var pendingResponse = await Client.GetAsync($"/api/v1/leagues/{league.LeagueId}/join-requests/pending");
 		pendingResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-		var pending = await pendingResponse.Content.ReadFromJsonAsync<IReadOnlyList<LeagueJoinRequestQueueItemDto>>(JsonOptions);
+		var pending =
+			await pendingResponse.Content.ReadFromJsonAsync<IReadOnlyList<LeagueJoinRequestQueueItemDto>>(JsonOptions);
 		pending.Should().NotBeNull();
-		pending!.Should().ContainSingle(x => x.JoinRequestId == join.JoinRequestId!.Value && x.RequesterUserId == "league-journey-member");
+		pending!.Should().ContainSingle(x =>
+			x.JoinRequestId == join.JoinRequestId!.Value && x.RequesterUserId == "league-journey-member");
 
 		var approveResponse = await PostAsync(
 			$"/api/v1/leagues/{league.LeagueId}/join-requests/{join.JoinRequestId.Value}/approve",
@@ -538,7 +566,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		joinAgain.Should().NotBeNull();
 		joinAgain!.AlreadyMember.Should().BeTrue();
 		joinAgain.RequestSubmitted.Should().BeFalse();
-		joinAgain.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Approved);
+		joinAgain.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Approved);
 	}
 
 	[Fact]
@@ -555,10 +583,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -591,7 +620,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 
 		var joinRequest = await DbContext.LeagueJoinRequests.FindAsync(join.JoinRequestId.Value);
 		joinRequest.Should().NotBeNull();
-		joinRequest!.Status.Should().Be(CardGames.Poker.Api.Data.Entities.LeagueJoinRequestStatus.Denied);
+		joinRequest!.Status.Should().Be(Poker.Api.Data.Entities.LeagueJoinRequestStatus.Denied);
 	}
 
 	[Fact]
@@ -608,10 +637,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();
@@ -662,10 +692,11 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 		missingApproveResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 		(await ReadErrorMessageAsync(missingApproveResponse)).Should().Be(JoinRequestNotFoundMessage);
 
-		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/invites", new CreateLeagueInviteRequest
-		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		});
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/invites",
+			new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+			});
 		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
 		invite.Should().NotBeNull();

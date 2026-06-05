@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
-/// Broadcasts league management updates to connected SignalR clients.
+///     Broadcasts league management updates to connected SignalR clients.
 /// </summary>
 public sealed class LeagueBroadcaster(
 	IHubContext<LeagueHub> hubContext,
@@ -13,7 +13,8 @@ public sealed class LeagueBroadcaster(
 	: ILeagueBroadcaster
 {
 	/// <inheritdoc />
-	public async Task BroadcastLeagueEventChangedAsync(LeagueEventChangedDto eventChanged, CancellationToken cancellationToken = default)
+	public async Task BroadcastLeagueEventChangedAsync(LeagueEventChangedDto eventChanged,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(eventChanged);
 
@@ -31,7 +32,8 @@ public sealed class LeagueBroadcaster(
 	}
 
 	/// <inheritdoc />
-	public async Task BroadcastEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto sessionLaunched, CancellationToken cancellationToken = default)
+	public async Task BroadcastEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto sessionLaunched,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(sessionLaunched);
 
@@ -49,7 +51,8 @@ public sealed class LeagueBroadcaster(
 	}
 
 	/// <inheritdoc />
-	public async Task BroadcastJoinRequestSubmittedAsync(LeagueJoinRequestSubmittedDto joinRequestSubmitted, CancellationToken cancellationToken = default)
+	public async Task BroadcastJoinRequestSubmittedAsync(LeagueJoinRequestSubmittedDto joinRequestSubmitted,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(joinRequestSubmitted);
 

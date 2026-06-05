@@ -6,16 +6,17 @@ namespace CardGames.Core.French.Decks;
 
 public sealed class FullFrenchDeck : FrenchDeck
 {
-    private readonly IReadOnlyCollection<Card> _cards
-        = Enumerable
-            .Range(2, 13)
-            .SelectMany(CardsOfValue)
-            .ToList();
-    
-    private static IEnumerable<Card> CardsOfValue(int value)
-        => Enumerable
-            .Range(0, 4)
-            .Select(suit => new Card((Suit)suit, value));
+	protected override IReadOnlyCollection<Card> Cards { get; } =
+	[
+		.. Enumerable
+			.Range(2, 13)
+			.SelectMany(CardsOfValue)
+	];
 
-    protected override IReadOnlyCollection<Card> Cards => _cards;
+	private static IEnumerable<Card> CardsOfValue(int value)
+	{
+		return Enumerable
+			.Range(0, 4)
+			.Select(suit => new Card((Suit)suit, value));
+	}
 }

@@ -5,7 +5,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 
 /// <summary>
-/// Command for a player to place a bet (or pass with 0) in In-Between.
+///     Command for a player to place a bet (or pass with 0) in In-Between.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="PlayerId">The unique identifier of the player placing the bet.</param>

@@ -1,14 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using CardGames.Core.French.Cards;
-using CardGames.Poker.Evaluation;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.CommunityCardHands;
 
 namespace CardGames.Poker.Evaluation.Evaluators;
 
 /// <summary>
-/// Hand evaluator for Hold the Baseball (Texas Hold 'Em with 3s and 9s wild).
+///     Hand evaluator for Hold the Baseball (Texas Hold 'Em with 3s and 9s wild).
 /// </summary>
 [HandEvaluator("HOLDTHEBASEBALL")]
 public sealed class HoldTheBaseballHandEvaluator : IHandEvaluator

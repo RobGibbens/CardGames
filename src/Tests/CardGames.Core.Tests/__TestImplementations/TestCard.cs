@@ -2,10 +2,10 @@
 
 internal class TestCard
 {
-    public TestCard(int propertyValue)
-    {
-        SomeDistinguishingProperty = propertyValue;
-    }
+	public TestCard(int propertyValue)
+	{
+		SomeDistinguishingProperty = propertyValue;
+	}
 
-    public int SomeDistinguishingProperty { get; }
+	public int SomeDistinguishingProperty { get; }
 }

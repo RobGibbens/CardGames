@@ -5,7 +5,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 
 /// <summary>
-/// Command for a player to make their drop or stay decision in Kings and Lows.
+///     Command for a player to make their drop or stay decision in Kings and Lows.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="PlayerId">The unique identifier of the player making the decision.</param>

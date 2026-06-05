@@ -1,6 +1,4 @@
-﻿using CardGames.Poker.Events;
-
-namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
+﻿namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 
 public record CreateGameSuccessful
 {

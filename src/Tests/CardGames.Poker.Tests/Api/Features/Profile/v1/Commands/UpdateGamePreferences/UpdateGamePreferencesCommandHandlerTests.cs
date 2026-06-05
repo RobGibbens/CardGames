@@ -121,7 +121,8 @@ public class UpdateGamePreferencesCommandHandlerTests
 		return new CardsDbContext(options);
 	}
 
-	private static RetryOnceCardsDbContext CreateRetryOnceContext(string databaseName, InMemoryDatabaseRoot databaseRoot)
+	private static RetryOnceCardsDbContext CreateRetryOnceContext(string databaseName,
+		InMemoryDatabaseRoot databaseRoot)
 	{
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
 			.UseInMemoryDatabase(databaseName, databaseRoot)
@@ -188,10 +189,12 @@ public class UpdateGamePreferencesCommandHandlerTests
 
 		public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
 		{
-			if (shouldFail && ChangeTracker.Entries<UserGamePreferences>().Any(entry => entry.State != EntityState.Unchanged))
+			if (shouldFail && ChangeTracker.Entries<UserGamePreferences>()
+				    .Any(entry => entry.State != EntityState.Unchanged))
 			{
 				shouldFail = false;
-				throw new DbUpdateException("Simulated stale user mapping conflict.", new Exception("Simulated save failure."));
+				throw new DbUpdateException("Simulated stale user mapping conflict.",
+					new Exception("Simulated save failure."));
 			}
 
 			return base.SaveChangesAsync(cancellationToken);

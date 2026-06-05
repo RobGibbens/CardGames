@@ -2,29 +2,35 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Tollbooth;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
+using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.Tollbooth;
 using Microsoft.EntityFrameworkCore;
+using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
+using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.GameFlow;
 
 /// <summary>
-/// Game flow handler for Tollbooth poker.
-/// Deals Third Street like standard Seven Card Stud, then uses TollboothOffer phases
-/// for Fourth through Seventh streets where each player picks a card from display or deck.
+///     Game flow handler for Tollbooth poker.
+///     Deals Third Street like standard Seven Card Stud, then uses TollboothOffer phases
+///     for Fourth through Seventh streets where each player picks a card from display or deck.
 /// </summary>
 public sealed class TollboothFlowHandler : BaseGameFlowHandler
 {
 	public override string GameTypeCode => PokerGameMetadataRegistry.TollboothCode;
 
-	public override GameRules GetGameRules() => TollboothRules.CreateGameRules();
-
 	/// <summary>
-	/// TollboothOffer is a special phase that does not set up a betting round.
+	///     TollboothOffer is a special phase that does not set up a betting round.
 	/// </summary>
 	public override IReadOnlyList<string> SpecialPhases => [nameof(Phases.TollboothOffer)];
+
+	public override GameRules GetGameRules()
+	{
+		return TollboothRules.CreateGameRules();
+	}
 
 	public override DealingConfiguration GetDealingConfiguration()
 	{
@@ -75,14 +81,13 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Tollbooth phase transitions:
-	/// ThirdStreet betting completes → TollboothOffer (for 4th street cards)
-	/// FourthStreet betting completes → TollboothOffer (for 5th street cards)
-	/// FifthStreet betting completes → TollboothOffer (for 6th street cards)
-	/// SixthStreet betting completes → TollboothOffer (for 7th street cards)
-	/// SeventhStreet betting completes → Showdown
-	///
-	/// TollboothOffer → next betting street (managed by the ChooseCard command handler)
+	///     Tollbooth phase transitions:
+	///     ThirdStreet betting completes → TollboothOffer (for 4th street cards)
+	///     FourthStreet betting completes → TollboothOffer (for 5th street cards)
+	///     FifthStreet betting completes → TollboothOffer (for 6th street cards)
+	///     SixthStreet betting completes → TollboothOffer (for 7th street cards)
+	///     SeventhStreet betting completes → Showdown
+	///     TollboothOffer → next betting street (managed by the ChooseCard command handler)
 	/// </summary>
 	public override string? GetNextPhase(Game game, string currentPhase)
 	{
@@ -106,8 +111,8 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Determines which betting street follows the current TollboothOffer round
-	/// based on the previous betting street stored in the game's variant state.
+	///     Determines which betting street follows the current TollboothOffer round
+	///     based on the previous betting street stored in the game's variant state.
 	/// </summary>
 	private static string GetNextBettingStreetAfterOffer(Game game)
 	{
@@ -123,8 +128,8 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Deals Third Street cards (2 hole + 1 board per player) and sets up two initial
-	/// Tollbooth display cards as Community cards for UI rendering.
+	///     Deals Third Street cards (2 hole + 1 board per player) and sets up two initial
+	///     Tollbooth display cards as Community cards for UI rendering.
 	/// </summary>
 	public override async Task DealCardsAsync(
 		CardsDbContext context,
@@ -135,8 +140,8 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 	{
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id &&
-						 gc.HandNumber == game.CurrentHandNumber &&
-						 gc.Location == CardLocation.Deck)
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -231,7 +236,7 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 		// Determine bring-in player
 		var bringInPlayer = FindBringInPlayer(playerUpCards);
 		var bringInSeatPosition = bringInPlayer?.SeatPosition ??
-			playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
+		                          playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
 
 		var bringIn = game.BringIn ?? 0;
 		var currentBet = 0;
@@ -245,9 +250,9 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 
 			var pot = await context.Pots
 				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-									  p.HandNumber == game.CurrentHandNumber &&
-									  p.PotType == PotType.Main,
-								 cancellationToken);
+				                          p.HandNumber == game.CurrentHandNumber &&
+				                          p.PotType == PotType.Main,
+					cancellationToken);
 			if (pot is not null)
 			{
 				pot.Amount += actualBringIn;
@@ -255,7 +260,7 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 		}
 
 		var minBet = game.SmallBet ?? game.MinBet ?? 0;
-		var bettingRound = new Data.Entities.BettingRound
+		var bettingRound = new BettingRound
 		{
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber,
@@ -274,7 +279,7 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 			StartedAt = now
 		};
 
-		context.Set<Data.Entities.BettingRound>().Add(bettingRound);
+		context.Set<BettingRound>().Add(bettingRound);
 
 		game.CurrentPhase = nameof(Phases.ThirdStreet);
 		game.CurrentPlayerIndex = bringInSeatPosition;
@@ -322,37 +327,44 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
 
-	private static int GetCardValue(CardSymbol symbol) => symbol switch
+	private static int GetCardValue(CardSymbol symbol)
 	{
-		CardSymbol.Deuce => 2,
-		CardSymbol.Three => 3,
-		CardSymbol.Four => 4,
-		CardSymbol.Five => 5,
-		CardSymbol.Six => 6,
-		CardSymbol.Seven => 7,
-		CardSymbol.Eight => 8,
-		CardSymbol.Nine => 9,
-		CardSymbol.Ten => 10,
-		CardSymbol.Jack => 11,
-		CardSymbol.Queen => 12,
-		CardSymbol.King => 13,
-		CardSymbol.Ace => 14,
-		_ => 0
-	};
+		return symbol switch
+		{
+			CardSymbol.Deuce => 2,
+			CardSymbol.Three => 3,
+			CardSymbol.Four => 4,
+			CardSymbol.Five => 5,
+			CardSymbol.Six => 6,
+			CardSymbol.Seven => 7,
+			CardSymbol.Eight => 8,
+			CardSymbol.Nine => 9,
+			CardSymbol.Ten => 10,
+			CardSymbol.Jack => 11,
+			CardSymbol.Queen => 12,
+			CardSymbol.King => 13,
+			CardSymbol.Ace => 14,
+			_ => 0
+		};
+	}
 
-	private static int GetSuitRank(CardSuit suit) => suit switch
+	private static int GetSuitRank(CardSuit suit)
 	{
-		CardSuit.Clubs => 0,
-		CardSuit.Diamonds => 1,
-		CardSuit.Hearts => 2,
-		CardSuit.Spades => 3,
-		_ => 0
-	};
+		return suit switch
+		{
+			CardSuit.Clubs => 0,
+			CardSuit.Diamonds => 1,
+			CardSuit.Hearts => 2,
+			CardSuit.Spades => 3,
+			_ => 0
+		};
+	}
 
 	/// <inheritdoc />
-	protected override async Task SendBettingActionAsync(AutoActionContext context, Data.Entities.BettingActionType action, int amount = 0)
+	protected override async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action,
+		int amount = 0)
 	{
-		var command = new Features.Games.Tollbooth.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand(
+		var command = new ProcessBettingActionCommand(
 			context.GameId, action, amount);
 
 		try
@@ -361,7 +373,8 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 		}
 		catch (Exception ex)
 		{
-			context.Logger.LogError(ex, "Error performing auto-betting action for Tollbooth game {GameId}", context.GameId);
+			context.Logger.LogError(ex, "Error performing auto-betting action for Tollbooth game {GameId}",
+				context.GameId);
 		}
 	}
 

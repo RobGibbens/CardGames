@@ -15,9 +15,9 @@ public static class GetGamePreferencesEndpoint
 				})
 			.WithName("GetGamePreferences")
 			.WithSummary("Get game preferences")
-            .WithDescription("Retrieves default blind, ante, and minimum bet preferences for the authenticated player.")
-			.Produces<GamePreferencesDto>(StatusCodes.Status200OK)
-          .RequireAuthorization();
+			.WithDescription("Retrieves default blind, ante, and minimum bet preferences for the authenticated player.")
+			.Produces<GamePreferencesDto>()
+			.RequireAuthorization();
 
 		return group;
 	}

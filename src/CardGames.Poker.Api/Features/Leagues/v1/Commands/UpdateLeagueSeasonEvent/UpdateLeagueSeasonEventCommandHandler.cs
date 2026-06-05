@@ -1,15 +1,15 @@
+using System.Globalization;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Leagues.v1.Commands;
-using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Games.GameFlow;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
-using System.Globalization;
+using LeagueSeasonEventStatus = CardGames.Poker.Api.Data.Entities.LeagueSeasonEventStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.UpdateLeagueSeasonEvent;
 
@@ -19,11 +19,13 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<UpdateLeagueSeasonEventCommand, OneOf<Unit, UpdateLeagueSeasonEventError>>
 {
-	public async Task<OneOf<Unit, UpdateLeagueSeasonEventError>> Handle(UpdateLeagueSeasonEventCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, UpdateLeagueSeasonEventError>> Handle(UpdateLeagueSeasonEventCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Unauthorized, "User is not authenticated.");
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var leagueExists = await context.Leagues
@@ -32,7 +34,8 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 
 		if (!leagueExists)
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.LeagueNotFound, "League not found.");
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.LeagueNotFound,
+				"League not found.");
 		}
 
 		var season = await context.LeagueSeasons
@@ -41,7 +44,8 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 
 		if (season is null)
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.SeasonNotFound, "Season not found in league.");
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.SeasonNotFound,
+				"Season not found in league.");
 		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
@@ -52,42 +56,52 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Forbidden, "Only league managers or admins can update season events.");
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Forbidden,
+				"Only league managers or admins can update season events.");
 		}
 
 		var seasonEvent = await context.LeagueSeasonEvents
-			.FirstOrDefaultAsync(x => x.Id == request.EventId && x.LeagueId == request.LeagueId && x.LeagueSeasonId == request.SeasonId, cancellationToken);
+			.FirstOrDefaultAsync(
+				x => x.Id == request.EventId && x.LeagueId == request.LeagueId && x.LeagueSeasonId == request.SeasonId,
+				cancellationToken);
 
 		if (seasonEvent is null)
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.EventNotFound, "Season event not found in league season.");
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.EventNotFound,
+				"Season event not found in league season.");
 		}
 
-		if (seasonEvent.Status != Data.Entities.LeagueSeasonEventStatus.Planned || seasonEvent.LaunchedGameId.HasValue)
+		if (seasonEvent.Status != LeagueSeasonEventStatus.Planned || seasonEvent.LaunchedGameId.HasValue)
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Conflict, "Only planned, unlaunched season events can be edited.");
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Conflict,
+				"Only planned, unlaunched season events can be edited.");
 		}
 
 		if (request.Request.ScheduledAtUtc == default)
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest,
+				"Scheduled date/time is required.");
 		}
 
 		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest,
+				LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
 		}
 
 		string? normalizedGameTypeCode = null;
-		CardGames.Poker.Games.GameFlow.GameRules? rules = null;
+		GameRules? rules = null;
 		if (!string.IsNullOrWhiteSpace(request.Request.GameTypeCode))
 		{
-			if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var resolvedGameTypeCode, out rules, out var gameTypeError))
+			if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var resolvedGameTypeCode,
+				    out rules, out var gameTypeError))
 			{
-				return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, gameTypeError!);
+				return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest,
+					gameTypeError!);
 			}
 
-			var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
+			var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet,
+				request.Request.SmallBlind, request.Request.BigBlind);
 			if (stakesError is not null)
 			{
 				return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, stakesError);
@@ -99,7 +113,8 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 		var tournamentBuyInError = ValidateSeasonTournamentBuyIn(request.Request.TournamentBuyIn);
 		if (tournamentBuyInError is not null)
 		{
-			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, tournamentBuyInError);
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest,
+				tournamentBuyInError);
 		}
 
 		seasonEvent.Name = GenerateSeasonEventName(request.Request.ScheduledAtUtc);
@@ -108,19 +123,26 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 		seasonEvent.Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim();
 		seasonEvent.GameTypeCode = normalizedGameTypeCode;
 		seasonEvent.Ante = rules is null ? null : LeagueEventGameSettings.NormalizeAnte(rules, request.Request.Ante);
-		seasonEvent.MinBet = rules is null ? null : LeagueEventGameSettings.NormalizeMinBet(rules, request.Request.MinBet, request.Request.BigBlind);
-		seasonEvent.SmallBlind = rules is null ? null : LeagueEventGameSettings.NormalizeSmallBlind(rules, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
-		seasonEvent.BigBlind = rules is null ? null : LeagueEventGameSettings.NormalizeBigBlind(rules, request.Request.MinBet, request.Request.BigBlind);
+		seasonEvent.MinBet = rules is null
+			? null
+			: LeagueEventGameSettings.NormalizeMinBet(rules, request.Request.MinBet, request.Request.BigBlind);
+		seasonEvent.SmallBlind = rules is null
+			? null
+			: LeagueEventGameSettings.NormalizeSmallBlind(rules, request.Request.MinBet, request.Request.SmallBlind,
+				request.Request.BigBlind);
+		seasonEvent.BigBlind = rules is null
+			? null
+			: LeagueEventGameSettings.NormalizeBigBlind(rules, request.Request.MinBet, request.Request.BigBlind);
 		seasonEvent.TournamentBuyIn = request.Request.TournamentBuyIn;
 
 		await context.SaveChangesAsync(cancellationToken);
-		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 		{
 			LeagueId = seasonEvent.LeagueId,
 			EventId = seasonEvent.Id,
-			SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.Season,
+			SourceType = LeagueEventSourceType.Season,
 			SeasonId = seasonEvent.LeagueSeasonId,
-			ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.Updated,
+			ChangeKind = LeagueEventChangeKind.Updated,
 			ChangedAtUtc = DateTimeOffset.UtcNow
 		}, cancellationToken);
 

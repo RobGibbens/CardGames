@@ -3,17 +3,18 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringDraw;
 
 /// <summary>
-/// Endpoint for folding during the Irish Hold 'Em discard phase (e.g., when the timer expires).
+///     Endpoint for folding during the Irish Hold 'Em discard phase (e.g., when the timer expires).
 /// </summary>
 public static class FoldDuringDrawEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for folding during the discard phase.
+	///     Maps the POST endpoint for folding during the discard phase.
 	/// </summary>
 	public static RouteGroupBuilder MapFoldDuringDraw(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/fold-during-draw",
-				async (Guid gameId, FoldDuringDrawRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, FoldDuringDrawRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new FoldDuringDrawCommand(gameId, request.PlayerSeatIndex);
 					var result = await mediator.Send(command, cancellationToken);
@@ -39,7 +40,7 @@ public static class FoldDuringDrawEndpoint
 }
 
 /// <summary>
-/// Request body for folding during the discard phase.
+///     Request body for folding during the discard phase.
 /// </summary>
 /// <param name="PlayerSeatIndex">The seat index of the player to fold.</param>
 public record FoldDuringDrawRequest(int PlayerSeatIndex);

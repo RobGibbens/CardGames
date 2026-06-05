@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand;
 
 /// <summary>
-/// Endpoint for starting a new hand in a Seven Card Stud game.
+///     Endpoint for starting a new hand in a Seven Card Stud game.
 /// </summary>
 public static class StartHandEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for starting a new hand.
+	///     Maps the POST endpoint for starting a new hand.
 	/// </summary>
 	public static RouteGroupBuilder MapStartHand(this RouteGroupBuilder group)
 	{
@@ -32,10 +32,11 @@ public static class StartHandEndpoint
 				})
 			.WithName($"SevenCardStud{nameof(MapStartHand).TrimPrefix("Map")}")
 			.WithSummary("Start Hand")
-			.WithDescription("Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. " +
-			                 "This endpoint must be called before each hand to prepare the game for play. " +
-			                 "After calling this endpoint, the game transitions to the CollectingAntes phase.")
-			.Produces<StartHandSuccessful>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. " +
+				"This endpoint must be called before each hand to prepare the game for play. " +
+				"After calling this endpoint, the game transitions to the CollectingAntes phase.")
+			.Produces<StartHandSuccessful>()
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);

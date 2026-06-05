@@ -1,14 +1,12 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
-using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.Poker.Api.Contracts;
-using CardGames.Poker.Api.Data.Entities;
-using FluentAssertions;
 using ContractLeagueOneOffEventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType;
 using DataLeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
+using LeagueOneOffEventType = CardGames.Poker.Api.Data.Entities.LeagueOneOffEventType;
 
 namespace CardGames.IntegrationTests.Api;
 
@@ -26,14 +24,16 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 	public async Task UpdateSeasonEvent_Admin_Succeeds_AndPersistsChanges()
 	{
 		SetUser("league-update-season-admin");
-		var (leagueId, seasonId, eventId) = await CreateLeagueSeasonAndEventAsync("league-update-season-admin", "Update Season League", "Week 1", 1);
+		var (leagueId, seasonId, eventId) =
+			await CreateLeagueSeasonAndEventAsync("league-update-season-admin", "Update Season League", "Week 1", 1);
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14);
 
-		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}", new UpdateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = scheduledAtUtc,
-			Notes = "Updated schedule details"
-		}, JsonOptions);
+		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}",
+			new UpdateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = scheduledAtUtc,
+				Notes = "Updated schedule details"
+			}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -49,7 +49,8 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 	public async Task UpdateSeasonEvent_NonGovernanceMember_IsForbidden()
 	{
 		SetUser("league-update-season-owner");
-		var (leagueId, seasonId, eventId) = await CreateLeagueSeasonAndEventAsync("league-update-season-owner", "Update Season Forbidden League", "Week 1", 1);
+		var (leagueId, seasonId, eventId) = await CreateLeagueSeasonAndEventAsync("league-update-season-owner",
+			"Update Season Forbidden League", "Week 1", 1);
 
 		DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
 		{
@@ -63,10 +64,11 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		await DbContext.SaveChangesAsync();
 
 		SetUser("league-update-season-member");
-		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}", new UpdateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14)
-		}, JsonOptions);
+		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}",
+			new UpdateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14)
+			}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 	}
@@ -75,17 +77,19 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 	public async Task UpdateSeasonEvent_LaunchedEvent_ReturnsConflict()
 	{
 		SetUser("league-update-season-launched-admin");
-		var (leagueId, seasonId, eventId) = await CreateLeagueSeasonAndEventAsync("league-update-season-launched-admin", "Update Season Conflict League", "Week 1", 1);
+		var (leagueId, seasonId, eventId) = await CreateLeagueSeasonAndEventAsync("league-update-season-launched-admin",
+			"Update Season Conflict League", "Week 1", 1);
 
 		var storedEvent = await DbContext.LeagueSeasonEvents.FindAsync(eventId);
 		storedEvent.Should().NotBeNull();
 		storedEvent!.LaunchedGameId = Guid.CreateVersion7();
 		await DbContext.SaveChangesAsync();
 
-		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}", new UpdateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14)
-		}, JsonOptions);
+		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}",
+			new UpdateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14)
+			}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.Conflict);
 	}
@@ -94,19 +98,21 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 	public async Task UpdateOneOffEvent_Admin_Succeeds_AndPersistsChanges()
 	{
 		SetUser("league-update-oneoff-admin");
-		var (leagueId, eventId) = await CreateOneOffEventAsync("league-update-oneoff-admin", "Update One-Off League", "Friday Night");
+		var (leagueId, eventId) =
+			await CreateOneOffEventAsync("league-update-oneoff-admin", "Update One-Off League", "Friday Night");
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(10);
 
-		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/events/one-off/{eventId}", new UpdateLeagueOneOffEventRequest
-		{
-			Name = "Feature Table",
-			ScheduledAtUtc = scheduledAtUtc,
-			EventType = ContractLeagueOneOffEventType.Tournament,
-			Notes = "Bring chips",
-			GameTypeCode = "OMAHA",
-			Ante = 25,
-			MinBet = 50
-		}, JsonOptions);
+		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/events/one-off/{eventId}",
+			new UpdateLeagueOneOffEventRequest
+			{
+				Name = "Feature Table",
+				ScheduledAtUtc = scheduledAtUtc,
+				EventType = ContractLeagueOneOffEventType.Tournament,
+				Notes = "Bring chips",
+				GameTypeCode = "OMAHA",
+				Ante = 25,
+				MinBet = 50
+			}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -114,7 +120,7 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		storedEvent.Should().NotBeNull();
 		storedEvent!.Name.Should().Be("Feature Table");
 		storedEvent.ScheduledAtUtc.Should().Be(scheduledAtUtc);
-		storedEvent.EventType.Should().Be(CardGames.Poker.Api.Data.Entities.LeagueOneOffEventType.Tournament);
+		storedEvent.EventType.Should().Be(LeagueOneOffEventType.Tournament);
 		storedEvent.GameTypeCode.Should().Be("OMAHA");
 		storedEvent.Ante.Should().Be(25);
 		storedEvent.MinBet.Should().Be(50);
@@ -125,7 +131,8 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 	public async Task UpdateOneOffEvent_NonGovernanceMember_IsForbidden()
 	{
 		SetUser("league-update-oneoff-owner");
-		var (leagueId, eventId) = await CreateOneOffEventAsync("league-update-oneoff-owner", "Update One-Off Forbidden League", "Friday Night");
+		var (leagueId, eventId) = await CreateOneOffEventAsync("league-update-oneoff-owner",
+			"Update One-Off Forbidden League", "Friday Night");
 
 		DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
 		{
@@ -139,13 +146,14 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		await DbContext.SaveChangesAsync();
 
 		SetUser("league-update-oneoff-member");
-		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/events/one-off/{eventId}", new UpdateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night Updated",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(12),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM"
-		}, JsonOptions);
+		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/events/one-off/{eventId}",
+			new UpdateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night Updated",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(12),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM"
+			}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 	}
@@ -154,25 +162,28 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 	public async Task UpdateOneOffEvent_LaunchedEvent_ReturnsConflict()
 	{
 		SetUser("league-update-oneoff-launched-admin");
-		var (leagueId, eventId) = await CreateOneOffEventAsync("league-update-oneoff-launched-admin", "Update One-Off Conflict League", "Friday Night");
+		var (leagueId, eventId) = await CreateOneOffEventAsync("league-update-oneoff-launched-admin",
+			"Update One-Off Conflict League", "Friday Night");
 
 		var storedEvent = await DbContext.LeagueOneOffEvents.FindAsync(eventId);
 		storedEvent.Should().NotBeNull();
 		storedEvent!.LaunchedGameId = Guid.CreateVersion7();
 		await DbContext.SaveChangesAsync();
 
-		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/events/one-off/{eventId}", new UpdateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night Updated",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(12),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM"
-		}, JsonOptions);
+		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/events/one-off/{eventId}",
+			new UpdateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night Updated",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(12),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM"
+			}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.Conflict);
 	}
 
-	private async Task<(Guid LeagueId, Guid SeasonId, Guid EventId)> CreateLeagueSeasonAndEventAsync(string ownerUserId, string leagueName, string eventName, int? sequenceNumber)
+	private async Task<(Guid LeagueId, Guid SeasonId, Guid EventId)> CreateLeagueSeasonAndEventAsync(string ownerUserId,
+		string leagueName, string eventName, int? sequenceNumber)
 	{
 		SetUser(ownerUserId);
 
@@ -184,26 +195,30 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createSeasonResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/seasons", new CreateLeagueSeasonRequest
-		{
-			Name = "Spring 2026"
-		});
+		var createSeasonResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/seasons",
+			new CreateLeagueSeasonRequest
+			{
+				Name = "Spring 2026"
+			});
 		createSeasonResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 		var season = await createSeasonResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonResponse>(JsonOptions);
 		season.Should().NotBeNull();
 
-		var createEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{season!.SeasonId}/events", new CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
-		});
+		var createEventResponse = await PostAsync(
+			$"/api/v1/leagues/{league.LeagueId}/seasons/{season!.SeasonId}/events", new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
+			});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-		var seasonEvent = await createEventResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonEventResponse>(JsonOptions);
+		var seasonEvent =
+			await createEventResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonEventResponse>(JsonOptions);
 		seasonEvent.Should().NotBeNull();
 
 		return (league.LeagueId, season.SeasonId, seasonEvent!.EventId);
 	}
 
-	private async Task<(Guid LeagueId, Guid EventId)> CreateOneOffEventAsync(string ownerUserId, string leagueName, string eventName)
+	private async Task<(Guid LeagueId, Guid EventId)> CreateOneOffEventAsync(string ownerUserId, string leagueName,
+		string eventName)
 	{
 		SetUser(ownerUserId);
 
@@ -215,17 +230,19 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
 		league.Should().NotBeNull();
 
-		var createEventResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/events/one-off", new CreateLeagueOneOffEventRequest
-		{
-			Name = eventName,
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM",
-			Ante = 10,
-			MinBet = 20
-		});
+		var createEventResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/events/one-off",
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = eventName,
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM",
+				Ante = 10,
+				MinBet = 20
+			});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-		var oneOffEvent = await createEventResponse.Content.ReadFromJsonAsync<CreateLeagueOneOffEventResponse>(JsonOptions);
+		var oneOffEvent =
+			await createEventResponse.Content.ReadFromJsonAsync<CreateLeagueOneOffEventResponse>(JsonOptions);
 		oneOffEvent.Should().NotBeNull();
 
 		return (league.LeagueId, oneOffEvent!.EventId);

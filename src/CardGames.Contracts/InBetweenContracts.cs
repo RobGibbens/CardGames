@@ -1,35 +1,31 @@
-using System.Text.Json.Serialization;
-
 namespace CardGames.Poker.Api.Contracts;
 
 /// <summary>
-/// Request to declare an Ace as high or low during In-Between.
+///     Request to declare an Ace as high or low during In-Between.
 /// </summary>
-public partial record InBetweenAceChoiceRequest
+public record InBetweenAceChoiceRequest
 {
 	[JsonConstructor]
-	public InBetweenAceChoiceRequest(System.Guid playerId, bool aceIsHigh)
+	public InBetweenAceChoiceRequest(Guid playerId, bool aceIsHigh)
 	{
 		PlayerId = playerId;
 		AceIsHigh = aceIsHigh;
 	}
 
-	[JsonPropertyName("playerId")]
-	public System.Guid PlayerId { get; init; }
+	[JsonPropertyName("playerId")] public Guid PlayerId { get; init; }
 
-	[JsonPropertyName("aceIsHigh")]
-	public bool AceIsHigh { get; init; }
+	[JsonPropertyName("aceIsHigh")] public bool AceIsHigh { get; init; }
 }
 
 /// <summary>
-/// Successful response from an ace choice in In-Between.
+///     Successful response from an ace choice in In-Between.
 /// </summary>
-public partial record InBetweenAceChoiceSuccessful
+public record InBetweenAceChoiceSuccessful
 {
 	[JsonConstructor]
 	public InBetweenAceChoiceSuccessful(
-		System.Guid gameId,
-		System.Guid playerId,
+		Guid gameId,
+		Guid playerId,
 		bool aceIsHigh,
 		string? nextSubPhase)
 	{
@@ -39,47 +35,41 @@ public partial record InBetweenAceChoiceSuccessful
 		NextSubPhase = nextSubPhase;
 	}
 
-	[JsonPropertyName("gameId")]
-	public System.Guid GameId { get; init; }
+	[JsonPropertyName("gameId")] public Guid GameId { get; init; }
 
-	[JsonPropertyName("playerId")]
-	public System.Guid PlayerId { get; init; }
+	[JsonPropertyName("playerId")] public Guid PlayerId { get; init; }
 
-	[JsonPropertyName("aceIsHigh")]
-	public bool AceIsHigh { get; init; }
+	[JsonPropertyName("aceIsHigh")] public bool AceIsHigh { get; init; }
 
-	[JsonPropertyName("nextSubPhase")]
-	public string? NextSubPhase { get; init; }
+	[JsonPropertyName("nextSubPhase")] public string? NextSubPhase { get; init; }
 }
 
 /// <summary>
-/// Request to place a bet (or pass with amount 0) in In-Between.
+///     Request to place a bet (or pass with amount 0) in In-Between.
 /// </summary>
-public partial record InBetweenPlaceBetRequest
+public record InBetweenPlaceBetRequest
 {
 	[JsonConstructor]
-	public InBetweenPlaceBetRequest(System.Guid playerId, int amount)
+	public InBetweenPlaceBetRequest(Guid playerId, int amount)
 	{
 		PlayerId = playerId;
 		Amount = amount;
 	}
 
-	[JsonPropertyName("playerId")]
-	public System.Guid PlayerId { get; init; }
+	[JsonPropertyName("playerId")] public Guid PlayerId { get; init; }
 
-	[JsonPropertyName("amount")]
-	public int Amount { get; init; }
+	[JsonPropertyName("amount")] public int Amount { get; init; }
 }
 
 /// <summary>
-/// Successful response from a bet/pass in In-Between.
+///     Successful response from a bet/pass in In-Between.
 /// </summary>
-public partial record InBetweenPlaceBetSuccessful
+public record InBetweenPlaceBetSuccessful
 {
 	[JsonConstructor]
 	public InBetweenPlaceBetSuccessful(
-		System.Guid gameId,
-		System.Guid playerId,
+		Guid gameId,
+		Guid playerId,
 		int amount,
 		string turnResult,
 		string? description,
@@ -97,27 +87,20 @@ public partial record InBetweenPlaceBetSuccessful
 		PotAmount = potAmount;
 	}
 
-	[JsonPropertyName("gameId")]
-	public System.Guid GameId { get; init; }
+	[JsonPropertyName("gameId")] public Guid GameId { get; init; }
 
-	[JsonPropertyName("playerId")]
-	public System.Guid PlayerId { get; init; }
+	[JsonPropertyName("playerId")] public Guid PlayerId { get; init; }
 
-	[JsonPropertyName("amount")]
-	public int Amount { get; init; }
+	[JsonPropertyName("amount")] public int Amount { get; init; }
 
-	[JsonPropertyName("turnResult")]
-	public string TurnResult { get; init; }
+	[JsonPropertyName("turnResult")] public string TurnResult { get; init; }
 
-	[JsonPropertyName("description")]
-	public string? Description { get; init; }
+	[JsonPropertyName("description")] public string? Description { get; init; }
 
-	[JsonPropertyName("nextPhase")]
-	public string? NextPhase { get; init; }
+	[JsonPropertyName("nextPhase")] public string? NextPhase { get; init; }
 
 	[JsonPropertyName("nextPlayerSeatIndex")]
 	public int? NextPlayerSeatIndex { get; init; }
 
-	[JsonPropertyName("potAmount")]
-	public int PotAmount { get; init; }
+	[JsonPropertyName("potAmount")] public int PotAmount { get; init; }
 }

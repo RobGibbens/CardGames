@@ -1,9 +1,10 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
-using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueOneOffEventsPage;
 using CardGames.Poker.Api.Infrastructure;
+using LeagueOneOffEventStatus = CardGames.Poker.Api.Data.Entities.LeagueOneOffEventStatus;
+using LeagueOneOffEventType = CardGames.Poker.Api.Data.Entities.LeagueOneOffEventType;
 
 namespace CardGames.IntegrationTests.Features.Queries;
 
@@ -16,7 +17,7 @@ public class GetLeagueOneOffEventsPageQueryHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-oneoff-page-user";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "One-Off Page League"
 		}));
@@ -48,7 +49,8 @@ public class GetLeagueOneOffEventsPageQueryHandlerTests : IntegrationTestBase
 
 		await DbContext.SaveChangesAsync();
 
-		var filteredResult = await Mediator.Send(new GetLeagueOneOffEventsPageQuery(leagueId, 10, 1, IncludeCompleted: false));
+		var filteredResult =
+			await Mediator.Send(new GetLeagueOneOffEventsPageQuery(leagueId, 10, 1, IncludeCompleted: false));
 
 		filteredResult.IsT0.Should().BeTrue();
 		filteredResult.AsT0.TotalCount.Should().Be(1);

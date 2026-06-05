@@ -1,10 +1,11 @@
-﻿using MediatR;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
+using MediatR;
 
 namespace CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
 
-public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> where TRequest : IRequest<TResponse>
+public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+	where TRequest : IRequest<TResponse>
 {
 	private readonly ILogger<LoggingPipelineBehavior<TRequest, TResponse>> _logger;
 
@@ -13,7 +14,8 @@ public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TR
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
-	public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+	public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next,
+		CancellationToken cancellationToken)
 	{
 		var stopwatch = new Stopwatch();
 		stopwatch.Start();
@@ -50,7 +52,8 @@ public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TR
 
 	private void LogResponse(TResponse response, long elapsedMilliseconds)
 	{
-		_logger.LogInformation("Handled {ResponseType} at {Timestamp} (Elapsed: {Elapsed}ms)", typeof(TResponse).FullName, DateTime.UtcNow, elapsedMilliseconds);
+		_logger.LogInformation("Handled {ResponseType} at {Timestamp} (Elapsed: {Elapsed}ms)",
+			typeof(TResponse).FullName, DateTime.UtcNow, elapsedMilliseconds);
 	}
 
 	private void LogError(Exception ex)

@@ -1,20 +1,20 @@
-using CardGames.Poker.Api.Extensions;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDiscard;
 
 /// <summary>
-/// Endpoint for processing discard actions in an Irish Hold 'Em game.
+///     Endpoint for processing discard actions in an Irish Hold 'Em game.
 /// </summary>
 public static class ProcessDiscardEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for processing discard actions.
+	///     Maps the POST endpoint for processing discard actions.
 	/// </summary>
 	public static RouteGroupBuilder MapProcessDiscard(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/discard",
-				async (Guid gameId, ProcessDiscardRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, ProcessDiscardRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new ProcessDiscardCommand(gameId, request.DiscardIndices, request.PlayerSeatIndex);
 					var result = await mediator.Send(command, cancellationToken);
@@ -27,10 +27,13 @@ public static class ProcessDiscardEndpoint
 							ProcessDiscardErrorCode.NotInDiscardPhase => Results.Conflict(new { error.Message }),
 							ProcessDiscardErrorCode.NotPlayerTurn => Results.Conflict(new { error.Message }),
 							ProcessDiscardErrorCode.NoEligiblePlayers => Results.Conflict(new { error.Message }),
-							ProcessDiscardErrorCode.InvalidDiscardCount => Results.UnprocessableEntity(new { error.Message }),
-							ProcessDiscardErrorCode.InvalidCardIndex => Results.UnprocessableEntity(new { error.Message }),
+							ProcessDiscardErrorCode.InvalidDiscardCount => Results.UnprocessableEntity(new
+								{ error.Message }),
+							ProcessDiscardErrorCode.InvalidCardIndex => Results.UnprocessableEntity(new
+								{ error.Message }),
 							ProcessDiscardErrorCode.AlreadyDiscarded => Results.Conflict(new { error.Message }),
-							ProcessDiscardErrorCode.InsufficientCards => Results.UnprocessableEntity(new { error.Message }),
+							ProcessDiscardErrorCode.InsufficientCards => Results.UnprocessableEntity(new
+								{ error.Message }),
 							_ => Results.Problem(error.Message)
 						}
 					);

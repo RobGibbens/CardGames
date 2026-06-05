@@ -1,5 +1,4 @@
 using CardGames.Poker.Api.Contracts;
-using CardGames.Poker.Api.Features.Leagues.v1;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetPendingLeagueJoinRequests;
@@ -11,10 +10,11 @@ public static class GetPendingLeagueJoinRequestsEndpoint
 		group.MapGet("{leagueId:guid}/join-requests/pending",
 				async (Guid leagueId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new GetPendingLeagueJoinRequestsQuery(leagueId), cancellationToken);
+					var result = await mediator.Send(new GetPendingLeagueJoinRequestsQuery(leagueId),
+						cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							GetPendingLeagueJoinRequestsErrorCode.Unauthorized => Results.Unauthorized(),
@@ -25,7 +25,7 @@ public static class GetPendingLeagueJoinRequestsEndpoint
 			.WithName("GetPendingLeagueJoinRequests")
 			.WithSummary("Get pending league join requests")
 			.WithDescription("Lists pending join requests for league managers and admins.")
-			.Produces<IReadOnlyList<LeagueJoinRequestQueueItemDto>>(StatusCodes.Status200OK)
+			.Produces<IReadOnlyList<LeagueJoinRequestQueueItemDto>>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.Produces(StatusCodes.Status429TooManyRequests)

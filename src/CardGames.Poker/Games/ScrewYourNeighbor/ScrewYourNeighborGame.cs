@@ -6,7 +6,8 @@ namespace CardGames.Poker.Games.ScrewYourNeighbor;
 [PokerGameMetadata(
 	code: "SCREWYOURNEIGHBOR",
 	name: "Screw Your Neighbor",
-	description: "Each player is dealt one card. Players decide to keep their card or trade with the player to their left. Kings are blockers. Lowest card loses a stack. Last player standing wins.",
+	description:
+	"Each player is dealt one card. Players decide to keep their card or trade with the player to their left. Kings are blockers. Lowest card loses a stack. Last player standing wins.",
 	minimumNumberOfPlayers: 2,
 	maximumNumberOfPlayers: 20,
 	initialHoleCards: 1,
@@ -30,5 +31,8 @@ public sealed class ScrewYourNeighborGame : IPokerGame
 	public int MinimumNumberOfPlayers { get; } = 3;
 	public int MaximumNumberOfPlayers { get; } = 10;
 
-	public GameRules GetGameRules() => ScrewYourNeighborRules.CreateGameRules();
+	public GameRules GetGameRules()
+	{
+		return ScrewYourNeighborRules.CreateGameRules();
+	}
 }

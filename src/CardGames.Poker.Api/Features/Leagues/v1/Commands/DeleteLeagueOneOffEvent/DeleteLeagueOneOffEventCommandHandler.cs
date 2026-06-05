@@ -1,3 +1,4 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
@@ -15,11 +16,13 @@ public sealed class DeleteLeagueOneOffEventCommandHandler(
 	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<DeleteLeagueOneOffEventCommand, OneOf<Unit, DeleteLeagueOneOffEventError>>
 {
-	public async Task<OneOf<Unit, DeleteLeagueOneOffEventError>> Handle(DeleteLeagueOneOffEventCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, DeleteLeagueOneOffEventError>> Handle(DeleteLeagueOneOffEventCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.Unauthorized, "User is not authenticated.");
+			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var leagueExists = await context.Leagues
@@ -28,7 +31,8 @@ public sealed class DeleteLeagueOneOffEventCommandHandler(
 
 		if (!leagueExists)
 		{
-			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.LeagueNotFound, "League not found.");
+			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.LeagueNotFound,
+				"League not found.");
 		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
@@ -39,7 +43,8 @@ public sealed class DeleteLeagueOneOffEventCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.Forbidden, "Only league managers or admins can delete one-off events.");
+			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.Forbidden,
+				"Only league managers or admins can delete one-off events.");
 		}
 
 		var oneOffEvent = await context.LeagueOneOffEvents
@@ -47,24 +52,26 @@ public sealed class DeleteLeagueOneOffEventCommandHandler(
 
 		if (oneOffEvent is null)
 		{
-			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.EventNotFound, "One-off event not found in league.");
+			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.EventNotFound,
+				"One-off event not found in league.");
 		}
 
 		if (oneOffEvent.Status != LeagueOneOffEventStatus.Planned || oneOffEvent.LaunchedGameId.HasValue)
 		{
-			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.Conflict, "Only planned, unlaunched one-off events can be deleted.");
+			return new DeleteLeagueOneOffEventError(DeleteLeagueOneOffEventErrorCode.Conflict,
+				"Only planned, unlaunched one-off events can be deleted.");
 		}
 
 		var eventId = oneOffEvent.Id;
 		context.LeagueOneOffEvents.Remove(oneOffEvent);
 		await context.SaveChangesAsync(cancellationToken);
-		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 		{
 			LeagueId = request.LeagueId,
 			EventId = eventId,
-			SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff,
+			SourceType = LeagueEventSourceType.OneOff,
 			SeasonId = null,
-			ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.Deleted,
+			ChangeKind = LeagueEventChangeKind.Deleted,
 			ChangedAtUtc = DateTimeOffset.UtcNow
 		}, cancellationToken);
 

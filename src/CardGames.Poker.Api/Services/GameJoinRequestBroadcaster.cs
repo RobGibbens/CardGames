@@ -9,7 +9,8 @@ public sealed class GameJoinRequestBroadcaster(
 	ILogger<GameJoinRequestBroadcaster> logger)
 	: IGameJoinRequestBroadcaster
 {
-	public async Task BroadcastJoinRequestReceivedAsync(string hostUserRoutingKey, GameJoinRequestReceivedDto payload, CancellationToken cancellationToken = default)
+	public async Task BroadcastJoinRequestReceivedAsync(string hostUserRoutingKey, GameJoinRequestReceivedDto payload,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(hostUserRoutingKey);
 		ArgumentNullException.ThrowIfNull(payload);
@@ -24,7 +25,8 @@ public sealed class GameJoinRequestBroadcaster(
 			hostUserRoutingKey);
 	}
 
-	public async Task BroadcastJoinRequestResolvedAsync(string playerUserRoutingKey, GameJoinRequestResolvedDto payload, CancellationToken cancellationToken = default)
+	public async Task BroadcastJoinRequestResolvedAsync(string playerUserRoutingKey, GameJoinRequestResolvedDto payload,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(playerUserRoutingKey);
 		ArgumentNullException.ThrowIfNull(payload);

@@ -1,17 +1,19 @@
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Options;
 
 namespace CardGames.Poker.Api.Infrastructure.Storage;
 
-public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IOptions<AvatarStorageOptions> options) : IAvatarStorageService
+public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IOptions<AvatarStorageOptions> options)
+	: IAvatarStorageService
 {
-	private readonly BlobServiceClient _blobServiceClient = blobServiceClient;
 	private readonly AvatarStorageOptions _options = options.Value;
 
-	public async Task<string> UploadAsync(Stream content, string fileName, string contentType, CancellationToken cancellationToken)
+	public async Task<string> UploadAsync(Stream content, string fileName, string contentType,
+		CancellationToken cancellationToken)
 	{
-		var containerClient = _blobServiceClient.GetBlobContainerClient(_options.ContainerName);
+		var containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
 		await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob, cancellationToken: cancellationToken);
 
 		var extension = Path.GetExtension(fileName);
@@ -47,7 +49,7 @@ public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IO
 			return null;
 		}
 
-		var containerClient = _blobServiceClient.GetBlobContainerClient(_options.ContainerName);
+		var containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
 		var blobClient = containerClient.GetBlobClient(blobName);
 
 		try
@@ -70,7 +72,7 @@ public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IO
 
 			return new AvatarStorageFile(memoryStream.ToArray(), contentType);
 		}
-		catch (Azure.RequestFailedException ex) when (ex.Status == StatusCodes.Status404NotFound)
+		catch (RequestFailedException ex) when (ex.Status == StatusCodes.Status404NotFound)
 		{
 			return null;
 		}
@@ -97,7 +99,8 @@ public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IO
 		}
 
 		var pathSegments = absolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-		if (pathSegments.Length >= 2 && string.Equals(pathSegments[0], _options.ContainerName, StringComparison.OrdinalIgnoreCase))
+		if (pathSegments.Length >= 2 &&
+		    string.Equals(pathSegments[0], _options.ContainerName, StringComparison.OrdinalIgnoreCase))
 		{
 			return string.Join('/', pathSegments.Skip(1));
 		}

@@ -7,8 +7,8 @@ using Microsoft.Extensions.Caching.Hybrid;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 
 /// <summary>
-/// Handler for retrieving a specific game by its identifier.
-/// Works for any game type - returns the game with its type code.
+///     Handler for retrieving a specific game by its identifier.
+///     Works for any game type - returns the game with its type code.
 /// </summary>
 public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache)
 	: IRequestHandler<GetGameQuery, GetGameResponse?>
@@ -37,7 +37,7 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 			minPlayers = metadata.MinimumNumberOfPlayers;
 			maxPlayers = metadata.MaximumNumberOfPlayers;
 		}
-		
+
 		return await hybridCache.GetOrCreateAsync(
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>

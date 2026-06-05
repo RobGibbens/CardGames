@@ -108,9 +108,9 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 		// Idempotency check: skip if settlement already recorded for this (player, game, hand)
 		var alreadySettled = await context.PlayerChipLedgerEntries
 			.AnyAsync(e => e.PlayerId == playerId &&
-						   e.ReferenceId == gameId &&
-						   e.HandNumber == handNumber &&
-						   e.Type == PlayerChipLedgerEntryType.HandSettlement,
+			               e.ReferenceId == gameId &&
+			               e.HandNumber == handNumber &&
+			               e.Type == PlayerChipLedgerEntryType.HandSettlement,
 				cancellationToken);
 
 		if (alreadySettled) return;

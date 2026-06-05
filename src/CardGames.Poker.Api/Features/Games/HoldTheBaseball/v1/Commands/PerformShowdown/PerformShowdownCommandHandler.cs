@@ -1,9 +1,10 @@
+using System.Text.Json;
 using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Hands.CommunityCardHands;
 using CardGames.Poker.Hands.HandTypes;
 using CardGames.Poker.Hands.Strength;
@@ -16,10 +17,13 @@ using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.PerformShowdown;
 
 /// <summary>
-/// Handles showdown for Hold the Baseball. Uses <see cref="HoldTheBaseballHand"/>
-/// which evaluates wild cards (3s and 9s) in both hole and community cards.
+///     Handles showdown for Hold the Baseball. Uses <see cref="HoldTheBaseballHand" />
+///     which evaluates wild cards (3s and 9s) in both hole and community cards.
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
+public class PerformShowdownCommandHandler(
+	CardsDbContext context,
+	IHandHistoryRecorder handHistoryRecorder,
+	IHandSettlementService handSettlementService)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	public async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
@@ -30,7 +34,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameType)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
@@ -73,10 +77,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 		var playerCards = await context.GameCards
 			.Where(c => c.GameId == command.GameId &&
-						c.HandNumber == game.CurrentHandNumber &&
-						!c.IsDiscarded &&
-						c.GamePlayerId != null &&
-						playersInHand.Select(p => p.Id).Contains(c.GamePlayerId.Value))
+			            c.HandNumber == game.CurrentHandNumber &&
+			            !c.IsDiscarded &&
+			            c.GamePlayerId != null &&
+			            playersInHand.Select(p => p.Id).Contains(c.GamePlayerId.Value))
 			.ToListAsync(cancellationToken);
 
 		var playerCardGroups = playerCards
@@ -85,10 +89,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 		var communityCards = await context.GameCards
 			.Where(c => c.GameId == command.GameId &&
-						c.HandNumber == game.CurrentHandNumber &&
-						!c.IsDiscarded &&
-						c.GamePlayerId == null &&
-						c.Location == CardLocation.Community)
+			            c.HandNumber == game.CurrentHandNumber &&
+			            !c.IsDiscarded &&
+			            c.GamePlayerId == null &&
+			            c.Location == CardLocation.Community)
 			.OrderBy(c => c.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -108,8 +112,15 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					pot.IsAwarded = true;
 					pot.AwardedAt = now;
 					pot.WinReason = "All others folded";
-					pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(
-						new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } });
+					pot.WinnerPayouts = JsonSerializer.Serialize(
+						new[]
+						{
+							new
+							{
+								playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name,
+								amount = totalPot
+							}
+						});
 				}
 
 				game.CurrentPhase = "Complete";
@@ -165,7 +176,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			.ToList();
 
 		// Evaluate hands using HoldTheBaseballHand (with wild card support)
-		var playerHandEvaluations = new Dictionary<string, (HoldTheBaseballHand hand, List<GameCard> allCards, GamePlayer gamePlayer)>();
+		var playerHandEvaluations =
+			new Dictionary<string, (HoldTheBaseballHand hand, List<GameCard> allCards, GamePlayer gamePlayer)>();
 
 		foreach (var gamePlayer in playersInHand)
 		{
@@ -233,7 +245,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				var gp = playerHandEvaluations[p.Key].gamePlayer;
 				return new { playerId = gp.PlayerId.ToString(), playerName = p.Key, amount = p.Value };
 			}).ToList();
-			var winnerPayoutsJson = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+			var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
 
 			foreach (var pot in currentHandPots)
 			{
@@ -278,7 +290,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 			// Use evaluated best cards for wild card display
 			var bestHand = kvp.Value.hand.EvaluatedBestCards?.ToList()
-				?? FindBestFiveCardHand(kvp.Value.hand);
+			               ?? FindBestFiveCardHand(kvp.Value.hand);
 
 			var cardsList = kvp.Value.allCards;
 			var bestCardIndexes = new List<int>();
@@ -289,8 +301,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				for (var i = 0; i < cardsList.Count; i++)
 				{
 					if (!usedIndexes.Contains(i) &&
-						cardsList[i].Suit == (CardSuit)bestCard.Suit &&
-						cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
+					    cardsList[i].Suit == (CardSuit)bestCard.Suit &&
+					    cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
 					{
 						bestCardIndexes.Add(i);
 						usedIndexes.Add(i);
@@ -338,32 +350,38 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		game.DealerPosition = seatsAfterCurrent.Count > 0 ? seatsAfterCurrent.First() : occupiedSeats.First();
 	}
 
-	private static Suit MapSuit(CardSuit suit) => suit switch
+	private static Suit MapSuit(CardSuit suit)
 	{
-		CardSuit.Hearts => Suit.Hearts,
-		CardSuit.Diamonds => Suit.Diamonds,
-		CardSuit.Spades => Suit.Spades,
-		CardSuit.Clubs => Suit.Clubs,
-		_ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
-	};
+		return suit switch
+		{
+			CardSuit.Hearts => Suit.Hearts,
+			CardSuit.Diamonds => Suit.Diamonds,
+			CardSuit.Spades => Suit.Spades,
+			CardSuit.Clubs => Suit.Clubs,
+			_ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
+		};
+	}
 
-	private static Symbol MapSymbol(CardSymbol symbol) => symbol switch
+	private static Symbol MapSymbol(CardSymbol symbol)
 	{
-		CardSymbol.Deuce => Symbol.Deuce,
-		CardSymbol.Three => Symbol.Three,
-		CardSymbol.Four => Symbol.Four,
-		CardSymbol.Five => Symbol.Five,
-		CardSymbol.Six => Symbol.Six,
-		CardSymbol.Seven => Symbol.Seven,
-		CardSymbol.Eight => Symbol.Eight,
-		CardSymbol.Nine => Symbol.Nine,
-		CardSymbol.Ten => Symbol.Ten,
-		CardSymbol.Jack => Symbol.Jack,
-		CardSymbol.Queen => Symbol.Queen,
-		CardSymbol.King => Symbol.King,
-		CardSymbol.Ace => Symbol.Ace,
-		_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
-	};
+		return symbol switch
+		{
+			CardSymbol.Deuce => Symbol.Deuce,
+			CardSymbol.Three => Symbol.Three,
+			CardSymbol.Four => Symbol.Four,
+			CardSymbol.Five => Symbol.Five,
+			CardSymbol.Six => Symbol.Six,
+			CardSymbol.Seven => Symbol.Seven,
+			CardSymbol.Eight => Symbol.Eight,
+			CardSymbol.Nine => Symbol.Nine,
+			CardSymbol.Ten => Symbol.Ten,
+			CardSymbol.Jack => Symbol.Jack,
+			CardSymbol.Queen => Symbol.Queen,
+			CardSymbol.King => Symbol.King,
+			CardSymbol.Ace => Symbol.Ace,
+			_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
+		};
+	}
 
 	private async Task RecordHandHistoryAsync(
 		Game game,
@@ -374,7 +392,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		List<(Guid PlayerId, string PlayerName, int AmountWon)> winners,
 		List<string> winnerNames,
 		string? winningHandDescription,
-		Dictionary<string, (HoldTheBaseballHand hand, List<GameCard> allCards, GamePlayer gamePlayer)>? playerHandEvaluations,
+		Dictionary<string, (HoldTheBaseballHand hand, List<GameCard> allCards, GamePlayer gamePlayer)>?
+			playerHandEvaluations,
 		CancellationToken cancellationToken)
 	{
 		var isSplitPot = winners.Count > 1;
@@ -390,10 +409,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			List<string>? showdownCards = null;
 			var reachedShowdown = !gp.HasFolded && !wonByFold;
 			if (reachedShowdown && playerHandEvaluations != null &&
-				playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
+			    playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
 			{
 				var bestHand = handEvaluation.hand.EvaluatedBestCards?.ToList()
-					?? FindBestFiveCardHand(handEvaluation.hand);
+				               ?? FindBestFiveCardHand(handEvaluation.hand);
 				showdownCards = bestHand
 					.Select(c => FormatCard((CardSymbol)c.Symbol, (CardSuit)c.Suit))
 					.ToList();

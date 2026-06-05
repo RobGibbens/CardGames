@@ -15,8 +15,9 @@ public static class GetCashierSummaryEndpoint
 				})
 			.WithName("GetCashierSummary")
 			.WithSummary("Get cashier summary")
-			.WithDescription("Retrieves the current account chip balance and latest transaction timestamp for the authenticated player.")
-			.Produces<CashierSummaryDto>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Retrieves the current account chip balance and latest transaction timestamp for the authenticated player.")
+			.Produces<CashierSummaryDto>()
 			.RequireAuthorization();
 
 		return group;

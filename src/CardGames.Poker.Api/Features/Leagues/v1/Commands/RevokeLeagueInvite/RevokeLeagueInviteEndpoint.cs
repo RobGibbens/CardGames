@@ -9,7 +9,8 @@ public static class RevokeLeagueInviteEndpoint
 		group.MapPost("{leagueId:guid}/invites/{inviteId:guid}/revoke",
 				async (Guid leagueId, Guid inviteId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new RevokeLeagueInviteCommand(leagueId, inviteId), cancellationToken);
+					var result = await mediator.Send(new RevokeLeagueInviteCommand(leagueId, inviteId),
+						cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),

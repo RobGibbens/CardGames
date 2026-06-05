@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
 
 /// <summary>
-/// Endpoint for deleting a game.
+///     Endpoint for deleting a game.
 /// </summary>
 public static class DeleteGameEndpoint
 {
 	/// <summary>
-	/// Maps the DELETE endpoint for deleting a game.
+	///     Maps the DELETE endpoint for deleting a game.
 	/// </summary>
 	public static RouteGroupBuilder MapDeleteGame(this RouteGroupBuilder group)
 	{
@@ -36,9 +36,9 @@ public static class DeleteGameEndpoint
 									detail: error.Message,
 									statusCode: StatusCodes.Status410Gone),
 							_ => Results.Problem(
-									title: "Delete Failed",
-									detail: error.Message,
-									statusCode: StatusCodes.Status500InternalServerError)
+								title: "Delete Failed",
+								detail: error.Message,
+								statusCode: StatusCodes.Status500InternalServerError)
 						}
 					);
 				})
@@ -59,4 +59,3 @@ public static class DeleteGameEndpoint
 		return group;
 	}
 }
-

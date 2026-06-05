@@ -1,6 +1,5 @@
 @using System.ComponentModel
 @using CardGames.Poker.Api.Contracts
-
 <div class="league-detail-tab-content">
 	<section class="league-detail-card">
 		<div class="league-detail-card-header">
@@ -79,7 +78,9 @@
 						<div class="league-detail-history-content">
 							<span class="league-detail-history-user">@(historyItem.UserDisplayName ?? historyItem.UserId)</span>
 							<span class="league-detail-history-event">@GetMembershipHistoryEventTypeDescription(historyItem.EventType)</span>
-							<span class="league-detail-history-time"><i class="fa-regular fa-calendar"></i> @historyItem.OccurredAtUtc.ToLocalTime().ToString("MMMM d, yyyy 'at' h:mm tt")</span>
+							<span class="league-detail-history-time">
+								<i class="fa-regular fa-calendar"></i> @historyItem.OccurredAtUtc.ToLocalTime().ToString("MMMM d, yyyy 'at' h:mm tt")
+							</span>
 						</div>
 					</div>
 				}
@@ -124,11 +125,11 @@
 								<div class="d-flex flex-column gap-2">
 									<div class="form-floating">
 										<InputText id="@($"join-request-reason-{joinRequest.JoinRequestId}")"
-												   class="form-control"
-												   maxlength="512"
-												   placeholder="Reason (optional)"
-												   @bind-Value="_joinRequestReasons[joinRequest.JoinRequestId]"
-												   @bind-Value:event="oninput" />
+										           class="form-control"
+										           maxlength="512"
+										           placeholder="Reason (optional)"
+										           @bind-Value="_joinRequestReasons[joinRequest.JoinRequestId]"
+										           @bind-Value:event="oninput"/>
 										<label for="@($"join-request-reason-{joinRequest.JoinRequestId}")">Reason (optional)</label>
 									</div>
 									<div>
@@ -165,11 +166,11 @@
 							</div>
 							<div class="league-detail-invite-actions">
 								<button type="button"
-										class="btn btn-sm btn-outline-secondary league-action-btn"
-										@onclick="() => CopyInviteCodeLocalAsync(invite.InviteId, invite.InviteCode)"
-										disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
-										title="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")"
-										aria-label="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")">
+								        class="btn btn-sm btn-outline-secondary league-action-btn"
+								        @onclick="() => CopyInviteCodeLocalAsync(invite.InviteId, invite.InviteCode)"
+								        disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
+								        title="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")"
+								        aria-label="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")">
 									@if (IsInviteCodeCopiedLocal(invite.InviteId))
 									{
 										<i class="fa-solid fa-check"></i>
@@ -212,10 +213,10 @@
 							</div>
 							<div class="league-detail-invite-actions">
 								<button type="button"
-										class="btn btn-sm btn-outline-secondary league-action-btn"
-										@onclick="() => CopyInviteCodeLocalAsync(invite.InviteId, invite.InviteCode)"
-										disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
-										title="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")">
+								        class="btn btn-sm btn-outline-secondary league-action-btn"
+								        @onclick="() => CopyInviteCodeLocalAsync(invite.InviteId, invite.InviteCode)"
+								        disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
+								        title="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")">
 									@if (IsInviteCodeCopiedLocal(invite.InviteId))
 									{
 										<i class="fa-solid fa-check"></i>
@@ -238,80 +239,55 @@
 	private readonly Dictionary<Guid, string> _joinRequestReasons = [];
 	private Guid? _confirmingDenyJoinRequestId;
 
-	[Parameter, EditorRequired]
-	public List<LeagueMemberDto> Members { get; set; } = [];
+	[Parameter, EditorRequired] public List<LeagueMemberDto> Members { get; set; } = [];
 
-	[Parameter, EditorRequired]
-	public List<LeagueMembershipHistoryItemDto> MembershipHistory { get; set; } = [];
+	[Parameter, EditorRequired] public List<LeagueMembershipHistoryItemDto> MembershipHistory { get; set; } = [];
 
-	[Parameter]
-	public bool CanManageLeague { get; set; }
+	[Parameter] public bool CanManageLeague { get; set; }
 
-	[Parameter]
-	public bool IsManager { get; set; }
+	[Parameter] public bool IsManager { get; set; }
 
-	[Parameter]
-	public bool IsSubmittingPromote { get; set; }
+	[Parameter] public bool IsSubmittingPromote { get; set; }
 
-	[Parameter]
-	public bool IsSubmittingDemote { get; set; }
+	[Parameter] public bool IsSubmittingDemote { get; set; }
 
-	[Parameter]
-	public bool IsSubmittingTransferOwnership { get; set; }
+	[Parameter] public bool IsSubmittingTransferOwnership { get; set; }
 
-	[Parameter]
-	public bool IsSubmittingRemove { get; set; }
+	[Parameter] public bool IsSubmittingRemove { get; set; }
 
-	[Parameter]
-	public string? ActingMemberUserId { get; set; }
+	[Parameter] public string? ActingMemberUserId { get; set; }
 
-	[Parameter]
-	public EventCallback<string> PromoteMember { get; set; }
+	[Parameter] public EventCallback<string> PromoteMember { get; set; }
 
-	[Parameter]
-	public EventCallback<string> DemoteMember { get; set; }
+	[Parameter] public EventCallback<string> DemoteMember { get; set; }
 
-	[Parameter]
-	public EventCallback<string> TransferOwnership { get; set; }
+	[Parameter] public EventCallback<string> TransferOwnership { get; set; }
 
-	[Parameter]
-	public EventCallback<string> RemoveMember { get; set; }
+	[Parameter] public EventCallback<string> RemoveMember { get; set; }
 
-	[Parameter]
-	public bool IsLoadingJoinRequests { get; set; }
+	[Parameter] public bool IsLoadingJoinRequests { get; set; }
 
-	[Parameter, EditorRequired]
-	public List<LeagueJoinRequestQueueItemDto> PendingJoinRequests { get; set; } = [];
+	[Parameter, EditorRequired] public List<LeagueJoinRequestQueueItemDto> PendingJoinRequests { get; set; } = [];
 
-	[Parameter]
-	public bool IsSubmittingJoinRequest { get; set; }
+	[Parameter] public bool IsSubmittingJoinRequest { get; set; }
 
-	[Parameter]
-	public Guid? ActingJoinRequestId { get; set; }
+	[Parameter] public Guid? ActingJoinRequestId { get; set; }
 
-	[Parameter]
-	public EventCallback<Guid> ApproveJoinRequest { get; set; }
+	[Parameter] public EventCallback<Guid> ApproveJoinRequest { get; set; }
 
-	[Parameter]
-	public Func<Guid, string?, Task>? DenyJoinRequestAsync { get; set; }
+	[Parameter] public Func<Guid, string?, Task>? DenyJoinRequestAsync { get; set; }
 
-	[Parameter]
-	public EventCallback OpenInviteModal { get; set; }
+	[Parameter] public EventCallback OpenInviteModal { get; set; }
 
-	[Parameter, EditorRequired]
-	public List<LeagueInviteSummaryDto> Invites { get; set; } = [];
+	[Parameter, EditorRequired] public List<LeagueInviteSummaryDto> Invites { get; set; } = [];
 
-	[Parameter]
-	public Func<Guid, string?, Task>? CopyInviteCodeAsync { get; set; }
+	[Parameter] public Func<Guid, string?, Task>? CopyInviteCodeAsync { get; set; }
 
-	[Parameter]
-	public Func<Guid, bool>? IsInviteCodeCopied { get; set; }
+	[Parameter] public Func<Guid, bool>? IsInviteCodeCopied { get; set; }
 
-	[Parameter]
-	public bool IsSubmittingRevokeInvite { get; set; }
+	[Parameter] public bool IsSubmittingRevokeInvite { get; set; }
 
-	[Parameter]
-	public EventCallback<Guid> RevokeInvite { get; set; }
+	[Parameter] public EventCallback<Guid> RevokeInvite { get; set; }
 
 	protected override void OnParametersSet()
 	{
@@ -430,4 +406,5 @@
 			_ => "fa-solid fa-circle-info"
 		};
 	}
+
 }

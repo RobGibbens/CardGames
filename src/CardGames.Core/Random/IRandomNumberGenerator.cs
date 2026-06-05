@@ -2,5 +2,5 @@
 
 public interface IRandomNumberGenerator
 {
-    public int Next(int upperBound);
+	public int Next(int upperBound);
 }

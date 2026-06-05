@@ -23,11 +23,12 @@ public static class GetLeagueOneOffEventsPageEndpoint
 
 					if (!pageNumber.HasValue && skip.HasValue)
 					{
-						resolvedPageNumber = Math.Max(1, (skip.Value / resolvedPageSize) + 1);
+						resolvedPageNumber = Math.Max(1, skip.Value / resolvedPageSize + 1);
 					}
 
 					var result = await mediator.Send(
-						new GetLeagueOneOffEventsPageQuery(leagueId, resolvedPageSize, resolvedPageNumber, includeCompleted ?? true),
+						new GetLeagueOneOffEventsPageQuery(leagueId, resolvedPageSize, resolvedPageNumber,
+							includeCompleted ?? true),
 						cancellationToken);
 
 					return result.Match(
@@ -42,7 +43,7 @@ public static class GetLeagueOneOffEventsPageEndpoint
 			.WithName("GetLeagueOneOffEventsPage")
 			.WithSummary("Get league one-off events page")
 			.WithDescription("Returns a paged list of one-off events for an active member of the league.")
-			.Produces<LeagueOneOffEventsPageDto>(StatusCodes.Status200OK)
+			.Produces<LeagueOneOffEventsPageDto>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.RequireAuthorization();

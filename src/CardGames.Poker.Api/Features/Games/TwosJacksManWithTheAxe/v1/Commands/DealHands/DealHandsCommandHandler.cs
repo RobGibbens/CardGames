@@ -3,7 +3,6 @@ using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -14,7 +13,7 @@ using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.DealHands;
 
 /// <summary>
-/// Handles the <see cref="DealHandsCommand"/> to deal five cards to each active player.
+///     Handles the <see cref="DealHandsCommand" /> to deal five cards to each active player.
 /// </summary>
 public class DealHandsCommandHandler(CardsDbContext context)
 	: IRequestHandler<DealHandsCommand, OneOf<DealHandsSuccessful, DealHandsError>>
@@ -31,7 +30,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -49,14 +48,14 @@ public class DealHandsCommandHandler(CardsDbContext context)
 			return new DealHandsError
 			{
 				Message = $"Cannot deal hands. Game is in '{game.CurrentPhase}' phase. " +
-						  $"Hands can only be dealt when the game is in '{nameof(Phases.Dealing)}' phase.",
+				          $"Hands can only be dealt when the game is in '{nameof(Phases.Dealing)}' phase.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
 		}
 
 		// 3. Get active players who should receive cards
 		var activePlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
+			.Where(gp => gp is { Status: GamePlayerStatus.Active, HasFolded: false })
 			.OrderBy(gp => gp.SeatPosition)
 			.ToList();
 
@@ -67,7 +66,8 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		{
 			return new DealHandsError
 			{
-				Message = $"Not enough cards to deal. Need {totalCardsNeeded} cards for {activePlayers.Count} players but deck only has {standardDeckSize} cards.",
+				Message =
+					$"Not enough cards to deal. Need {totalCardsNeeded} cards for {activePlayers.Count} players but deck only has {standardDeckSize} cards.",
 				Code = DealHandsErrorCode.InsufficientCards
 			};
 		}
@@ -189,7 +189,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Finds the first active player after the dealer position.
+	///     Finds the first active player after the dealer position.
 	/// </summary>
 	private static int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
 	{
@@ -203,6 +203,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -210,68 +211,80 @@ public class DealHandsCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Maps core library Suit to entity CardSuit.
+	///     Maps core library Suit to entity CardSuit.
 	/// </summary>
-	private static CardSuit MapSuit(Suit suit) => suit switch
+	private static CardSuit MapSuit(Suit suit)
 	{
-		Suit.Hearts => CardSuit.Hearts,
-		Suit.Diamonds => CardSuit.Diamonds,
-		Suit.Spades => CardSuit.Spades,
-		Suit.Clubs => CardSuit.Clubs,
-		_ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
-	};
+		return suit switch
+		{
+			Suit.Hearts => CardSuit.Hearts,
+			Suit.Diamonds => CardSuit.Diamonds,
+			Suit.Spades => CardSuit.Spades,
+			Suit.Clubs => CardSuit.Clubs,
+			_ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
+		};
+	}
 
 	/// <summary>
-	/// Maps core library Symbol to entity CardSymbol.
+	///     Maps core library Symbol to entity CardSymbol.
 	/// </summary>
-	private static CardSymbol MapSymbol(Symbol symbol) => symbol switch
+	private static CardSymbol MapSymbol(Symbol symbol)
 	{
-		Symbol.Deuce => CardSymbol.Deuce,
-		Symbol.Three => CardSymbol.Three,
-		Symbol.Four => CardSymbol.Four,
-		Symbol.Five => CardSymbol.Five,
-		Symbol.Six => CardSymbol.Six,
-		Symbol.Seven => CardSymbol.Seven,
-		Symbol.Eight => CardSymbol.Eight,
-		Symbol.Nine => CardSymbol.Nine,
-		Symbol.Ten => CardSymbol.Ten,
-		Symbol.Jack => CardSymbol.Jack,
-		Symbol.Queen => CardSymbol.Queen,
-		Symbol.King => CardSymbol.King,
-		Symbol.Ace => CardSymbol.Ace,
-		_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
-	};
+		return symbol switch
+		{
+			Symbol.Deuce => CardSymbol.Deuce,
+			Symbol.Three => CardSymbol.Three,
+			Symbol.Four => CardSymbol.Four,
+			Symbol.Five => CardSymbol.Five,
+			Symbol.Six => CardSymbol.Six,
+			Symbol.Seven => CardSymbol.Seven,
+			Symbol.Eight => CardSymbol.Eight,
+			Symbol.Nine => CardSymbol.Nine,
+			Symbol.Ten => CardSymbol.Ten,
+			Symbol.Jack => CardSymbol.Jack,
+			Symbol.Queen => CardSymbol.Queen,
+			Symbol.King => CardSymbol.King,
+			Symbol.Ace => CardSymbol.Ace,
+			_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
+		};
+	}
 
 	/// <summary>
-	/// Gets the numeric sort value for a card symbol (Ace high = 14).
+	///     Gets the numeric sort value for a card symbol (Ace high = 14).
 	/// </summary>
-	private static int GetCardSortValue(Symbol symbol) => symbol switch
+	private static int GetCardSortValue(Symbol symbol)
 	{
-		Symbol.Deuce => 2,
-		Symbol.Three => 3,
-		Symbol.Four => 4,
-		Symbol.Five => 5,
-		Symbol.Six => 6,
-		Symbol.Seven => 7,
-		Symbol.Eight => 8,
-		Symbol.Nine => 9,
-		Symbol.Ten => 10,
-		Symbol.Jack => 11,
-		Symbol.Queen => 12,
-		Symbol.King => 13,
-		Symbol.Ace => 14,
-		_ => 0
-	};
+		return symbol switch
+		{
+			Symbol.Deuce => 2,
+			Symbol.Three => 3,
+			Symbol.Four => 4,
+			Symbol.Five => 5,
+			Symbol.Six => 6,
+			Symbol.Seven => 7,
+			Symbol.Eight => 8,
+			Symbol.Nine => 9,
+			Symbol.Ten => 10,
+			Symbol.Jack => 11,
+			Symbol.Queen => 12,
+			Symbol.King => 13,
+			Symbol.Ace => 14,
+			_ => 0
+		};
+	}
 
 	/// <summary>
-	/// Gets the sort value for a suit (for consistent ordering: Clubs, Diamonds, Hearts, Spades).
+	///     Gets the sort value for a suit (for consistent ordering: Clubs, Diamonds, Hearts, Spades).
 	/// </summary>
-	private static int GetSuitSortValue(Suit suit) => suit switch
+	private static int GetSuitSortValue(Suit suit)
 	{
-		Suit.Clubs => 0,
-		Suit.Diamonds => 1,
-		Suit.Hearts => 2,
-		Suit.Spades => 3,
-		_ => 0
-	};
+		return suit switch
+		{
+			Suit.Clubs => 0,
+			Suit.Diamonds => 1,
+			Suit.Hearts => 2,
+			Suit.Spades => 3,
+			_ => 0
+		};
+	}
 }

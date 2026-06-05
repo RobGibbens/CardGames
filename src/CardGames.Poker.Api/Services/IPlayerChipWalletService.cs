@@ -1,12 +1,16 @@
-using CardGames.Poker.Api.Data.Entities;
-
 namespace CardGames.Poker.Api.Services;
 
 public readonly record struct WalletDebitResult(bool Succeeded, int? BalanceAfter, string? ErrorMessage)
 {
-	public static WalletDebitResult Success(int balanceAfter) => new(true, balanceAfter, null);
+	public static WalletDebitResult Success(int balanceAfter)
+	{
+		return new WalletDebitResult(true, balanceAfter, null);
+	}
 
-	public static WalletDebitResult Failure(string message) => new(false, null, message);
+	public static WalletDebitResult Failure(string message)
+	{
+		return new WalletDebitResult(false, null, message);
+	}
 }
 
 public interface IPlayerChipWalletService
@@ -28,8 +32,8 @@ public interface IPlayerChipWalletService
 		CancellationToken cancellationToken);
 
 	/// <summary>
-	/// Records a per-hand settlement to the cashier ledger. Adjusts the player's account balance by netDelta.
-	/// Idempotent: skips if a HandSettlement entry already exists for (PlayerId, GameId, HandNumber).
+	///     Records a per-hand settlement to the cashier ledger. Adjusts the player's account balance by netDelta.
+	///     Idempotent: skips if a HandSettlement entry already exists for (PlayerId, GameId, HandNumber).
 	/// </summary>
 	Task RecordHandSettlementAsync(
 		Guid playerId,

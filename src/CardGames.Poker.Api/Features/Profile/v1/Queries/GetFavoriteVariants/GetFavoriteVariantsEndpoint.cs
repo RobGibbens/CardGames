@@ -16,7 +16,7 @@ public static class GetFavoriteVariantsEndpoint
 			.WithName("GetFavoriteVariants")
 			.WithSummary("Get favorite variants")
 			.WithDescription("Retrieves the authenticated player's favorited game variant codes.")
-			.Produces<FavoriteVariantsDto>(StatusCodes.Status200OK)
+			.Produces<FavoriteVariantsDto>()
 			.RequireAuthorization();
 
 		return group;

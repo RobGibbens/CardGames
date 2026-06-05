@@ -5,7 +5,7 @@ using CardGames.Poker.Hands.StudHands;
 namespace CardGames.Poker.Games.PairPressure;
 
 /// <summary>
-/// Result of a Pair Pressure showdown.
+///     Result of a Pair Pressure showdown.
 /// </summary>
 public class PairPressureShowdownResult
 {

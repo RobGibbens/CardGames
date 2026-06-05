@@ -15,7 +15,7 @@ public static class AceChoiceEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => Results.Problem(
 							title: "Ace choice error",
 							detail: error.Message,
@@ -27,7 +27,7 @@ public static class AceChoiceEndpoint
 			.WithName($"InBetween{nameof(MapAceChoice).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapAceChoice).TrimPrefix("Map"))
 			.WithDescription("Declare an Ace as high or low when it is the first boundary card in In-Between.")
-			.Produces<AceChoiceSuccessful>(StatusCodes.Status200OK)
+			.Produces<AceChoiceSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -36,6 +36,6 @@ public static class AceChoiceEndpoint
 }
 
 /// <summary>
-/// Request body for ace high/low choice.
+///     Request body for ace high/low choice.
 /// </summary>
 public record AceChoiceRequest(Guid PlayerId, bool AceIsHigh);

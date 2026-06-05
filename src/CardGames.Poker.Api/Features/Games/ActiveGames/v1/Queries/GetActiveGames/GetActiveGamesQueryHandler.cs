@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
@@ -7,12 +8,16 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 
-public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybridCache, ICurrentUserService currentUserService)
+public class GetActiveGamesQueryHandler(
+	CardsDbContext context,
+	HybridCache hybridCache,
+	ICurrentUserService currentUserService)
 	: IRequestHandler<GetActiveGamesQuery, List<GetActiveGamesResponse>>
 {
 	private const string CompletePhase = "Complete";
 
-	public async Task<List<GetActiveGamesResponse>> Handle(GetActiveGamesQuery request, CancellationToken cancellationToken)
+	public async Task<List<GetActiveGamesResponse>> Handle(GetActiveGamesQuery request,
+		CancellationToken cancellationToken)
 	{
 		var activeGames = await hybridCache.GetOrCreateAsync(
 			$"{Feature.Version}-{request.CacheKey}",
@@ -40,8 +45,8 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 				var seasonEventLinks = await context.LeagueSeasonEvents
 					.AsNoTracking()
 					.Where(x => x.LaunchedGameId.HasValue)
-					.Where(x => x.Status != Data.Entities.LeagueSeasonEventStatus.Completed)
-					.Where(x => x.Status != Data.Entities.LeagueSeasonEventStatus.Canceled)
+					.Where(x => x.Status != LeagueSeasonEventStatus.Completed)
+					.Where(x => x.Status != LeagueSeasonEventStatus.Canceled)
 					.Where(x => ((IEnumerable<Guid>)gameIds).Contains(x.LaunchedGameId!.Value))
 					.Select(x => new { GameId = x.LaunchedGameId!.Value, x.LeagueId })
 					.ToListAsync(cancellationToken);
@@ -54,8 +59,8 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 				var oneOffEventLinks = await context.LeagueOneOffEvents
 					.AsNoTracking()
 					.Where(x => x.LaunchedGameId.HasValue)
-					.Where(x => x.Status != Data.Entities.LeagueOneOffEventStatus.Completed)
-					.Where(x => x.Status != Data.Entities.LeagueOneOffEventStatus.Canceled)
+					.Where(x => x.Status != LeagueOneOffEventStatus.Completed)
+					.Where(x => x.Status != LeagueOneOffEventStatus.Canceled)
 					.Where(x => ((IEnumerable<Guid>)gameIds).Contains(x.LaunchedGameId!.Value))
 					.Select(x => new { GameId = x.LaunchedGameId!.Value, x.LeagueId })
 					.ToListAsync(cancellationToken);

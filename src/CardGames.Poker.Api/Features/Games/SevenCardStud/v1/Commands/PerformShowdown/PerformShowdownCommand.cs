@@ -5,9 +5,8 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.PerformShowdown;
 
 /// <summary>
-/// Command to perform the showdown phase and determine the winner(s) in a Seven Card Stud game.
+///     Command to perform the showdown phase and determine the winner(s) in a Seven Card Stud game.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 public record PerformShowdownCommand(Guid GameId)
 	: IRequest<OneOf<PerformShowdownSuccessful, PerformShowdownError>>, IGameStateChangingCommand;
-

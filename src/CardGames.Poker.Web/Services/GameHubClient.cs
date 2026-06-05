@@ -1,83 +1,25 @@
-using CardGames.Contracts.SignalR;
-using CardGames.Contracts.TableSettings;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using System.Web;
+using CardGames.Contracts.SignalR;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace CardGames.Poker.Web.Services;
 
 /// <summary>
-/// Scoped service for managing SignalR hub connections to the game server. Each Blazor circuit gets its own instance.
+///     Scoped service for managing SignalR hub connections to the game server. Each Blazor circuit gets its own instance.
 /// </summary>
 public sealed class GameHubClient : IAsyncDisposable
 {
-	private readonly IConfiguration _configuration;
 	private readonly AuthenticationStateProvider _authStateProvider;
+	private readonly IConfiguration _configuration;
 	private readonly ILogger<GameHubClient> _logger;
-
-	private HubConnection? _hubConnection;
 	private Guid? _currentGameId;
 
-	/// <summary>
-	/// Fired when the public table state is updated.
-	/// </summary>
-	public event Func<TableStatePublicDto, Task>? OnTableStateUpdated;
+	private HubConnection? _hubConnection;
 
 	/// <summary>
-	/// Fired when the private state for the current player is updated.
-	/// </summary>
-	public event Func<PrivateStateDto, Task>? OnPrivateStateUpdated;
-
-	/// <summary>
-	/// Fired when a player joins the game.
-	/// </summary>
-	public event Func<PlayerJoinedDto, Task>? OnPlayerJoined;
-
-	/// <summary>
-	/// Fired when table settings are updated.
-	/// </summary>
-	public event Func<TableSettingsUpdatedDto, Task>? OnTableSettingsUpdated;
-
-	/// <summary>
-	/// Fired when a table toast notification is received.
-	/// </summary>
-	public event Func<TableToastNotificationDto, Task>? OnTableToastNotification;
-
-	/// <summary>
-	/// Fired when the action timer is updated.
-	/// </summary>
-	public event Func<ActionTimerStateDto, Task>? OnActionTimerUpdated;
-
-	/// <summary>
-	/// Fired when a player performs an action (bet, call, fold, etc.). Used to display the action temporarily in the
-	/// player's seat pill.
-	/// </summary>
-	public event Func<PlayerActionPerformedDto, Task>? OnPlayerActionPerformed;
-
-	/// <summary>
-	/// Fired when the connection state changes.
-	/// </summary>
-	public event Action<HubConnectionState>? OnConnectionStateChanged;
-
-	/// <summary>
-	/// Gets the current connection state.
-	/// </summary>
-	public HubConnectionState ConnectionState => _hubConnection?.State ?? HubConnectionState.Disconnected;
-
-	/// <summary>
-	/// Gets whether the client is connected.
-	/// </summary>
-	public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
-
-	/// <summary>
-	/// Gets whether the client is reconnecting.
-	/// </summary>
-	public bool IsReconnecting => _hubConnection?.State == HubConnectionState.Reconnecting;
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="GameHubClient"/> class.
+	///     Initializes a new instance of the <see cref="GameHubClient" /> class.
 	/// </summary>
 	public GameHubClient(
 		IConfiguration configuration,
@@ -90,7 +32,78 @@ public sealed class GameHubClient : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Connects to the game hub.
+	///     Gets the current connection state.
+	/// </summary>
+	public HubConnectionState ConnectionState => _hubConnection?.State ?? HubConnectionState.Disconnected;
+
+	/// <summary>
+	///     Gets whether the client is connected.
+	/// </summary>
+	public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+
+	/// <summary>
+	///     Gets whether the client is reconnecting.
+	/// </summary>
+	public bool IsReconnecting => _hubConnection?.State == HubConnectionState.Reconnecting;
+
+	/// <inheritdoc />
+	public async ValueTask DisposeAsync()
+	{
+		if (_hubConnection is not null)
+		{
+			_hubConnection.Reconnecting -= OnReconnecting;
+			_hubConnection.Reconnected -= OnReconnected;
+			_hubConnection.Closed -= OnClosed;
+
+			await DisconnectAsync();
+			await _hubConnection.DisposeAsync();
+			_hubConnection = null;
+		}
+	}
+
+	/// <summary>
+	///     Fired when the public table state is updated.
+	/// </summary>
+	public event Func<TableStatePublicDto, Task>? OnTableStateUpdated;
+
+	/// <summary>
+	///     Fired when the private state for the current player is updated.
+	/// </summary>
+	public event Func<PrivateStateDto, Task>? OnPrivateStateUpdated;
+
+	/// <summary>
+	///     Fired when a player joins the game.
+	/// </summary>
+	public event Func<PlayerJoinedDto, Task>? OnPlayerJoined;
+
+	/// <summary>
+	///     Fired when table settings are updated.
+	/// </summary>
+	public event Func<TableSettingsUpdatedDto, Task>? OnTableSettingsUpdated;
+
+	/// <summary>
+	///     Fired when a table toast notification is received.
+	/// </summary>
+	public event Func<TableToastNotificationDto, Task>? OnTableToastNotification;
+
+	/// <summary>
+	///     Fired when the action timer is updated.
+	/// </summary>
+	public event Func<ActionTimerStateDto, Task>? OnActionTimerUpdated;
+
+	/// <summary>
+	///     Fired when a player performs an action (bet, call, fold, etc.). Used to display the action temporarily in the
+	///     player's seat pill.
+	/// </summary>
+	public event Func<PlayerActionPerformedDto, Task>? OnPlayerActionPerformed;
+
+	/// <summary>
+	///     Fired when the connection state changes.
+	/// </summary>
+	public event Action<HubConnectionState>? OnConnectionStateChanged;
+
+	/// <summary>
+	///     Connects to the game hub.
 	/// </summary>
 	public async Task ConnectAsync(CancellationToken cancellationToken = default)
 	{
@@ -119,10 +132,12 @@ public sealed class GameHubClient : IAsyncDisposable
 					{
 						options.Headers["X-User-Id"] = userInfo.Value.UserId;
 					}
+
 					if (!string.IsNullOrEmpty(userInfo.Value.UserName))
 					{
 						options.Headers["X-User-Name"] = userInfo.Value.UserName;
 					}
+
 					if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
 					{
 						options.Headers["X-User-Email"] = userInfo.Value.UserEmail;
@@ -134,7 +149,11 @@ public sealed class GameHubClient : IAsyncDisposable
 				// Match server-side JSON settings for proper deserialization
 				options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
 			})
-			.WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
+			.WithAutomaticReconnect(new[]
+			{
+				TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10),
+				TimeSpan.FromSeconds(30)
+			})
 			.Build();
 
 		// Wire up connection lifecycle events
@@ -165,7 +184,7 @@ public sealed class GameHubClient : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Joins a game group to receive state updates.
+	///     Joins a game group to receive state updates.
 	/// </summary>
 	/// <param name="gameId">The game ID to join.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
@@ -190,7 +209,7 @@ public sealed class GameHubClient : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Leaves a game group.
+	///     Leaves a game group.
 	/// </summary>
 	/// <param name="gameId">The game ID to leave.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
@@ -219,7 +238,7 @@ public sealed class GameHubClient : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Disconnects from the game hub.
+	///     Disconnects from the game hub.
 	/// </summary>
 	public async Task DisconnectAsync(CancellationToken cancellationToken = default)
 	{
@@ -253,8 +272,8 @@ public sealed class GameHubClient : IAsyncDisposable
 		// Use service discovery URL pattern matching the API client configuration
 		// The API is accessible at "https+http://api" via Aspire service discovery
 		var baseUrl = _configuration["Services:Api:Https:0"]
-			?? _configuration["Services:Api:Http:0"]
-			?? "https://localhost:7001";
+		              ?? _configuration["Services:Api:Http:0"]
+		              ?? "https://localhost:7001";
 
 		var url = $"{baseUrl}/hubs/game";
 
@@ -267,14 +286,17 @@ public sealed class GameHubClient : IAsyncDisposable
 			{
 				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
 			}
+
 			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
 			{
 				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
 			}
+
 			if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
 			{
 				queryParams.Add($"userEmail={HttpUtility.UrlEncode(userInfo.Value.UserEmail)}");
 			}
+
 			url = $"{url}?{string.Join("&", queryParams)}";
 		}
 
@@ -294,19 +316,19 @@ public sealed class GameHubClient : IAsyncDisposable
 			}
 
 			var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
-						 ?? user.FindFirstValue("sub");
+			             ?? user.FindFirstValue("sub");
 
 			var userEmail = user.FindFirstValue(ClaimTypes.Email)
-						 ?? user.FindFirstValue("email");
+			                ?? user.FindFirstValue("email");
 
 			var userName = userEmail
-						   ?? user.FindFirstValue("preferred_username")
-						   ?? user.Identity?.Name;
+			               ?? user.FindFirstValue("preferred_username")
+			               ?? user.Identity?.Name;
 
 			// If the IdP doesn't expose an email claim, fall back to treating the username
 			// as an email if it looks like one. This enables server-side SignalR routing
 			// via IUserIdProvider when the database uses email/name as the stable key.
-			userEmail ??= (!string.IsNullOrWhiteSpace(userName) && userName.Contains('@'))
+			userEmail ??= !string.IsNullOrWhiteSpace(userName) && userName.Contains('@')
 				? userName
 				: null;
 
@@ -425,7 +447,8 @@ public sealed class GameHubClient : IAsyncDisposable
 
 	private async Task HandleActionTimerUpdated(ActionTimerStateDto timerState)
 	{
-		_logger.LogDebug("Received ActionTimerUpdated: {SecondsRemaining}s remaining, seat {SeatIndex}, active: {IsActive}",
+		_logger.LogDebug(
+			"Received ActionTimerUpdated: {SecondsRemaining}s remaining, seat {SeatIndex}, active: {IsActive}",
 			timerState.SecondsRemaining, timerState.PlayerSeatIndex, timerState.IsActive);
 
 		if (OnActionTimerUpdated is not null)
@@ -442,21 +465,6 @@ public sealed class GameHubClient : IAsyncDisposable
 		if (OnPlayerActionPerformed is not null)
 		{
 			await OnPlayerActionPerformed(notification);
-		}
-	}
-
-	/// <inheritdoc />
-	public async ValueTask DisposeAsync()
-	{
-		if (_hubConnection is not null)
-		{
-			_hubConnection.Reconnecting -= OnReconnecting;
-			_hubConnection.Reconnected -= OnReconnected;
-			_hubConnection.Closed -= OnClosed;
-
-			await DisconnectAsync();
-			await _hubConnection.DisposeAsync();
-			_hubConnection = null;
 		}
 	}
 }

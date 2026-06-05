@@ -9,4 +9,5 @@ public sealed record ResolveJoinRequestCommand(
 	Guid JoinRequestId,
 	bool Approved,
 	int? ApprovedBuyIn,
-	string? DenialReason) : IRequest<OneOf<ResolveJoinRequestSuccessful, ResolveJoinRequestError>>, IGameStateChangingCommand;
+	string? DenialReason) : IRequest<OneOf<ResolveJoinRequestSuccessful, ResolveJoinRequestError>>,
+	IGameStateChangingCommand;

@@ -10,10 +10,11 @@ public static class GetLeagueSeasonEventsEndpoint
 		group.MapGet("{leagueId:guid}/seasons/{seasonId:guid}/events",
 				async (Guid leagueId, Guid seasonId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new GetLeagueSeasonEventsQuery(leagueId, seasonId), cancellationToken);
+					var result = await mediator.Send(new GetLeagueSeasonEventsQuery(leagueId, seasonId),
+						cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							GetLeagueSeasonEventsErrorCode.Unauthorized => Results.Unauthorized(),
@@ -25,7 +26,7 @@ public static class GetLeagueSeasonEventsEndpoint
 			.WithName("GetLeagueSeasonEvents")
 			.WithSummary("Get league season events")
 			.WithDescription("Returns season-linked events for an active member of the league.")
-			.Produces<IReadOnlyList<LeagueSeasonEventDto>>(StatusCodes.Status200OK)
+			.Produces<IReadOnlyList<LeagueSeasonEventDto>>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.Produces(StatusCodes.Status404NotFound)

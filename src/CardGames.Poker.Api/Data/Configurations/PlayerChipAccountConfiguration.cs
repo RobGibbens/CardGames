@@ -47,7 +47,7 @@ public class PlayerChipLedgerEntryConfiguration : IEntityTypeConfiguration<Playe
 		builder.Property(x => x.RowVersion)
 			.IsRowVersion();
 
-     builder.HasIndex(x => new { x.PlayerId, x.OccurredAtUtc, x.Id })
+		builder.HasIndex(x => new { x.PlayerId, x.OccurredAtUtc, x.Id })
 			.IsDescending(false, true, true);
 		builder.HasIndex(x => x.Type);
 

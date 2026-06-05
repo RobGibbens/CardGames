@@ -1,190 +1,175 @@
 @namespace CardGames.Poker.Web.Components.Shared
 
-@using Microsoft.JSInterop
-
 @inject IJSRuntime JSRuntime
 
 <div id="game-info-overlay-panel" @ref="_panelRef" class="game-info-overlay-panel" role="dialog" aria-label="Table and game information">
-    <div @ref="_handleRef" class="game-info-overlay-header drag-handle">
-        <div class="game-info-overlay-title">
-            <i class="fa-solid fa-circle-info"></i>
-            <span>Game Info</span>
-        </div>
-        <button class="btn btn-link btn-sm game-info-overlay-close"
-                type="button"
-                title="Close game information"
-                aria-label="Close game information"
-                @onclick="OnClose">
-            <i class="fa-solid fa-xmark game-info-overlay-close-icon"></i>
-        </button>
-    </div>
+	<div @ref="_handleRef" class="game-info-overlay-header drag-handle">
+		<div class="game-info-overlay-title">
+			<i class="fa-solid fa-circle-info"></i>
+			<span>Game Info</span>
+		</div>
+		<button class="btn btn-link btn-sm game-info-overlay-close"
+		        type="button"
+		        title="Close game information"
+		        aria-label="Close game information"
+		        @onclick="OnClose">
+			<i class="fa-solid fa-xmark game-info-overlay-close-icon"></i>
+		</button>
+	</div>
 
-    <div class="game-info-overlay-body">
-        <!-- Hero: Game image + variant name -->
-        <div class="game-info-hero">
-            <div class="game-info-hero-image">
-                @if (!string.IsNullOrEmpty(GameImageName))
-                {
-                    <img src="/images/games/@GameImageName" alt="@GameTypeContext" />
-                }
-                else
-                {
-                    <span class="game-info-hero-fallback"><i class="fa-thin fa-card-club"></i></span>
-                }
-            </div>
-            <div class="game-info-hero-details">
-                <h3 class="game-info-hero-name">@GameTypeContext</h3>
-                @if (!string.IsNullOrWhiteSpace(TableName))
-                {
-                    <span class="game-info-table-name">
-                        <i class="fa-regular fa-table-columns"></i>
-                        @TableName
-                    </span>
-                }
-                @if (!string.IsNullOrWhiteSpace(HostName))
-                {
-                    <span class="game-info-host">
-                        <i class="fa-regular fa-crown"></i>
-                        Hosted by @HostName
-                    </span>
-                }
-            </div>
-        </div>
+	<div class="game-info-overlay-body">
+		<!-- Hero: Game image + variant name -->
+		<div class="game-info-hero">
+			<div class="game-info-hero-image">
+				@if (!string.IsNullOrEmpty(GameImageName))
+				{
+					<img src="/images/games/@GameImageName" alt="@GameTypeContext"/>
+				}
+				else
+				{
+					<span class="game-info-hero-fallback">
+						<i class="fa-thin fa-card-club"></i>
+					</span>
+				}
+			</div>
+			<div class="game-info-hero-details">
+				<h3 class="game-info-hero-name">@GameTypeContext</h3>
+				@if (!string.IsNullOrWhiteSpace(TableName))
+				{
+					<span class="game-info-table-name">
+						<i class="fa-regular fa-table-columns"></i>
+						@TableName
+					</span>
+				}
+				@if (!string.IsNullOrWhiteSpace(HostName))
+				{
+					<span class="game-info-host">
+						<i class="fa-regular fa-crown"></i>
+						Hosted by @HostName
+					</span>
+				}
+			</div>
+		</div>
 
-        <!-- Description -->
-        @if (!string.IsNullOrWhiteSpace(Description))
-        {
-            <div class="game-info-section">
-                <div class="game-info-section-title">Description</div>
-                <p class="game-info-description">@Description</p>
-            </div>
-        }
+		<!-- Description -->
+		@if (!string.IsNullOrWhiteSpace(Description))
+		{
+			<div class="game-info-section">
+				<div class="game-info-section-title">Description</div>
+				<p class="game-info-description">@Description</p>
+			</div>
+		}
 
-        <!-- Stakes -->
-        <div class="game-info-section">
-            <div class="game-info-section-title">Stakes</div>
-            <div class="game-info-stakes-grid">
-                @if (IsHoldEm)
-                {
-                    <div class="game-info-stat">
-                        <span class="game-info-stat-label">Small Blind</span>
-                        <span class="game-info-stat-value">@SmallBlind.ToString("N0")</span>
-                    </div>
-                    <div class="game-info-stat">
-                        <span class="game-info-stat-label">Big Blind</span>
-                        <span class="game-info-stat-value">@BigBlind.ToString("N0")</span>
-                    </div>
-                }
-                else
-                {
-                    <div class="game-info-stat">
-                        <span class="game-info-stat-label">Ante</span>
-                        <span class="game-info-stat-value">@Ante.ToString("N0")</span>
-                    </div>
-                    <div class="game-info-stat">
-                        <span class="game-info-stat-label">Min Bet</span>
-                        <span class="game-info-stat-value">@MinBet.ToString("N0")</span>
-                    </div>
-                }
-            </div>
-        </div>
+		<!-- Stakes -->
+		<div class="game-info-section">
+			<div class="game-info-section-title">Stakes</div>
+			<div class="game-info-stakes-grid">
+				@if (IsHoldEm)
+				{
+					<div class="game-info-stat">
+						<span class="game-info-stat-label">Small Blind</span>
+						<span class="game-info-stat-value">@SmallBlind.ToString("N0")</span>
+					</div>
+					<div class="game-info-stat">
+						<span class="game-info-stat-label">Big Blind</span>
+						<span class="game-info-stat-value">@BigBlind.ToString("N0")</span>
+					</div>
+				}
+				else
+				{
+					<div class="game-info-stat">
+						<span class="game-info-stat-label">Ante</span>
+						<span class="game-info-stat-value">@Ante.ToString("N0")</span>
+					</div>
+					<div class="game-info-stat">
+						<span class="game-info-stat-label">Min Bet</span>
+						<span class="game-info-stat-value">@MinBet.ToString("N0")</span>
+					</div>
+				}
+			</div>
+		</div>
 
-        <!-- Context -->
-        @if (ContextItems.Count > 0)
-        {
-            <div class="game-info-section">
-                <div class="game-info-section-title">Context</div>
-                <ul class="game-info-context-list">
-                    @foreach (var item in ContextItems)
-                    {
-                        <li>@item</li>
-                    }
-                </ul>
-            </div>
-        }
+		<!-- Context -->
+		@if (ContextItems.Count > 0)
+		{
+			<div class="game-info-section">
+				<div class="game-info-section-title">Context</div>
+				<ul class="game-info-context-list">
+					@foreach (var item in ContextItems)
+					{
+						<li>@item</li>
+					}
+				</ul>
+			</div>
+		}
 
-        <!-- Odds Toggle -->
-        @if (CanToggleOddsVisibility)
-        {
-            <div class="game-info-section game-info-odds-section">
-                <div class="game-info-odds-row">
-                    <span class="game-info-section-title">Odds</span>
-                    <button class="game-info-odds-toggle-switch @(AreOddsVisibleToAllPlayers ? "is-on" : "is-off")"
-                            type="button"
-                            role="switch"
-                            aria-checked="@AreOddsVisibleToAllPlayers"
-                            aria-label="Toggle odds visibility for everyone"
-                            disabled="@IsUpdatingOddsVisibility"
-                            @onclick="OnToggleOddsVisibility">
-                        <span class="game-info-odds-toggle-text">@(AreOddsVisibleToAllPlayers ? "ON" : "OFF")</span>
-                        <span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
-                    </button>
-                </div>
-            </div>
-        }
-    </div>
+		<!-- Odds Toggle -->
+		@if (CanToggleOddsVisibility)
+		{
+			<div class="game-info-section game-info-odds-section">
+				<div class="game-info-odds-row">
+					<span class="game-info-section-title">Odds</span>
+					<button class="game-info-odds-toggle-switch @(AreOddsVisibleToAllPlayers ? "is-on" : "is-off")"
+					        type="button"
+					        role="switch"
+					        aria-checked="@AreOddsVisibleToAllPlayers"
+					        aria-label="Toggle odds visibility for everyone"
+					        disabled="@IsUpdatingOddsVisibility"
+					        @onclick="OnToggleOddsVisibility">
+						<span class="game-info-odds-toggle-text">@(AreOddsVisibleToAllPlayers ? "ON" : "OFF")</span>
+						<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
+					</button>
+				</div>
+			</div>
+		}
+	</div>
 </div>
 
 @code {
-    private const string _panelStorageKey = "cardGames.panelPosition.gameInfoOverlay";
-    private ElementReference _panelRef;
-    private ElementReference _handleRef;
-    private bool _dragInitialized;
+	private const string _panelStorageKey = "cardGames.panelPosition.gameInfoOverlay";
+	private ElementReference _panelRef;
+	private ElementReference _handleRef;
+	private bool _dragInitialized;
 
-    [Parameter]
-    public string GameTypeContext { get; set; } = "Unknown";
+	[Parameter] public string GameTypeContext { get; set; } = "Unknown";
 
-    [Parameter]
-    public bool IsHoldEm { get; set; }
+	[Parameter] public bool IsHoldEm { get; set; }
 
-    [Parameter]
-    public int SmallBlind { get; set; }
+	[Parameter] public int SmallBlind { get; set; }
 
-    [Parameter]
-    public int BigBlind { get; set; }
+	[Parameter] public int BigBlind { get; set; }
 
-    [Parameter]
-    public int Ante { get; set; }
+	[Parameter] public int Ante { get; set; }
 
-    [Parameter]
-    public int MinBet { get; set; }
+	[Parameter] public int MinBet { get; set; }
 
-    [Parameter]
-    public string? TableName { get; set; }
+	[Parameter] public string? TableName { get; set; }
 
-    [Parameter]
-    public string? HostName { get; set; }
+	[Parameter] public string? HostName { get; set; }
 
-    [Parameter]
-    public string? GameImageName { get; set; }
+	[Parameter] public string? GameImageName { get; set; }
 
-    [Parameter]
-    public string? Description { get; set; }
+	[Parameter] public string? Description { get; set; }
 
-    [Parameter]
-    public IReadOnlyList<string> ContextItems { get; set; } = [];
+	[Parameter] public IReadOnlyList<string> ContextItems { get; set; } = [];
 
-    [Parameter]
-    public bool AreOddsVisibleToAllPlayers { get; set; } = true;
+	[Parameter] public bool AreOddsVisibleToAllPlayers { get; set; } = true;
 
-    [Parameter]
-    public bool CanToggleOddsVisibility { get; set; }
+	[Parameter] public bool CanToggleOddsVisibility { get; set; }
 
-    [Parameter]
-    public bool IsUpdatingOddsVisibility { get; set; }
+	[Parameter] public bool IsUpdatingOddsVisibility { get; set; }
 
-    [Parameter]
-    public EventCallback OnToggleOddsVisibility { get; set; }
+	[Parameter] public EventCallback OnToggleOddsVisibility { get; set; }
 
-    [Parameter]
-    public EventCallback OnClose { get; set; }
+	[Parameter] public EventCallback OnClose { get; set; }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!_dragInitialized)
-        {
-            _dragInitialized = true;
-            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, _panelStorageKey);
-        }
-    }
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!_dragInitialized)
+		{
+			_dragInitialized = true;
+			await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, _panelStorageKey);
+		}
+	}
+
 }

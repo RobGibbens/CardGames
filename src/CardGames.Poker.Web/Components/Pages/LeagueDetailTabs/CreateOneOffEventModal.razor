@@ -1,6 +1,5 @@
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
-
 @if (Show)
 {
 	<div class="confirm-dialog-overlay" @onclick="Close">
@@ -17,10 +16,10 @@
 					<div class="alert alert-danger py-2 mb-2" role="alert">@_errorMessage</div>
 				}
 				<div class="form-floating" data-label="Table name">
-					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Table name" />
+					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Table name"/>
 				</div>
 				<div class="form-floating" data-label="Scheduled (UTC)">
-					<InputDate id="one-off-scheduled" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
+					<InputDate id="one-off-scheduled" class="form-control league-modal-date-input" @bind-Value="_scheduledDate"/>
 				</div>
 				<div class="form-floating" data-label="Game Variant">
 					@if (_isLoadingGames)
@@ -39,13 +38,13 @@
 					}
 				</div>
 				<div class="form-floating" data-label="Ante">
-					<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100" />
+					<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100"/>
 				</div>
 				<div class="form-floating" data-label="Minimum Bet">
-					<InputNumber id="one-off-min-bet" class="form-control league-modal-input" @bind-Value="_minBet" min="1" max="1000" />
+					<InputNumber id="one-off-min-bet" class="form-control league-modal-input" @bind-Value="_minBet" min="1" max="1000"/>
 				</div>
 				<div class="form-floating" data-label="Notes (optional)">
-					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_notes" maxlength="512" placeholder="Notes (optional)" />
+					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_notes" maxlength="512" placeholder="Notes (optional)"/>
 				</div>
 				<div class="league-form-modal-actions">
 					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateAsync" disabled="@_isSubmitting">@ModalTitle</button>
@@ -56,29 +55,21 @@
 }
 
 @code {
-	[Parameter, EditorRequired]
-	public bool Show { get; set; }
+	[Parameter, EditorRequired] public bool Show { get; set; }
 
-	[Parameter, EditorRequired]
-	public LeagueOneOffEventType EventType { get; set; }
+	[Parameter, EditorRequired] public LeagueOneOffEventType EventType { get; set; }
 
-	[Parameter, EditorRequired]
-	public Guid LeagueId { get; set; }
+	[Parameter, EditorRequired] public Guid LeagueId { get; set; }
 
-	[Parameter]
-	public EventCallback OnClose { get; set; }
+	[Parameter] public EventCallback OnClose { get; set; }
 
-	[Parameter]
-	public EventCallback OnCreated { get; set; }
+	[Parameter] public EventCallback OnCreated { get; set; }
 
-	[Inject]
-	private ILeaguesApi LeaguesApi { get; set; } = default!;
+	[Inject] private ILeaguesApi LeaguesApi { get; set; } = null!;
 
-	[Inject]
-	private IAvailablePokerGamesApi AvailableGamesApi { get; set; } = default!;
+	[Inject] private IAvailablePokerGamesApi AvailableGamesApi { get; set; } = null!;
 
-	[Inject]
-	private ILogger<CreateLeagueEventModal> Logger { get; set; } = default!;
+	[Inject] private ILogger<CreateLeagueEventModal> Logger { get; set; } = null!;
 
 	private string _name = string.Empty;
 	private DateTime _scheduledDate = DateTime.UtcNow.Date.AddDays(1);
@@ -194,4 +185,5 @@
 		_minBet = 10;
 		_errorMessage = null;
 	}
+
 }

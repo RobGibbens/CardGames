@@ -11,7 +11,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.UpdateTableSettings;
 
 /// <summary>
-/// Handles the UpdateTableSettingsCommand.
+///     Handles the UpdateTableSettingsCommand.
 /// </summary>
 public sealed class UpdateTableSettingsCommandHandler(
 	CardsDbContext context,
@@ -150,8 +150,8 @@ public sealed class UpdateTableSettingsCommandHandler(
 	}
 
 	/// <summary>
-	/// Checks if the current user is authorized to edit the table settings.
-	/// Currently, only the table creator can edit.
+	///     Checks if the current user is authorized to edit the table settings.
+	///     Currently, only the table creator can edit.
 	/// </summary>
 	private bool IsAuthorized(Game game)
 	{
@@ -162,7 +162,7 @@ public sealed class UpdateTableSettingsCommandHandler(
 
 		// Check by user ID first
 		if (!string.IsNullOrEmpty(game.CreatedById) &&
-			string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.OrdinalIgnoreCase))
+		    string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.OrdinalIgnoreCase))
 		{
 			return true;
 		}
@@ -174,7 +174,7 @@ public sealed class UpdateTableSettingsCommandHandler(
 			var userEmail = currentUserService.UserEmail;
 
 			if (string.Equals(game.CreatedByName, userName, StringComparison.OrdinalIgnoreCase) ||
-				string.Equals(game.CreatedByName, userEmail, StringComparison.OrdinalIgnoreCase))
+			    string.Equals(game.CreatedByName, userEmail, StringComparison.OrdinalIgnoreCase))
 			{
 				return true;
 			}
@@ -184,7 +184,7 @@ public sealed class UpdateTableSettingsCommandHandler(
 	}
 
 	/// <summary>
-	/// Validates the settings in the command.
+	///     Validates the settings in the command.
 	/// </summary>
 	private static UpdateTableSettingsError? ValidateSettings(UpdateTableSettingsCommand command, Game game)
 	{
@@ -225,7 +225,7 @@ public sealed class UpdateTableSettingsCommandHandler(
 	}
 
 	/// <summary>
-	/// Applies the updates from the command to the game entity.
+	///     Applies the updates from the command to the game entity.
 	/// </summary>
 	private void ApplyUpdates(Game game, UpdateTableSettingsCommand command, DateTimeOffset now)
 	{

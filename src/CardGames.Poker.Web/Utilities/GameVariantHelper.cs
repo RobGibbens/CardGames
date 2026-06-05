@@ -4,9 +4,9 @@ namespace CardGames.Poker.Web.Utilities;
 
 public static class GameVariantHelper
 {
-	public const string DealersChoiceCode = "DEALERSCHOICE";
-	public const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
-	public const string InBetweenCode = "INBETWEEN";
+	private const string DealersChoiceCode = "DEALERSCHOICE";
+	private const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
+	private const string InBetweenCode = "INBETWEEN";
 
 	private static readonly HashSet<string> BlindGameCodes = new(StringComparer.OrdinalIgnoreCase)
 	{

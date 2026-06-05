@@ -3,15 +3,15 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.AcknowledgePotMatch;
 
 /// <summary>
-/// Handles the <see cref="AcknowledgePotMatchCommand"/> to process pot matching in Kings and Lows.
+///     Handles the <see cref="AcknowledgePotMatchCommand" /> to process pot matching in Kings and Lows.
 /// </summary>
 public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 	: IRequestHandler<AcknowledgePotMatchCommand, OneOf<AcknowledgePotMatchSuccessful, AcknowledgePotMatchError>>
@@ -44,7 +44,7 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 			return new AcknowledgePotMatchError
 			{
 				Message = $"Cannot process pot matching. Game is in '{game.CurrentPhase}' phase, " +
-						  $"but must be in '{nameof(Phases.PotMatching)}' phase.",
+				          $"but must be in '{nameof(Phases.PotMatching)}' phase.",
 				Code = AcknowledgePotMatchErrorCode.InvalidPhase
 			};
 		}
@@ -79,7 +79,7 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 				foreach (var element in doc.RootElement.EnumerateArray())
 				{
 					if (element.TryGetProperty("playerId", out var playerIdProp) &&
-						Guid.TryParse(playerIdProp.GetString(), out var playerId))
+					    Guid.TryParse(playerIdProp.GetString(), out var playerId))
 					{
 						winnerPlayerIds.Add(playerId);
 					}
@@ -94,8 +94,8 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 		// 5. Determine losers - staying players who are NOT winners
 		var gamePlayersList = game.GamePlayers.ToList();
 		var losers = gamePlayersList
-			.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay &&
-						 !winnerPlayerIds.Contains(gp.PlayerId))
+			.Where(gp => gp.DropOrStayDecision == DropOrStayDecision.Stay &&
+			             !winnerPlayerIds.Contains(gp.PlayerId))
 			.ToList();
 
 		// Calculate match amounts for each loser
@@ -125,7 +125,7 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 		}
 
 		// 5. Add matched amounts to new pot for next hand
-		var newPot = new Data.Entities.Pot
+		var newPot = new Pot
 		{
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber + 1,
@@ -162,12 +162,12 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise).
+	///     Moves the dealer button to the next occupied seat position (clockwise).
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
 		var activePlayers = game.GamePlayers
-			.Where(gp => gp.Status == Data.Entities.GamePlayerStatus.Active && !gp.IsSittingOut)
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
 			.OrderBy(gp => gp.SeatPosition)
 			.Select(gp => gp.SeatPosition)
 			.ToList();
@@ -175,7 +175,7 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 		if (activePlayers.Count == 0)
 		{
 			activePlayers = game.GamePlayers
-				.Where(gp => gp.Status == Data.Entities.GamePlayerStatus.Active)
+				.Where(gp => gp.Status == GamePlayerStatus.Active)
 				.OrderBy(gp => gp.SeatPosition)
 				.Select(gp => gp.SeatPosition)
 				.ToList();

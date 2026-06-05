@@ -2,10 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.Poker.Api.Contracts;
-using CardGames.Poker.Api.Data.Entities;
-using FluentAssertions;
 using ContractsLeagueRole = CardGames.Poker.Api.Contracts.LeagueRole;
 using DataLeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 
@@ -38,15 +35,20 @@ public class LeaguesApiGovernanceTests(ApiWebApplicationFactory factory) : ApiIn
 		});
 		await DbContext.SaveChangesAsync();
 
-		var transferResponse = await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-target-member/transfer-ownership", null);
+		var transferResponse =
+			await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-target-member/transfer-ownership", null);
 		transferResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-		var membersResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMemberDto>>($"/api/v1/leagues/{leagueId}/members", JsonOptions);
+		var membersResponse =
+			await Client.GetFromJsonAsync<IReadOnlyList<LeagueMemberDto>>($"/api/v1/leagues/{leagueId}/members",
+				JsonOptions);
 		membersResponse.Should().NotBeNull();
 		membersResponse!.Single(x => x.UserId == "league-owner").Role.Should().Be(ContractsLeagueRole.Manager);
 		membersResponse.Single(x => x.UserId == "league-target-member").Role.Should().Be(ContractsLeagueRole.Owner);
 
-		var historyResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>($"/api/v1/leagues/{leagueId}/members/history", JsonOptions);
+		var historyResponse =
+			await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>(
+				$"/api/v1/leagues/{leagueId}/members/history", JsonOptions);
 		historyResponse.Should().NotBeNull();
 		historyResponse!.Should().Contain(x =>
 			x.UserId == "league-target-member" &&
@@ -82,7 +84,8 @@ public class LeaguesApiGovernanceTests(ApiWebApplicationFactory factory) : ApiIn
 		await DbContext.SaveChangesAsync();
 
 		SetUser("league-admin");
-		var transferResponse = await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-member/transfer-ownership", null);
+		var transferResponse =
+			await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-member/transfer-ownership", null);
 		transferResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 	}
 
@@ -112,7 +115,8 @@ public class LeaguesApiGovernanceTests(ApiWebApplicationFactory factory) : ApiIn
 		});
 		await DbContext.SaveChangesAsync();
 
-		var demoteResponse = await Client.PostAsync($"/api/v1/leagues/{league.Id}/members/league-admin-only/demote-admin", null);
+		var demoteResponse =
+			await Client.PostAsync($"/api/v1/leagues/{league.Id}/members/league-admin-only/demote-admin", null);
 		demoteResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
 	}
 
@@ -144,7 +148,8 @@ public class LeaguesApiGovernanceTests(ApiWebApplicationFactory factory) : ApiIn
 		await DbContext.SaveChangesAsync();
 
 		SetUser("league-member-actor");
-		var removeResponse = await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-member-target/remove", null);
+		var removeResponse =
+			await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-member-target/remove", null);
 		removeResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 	}
 
@@ -176,14 +181,21 @@ public class LeaguesApiGovernanceTests(ApiWebApplicationFactory factory) : ApiIn
 		await DbContext.SaveChangesAsync();
 
 		SetUser("league-admin-actor");
-		var promoteResponse = await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-member-promote-target/promote-admin", null);
+		var promoteResponse =
+			await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-member-promote-target/promote-admin",
+				null);
 		promoteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-		var membersResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMemberDto>>($"/api/v1/leagues/{leagueId}/members", JsonOptions);
+		var membersResponse =
+			await Client.GetFromJsonAsync<IReadOnlyList<LeagueMemberDto>>($"/api/v1/leagues/{leagueId}/members",
+				JsonOptions);
 		membersResponse.Should().NotBeNull();
-		membersResponse!.Single(x => x.UserId == "league-member-promote-target").Role.Should().Be(ContractsLeagueRole.Admin);
+		membersResponse!.Single(x => x.UserId == "league-member-promote-target").Role.Should()
+			.Be(ContractsLeagueRole.Admin);
 
-		var historyResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>($"/api/v1/leagues/{leagueId}/members/history", JsonOptions);
+		var historyResponse =
+			await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>(
+				$"/api/v1/leagues/{leagueId}/members/history", JsonOptions);
 		historyResponse.Should().NotBeNull();
 		historyResponse!.Should().Contain(x =>
 			x.UserId == "league-member-promote-target" &&

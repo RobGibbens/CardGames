@@ -81,7 +81,8 @@ public class PerformShowdownCommandHandlerTests
 		return new CardsDbContext(options);
 	}
 
-	private static async Task<Game> SeedGameAsync(CardsDbContext context, string currentPhase, int holeCardsPerPlayer = 0)
+	private static async Task<Game> SeedGameAsync(CardsDbContext context, string currentPhase,
+		int holeCardsPerPlayer = 0)
 	{
 		var now = DateTimeOffset.UtcNow;
 		var gameType = new GameType
@@ -137,8 +138,10 @@ public class PerformShowdownCommandHandlerTests
 
 		for (var cardIndex = 0; cardIndex < holeCardsPerPlayer; cardIndex++)
 		{
-			context.GameCards.Add(CreateHoleCard(game, aliceGamePlayer, cardIndex + 1, CardSuit.Hearts, (CardSymbol)(cardIndex + 13), now));
-			context.GameCards.Add(CreateHoleCard(game, bobGamePlayer, cardIndex + 1, CardSuit.Spades, (CardSymbol)(cardIndex + 11), now));
+			context.GameCards.Add(CreateHoleCard(game, aliceGamePlayer, cardIndex + 1, CardSuit.Hearts,
+				(CardSymbol)(cardIndex + 13), now));
+			context.GameCards.Add(CreateHoleCard(game, bobGamePlayer, cardIndex + 1, CardSuit.Spades,
+				(CardSymbol)(cardIndex + 11), now));
 		}
 
 		await context.SaveChangesAsync();

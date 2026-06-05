@@ -25,7 +25,8 @@ public class DropOrStayCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new DropOrStayCommand(Guid.NewGuid(), Guid.NewGuid(), "Stay"), CancellationToken.None);
+		var result = await sut.Handle(new DropOrStayCommand(Guid.NewGuid(), Guid.NewGuid(), "Stay"),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(DropOrStayErrorCode.GameNotFound);
@@ -36,7 +37,8 @@ public class DropOrStayCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.DrawPhase));
-		var playerId = await context.GamePlayers.Where(gp => gp.GameId == game.Id).Select(gp => gp.PlayerId).FirstAsync();
+		var playerId = await context.GamePlayers.Where(gp => gp.GameId == game.Id).Select(gp => gp.PlayerId)
+			.FirstAsync();
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new DropOrStayCommand(game.Id, playerId, "Stay"), CancellationToken.None);
@@ -64,7 +66,8 @@ public class DropOrStayCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context);
-		var playerId = await context.GamePlayers.Where(gp => gp.GameId == game.Id).Select(gp => gp.PlayerId).FirstAsync();
+		var playerId = await context.GamePlayers.Where(gp => gp.GameId == game.Id).Select(gp => gp.PlayerId)
+			.FirstAsync();
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new DropOrStayCommand(game.Id, playerId, "Maybe"), CancellationToken.None);
@@ -77,7 +80,7 @@ public class DropOrStayCommandHandlerTests
 	public async Task Handle_WhenPlayerAlreadyDecided_ReturnsAlreadyDecided()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, firstDecision: CardGames.Poker.Api.Data.Entities.DropOrStayDecision.Stay);
+		var game = await SeedGameAsync(context, firstDecision: DropOrStayDecision.Stay);
 		var playerId = await context.GamePlayers
 			.Where(gp => gp.GameId == game.Id && gp.SeatPosition == 0)
 			.Select(gp => gp.PlayerId)
@@ -122,8 +125,10 @@ public class DropOrStayCommandHandlerTests
 		var freshSut = CreateSut(freshContext);
 		var staleSut = CreateSut(staleContext);
 
-		var firstResult = await freshSut.Handle(new DropOrStayCommand(gameId, firstPlayerId, "Stay"), CancellationToken.None);
-		var secondResult = await staleSut.Handle(new DropOrStayCommand(gameId, secondPlayerId, "Stay"), CancellationToken.None);
+		var firstResult =
+			await freshSut.Handle(new DropOrStayCommand(gameId, firstPlayerId, "Stay"), CancellationToken.None);
+		var secondResult =
+			await staleSut.Handle(new DropOrStayCommand(gameId, secondPlayerId, "Stay"), CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
 		secondResult.IsT0.Should().BeTrue();
@@ -140,7 +145,7 @@ public class DropOrStayCommandHandlerTests
 		persistedGame.CurrentPhase.Should().Be(nameof(Phases.DrawPhase));
 		persistedGame.CurrentDrawPlayerIndex.Should().Be(1);
 		persistedGame.CurrentPlayerIndex.Should().Be(1);
-		players.Should().OnlyContain(gp => gp.DropOrStayDecision == CardGames.Poker.Api.Data.Entities.DropOrStayDecision.Stay);
+		players.Should().OnlyContain(gp => gp.DropOrStayDecision == DropOrStayDecision.Stay);
 	}
 
 	private static DropOrStayCommandHandler CreateSut(CardsDbContext context)
@@ -165,8 +170,8 @@ public class DropOrStayCommandHandlerTests
 	private static async Task<Game> SeedGameAsync(
 		CardsDbContext context,
 		string currentPhase = nameof(Phases.DropOrStay),
-		CardGames.Poker.Api.Data.Entities.DropOrStayDecision? firstDecision = null,
-		CardGames.Poker.Api.Data.Entities.DropOrStayDecision? secondDecision = null)
+		DropOrStayDecision? firstDecision = null,
+		DropOrStayDecision? secondDecision = null)
 	{
 		var now = DateTimeOffset.UtcNow;
 		var game = new Game
@@ -210,7 +215,7 @@ public class DropOrStayCommandHandlerTests
 		Game game,
 		Player player,
 		int seatPosition,
-		CardGames.Poker.Api.Data.Entities.DropOrStayDecision? decision,
+		DropOrStayDecision? decision,
 		DateTimeOffset now)
 	{
 		return new GamePlayer

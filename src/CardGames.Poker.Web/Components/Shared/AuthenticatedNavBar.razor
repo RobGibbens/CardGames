@@ -1,162 +1,165 @@
 ﻿@namespace CardGames.Poker.Web.Components.Shared
 @rendermode InteractiveServer
+@using CardGames.Poker.Web.Data
+@using Microsoft.AspNetCore.Identity
 @inherits ThemeToggleComponentBase
 
 @inject NavigationManager NavigationManager
 @inject UserManager<ApplicationUser> UserManager
 
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Identity
-@using CardGames.Poker.Web.Data
-
 <!-- Authenticated Navigation Header -->
 <header class="nav-header">
-    <nav class="nav-container">
-        <a href="/lobby" class="nav-logo">
-            <span class="nav-logo-icon"><i class="fa-thin fa-spade"></i></span>
-            <span>Dealer's Choice Poker</span>
-        </a>
+	<nav class="nav-container">
+		<a href="/lobby" class="nav-logo">
+			<span class="nav-logo-icon">
+				<i class="fa-thin fa-spade"></i>
+			</span>
+			<span>Dealer's Choice Poker</span>
+		</a>
 
-        <ul class="nav-links @(isMobileMenuOpen ? "active" : "")" id="navLinks">
-            <li>
-                <a href="/lobby" class="@GetActiveClass("/lobby")">
-                    <i class="fa-thin fa-bullseye-arrow"></i>
-                    Lobby
-                </a>
-            </li>
-            <li>
-                <a href="/leagues" class="@GetActiveClass("/leagues")">
-                    <i class="fa-thin fa-users"></i>
-                    Leagues
-                </a>
-            </li>
+		<ul class="nav-links @(isMobileMenuOpen ? "active" : "")" id="navLinks">
+			<li>
+				<a href="/lobby" class="@GetActiveClass("/lobby")">
+					<i class="fa-thin fa-bullseye-arrow"></i>
+					Lobby
+				</a>
+			</li>
+			<li>
+				<a href="/leagues" class="@GetActiveClass("/leagues")">
+					<i class="fa-thin fa-users"></i>
+					Leagues
+				</a>
+			</li>
 			<li>
 				<a href="/Account/Cashier" class="@GetActiveClass("/Account/Cashier")">
-                    <i class="fa-thin fa-coins"></i>
+					<i class="fa-thin fa-coins"></i>
 					Cashier
 				</a>
 			</li>
-        </ul>
+		</ul>
 
-        <div class="nav-actions">
+		<div class="nav-actions">
 
-            <button class="theme-toggle" @onclick="ToggleThemeAsync" title="@ThemeToggleTitle" aria-label="@ThemeToggleAriaLabel">
-                <span><i class="@ThemeIconClass"></i></span>
-            </button>
+			<button class="theme-toggle" @onclick="ToggleThemeAsync" title="@ThemeToggleTitle" aria-label="@ThemeToggleAriaLabel">
+				<span>
+					<i class="@ThemeIconClass"></i>
+				</span>
+			</button>
 
-            <AuthorizeView>
-                <Authorized>
-                    <div class="user-menu">
-                        <button class="user-menu-trigger" @onclick="ToggleUserMenu" @onclick:stopPropagation="true">
-                            <span class="user-avatar">
-                                @if (!string.IsNullOrWhiteSpace(CurrentUserAvatarUrl))
-                                {
-                                    <img class="user-avatar-img" src="@CurrentUserAvatarUrl" alt="" referrerpolicy="no-referrer" />
-                                }
-                                else
-                                {
-                                    @UserProfileDisplayHelpers.GetUserInitial(CurrentUserName ?? context.User.Identity?.Name)
-                                }
-                            </span>
-                            <span class="user-name">@(CurrentUserName ?? context.User.Identity?.Name)</span>
-                            <span class="user-menu-arrow"><i class="fa-thin fa-chevron-down"></i></span>
-                        </button>
-                        @if (isUserMenuOpen)
-                        {
-                            <div class="user-menu-dropdown">
-	                            <a href="/Account/Manage" class="user-menu-item">
-                                    <i class="fa-solid fa-gear"></i>
-                                    Settings
-	                            </a>
-                                <a href="/Account/Cashier" class="user-menu-item">
-		                            <i class="fa-solid fa-coins"></i>
-		                            Cashier
-	                            </a>
-	                            <a href="/Account/Manage/Email" class="user-menu-item">
-		                            <i class="fa-solid fa-envelope"></i>
-		                            Email
-                                </a>
-                                <a href="/Account/Manage/ChangePassword" class="user-menu-item">
-	                                <i class="fa-solid fa-lock"></i>
-	                                Password
-                                </a>
-                                <hr class="user-menu-divider" />
-                                <form method="post" action="/Account/Logout">
-                                    <AntiforgeryToken />
-                                    <input type="hidden" name="ReturnUrl" value="/" />
-                                    <button type="submit" class="user-menu-item user-menu-logout">
-                                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
-                                    </button>
-                                </form>
-                            </div>
-                        }
-                    </div>
-                </Authorized>
-            </AuthorizeView>
+			<AuthorizeView>
+				<Authorized>
+					<div class="user-menu">
+						<button class="user-menu-trigger" @onclick="ToggleUserMenu" @onclick:stopPropagation="true">
+							<span class="user-avatar">
+								@if (!string.IsNullOrWhiteSpace(CurrentUserAvatarUrl))
+								{
+									<img class="user-avatar-img" src="@CurrentUserAvatarUrl" alt="" referrerpolicy="no-referrer"/>
+								}
+								else
+								{
+									@UserProfileDisplayHelpers.GetUserInitial(CurrentUserName ?? context.User.Identity?.Name)
+								}
+							</span>
+							<span class="user-name">@(CurrentUserName ?? context.User.Identity?.Name)</span>
+							<span class="user-menu-arrow">
+								<i class="fa-thin fa-chevron-down"></i>
+							</span>
+						</button>
+						@if (isUserMenuOpen)
+						{
+							<div class="user-menu-dropdown">
+								<a href="/Account/Manage" class="user-menu-item">
+									<i class="fa-solid fa-gear"></i>
+									Settings
+								</a>
+								<a href="/Account/Cashier" class="user-menu-item">
+									<i class="fa-solid fa-coins"></i>
+									Cashier
+								</a>
+								<a href="/Account/Manage/Email" class="user-menu-item">
+									<i class="fa-solid fa-envelope"></i>
+									Email
+								</a>
+								<a href="/Account/Manage/ChangePassword" class="user-menu-item">
+									<i class="fa-solid fa-lock"></i>
+									Password
+								</a>
+								<hr class="user-menu-divider"/>
+								<form method="post" action="/Account/Logout">
+									<AntiforgeryToken/>
+									<input type="hidden" name="ReturnUrl" value="/"/>
+									<button type="submit" class="user-menu-item user-menu-logout">
+										<i class="fa-solid fa-right-from-bracket"></i> Sign Out
+									</button>
+								</form>
+							</div>
+						}
+					</div>
+				</Authorized>
+			</AuthorizeView>
 
-            <button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
+			<button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
+				<span></span>
+				<span></span>
+				<span></span>
+			</button>
+		</div>
+	</nav>
 </header>
 
 @code {
-    private bool isMobileMenuOpen;
-    private bool isUserMenuOpen;
+	private bool isMobileMenuOpen;
+	private bool isUserMenuOpen;
 
-    [CascadingParameter]
-    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+	[CascadingParameter] private Task<AuthenticationState> AuthenticationStateTask { get; set; } = null!;
 
-    private string? loadedUserId;
-    private string? CurrentUserAvatarUrl;
-    private string? CurrentUserName;
+	private string? loadedUserId;
+	private string? CurrentUserAvatarUrl;
+	private string? CurrentUserName;
 
-    protected override async Task OnParametersSetAsync()
-    {
-        var authState = await AuthenticationStateTask;
-        var principal = authState.User;
+	protected override async Task OnParametersSetAsync()
+	{
+		var authState = await AuthenticationStateTask;
+		var principal = authState.User;
 
-        var userId = UserProfileDisplayHelpers.GetUserId(principal);
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            loadedUserId = null;
-            CurrentUserAvatarUrl = null;
-            CurrentUserName = null;
-            return;
-        }
+		var userId = UserProfileDisplayHelpers.GetUserId(principal);
+		if (string.IsNullOrWhiteSpace(userId))
+		{
+			loadedUserId = null;
+			CurrentUserAvatarUrl = null;
+			CurrentUserName = null;
+			return;
+		}
 
-        loadedUserId = userId;
+		loadedUserId = userId;
 
-        // Prefer the app's stored profile fields.
-        var user = await UserManager.GetUserAsync(principal);
-        CurrentUserName = UserProfileDisplayHelpers.PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
-        CurrentUserAvatarUrl = UserProfileDisplayHelpers.BuildAvatarApiPath(userId);
-    }
+		// Prefer the app's stored profile fields.
+		var user = await UserManager.GetUserAsync(principal);
+		CurrentUserName = UserProfileDisplayHelpers.PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
+		CurrentUserAvatarUrl = UserProfileDisplayHelpers.BuildAvatarApiPath(userId);
+	}
 
-    private void ToggleMobileMenu()
-    {
-        isMobileMenuOpen = !isMobileMenuOpen;
-    }
+	private void ToggleMobileMenu()
+	{
+		isMobileMenuOpen = !isMobileMenuOpen;
+	}
 
-    private void ToggleUserMenu()
-    {
-        isUserMenuOpen = !isUserMenuOpen;
-    }
+	private void ToggleUserMenu()
+	{
+		isUserMenuOpen = !isUserMenuOpen;
+	}
 
-    private string GetActiveClass(string path)
-    {
-        var currentUri = NavigationManager.Uri;
-        var relativePath = NavigationManager.ToBaseRelativePath(currentUri);
+	private string GetActiveClass(string path)
+	{
+		var currentUri = NavigationManager.Uri;
+		var relativePath = NavigationManager.ToBaseRelativePath(currentUri);
 
-        if (string.IsNullOrEmpty(relativePath) && path == "/lobby")
-        {
-            return "";
-        }
+		if (string.IsNullOrEmpty(relativePath) && path == "/lobby")
+		{
+			return "";
+		}
 
-        return ("/" + relativePath).StartsWith(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
-    }
+		return ("/" + relativePath).StartsWith(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+	}
 
 }

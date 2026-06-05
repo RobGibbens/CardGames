@@ -1,4 +1,3 @@
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 
 namespace CardGames.IntegrationTests.Features.Commands;

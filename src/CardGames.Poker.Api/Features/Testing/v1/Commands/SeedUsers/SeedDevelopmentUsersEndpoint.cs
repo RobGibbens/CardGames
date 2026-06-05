@@ -12,7 +12,7 @@ public static class SeedDevelopmentUsersEndpoint
 					var result = await mediator.Send(new SeedDevelopmentUsersCommand(), cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							SeedDevelopmentUsersErrorCode.NoUsersConfigured =>
@@ -22,8 +22,9 @@ public static class SeedDevelopmentUsersEndpoint
 				})
 			.WithName("SeedDevelopmentUsers")
 			.WithSummary("Seed development login users")
-			.WithDescription("Creates the configured development test users, marks them as confirmed, and skips any account that already exists.")
-			.Produces<SeedDevelopmentUsersResponse>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Creates the configured development test users, marks them as confirmed, and skips any account that already exists.")
+			.Produces<SeedDevelopmentUsersResponse>()
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.AllowAnonymous();
 

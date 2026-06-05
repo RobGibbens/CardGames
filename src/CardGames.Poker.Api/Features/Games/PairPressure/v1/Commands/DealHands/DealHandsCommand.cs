@@ -2,7 +2,8 @@ using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using OneOf;
 using SharedDealHandsError = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsError;
-using SharedDealHandsSuccessful = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
+using SharedDealHandsSuccessful =
+	CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
 
 namespace CardGames.Poker.Api.Features.Games.PairPressure.v1.Commands.DealHands;
 

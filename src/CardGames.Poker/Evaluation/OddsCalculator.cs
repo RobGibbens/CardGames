@@ -13,962 +13,971 @@ using CardGames.Poker.Hands.WildCards;
 namespace CardGames.Poker.Evaluation;
 
 /// <summary>
-/// Calculates live poker hand odds using Monte Carlo simulation.
-/// This class evaluates the probability of ending with each hand type
-/// for a player at any point during a poker hand.
+///     Calculates live poker hand odds using Monte Carlo simulation.
+///     This class evaluates the probability of ending with each hand type
+///     for a player at any point during a poker hand.
 /// </summary>
 public static class OddsCalculator
 {
-    /// <summary>
-    /// Default number of simulations to run for Monte Carlo calculation.
-    /// </summary>
-    public const int DefaultSimulations = 1000;
-
-    /// <summary>
-    /// Result of an odds calculation containing hand type probabilities.
-    /// </summary>
-    public sealed record OddsResult
-    {
-        /// <summary>
-        /// Probability of ending with each hand type (e.g., Pair, Flush, Full House).
-        /// </summary>
-        public required IReadOnlyDictionary<HandType, decimal> HandTypeProbabilities { get; init; }
-    }
-
-    /// <summary>
-    /// Snapshot of a non-hero Pair Pressure seat for table-aware odds simulation.
-    /// </summary>
-    public sealed record PairPressurePlayerSnapshot
-    {
-        public required int SeatIndex { get; init; }
-
-        public required int TotalCardsDealt { get; init; }
-
-        public required IReadOnlyCollection<Card> FaceUpCardsInOrder { get; init; }
-
-        public required bool ReceivesFutureCards { get; init; }
-    }
-
-    /// <summary>
-    /// Calculates odds for a Texas Hold'em hand.
-    /// </summary>
-    public static OddsResult CalculateHoldemOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> communityCards,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-            
-            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var remainingCommunityCount = 5 - communityCards.Count;
-            var simulatedCommunity = communityCards.ToList();
-            for (int j = 0; j < remainingCommunityCount; j++)
-            {
-                simulatedCommunity.Add(dealer.DealCard());
-            }
-
-            var heroHand = new HoldemHand(heroHoleCards, simulatedCommunity);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Klondike Hold'em hand.
-    /// Before reveal: the Klondike Card is unknown — one phantom wild card is included.
-    /// After reveal: the Klondike Card and all cards of the same rank are wild.
-    /// </summary>
-    /// <param name="heroHoleCards">The player's 2 hole cards.</param>
-    /// <param name="communityCards">Visible community cards (excluding unrevealed Klondike card).</param>
-    /// <param name="klondikeCard">The revealed Klondike Card, or null if not yet revealed.</param>
-    /// <param name="deadCards">Cards that are known to be unavailable.</param>
-    /// <param name="simulations">Number of Monte Carlo simulations to run.</param>
-    public static OddsResult CalculateKlondikeOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> communityCards,
-        Card? klondikeCard = null,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-
-            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards);
-            if (klondikeCard is not null)
-            {
-                knownCards = knownCards.Append(klondikeCard);
-            }
-            foreach (var card in knownCards.Distinct())
-            {
-                dealer.DealSpecific(card);
-            }
-
-            // Community needs 5 cards (excludes the Klondike card which is separate)
-            var remainingCommunityCount = 5 - communityCards.Count;
-            var simulatedCommunity = communityCards.ToList();
-            for (int j = 0; j < remainingCommunityCount; j++)
-            {
-                simulatedCommunity.Add(dealer.DealCard());
-            }
-
-            KlondikeHand heroHand;
-            if (klondikeCard is not null)
-            {
-                // Post-reveal: Klondike Card + all same-rank cards are wild.
-                // The Klondike card must be included in community cards (as first element)
-                // so the hand evaluator can detect it as wild.
-                var communityWithKlondike = new List<Card> { klondikeCard };
-                communityWithKlondike.AddRange(simulatedCommunity);
-                heroHand = new KlondikeHand(heroHoleCards, communityWithKlondike, klondikeCard);
-            }
-            else
-            {
-                // Pre-reveal: simulate a random Klondike card from remaining deck.
-                // The Klondike card must be included in community cards (as first element)
-                // so the hand evaluator can detect it as wild.
-                var simulatedKlondike = dealer.DealCard();
-                var communityWithKlondike = new List<Card> { simulatedKlondike };
-                communityWithKlondike.AddRange(simulatedCommunity);
-                heroHand = new KlondikeHand(heroHoleCards, communityWithKlondike, simulatedKlondike);
-            }
-
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Twos, Jacks, Man with the Axe five-card draw hand.
-    /// Wild cards: all 2s, all Jacks, and the King of Diamonds.
-    /// </summary>
-    /// <param name="cardsToKeep">The cards the player is keeping (not discarding).</param>
-    /// <param name="deadCards">Cards that are known to be unavailable (e.g., seen by other players).</param>
-    /// <param name="simulations">Number of Monte Carlo simulations to run.</param>
-    /// <returns>Probabilities for each possible hand type after the draw.</returns>
-    public static OddsResult CalculateTwosJacksManWithTheAxeDrawOdds(
-        IReadOnlyCollection<Card> cardsToKeep,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var cardsNeeded = 5 - cardsToKeep.Count;
-
-        if (cardsNeeded < 0)
-        {
-            throw new ArgumentException($"Expected at most 5 cards to keep, but got {cardsToKeep.Count}");
-        }
-
-        // If no cards need to be drawn, just evaluate the current hand once.
-        if (cardsNeeded == 0)
-        {
-            var heroHand = new TwosJacksManWithTheAxeDrawHand(cardsToKeep.ToList());
-            handTypeCounts[heroHand.Type] = simulations;
-            return CreateResult(handTypeCounts, simulations);
-        }
-
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-
-            var knownCards = cardsToKeep.Concat(deadCards).Distinct();
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var finalHand = cardsToKeep.ToList();
-            for (int j = 0; j < cardsNeeded; j++)
-            {
-                finalHand.Add(dealer.DealCard());
-            }
-
-            var heroHand = new TwosJacksManWithTheAxeDrawHand(finalHand);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Kings and Lows five-card draw hand.
-    /// Wild cards: all Kings and the lowest card(s) in the hand.
-    /// </summary>
-    /// <param name="cardsToKeep">The cards the player is keeping (not discarding).</param>
-    /// <param name="deadCards">Cards that are known to be unavailable (e.g., seen by other players).</param>
-    /// <param name="simulations">Number of Monte Carlo simulations to run.</param>
-    /// <returns>Probabilities for each possible hand type after the draw.</returns>
-    public static OddsResult CalculateKingsAndLowsDrawOdds(
-        IReadOnlyCollection<Card> cardsToKeep,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var cardsNeeded = 5 - cardsToKeep.Count;
-
-        if (cardsNeeded < 0)
-        {
-            throw new ArgumentException($"Expected at most 5 cards to keep, but got {cardsToKeep.Count}");
-        }
-
-        // If no cards need to be drawn, just evaluate the current hand once.
-        if (cardsNeeded == 0)
-        {
-            var heroHand = new KingsAndLowsDrawHand(cardsToKeep.ToList());
-            handTypeCounts[heroHand.Type] = simulations;
-            return CreateResult(handTypeCounts, simulations);
-        }
-
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-
-            var knownCards = cardsToKeep.Concat(deadCards).Distinct();
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var finalHand = cardsToKeep.ToList();
-            for (int j = 0; j < cardsNeeded; j++)
-            {
-                finalHand.Add(dealer.DealCard());
-            }
-
-            var heroHand = new KingsAndLowsDrawHand(finalHand);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Seven Card Stud hand.
-    /// </summary>
-    public static OddsResult CalculateStudOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> heroBoardCards,
-        int totalCardsPerPlayer = 7,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-        var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
-        var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-            
-            var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
-            foreach (var card in allKnownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var heroCards = heroHoleCards.Concat(heroBoardCards).ToList();
-            for (int j = 0; j < heroCardsNeeded; j++)
-            {
-                heroCards.Add(dealer.DealCard());
-            }
-
-            var heroHand = CreateStudHand(heroCards);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Razz hand (Ace-to-Five lowball).
-    /// Straights and flushes are ignored for low evaluation.
-    /// </summary>
-    public static OddsResult CalculateRazzOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> heroBoardCards,
-        int totalCardsPerPlayer = 7,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-        var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
-        var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-
-            var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
-            foreach (var card in allKnownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var heroCards = heroHoleCards.Concat(heroBoardCards).ToList();
-            for (int j = 0; j < heroCardsNeeded; j++)
-            {
-                heroCards.Add(dealer.DealCard());
-            }
-
-            var heroHand = CreateRazzHand(heroCards);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Baseball hand (3s and 9s are wild).
-    /// </summary>
-    public static OddsResult CalculateBaseballOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> heroBoardCards,
-        int totalCardsPerPlayer = 7,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-        var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
-        var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-            
-            var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
-            foreach (var card in allKnownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var holeCards = heroHoleCards.ToList();
-            var boardCards = heroBoardCards.ToList();
-            var downCards = new List<Card>();
-            
-            for (int j = 0; j < heroCardsNeeded; j++)
-            {
-                downCards.Add(dealer.DealCard());
-            }
-
-            var heroHand = new BaseballHand(holeCards, boardCards, downCards);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Follow The Queen hand.
-    /// Queens are always wild, and the card following the last face-up Queen is also wild.
-    /// </summary>
-    public static OddsResult CalculateFollowTheQueenOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> heroBoardCards,
-        IReadOnlyCollection<Card> faceUpCardsInOrder,
-        int totalCardsPerPlayer = 7,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-        var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
-        var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-            
-            var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
-            foreach (var card in allKnownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var holeCards = heroHoleCards.ToList();
-            var boardCards = heroBoardCards.ToList();
-            
-            var additionalCards = new List<Card>();
-            for (int j = 0; j < heroCardsNeeded; j++)
-            {
-                additionalCards.Add(dealer.DealCard());
-            }
-
-            var downCard = additionalCards.Any() ? additionalCards.Last() : holeCards.Last();
-            
-            if (additionalCards.Count > 1)
-            {
-                boardCards.AddRange(additionalCards.Take(additionalCards.Count - 1));
-            }
-
-            var heroHand = new FollowTheQueenHand(holeCards, boardCards, downCard, faceUpCardsInOrder);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Pair Pressure hand.
-    /// The two most recent ranks that have paired among face-up cards are wild.
-    /// </summary>
-    public static OddsResult CalculatePairPressureOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> heroBoardCards,
-        IReadOnlyCollection<Card> faceUpCardsInOrder,
-        int totalCardsPerPlayer = 7,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-        var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
-        var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
-
-        for (var index = 0; index < simulations; index++)
-        {
-            dealer.Shuffle();
-
-            var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
-            foreach (var card in allKnownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var holeCards = heroHoleCards.ToList();
-            var boardCards = heroBoardCards.ToList();
-
-            var additionalCards = new List<Card>();
-            for (var cardIndex = 0; cardIndex < heroCardsNeeded; cardIndex++)
-            {
-                additionalCards.Add(dealer.DealCard());
-            }
-
-            var downCard = additionalCards.Any() ? additionalCards.Last() : holeCards.Last();
-
-            if (additionalCards.Count > 1)
-            {
-                boardCards.AddRange(additionalCards.Take(additionalCards.Count - 1));
-            }
-
-            var heroHand = new PairPressureHand(holeCards, boardCards, downCard, faceUpCardsInOrder);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates Pair Pressure odds using full table context.
-    /// This simulation accounts for unknown dealt hole cards on other seats and future face-up cards
-    /// that can rotate the active wild ranks before showdown.
-    /// </summary>
-    public static OddsResult CalculatePairPressureTableOdds(
-        IReadOnlyCollection<Card> heroCards,
-        int heroSeatIndex,
-        int dealerSeatIndex,
-        IReadOnlyCollection<PairPressurePlayerSnapshot> otherPlayers,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-
-        var orderedHeroCards = heroCards.ToList();
-        if (orderedHeroCards.Count < 2)
-        {
-            throw new ArgumentException($"Expected at least 2 hero cards for Pair Pressure, but got {orderedHeroCards.Count}");
-        }
-
-        var snapshots = otherPlayers.ToList();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (var index = 0; index < simulations; index++)
-        {
-            dealer.Shuffle();
-
-            var knownCards = orderedHeroCards
-                .Concat(snapshots.SelectMany(player => player.FaceUpCardsInOrder))
-                .Concat(deadCards)
-                .Distinct();
-
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            // Hidden cards already dealt to non-hero seats must be removed before simulating future streets.
-            foreach (var snapshot in snapshots)
-            {
-                var hiddenCardsAlreadyDealt = Math.Max(0, snapshot.TotalCardsDealt - snapshot.FaceUpCardsInOrder.Count);
-                for (var hiddenIndex = 0; hiddenIndex < hiddenCardsAlreadyDealt; hiddenIndex++)
-                {
-                    dealer.DealCard();
-                }
-            }
-
-            var faceUpCardsInOrder = BuildPairPressureFaceUpCardsInOrder(
-                orderedHeroCards,
-                heroSeatIndex,
-                dealerSeatIndex,
-                snapshots);
-
-            var heroFinalCards = orderedHeroCards.ToList();
-            var seatStates = BuildPairPressureSeatStates(orderedHeroCards.Count, heroSeatIndex, snapshots)
-                .OrderBy(state => GetStudRotationOrder(state.SeatIndex, dealerSeatIndex))
-                .ToList();
-
-            while (seatStates.Any(state => state.ReceivesFutureCards && state.TotalCardsDealt < 7))
-            {
-                foreach (var state in seatStates)
-                {
-                    if (!state.ReceivesFutureCards || state.TotalCardsDealt >= 7)
-                    {
-                        continue;
-                    }
-
-                    var dealtCard = dealer.DealCard();
-                    state.TotalCardsDealt++;
-
-                    if (state.IsHero)
-                    {
-                        heroFinalCards.Add(dealtCard);
-                    }
-
-                    if (IsPairPressureFaceUpCardPosition(state.TotalCardsDealt))
-                    {
-                        faceUpCardsInOrder.Add(dealtCard);
-                    }
-                }
-            }
-
-            var heroHand = CreatePairPressureHand(heroFinalCards, faceUpCardsInOrder);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Kings and Lows hand.
-    /// Kings are always wild, and the lowest card in the hand is also wild.
-    /// This takes into account that drawing new cards could change which card is lowest.
-    /// </summary>
-    public static OddsResult CalculateKingsAndLowsOdds(
-        IReadOnlyCollection<Card> heroCards,
-        bool kingRequired = false,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-        var wildCardRules = new WildCardRules(kingRequired);
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-            
-            var knownCards = heroCards.Concat(deadCards).Distinct();
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var cardList = heroCards.ToList();
-            
-            while (cardList.Count < 7)
-            {
-                cardList.Add(dealer.DealCard());
-            }
-
-            var heroHand = new KingsAndLowsHand(
-                cardList.Take(2).ToList(),
-                cardList.Skip(2).Take(4).ToList(),
-                cardList.Last(),
-                wildCardRules);
-            
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Five Card Draw hand.
-    /// When cardsToKeep contains fewer than 5 cards, simulates drawing replacement cards
-    /// to calculate the probability of ending with each hand type after the draw.
-    /// </summary>
-    /// <param name="cardsToKeep">The cards the player is keeping (not discarding).</param>
-    /// <param name="deadCards">Cards that are known to be unavailable (e.g., seen by other players).</param>
-    /// <param name="simulations">Number of Monte Carlo simulations to run.</param>
-    /// <returns>Probabilities for each possible hand type after the draw.</returns>
-    public static OddsResult CalculateDrawOdds(
-        IReadOnlyCollection<Card> cardsToKeep,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var cardsNeeded = 5 - cardsToKeep.Count;
-
-        // If no cards need to be drawn, just evaluate the hand once
-        if (cardsNeeded == 0)
-        {
-            var heroHand = new DrawHand(cardsToKeep.ToList());
-            handTypeCounts[heroHand.Type] = simulations;
-            return CreateResult(handTypeCounts, simulations);
-        }
-
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-
-            // Remove known cards from the deck
-            var knownCards = cardsToKeep.Concat(deadCards).Distinct();
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            // Build the final hand: kept cards + drawn replacements
-            var finalHand = cardsToKeep.ToList();
-            for (int j = 0; j < cardsNeeded; j++)
-            {
-                finalHand.Add(dealer.DealCard());
-            }
-
-            var heroHand = new DrawHand(finalHand);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for an Omaha hand.
-    /// </summary>
-    public static OddsResult CalculateOmahaOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> communityCards,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-            
-            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var remainingCommunityCount = 5 - communityCards.Count;
-            var simulatedCommunity = communityCards.ToList();
-            for (int j = 0; j < remainingCommunityCount; j++)
-            {
-                simulatedCommunity.Add(dealer.DealCard());
-            }
-
-            var heroHand = new OmahaHand(heroHoleCards, simulatedCommunity);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a Nebraska hand.
-    /// Rules: exactly 3 hole cards and exactly 2 community cards must be used.
-    /// </summary>
-    public static OddsResult CalculateNebraskaOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> communityCards,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        if (heroHoleCards.Count < 3)
-        {
-            throw new ArgumentException($"Expected at least 3 hole cards for Nebraska, but got {heroHoleCards.Count}");
-        }
-
-        if (communityCards.Count > 5)
-        {
-            throw new ArgumentException($"Expected at most 5 community cards, but got {communityCards.Count}");
-        }
-
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-
-            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var simulatedCommunity = communityCards.ToList();
-            while (simulatedCommunity.Count < 5)
-            {
-                simulatedCommunity.Add(dealer.DealCard());
-            }
-
-            var heroHand = new NebraskaHand(heroHoleCards, simulatedCommunity);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    /// <summary>
-    /// Calculates odds for a South Dakota hand.
-    /// Rules: exactly 3 hole cards and exactly 2 community cards must be used,
-    /// with a 3-card total board (2-card flop + turn + no river).
-    /// </summary>
-    public static OddsResult CalculateSouthDakotaOdds(
-        IReadOnlyCollection<Card> heroHoleCards,
-        IReadOnlyCollection<Card> communityCards,
-        IReadOnlyCollection<Card> deadCards = null,
-        int simulations = DefaultSimulations)
-    {
-        if (heroHoleCards.Count < 3)
-        {
-            throw new ArgumentException($"Expected at least 3 hole cards for South Dakota, but got {heroHoleCards.Count}");
-        }
-
-        if (communityCards.Count > 3)
-        {
-            throw new ArgumentException($"Expected at most 3 community cards for South Dakota, but got {communityCards.Count}");
-        }
-
-        deadCards ??= Array.Empty<Card>();
-        var handTypeCounts = InitializeHandTypeCounts();
-        var dealer = FrenchDeckDealer.WithFullDeck();
-
-        for (int i = 0; i < simulations; i++)
-        {
-            dealer.Shuffle();
-
-            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
-            foreach (var card in knownCards)
-            {
-                dealer.DealSpecific(card);
-            }
-
-            var simulatedCommunity = communityCards.ToList();
-            while (simulatedCommunity.Count < 3)
-            {
-                simulatedCommunity.Add(dealer.DealCard());
-            }
-
-            var heroHand = new NebraskaHand(heroHoleCards, simulatedCommunity);
-            handTypeCounts[heroHand.Type]++;
-        }
-
-        return CreateResult(handTypeCounts, simulations);
-    }
-
-    private static Dictionary<HandType, int> InitializeHandTypeCounts()
-    {
-        return Enum.GetValues<HandType>()
-            .Where(t => t != HandType.Incomplete)
-            .ToDictionary(t => t, _ => 0);
-    }
-
-    private sealed class PairPressureSeatState
-    {
-        public required int SeatIndex { get; init; }
-
-        public required int TotalCardsDealt { get; set; }
-
-        public required bool ReceivesFutureCards { get; init; }
-
-        public required bool IsHero { get; init; }
-    }
-
-    private static List<PairPressureSeatState> BuildPairPressureSeatStates(
-        int heroCardCount,
-        int heroSeatIndex,
-        IReadOnlyCollection<PairPressurePlayerSnapshot> snapshots)
-    {
-        var seatStates = new List<PairPressureSeatState>
-        {
-            new()
-            {
-                SeatIndex = heroSeatIndex,
-                TotalCardsDealt = heroCardCount,
-                ReceivesFutureCards = heroCardCount < 7,
-                IsHero = true
-            }
-        };
-
-        seatStates.AddRange(snapshots.Select(snapshot => new PairPressureSeatState
-        {
-            SeatIndex = snapshot.SeatIndex,
-            TotalCardsDealt = snapshot.TotalCardsDealt,
-            ReceivesFutureCards = snapshot.ReceivesFutureCards,
-            IsHero = false
-        }));
-
-        return seatStates;
-    }
-
-    private static List<Card> BuildPairPressureFaceUpCardsInOrder(
-        IReadOnlyCollection<Card> heroCards,
-        int heroSeatIndex,
-        int dealerSeatIndex,
-        IReadOnlyCollection<PairPressurePlayerSnapshot> snapshots)
-    {
-        var visibleCardsBySeat = snapshots.ToDictionary(
-            snapshot => snapshot.SeatIndex,
-            snapshot => snapshot.FaceUpCardsInOrder.ToList());
-
-        visibleCardsBySeat[heroSeatIndex] = GetHeroFaceUpCards(heroCards).ToList();
-
-        var seatOrder = visibleCardsBySeat.Keys
-            .OrderBy(seatIndex => GetStudRotationOrder(seatIndex, dealerSeatIndex))
-            .ToList();
-
-        var maxVisibleCards = visibleCardsBySeat.Values.DefaultIfEmpty([]).Max(cards => cards.Count);
-        var faceUpCardsInOrder = new List<Card>();
-
-        for (var visibleIndex = 0; visibleIndex < maxVisibleCards; visibleIndex++)
-        {
-            foreach (var seatIndex in seatOrder)
-            {
-                var visibleCards = visibleCardsBySeat[seatIndex];
-                if (visibleCards.Count <= visibleIndex)
-                {
-                    continue;
-                }
-
-                faceUpCardsInOrder.Add(visibleCards[visibleIndex]);
-            }
-        }
-
-        return faceUpCardsInOrder;
-    }
-
-    private static IReadOnlyCollection<Card> GetHeroFaceUpCards(IReadOnlyCollection<Card> heroCards)
-    {
-        var orderedHeroCards = heroCards.ToList();
-        var visibleCardCount = orderedHeroCards.Count switch
-        {
-            <= 2 => 0,
-            <= 6 => orderedHeroCards.Count - 2,
-            _ => 4
-        };
-
-        return orderedHeroCards
-            .Skip(2)
-            .Take(visibleCardCount)
-            .ToList();
-    }
-
-    private static bool IsPairPressureFaceUpCardPosition(int totalCardsDealt)
-        => totalCardsDealt is >= 3 and <= 6;
-
-    private static int GetStudRotationOrder(int seatIndex, int dealerSeatIndex)
-        => seatIndex > dealerSeatIndex ? seatIndex : seatIndex + 1000;
-
-    private static PairPressureHand CreatePairPressureHand(
-        IReadOnlyCollection<Card> heroCards,
-        IReadOnlyCollection<Card> faceUpCardsInOrder)
-    {
-        var orderedHeroCards = heroCards.ToList();
-        if (orderedHeroCards.Count < 7)
-        {
-            throw new ArgumentException($"Expected 7 hero cards for Pair Pressure hand evaluation, but got {orderedHeroCards.Count}");
-        }
-
-        return new PairPressureHand(
-            orderedHeroCards.Take(2).ToList(),
-            orderedHeroCards.Skip(2).Take(4).ToList(),
-            orderedHeroCards[6],
-            faceUpCardsInOrder);
-    }
-
-    private static HandBase CreateStudHand(IReadOnlyCollection<Card> cards)
-    {
-        if (cards.Count < 7)
-        {
-            throw new ArgumentException($"Expected at least 7 cards for stud hand, but got {cards.Count}");
-        }
-        
-        var cardList = cards.ToList();
-        return new SevenCardStudHand(
-            cardList.Take(2).ToList(),
-            cardList.Skip(2).Take(4).ToList(),
-            cardList.Last());
-    }
-
-    private static HandBase CreateRazzHand(IReadOnlyCollection<Card> cards)
-    {
-        if (cards.Count < 7)
-        {
-            throw new ArgumentException($"Expected at least 7 cards for razz hand, but got {cards.Count}");
-        }
-
-        var cardList = cards.ToList();
-        return new RazzHand(
-            cardList.Take(2).ToList(),
-            cardList.Skip(2).Take(4).ToList(),
-            [cardList.Last()]);
-    }
-
-    private static OddsResult CreateResult(Dictionary<HandType, int> handTypeCounts, int simulations)
-    {
-        var handTypeProbabilities = handTypeCounts
-            .Where(kvp => kvp.Value > 0)
-            .ToDictionary(
-                kvp => kvp.Key,
-                kvp => (decimal)kvp.Value / simulations);
-
-        return new OddsResult
-        {
-            HandTypeProbabilities = handTypeProbabilities
-        };
-    }
+	/// <summary>
+	///     Default number of simulations to run for Monte Carlo calculation.
+	/// </summary>
+	public const int DefaultSimulations = 1000;
+
+	/// <summary>
+	///     Calculates odds for a Texas Hold'em hand.
+	/// </summary>
+	public static OddsResult CalculateHoldemOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> communityCards,
+		IReadOnlyCollection<Card>? deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var remainingCommunityCount = 5 - communityCards.Count;
+			var simulatedCommunity = communityCards.ToList();
+			for (int j = 0; j < remainingCommunityCount; j++)
+			{
+				simulatedCommunity.Add(dealer.DealCard());
+			}
+
+			var heroHand = new HoldemHand(heroHoleCards, simulatedCommunity);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Klondike Hold'em hand.
+	///     Before reveal: the Klondike Card is unknown — one phantom wild card is included.
+	///     After reveal: the Klondike Card and all cards of the same rank are wild.
+	/// </summary>
+	/// <param name="heroHoleCards">The player's 2 hole cards.</param>
+	/// <param name="communityCards">Visible community cards (excluding unrevealed Klondike card).</param>
+	/// <param name="klondikeCard">The revealed Klondike Card, or null if not yet revealed.</param>
+	/// <param name="deadCards">Cards that are known to be unavailable.</param>
+	/// <param name="simulations">Number of Monte Carlo simulations to run.</param>
+	public static OddsResult CalculateKlondikeOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> communityCards,
+		Card? klondikeCard = null,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards);
+			if (klondikeCard is not null)
+			{
+				knownCards = knownCards.Append(klondikeCard);
+			}
+
+			foreach (var card in knownCards.Distinct())
+			{
+				dealer.DealSpecific(card);
+			}
+
+			// Community needs 5 cards (excludes the Klondike card which is separate)
+			var remainingCommunityCount = 5 - communityCards.Count;
+			var simulatedCommunity = communityCards.ToList();
+			for (int j = 0; j < remainingCommunityCount; j++)
+			{
+				simulatedCommunity.Add(dealer.DealCard());
+			}
+
+			KlondikeHand heroHand;
+			if (klondikeCard is not null)
+			{
+				// Post-reveal: Klondike Card + all same-rank cards are wild.
+				// The Klondike card must be included in community cards (as first element)
+				// so the hand evaluator can detect it as wild.
+				var communityWithKlondike = new List<Card> { klondikeCard };
+				communityWithKlondike.AddRange(simulatedCommunity);
+				heroHand = new KlondikeHand(heroHoleCards, communityWithKlondike, klondikeCard);
+			}
+			else
+			{
+				// Pre-reveal: simulate a random Klondike card from remaining deck.
+				// The Klondike card must be included in community cards (as first element)
+				// so the hand evaluator can detect it as wild.
+				var simulatedKlondike = dealer.DealCard();
+				var communityWithKlondike = new List<Card> { simulatedKlondike };
+				communityWithKlondike.AddRange(simulatedCommunity);
+				heroHand = new KlondikeHand(heroHoleCards, communityWithKlondike, simulatedKlondike);
+			}
+
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Twos, Jacks, Man with the Axe five-card draw hand.
+	///     Wild cards: all 2s, all Jacks, and the King of Diamonds.
+	/// </summary>
+	/// <param name="cardsToKeep">The cards the player is keeping (not discarding).</param>
+	/// <param name="deadCards">Cards that are known to be unavailable (e.g., seen by other players).</param>
+	/// <param name="simulations">Number of Monte Carlo simulations to run.</param>
+	/// <returns>Probabilities for each possible hand type after the draw.</returns>
+	public static OddsResult CalculateTwosJacksManWithTheAxeDrawOdds(
+		IReadOnlyCollection<Card> cardsToKeep,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var cardsNeeded = 5 - cardsToKeep.Count;
+
+		if (cardsNeeded < 0)
+		{
+			throw new ArgumentException($"Expected at most 5 cards to keep, but got {cardsToKeep.Count}");
+		}
+
+		// If no cards need to be drawn, just evaluate the current hand once.
+		if (cardsNeeded == 0)
+		{
+			var heroHand = new TwosJacksManWithTheAxeDrawHand(cardsToKeep.ToList());
+			handTypeCounts[heroHand.Type] = simulations;
+			return CreateResult(handTypeCounts, simulations);
+		}
+
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = cardsToKeep.Concat(deadCards).Distinct();
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var finalHand = cardsToKeep.ToList();
+			for (int j = 0; j < cardsNeeded; j++)
+			{
+				finalHand.Add(dealer.DealCard());
+			}
+
+			var heroHand = new TwosJacksManWithTheAxeDrawHand(finalHand);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Kings and Lows five-card draw hand.
+	///     Wild cards: all Kings and the lowest card(s) in the hand.
+	/// </summary>
+	/// <param name="cardsToKeep">The cards the player is keeping (not discarding).</param>
+	/// <param name="deadCards">Cards that are known to be unavailable (e.g., seen by other players).</param>
+	/// <param name="simulations">Number of Monte Carlo simulations to run.</param>
+	/// <returns>Probabilities for each possible hand type after the draw.</returns>
+	public static OddsResult CalculateKingsAndLowsDrawOdds(
+		IReadOnlyCollection<Card> cardsToKeep,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var cardsNeeded = 5 - cardsToKeep.Count;
+
+		if (cardsNeeded < 0)
+		{
+			throw new ArgumentException($"Expected at most 5 cards to keep, but got {cardsToKeep.Count}");
+		}
+
+		// If no cards need to be drawn, just evaluate the current hand once.
+		if (cardsNeeded == 0)
+		{
+			var heroHand = new KingsAndLowsDrawHand(cardsToKeep.ToList());
+			handTypeCounts[heroHand.Type] = simulations;
+			return CreateResult(handTypeCounts, simulations);
+		}
+
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = cardsToKeep.Concat(deadCards).Distinct();
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var finalHand = cardsToKeep.ToList();
+			for (int j = 0; j < cardsNeeded; j++)
+			{
+				finalHand.Add(dealer.DealCard());
+			}
+
+			var heroHand = new KingsAndLowsDrawHand(finalHand);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Seven Card Stud hand.
+	/// </summary>
+	public static OddsResult CalculateStudOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> heroBoardCards,
+		int totalCardsPerPlayer = 7,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+		var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
+		var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
+			foreach (var card in allKnownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var heroCards = heroHoleCards.Concat(heroBoardCards).ToList();
+			for (int j = 0; j < heroCardsNeeded; j++)
+			{
+				heroCards.Add(dealer.DealCard());
+			}
+
+			var heroHand = CreateStudHand(heroCards);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Razz hand (Ace-to-Five lowball).
+	///     Straights and flushes are ignored for low evaluation.
+	/// </summary>
+	public static OddsResult CalculateRazzOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> heroBoardCards,
+		int totalCardsPerPlayer = 7,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+		var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
+		var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
+			foreach (var card in allKnownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var heroCards = heroHoleCards.Concat(heroBoardCards).ToList();
+			for (int j = 0; j < heroCardsNeeded; j++)
+			{
+				heroCards.Add(dealer.DealCard());
+			}
+
+			var heroHand = CreateRazzHand(heroCards);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Baseball hand (3s and 9s are wild).
+	/// </summary>
+	public static OddsResult CalculateBaseballOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> heroBoardCards,
+		int totalCardsPerPlayer = 7,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+		var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
+		var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
+			foreach (var card in allKnownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var holeCards = heroHoleCards.ToList();
+			var boardCards = heroBoardCards.ToList();
+			var downCards = new List<Card>();
+
+			for (int j = 0; j < heroCardsNeeded; j++)
+			{
+				downCards.Add(dealer.DealCard());
+			}
+
+			var heroHand = new BaseballHand(holeCards, boardCards, downCards);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Follow The Queen hand.
+	///     Queens are always wild, and the card following the last face-up Queen is also wild.
+	/// </summary>
+	public static OddsResult CalculateFollowTheQueenOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> heroBoardCards,
+		IReadOnlyCollection<Card> faceUpCardsInOrder,
+		int totalCardsPerPlayer = 7,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+		var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
+		var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
+			foreach (var card in allKnownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var holeCards = heroHoleCards.ToList();
+			var boardCards = heroBoardCards.ToList();
+
+			var additionalCards = new List<Card>();
+			for (int j = 0; j < heroCardsNeeded; j++)
+			{
+				additionalCards.Add(dealer.DealCard());
+			}
+
+			var downCard = additionalCards.Any() ? additionalCards.Last() : holeCards.Last();
+
+			if (additionalCards.Count > 1)
+			{
+				boardCards.AddRange(additionalCards.Take(additionalCards.Count - 1));
+			}
+
+			var heroHand = new FollowTheQueenHand(holeCards, boardCards, downCard, faceUpCardsInOrder);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Pair Pressure hand.
+	///     The two most recent ranks that have paired among face-up cards are wild.
+	/// </summary>
+	public static OddsResult CalculatePairPressureOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> heroBoardCards,
+		IReadOnlyCollection<Card> faceUpCardsInOrder,
+		int totalCardsPerPlayer = 7,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+		var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
+		var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
+
+		for (var index = 0; index < simulations; index++)
+		{
+			dealer.Shuffle();
+
+			var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
+			foreach (var card in allKnownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var holeCards = heroHoleCards.ToList();
+			var boardCards = heroBoardCards.ToList();
+
+			var additionalCards = new List<Card>();
+			for (var cardIndex = 0; cardIndex < heroCardsNeeded; cardIndex++)
+			{
+				additionalCards.Add(dealer.DealCard());
+			}
+
+			var downCard = additionalCards.Any() ? additionalCards.Last() : holeCards.Last();
+
+			if (additionalCards.Count > 1)
+			{
+				boardCards.AddRange(additionalCards.Take(additionalCards.Count - 1));
+			}
+
+			var heroHand = new PairPressureHand(holeCards, boardCards, downCard, faceUpCardsInOrder);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates Pair Pressure odds using full table context.
+	///     This simulation accounts for unknown dealt hole cards on other seats and future face-up cards
+	///     that can rotate the active wild ranks before showdown.
+	/// </summary>
+	public static OddsResult CalculatePairPressureTableOdds(
+		IReadOnlyCollection<Card> heroCards,
+		int heroSeatIndex,
+		int dealerSeatIndex,
+		IReadOnlyCollection<PairPressurePlayerSnapshot> otherPlayers,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+
+		var orderedHeroCards = heroCards.ToList();
+		if (orderedHeroCards.Count < 2)
+		{
+			throw new ArgumentException(
+				$"Expected at least 2 hero cards for Pair Pressure, but got {orderedHeroCards.Count}");
+		}
+
+		var snapshots = otherPlayers.ToList();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (var index = 0; index < simulations; index++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = orderedHeroCards
+				.Concat(snapshots.SelectMany(player => player.FaceUpCardsInOrder))
+				.Concat(deadCards)
+				.Distinct();
+
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			// Hidden cards already dealt to non-hero seats must be removed before simulating future streets.
+			foreach (var snapshot in snapshots)
+			{
+				var hiddenCardsAlreadyDealt = Math.Max(0, snapshot.TotalCardsDealt - snapshot.FaceUpCardsInOrder.Count);
+				for (var hiddenIndex = 0; hiddenIndex < hiddenCardsAlreadyDealt; hiddenIndex++)
+				{
+					dealer.DealCard();
+				}
+			}
+
+			var faceUpCardsInOrder = BuildPairPressureFaceUpCardsInOrder(
+				orderedHeroCards,
+				heroSeatIndex,
+				dealerSeatIndex,
+				snapshots);
+
+			var heroFinalCards = orderedHeroCards.ToList();
+			var seatStates = BuildPairPressureSeatStates(orderedHeroCards.Count, heroSeatIndex, snapshots)
+				.OrderBy(state => GetStudRotationOrder(state.SeatIndex, dealerSeatIndex))
+				.ToList();
+
+			while (seatStates.Any(state => state.ReceivesFutureCards && state.TotalCardsDealt < 7))
+			{
+				foreach (var state in seatStates)
+				{
+					if (!state.ReceivesFutureCards || state.TotalCardsDealt >= 7)
+					{
+						continue;
+					}
+
+					var dealtCard = dealer.DealCard();
+					state.TotalCardsDealt++;
+
+					if (state.IsHero)
+					{
+						heroFinalCards.Add(dealtCard);
+					}
+
+					if (IsPairPressureFaceUpCardPosition(state.TotalCardsDealt))
+					{
+						faceUpCardsInOrder.Add(dealtCard);
+					}
+				}
+			}
+
+			var heroHand = CreatePairPressureHand(heroFinalCards, faceUpCardsInOrder);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Kings and Lows hand.
+	///     Kings are always wild, and the lowest card in the hand is also wild.
+	///     This takes into account that drawing new cards could change which card is lowest.
+	/// </summary>
+	public static OddsResult CalculateKingsAndLowsOdds(
+		IReadOnlyCollection<Card> heroCards,
+		bool kingRequired = false,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+		var wildCardRules = new WildCardRules(kingRequired);
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = heroCards.Concat(deadCards).Distinct();
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var cardList = heroCards.ToList();
+
+			while (cardList.Count < 7)
+			{
+				cardList.Add(dealer.DealCard());
+			}
+
+			var heroHand = new KingsAndLowsHand(
+				cardList.Take(2).ToList(),
+				cardList.Skip(2).Take(4).ToList(),
+				cardList.Last(),
+				wildCardRules);
+
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Five Card Draw hand.
+	///     When cardsToKeep contains fewer than 5 cards, simulates drawing replacement cards
+	///     to calculate the probability of ending with each hand type after the draw.
+	/// </summary>
+	/// <param name="cardsToKeep">The cards the player is keeping (not discarding).</param>
+	/// <param name="deadCards">Cards that are known to be unavailable (e.g., seen by other players).</param>
+	/// <param name="simulations">Number of Monte Carlo simulations to run.</param>
+	/// <returns>Probabilities for each possible hand type after the draw.</returns>
+	public static OddsResult CalculateDrawOdds(
+		IReadOnlyCollection<Card> cardsToKeep,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var cardsNeeded = 5 - cardsToKeep.Count;
+
+		// If no cards need to be drawn, just evaluate the hand once
+		if (cardsNeeded == 0)
+		{
+			var heroHand = new DrawHand(cardsToKeep.ToList());
+			handTypeCounts[heroHand.Type] = simulations;
+			return CreateResult(handTypeCounts, simulations);
+		}
+
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			// Remove known cards from the deck
+			var knownCards = cardsToKeep.Concat(deadCards).Distinct();
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			// Build the final hand: kept cards + drawn replacements
+			var finalHand = cardsToKeep.ToList();
+			for (int j = 0; j < cardsNeeded; j++)
+			{
+				finalHand.Add(dealer.DealCard());
+			}
+
+			var heroHand = new DrawHand(finalHand);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for an Omaha hand.
+	/// </summary>
+	public static OddsResult CalculateOmahaOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> communityCards,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var remainingCommunityCount = 5 - communityCards.Count;
+			var simulatedCommunity = communityCards.ToList();
+			for (int j = 0; j < remainingCommunityCount; j++)
+			{
+				simulatedCommunity.Add(dealer.DealCard());
+			}
+
+			var heroHand = new OmahaHand(heroHoleCards, simulatedCommunity);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a Nebraska hand.
+	///     Rules: exactly 3 hole cards and exactly 2 community cards must be used.
+	/// </summary>
+	public static OddsResult CalculateNebraskaOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> communityCards,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		if (heroHoleCards.Count < 3)
+		{
+			throw new ArgumentException($"Expected at least 3 hole cards for Nebraska, but got {heroHoleCards.Count}");
+		}
+
+		if (communityCards.Count > 5)
+		{
+			throw new ArgumentException($"Expected at most 5 community cards, but got {communityCards.Count}");
+		}
+
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var simulatedCommunity = communityCards.ToList();
+			while (simulatedCommunity.Count < 5)
+			{
+				simulatedCommunity.Add(dealer.DealCard());
+			}
+
+			var heroHand = new NebraskaHand(heroHoleCards, simulatedCommunity);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	/// <summary>
+	///     Calculates odds for a South Dakota hand.
+	///     Rules: exactly 3 hole cards and exactly 2 community cards must be used,
+	///     with a 3-card total board (2-card flop + turn + no river).
+	/// </summary>
+	public static OddsResult CalculateSouthDakotaOdds(
+		IReadOnlyCollection<Card> heroHoleCards,
+		IReadOnlyCollection<Card> communityCards,
+		IReadOnlyCollection<Card> deadCards = null,
+		int simulations = DefaultSimulations)
+	{
+		if (heroHoleCards.Count < 3)
+		{
+			throw new ArgumentException(
+				$"Expected at least 3 hole cards for South Dakota, but got {heroHoleCards.Count}");
+		}
+
+		if (communityCards.Count > 3)
+		{
+			throw new ArgumentException(
+				$"Expected at most 3 community cards for South Dakota, but got {communityCards.Count}");
+		}
+
+		deadCards ??= Array.Empty<Card>();
+		var handTypeCounts = InitializeHandTypeCounts();
+		var dealer = FrenchDeckDealer.WithFullDeck();
+
+		for (int i = 0; i < simulations; i++)
+		{
+			dealer.Shuffle();
+
+			var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
+			foreach (var card in knownCards)
+			{
+				dealer.DealSpecific(card);
+			}
+
+			var simulatedCommunity = communityCards.ToList();
+			while (simulatedCommunity.Count < 3)
+			{
+				simulatedCommunity.Add(dealer.DealCard());
+			}
+
+			var heroHand = new NebraskaHand(heroHoleCards, simulatedCommunity);
+			handTypeCounts[heroHand.Type]++;
+		}
+
+		return CreateResult(handTypeCounts, simulations);
+	}
+
+	private static Dictionary<HandType, int> InitializeHandTypeCounts()
+	{
+		return Enum.GetValues<HandType>()
+			.Where(t => t != HandType.Incomplete)
+			.ToDictionary(t => t, _ => 0);
+	}
+
+	private static List<PairPressureSeatState> BuildPairPressureSeatStates(
+		int heroCardCount,
+		int heroSeatIndex,
+		IReadOnlyCollection<PairPressurePlayerSnapshot> snapshots)
+	{
+		var seatStates = new List<PairPressureSeatState>
+		{
+			new()
+			{
+				SeatIndex = heroSeatIndex,
+				TotalCardsDealt = heroCardCount,
+				ReceivesFutureCards = heroCardCount < 7,
+				IsHero = true
+			}
+		};
+
+		seatStates.AddRange(snapshots.Select(snapshot => new PairPressureSeatState
+		{
+			SeatIndex = snapshot.SeatIndex,
+			TotalCardsDealt = snapshot.TotalCardsDealt,
+			ReceivesFutureCards = snapshot.ReceivesFutureCards,
+			IsHero = false
+		}));
+
+		return seatStates;
+	}
+
+	private static List<Card> BuildPairPressureFaceUpCardsInOrder(
+		IReadOnlyCollection<Card> heroCards,
+		int heroSeatIndex,
+		int dealerSeatIndex,
+		IReadOnlyCollection<PairPressurePlayerSnapshot> snapshots)
+	{
+		var visibleCardsBySeat = snapshots.ToDictionary(
+			snapshot => snapshot.SeatIndex,
+			snapshot => snapshot.FaceUpCardsInOrder.ToList());
+
+		visibleCardsBySeat[heroSeatIndex] = GetHeroFaceUpCards(heroCards).ToList();
+
+		var seatOrder = visibleCardsBySeat.Keys
+			.OrderBy(seatIndex => GetStudRotationOrder(seatIndex, dealerSeatIndex))
+			.ToList();
+
+		var maxVisibleCards = visibleCardsBySeat.Values.DefaultIfEmpty([]).Max(cards => cards.Count);
+		var faceUpCardsInOrder = new List<Card>();
+
+		for (var visibleIndex = 0; visibleIndex < maxVisibleCards; visibleIndex++)
+		{
+			foreach (var seatIndex in seatOrder)
+			{
+				var visibleCards = visibleCardsBySeat[seatIndex];
+				if (visibleCards.Count <= visibleIndex)
+				{
+					continue;
+				}
+
+				faceUpCardsInOrder.Add(visibleCards[visibleIndex]);
+			}
+		}
+
+		return faceUpCardsInOrder;
+	}
+
+	private static IReadOnlyCollection<Card> GetHeroFaceUpCards(IReadOnlyCollection<Card> heroCards)
+	{
+		var orderedHeroCards = heroCards.ToList();
+		var visibleCardCount = orderedHeroCards.Count switch
+		{
+			<= 2 => 0,
+			<= 6 => orderedHeroCards.Count - 2,
+			_ => 4
+		};
+
+		return orderedHeroCards
+			.Skip(2)
+			.Take(visibleCardCount)
+			.ToList();
+	}
+
+	private static bool IsPairPressureFaceUpCardPosition(int totalCardsDealt)
+	{
+		return totalCardsDealt is >= 3 and <= 6;
+	}
+
+	private static int GetStudRotationOrder(int seatIndex, int dealerSeatIndex)
+	{
+		return seatIndex > dealerSeatIndex ? seatIndex : seatIndex + 1000;
+	}
+
+	private static PairPressureHand CreatePairPressureHand(
+		IReadOnlyCollection<Card> heroCards,
+		IReadOnlyCollection<Card> faceUpCardsInOrder)
+	{
+		var orderedHeroCards = heroCards.ToList();
+		if (orderedHeroCards.Count < 7)
+		{
+			throw new ArgumentException(
+				$"Expected 7 hero cards for Pair Pressure hand evaluation, but got {orderedHeroCards.Count}");
+		}
+
+		return new PairPressureHand(
+			orderedHeroCards.Take(2).ToList(),
+			orderedHeroCards.Skip(2).Take(4).ToList(),
+			orderedHeroCards[6],
+			faceUpCardsInOrder);
+	}
+
+	private static HandBase CreateStudHand(IReadOnlyCollection<Card> cards)
+	{
+		if (cards.Count < 7)
+		{
+			throw new ArgumentException($"Expected at least 7 cards for stud hand, but got {cards.Count}");
+		}
+
+		var cardList = cards.ToList();
+		return new SevenCardStudHand(
+			cardList.Take(2).ToList(),
+			cardList.Skip(2).Take(4).ToList(),
+			cardList.Last());
+	}
+
+	private static HandBase CreateRazzHand(IReadOnlyCollection<Card> cards)
+	{
+		if (cards.Count < 7)
+		{
+			throw new ArgumentException($"Expected at least 7 cards for razz hand, but got {cards.Count}");
+		}
+
+		var cardList = cards.ToList();
+		return new RazzHand(
+			cardList.Take(2).ToList(),
+			cardList.Skip(2).Take(4).ToList(),
+			[cardList.Last()]);
+	}
+
+	private static OddsResult CreateResult(Dictionary<HandType, int> handTypeCounts, int simulations)
+	{
+		var handTypeProbabilities = handTypeCounts
+			.Where(kvp => kvp.Value > 0)
+			.ToDictionary(
+				kvp => kvp.Key,
+				kvp => (decimal)kvp.Value / simulations);
+
+		return new OddsResult
+		{
+			HandTypeProbabilities = handTypeProbabilities
+		};
+	}
+
+	/// <summary>
+	///     Result of an odds calculation containing hand type probabilities.
+	/// </summary>
+	public sealed record OddsResult
+	{
+		/// <summary>
+		///     Probability of ending with each hand type (e.g., Pair, Flush, Full House).
+		/// </summary>
+		public required IReadOnlyDictionary<HandType, decimal> HandTypeProbabilities { get; init; }
+	}
+
+	/// <summary>
+	///     Snapshot of a non-hero Pair Pressure seat for table-aware odds simulation.
+	/// </summary>
+	public sealed record PairPressurePlayerSnapshot
+	{
+		public required int SeatIndex { get; init; }
+
+		public required int TotalCardsDealt { get; init; }
+
+		public required IReadOnlyCollection<Card> FaceUpCardsInOrder { get; init; }
+
+		public required bool ReceivesFutureCards { get; init; }
+	}
+
+	private sealed class PairPressureSeatState
+	{
+		public required int SeatIndex { get; init; }
+
+		public required int TotalCardsDealt { get; set; }
+
+		public required bool ReceivesFutureCards { get; init; }
+
+		public required bool IsHero { get; init; }
+	}
 }

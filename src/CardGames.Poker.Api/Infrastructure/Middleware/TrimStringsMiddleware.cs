@@ -42,6 +42,7 @@ public class TrimStringsMiddleware
 		var trimmedDictionary = TrimJsonElement(root);
 		return JsonSerializer.Serialize(trimmedDictionary);
 	}
+
 	private Dictionary<string, object?> TrimJsonElement(JsonElement element)
 	{
 		var result = new Dictionary<string, object?>();
@@ -74,6 +75,7 @@ public class TrimStringsMiddleware
 						list.Add(arrayElement.ToString());
 					}
 				}
+
 				result[property.Name] = list;
 			}
 			else

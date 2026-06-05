@@ -9,12 +9,12 @@ using CoreSymbol = CardGames.Core.French.Cards.Symbol;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentPlayerTurn;
 
 /// <summary>
-/// Service for calculating poker hand odds based on current cards.
+///     Service for calculating poker hand odds based on current cards.
 /// </summary>
 public static class HandOddsCalculationService
 {
 	/// <summary>
-	/// Calculates the odds of achieving each hand type for a Seven Card Stud hand.
+	///     Calculates the odds of achieving each hand type for a Seven Card Stud hand.
 	/// </summary>
 	/// <param name="heroCards">The player's current hand cards.</param>
 	/// <param name="deadCards">Cards that are known to be out of play (e.g., folded players' cards).</param>
@@ -40,7 +40,7 @@ public static class HandOddsCalculationService
 	}
 
 	/// <summary>
-	/// Calculates the odds of achieving each hand type for a Seven Card Stud hand.
+	///     Calculates the odds of achieving each hand type for a Seven Card Stud hand.
 	/// </summary>
 	/// <param name="heroCards">The player's current hand cards as GameCard entities.</param>
 	/// <param name="deadCards">Cards that are known to be out of play.</param>
@@ -78,7 +78,7 @@ public static class HandOddsCalculationService
 	{
 		var suit = (CoreSuit)(int)gameCard.Suit;
 		var symbol = (CoreSymbol)(int)gameCard.Symbol;
-		
+
 		return new Card(suit, symbol);
 	}
 
@@ -111,18 +111,21 @@ public static class HandOddsCalculationService
 		return new HandOddsResponse(probabilities);
 	}
 
-	private static string GetDisplayName(HandType handType) => handType switch
+	private static string GetDisplayName(HandType handType)
 	{
-		HandType.HighCard => "High Card",
-		HandType.OnePair => "One Pair",
-		HandType.TwoPair => "Two Pair",
-		HandType.Trips => "Three of a Kind",
-		HandType.Straight => "Straight",
-		HandType.Flush => "Flush",
-		HandType.FullHouse => "Full House",
-		HandType.Quads => "Four of a Kind",
-		HandType.StraightFlush => "Straight Flush",
-		HandType.FiveOfAKind => "Five of a Kind",
-		_ => handType.ToString()
-	};
+		return handType switch
+		{
+			HandType.HighCard => "High Card",
+			HandType.OnePair => "One Pair",
+			HandType.TwoPair => "Two Pair",
+			HandType.Trips => "Three of a Kind",
+			HandType.Straight => "Straight",
+			HandType.Flush => "Flush",
+			HandType.FullHouse => "Full House",
+			HandType.Quads => "Four of a Kind",
+			HandType.StraightFlush => "Straight Flush",
+			HandType.FiveOfAKind => "Five of a Kind",
+			_ => handType.ToString()
+		};
+	}
 }

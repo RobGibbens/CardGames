@@ -2,15 +2,15 @@
 
 public enum HandType
 {
-    Incomplete,
-    HighCard,
-    OnePair,
-    TwoPair,
-    Trips,
-    Straight,
-    Flush,
-    FullHouse,
-    Quads,
-    StraightFlush,
-    FiveOfAKind
+	Incomplete,
+	HighCard,
+	OnePair,
+	TwoPair,
+	Trips,
+	Straight,
+	Flush,
+	FullHouse,
+	Quads,
+	StraightFlush,
+	FiveOfAKind
 }

@@ -15,8 +15,10 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using BettingRoundEntity = CardGames.Poker.Api.Data.Entities.BettingRound;
-using PairPressureGetCurrentPlayerTurnQueryHandler = CardGames.Poker.Api.Features.Games.PairPressure.v1.Queries.GetCurrentPlayerTurn.GetCurrentPlayerTurnQueryHandler;
-using SharedGetCurrentPlayerTurnQueryHandler = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentPlayerTurn.GetCurrentPlayerTurnQueryHandler;
+using PairPressureGetCurrentPlayerTurnQueryHandler =
+	CardGames.Poker.Api.Features.Games.PairPressure.v1.Queries.GetCurrentPlayerTurn.GetCurrentPlayerTurnQueryHandler;
+using SharedGetCurrentPlayerTurnQueryHandler =
+	CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentPlayerTurn.GetCurrentPlayerTurnQueryHandler;
 
 namespace CardGames.Poker.Tests.Api.Features.Games.PairPressure.v1.Queries.GetCurrentPlayerTurn;
 
@@ -26,7 +28,7 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 	public async Task Handle_WhenGameIsMissing_ReturnsNull()
 	{
 		await using var context = CreateContext(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot());
-		using var serviceProvider = CreateServiceProvider();
+		await using var serviceProvider = CreateServiceProvider();
 		var sut = CreateSut(context, serviceProvider.GetRequiredService<HybridCache>());
 
 		var response = await sut.Handle(new GetCurrentPlayerTurnQuery(Guid.NewGuid()), CancellationToken.None);
@@ -40,7 +42,7 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		var databaseName = Guid.NewGuid().ToString();
 		var databaseRoot = new InMemoryDatabaseRoot();
 		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot, currentPlayerIndex: 4);
-		using var serviceProvider = CreateServiceProvider();
+		await using var serviceProvider = CreateServiceProvider();
 
 		await using var context = CreateContext(databaseName, databaseRoot);
 		var sut = CreateSut(context, serviceProvider.GetRequiredService<HybridCache>());
@@ -56,7 +58,7 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		var databaseName = Guid.NewGuid().ToString();
 		var databaseRoot = new InMemoryDatabaseRoot();
 		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot);
-		using var serviceProvider = CreateServiceProvider();
+		await using var serviceProvider = CreateServiceProvider();
 		var query = new GetCurrentPlayerTurnQuery(gameId);
 
 		var results = await Task.WhenAll(Enumerable.Range(0, 20)
@@ -75,7 +77,8 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		results[0]!.HandOdds.Should().NotBeNull();
 	}
 
-	private static PairPressureGetCurrentPlayerTurnQueryHandler CreateSut(CardsDbContext context, HybridCache hybridCache)
+	private static PairPressureGetCurrentPlayerTurnQueryHandler CreateSut(CardsDbContext context,
+		HybridCache hybridCache)
 	{
 		var innerHandler = new SharedGetCurrentPlayerTurnQueryHandler(context, hybridCache);
 		return new PairPressureGetCurrentPlayerTurnQueryHandler(innerHandler);
@@ -93,9 +96,9 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 	private static ServiceProvider CreateServiceProvider()
 	{
 		var services = new ServiceCollection();
-		#pragma warning disable EXTEXP0018
+#pragma warning disable EXTEXP0018
 		services.AddHybridCache();
-		#pragma warning restore EXTEXP0018
+#pragma warning restore EXTEXP0018
 		return services.BuildServiceProvider();
 	}
 
@@ -224,7 +227,8 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		return gameId;
 	}
 
-	private static GameCard CreateHoleCard(Game game, GamePlayer player, int cardIndex, CardSymbol symbol, DateTimeOffset now)
+	private static GameCard CreateHoleCard(Game game, GamePlayer player, int cardIndex, CardSymbol symbol,
+		DateTimeOffset now)
 	{
 		return new GameCard
 		{

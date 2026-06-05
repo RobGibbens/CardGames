@@ -4,7 +4,7 @@ using CardGames.Poker.Games.GameFlow;
 namespace CardGames.Poker.Games.Tollbooth;
 
 /// <summary>
-/// Provides game rules metadata for Tollbooth.
+///     Provides game rules metadata for Tollbooth.
 /// </summary>
 public static class TollboothRules
 {
@@ -14,7 +14,8 @@ public static class TollboothRules
 		{
 			GameTypeCode = "TOLLBOOTH",
 			GameTypeName = "Tollbooth",
-			Description = "A Seven Card Stud variant where players choose their Fourth through Seventh street cards from a Tollbooth offer: the furthest display card (free), the nearest display card (1× ante), or the top deck card (2× ante).",
+			Description =
+				"A Seven Card Stud variant where players choose their Fourth through Seventh street cards from a Tollbooth offer: the furthest display card (free), the nearest display card (1× ante), or the top deck card (2× ante).",
 			MinPlayers = 2,
 			MaxPlayers = 7,
 			Phases = new List<GamePhaseDescriptor>
@@ -48,7 +49,8 @@ public static class TollboothRules
 				{
 					PhaseId = "TollboothOffer",
 					Name = "Tollbooth Offer",
-					Description = "Each player chooses a card: furthest display card (free), nearest display card (1× ante), or top deck card (2× ante)",
+					Description =
+						"Each player chooses a card: furthest display card (free), nearest display card (1× ante), or top deck card (2× ante)",
 					Category = "Drawing",
 					RequiresPlayerAction = true,
 					AvailableActions = ["ChooseFurthest", "ChooseNearest", "ChooseDeck"]
@@ -142,8 +144,10 @@ public static class TollboothRules
 				["BringInOnLowestCard"] = true,
 				["MaxPlayerCards"] = 7,
 				["SuitOrderForBringIn"] = "Clubs, Diamonds, Hearts, Spades (lowest to highest)",
-				["TollboothOffer"] = "After Third Street, each subsequent street's card is acquired via Tollbooth offer: furthest display card (free), nearest display card (1× ante), or deck card (2× ante).",
-				["TollboothDisplayCards"] = "Two face-up cards on the table are visible to all but are NOT community cards for evaluation."
+				["TollboothOffer"] =
+					"After Third Street, each subsequent street's card is acquired via Tollbooth offer: furthest display card (free), nearest display card (1× ante), or deck card (2× ante).",
+				["TollboothDisplayCards"] =
+					"Two face-up cards on the table are visible to all but are NOT community cards for evaluation."
 			}
 		};
 	}

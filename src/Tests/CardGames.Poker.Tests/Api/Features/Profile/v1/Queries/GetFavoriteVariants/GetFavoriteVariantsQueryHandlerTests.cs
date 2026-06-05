@@ -39,7 +39,8 @@ public class GetFavoriteVariantsQueryHandlerTests
 
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
-			await SeedUserAsync(setupContext, userId, userName: "favorite-json-user", email: "favorite-json@example.com");
+			await SeedUserAsync(setupContext, userId, userName: "favorite-json-user",
+				email: "favorite-json@example.com");
 			await SeedPreferencesAsync(setupContext, userId, "not valid json");
 		}
 
@@ -78,7 +79,7 @@ public class GetFavoriteVariantsQueryHandlerTests
 
 		var result = await sut.Handle(new GetFavoriteVariantsQuery(), CancellationToken.None);
 
-		result.FavoriteVariantCodes.Should().Equal(["DEALERSCHOICE", "HOLDEM"]);
+		result.FavoriteVariantCodes.Should().Equal("DEALERSCHOICE", "HOLDEM");
 	}
 
 	private static CardsDbContext CreateContext()
@@ -123,7 +124,8 @@ public class GetFavoriteVariantsQueryHandlerTests
 		await context.SaveChangesAsync();
 	}
 
-	private static async Task SeedPreferencesAsync(CardsDbContext context, string userId, string favoriteVariantCodesJson)
+	private static async Task SeedPreferencesAsync(CardsDbContext context, string userId,
+		string favoriteVariantCodesJson)
 	{
 		var now = DateTimeOffset.UtcNow;
 		context.UserGamePreferences.Add(new UserGamePreferences

@@ -122,14 +122,15 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 			await seedContext.SaveChangesAsync();
 		}
 
-		using var serviceProvider = CreateServiceProvider();
+		await using var serviceProvider = CreateServiceProvider();
 		var query = new GetCurrentPlayerTurnQuery(gameId);
 
 		var results = await Task.WhenAll(Enumerable.Range(0, 20)
 			.Select(async _ =>
 			{
 				await using var context = CreateContext(databaseName, databaseRoot);
-				var sut = new GetCurrentPlayerTurnQueryHandler(context, serviceProvider.GetRequiredService<HybridCache>());
+				var sut = new GetCurrentPlayerTurnQueryHandler(context,
+					serviceProvider.GetRequiredService<HybridCache>());
 				return await sut.Handle(query, CancellationToken.None);
 			}));
 
@@ -152,9 +153,9 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 	private static ServiceProvider CreateServiceProvider()
 	{
 		var services = new ServiceCollection();
-		#pragma warning disable EXTEXP0018
+#pragma warning disable EXTEXP0018
 		services.AddHybridCache();
-		#pragma warning restore EXTEXP0018
+#pragma warning restore EXTEXP0018
 		return services.BuildServiceProvider();
 	}
 }

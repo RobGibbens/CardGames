@@ -4,11 +4,7 @@ namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
 
 public record ChooseCardSuccessful : IPlayerActionResult
 {
-	public Guid GameId { get; init; }
-
 	public required string PlayerName { get; init; }
-
-	public int PlayerSeatIndex { get; init; }
 
 	public TollboothChoice Choice { get; init; }
 
@@ -21,6 +17,9 @@ public record ChooseCardSuccessful : IPlayerActionResult
 	public int NextPlayerSeatIndex { get; init; }
 
 	public string? NextPlayerName { get; init; }
+	public Guid GameId { get; init; }
+
+	public int PlayerSeatIndex { get; init; }
 
 	string? IPlayerActionResult.PlayerName => PlayerName;
 

@@ -6,20 +6,20 @@ using CardGames.Poker.Betting;
 namespace CardGames.Poker.Games.PairPressure;
 
 /// <summary>
-/// Represents a player in a Pair Pressure game with their cards and betting state.
+///     Represents a player in a Pair Pressure game with their cards and betting state.
 /// </summary>
 public class PairPressureGamePlayer
 {
-	public PokerPlayer Player { get; }
-	public List<Card> HoleCards { get; private set; } = new();
-	public List<Card> BoardCards { get; private set; } = new();
-
-	public IEnumerable<Card> AllCards => HoleCards.Concat(BoardCards);
-
 	public PairPressureGamePlayer(PokerPlayer player)
 	{
 		Player = player;
 	}
+
+	public PokerPlayer Player { get; }
+	public List<Card> HoleCards { get; } = [];
+	public List<Card> BoardCards { get; } = [];
+
+	public IEnumerable<Card> AllCards => HoleCards.Concat(BoardCards);
 
 	public void AddHoleCard(Card card)
 	{

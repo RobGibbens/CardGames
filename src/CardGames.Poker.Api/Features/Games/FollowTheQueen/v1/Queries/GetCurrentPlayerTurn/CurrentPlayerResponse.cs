@@ -4,7 +4,7 @@ using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Queries.GetCurrentPlayerTurn;
 
 /// <summary>
-/// Response containing the current player's state within a specific game.
+///     Response containing the current player's state within a specific game.
 /// </summary>
 public record CurrentPlayerResponse(
 	Guid Id,

@@ -8,7 +8,8 @@ public static class ProcessBuyCardEndpoint
 	public static RouteGroupBuilder MapProcessBuyCard(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/buy-card",
-				async (Guid gameId, ProcessBuyCardRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, ProcessBuyCardRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					if (request.PlayerId == Guid.Empty)
 					{
@@ -25,7 +26,8 @@ public static class ProcessBuyCardEndpoint
 							ProcessBuyCardErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
 							ProcessBuyCardErrorCode.InvalidGameState => Results.Conflict(new { error.Message }),
 							ProcessBuyCardErrorCode.NoPendingOffer => Results.Conflict(new { error.Message }),
-							ProcessBuyCardErrorCode.InsufficientChips => Results.UnprocessableEntity(new { error.Message }),
+							ProcessBuyCardErrorCode.InsufficientChips => Results.UnprocessableEntity(new
+								{ error.Message }),
 							_ => Results.Problem(error.Message)
 						}
 					);
@@ -33,7 +35,7 @@ public static class ProcessBuyCardEndpoint
 			.WithName($"Baseball{nameof(MapProcessBuyCard).TrimPrefix("Map")}")
 			.WithSummary("Process Buy Card")
 			.WithDescription("Processes a buy-card decision for Baseball poker when a 4 is dealt face-up.")
-			.Produces<ProcessBuyCardSuccessful>(StatusCodes.Status200OK)
+			.Produces<ProcessBuyCardSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status409Conflict)

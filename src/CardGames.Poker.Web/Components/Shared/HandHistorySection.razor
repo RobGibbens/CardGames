@@ -1,10 +1,10 @@
-@namespace CardGames.Poker.Web.Components.Shared
 @using CardGames.Contracts.SignalR
 @using CardGames.Core.French.Cards
 @using CardGames.Core.French.Cards.Extensions
 @using CardGames.Poker.Evaluation
 @using CardGames.Poker.Hands
 @using CardGames.Poker.Hands.DrawHands
+@namespace CardGames.Poker.Web.Components.Shared
 
 <div class="hand-history-section">
 	@if (Entries is not null && Entries.Any())
@@ -13,12 +13,12 @@
 			@foreach (var entry in Entries.OrderByDescending(e => e.HandNumber))
 			{
 				var isExpanded = _expandedHandNumbers.Contains(entry.HandNumber);
-				
+
 				<div class="history-entry" role="listitem">
-					<button class="history-entry-header @(isExpanded ? "expanded" : "")" 
-							@onclick="() => ToggleHandExpansion(entry.HandNumber)"
-							aria-expanded="@isExpanded"
-							title="@(isExpanded ? "Click to collapse" : "Click to expand for player details")">
+					<button class="history-entry-header @(isExpanded ? "expanded" : "")"
+					        @onclick="() => ToggleHandExpansion(entry.HandNumber)"
+					        aria-expanded="@isExpanded"
+					        title="@(isExpanded ? "Click to collapse" : "Click to expand for player details")">
 						<span class="expand-icon">
 							<i class="fa-solid @(isExpanded ? "fa-chevron-down" : "fa-chevron-right")" aria-hidden="true"></i>
 						</span>
@@ -34,7 +34,7 @@
 						</span>
 						<span class="amount-won">+@entry.AmountWon.ToString("N0")</span>
 					</button>
-					
+
 					@if (isExpanded && entry.PlayerResults.Any())
 					{
 						<div class="player-results-container">
@@ -67,20 +67,21 @@
 </div>
 
 @code {
+
 	/// <summary>
-	/// The list of hand history entries to display.
+	///     The list of hand history entries to display.
 	/// </summary>
 	[Parameter]
 	public IReadOnlyList<HandHistoryEntryDto>? Entries { get; set; }
 
 	/// <summary>
-	/// The game type code (e.g. KINGSANDLOWS) to use for hand evaluation.
+	///     The game type code (e.g. KINGSANDLOWS) to use for hand evaluation.
 	/// </summary>
 	[Parameter]
 	public string? GameTypeCode { get; set; }
 
 	/// <summary>
-	/// Set of hand numbers that are currently expanded.
+	///     Set of hand numbers that are currently expanded.
 	/// </summary>
 	private readonly HashSet<int> _expandedHandNumbers = [];
 
@@ -102,6 +103,7 @@
 		{
 			return $"{entry.WinnerName} (Split {entry.WinnerCount}-way)";
 		}
+
 		return entry.WinnerName;
 	}
 
@@ -139,6 +141,7 @@
 		{
 			return new MarkupString($"{cards}<br/>({handDescription})");
 		}
+
 		return new MarkupString(cards);
 	}
 
@@ -185,4 +188,5 @@
 
 		return null;
 	}
+
 }

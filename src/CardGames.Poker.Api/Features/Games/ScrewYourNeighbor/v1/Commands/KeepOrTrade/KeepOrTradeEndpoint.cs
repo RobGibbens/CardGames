@@ -15,7 +15,7 @@ public static class KeepOrTradeEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => Results.Problem(
 							title: "Keep or trade error",
 							detail: error.Message,
@@ -27,7 +27,7 @@ public static class KeepOrTradeEndpoint
 			.WithName($"ScrewYourNeighbor{nameof(MapKeepOrTrade).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapKeepOrTrade).TrimPrefix("Map"))
 			.WithDescription("Record a player's keep or trade decision in Screw Your Neighbor.")
-			.Produces<KeepOrTradeSuccessful>(StatusCodes.Status200OK)
+			.Produces<KeepOrTradeSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -36,6 +36,6 @@ public static class KeepOrTradeEndpoint
 }
 
 /// <summary>
-/// Request body for keep or trade decision.
+///     Request body for keep or trade decision.
 /// </summary>
 public record KeepOrTradeRequest(Guid PlayerId, string Decision);

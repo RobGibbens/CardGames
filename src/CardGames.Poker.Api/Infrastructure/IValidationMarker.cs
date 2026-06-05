@@ -1,3 +1,5 @@
 ﻿namespace CardGames.Poker.Api.Infrastructure;
 
-public interface IValidationMarker { }
+public interface IValidationMarker
+{
+}

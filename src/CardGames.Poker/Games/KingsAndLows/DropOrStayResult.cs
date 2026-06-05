@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace CardGames.Poker.Games.KingsAndLows;
 
 /// <summary>
-/// Result of the drop-or-stay phase.
+///     Result of the drop-or-stay phase.
 /// </summary>
 public class DropOrStayResult
 {

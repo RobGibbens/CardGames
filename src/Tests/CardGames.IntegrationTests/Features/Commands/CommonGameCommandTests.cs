@@ -1,191 +1,192 @@
 namespace CardGames.IntegrationTests.Features.Commands;
 
 /// <summary>
-/// Integration tests for additional common game commands.
-/// Tests ToggleSitOut, DeleteGame, UpdateTableSettings, and LeaveGame.
+///     Integration tests for additional common game commands.
+///     Tests ToggleSitOut, DeleteGame, UpdateTableSettings, and LeaveGame.
 /// </summary>
 public class CommonGameCommandTests : IntegrationTestBase
 {
-    #region ToggleSitOut Tests
+	#region ToggleSitOut Tests
 
-    [Fact]
-    public async Task ToggleSitOut_MarkPlayerSittingOut()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
-        var player = setup.GamePlayers[0];
-        player.IsSittingOut.Should().BeFalse();
+	[Fact]
+	public async Task ToggleSitOut_MarkPlayerSittingOut()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+		var player = setup.GamePlayers[0];
+		player.IsSittingOut.Should().BeFalse();
 
-        // Simulate toggling sit out in database
-        player.IsSittingOut = true;
-        await DbContext.SaveChangesAsync();
+		// Simulate toggling sit out in database
+		player.IsSittingOut = true;
+		await DbContext.SaveChangesAsync();
 
-        // Assert
-        var updatedPlayer = await GetFreshDbContext().GamePlayers
-            .FirstAsync(gp => gp.Id == player.Id);
-        updatedPlayer.IsSittingOut.Should().BeTrue();
-    }
+		// Assert
+		var updatedPlayer = await GetFreshDbContext().GamePlayers
+			.FirstAsync(gp => gp.Id == player.Id);
+		updatedPlayer.IsSittingOut.Should().BeTrue();
+	}
 
-    [Fact]
-    public async Task ToggleSitOut_UnmarkPlayerSittingOut()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
-        var player = setup.GamePlayers[0];
-        player.IsSittingOut = true;
-        await DbContext.SaveChangesAsync();
+	[Fact]
+	public async Task ToggleSitOut_UnmarkPlayerSittingOut()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+		var player = setup.GamePlayers[0];
+		player.IsSittingOut = true;
+		await DbContext.SaveChangesAsync();
 
-        // Simulate toggling back
-        player.IsSittingOut = false;
-        await DbContext.SaveChangesAsync();
+		// Simulate toggling back
+		player.IsSittingOut = false;
+		await DbContext.SaveChangesAsync();
 
-        // Assert
-        var updatedPlayer = await GetFreshDbContext().GamePlayers
-            .FirstAsync(gp => gp.Id == player.Id);
-        updatedPlayer.IsSittingOut.Should().BeFalse();
-    }
+		// Assert
+		var updatedPlayer = await GetFreshDbContext().GamePlayers
+			.FirstAsync(gp => gp.Id == player.Id);
+		updatedPlayer.IsSittingOut.Should().BeFalse();
+	}
 
-    #endregion
+	#endregion
 
-    #region DeleteGame Tests
+	#region DeleteGame Tests
 
-    [Fact]
-    public async Task DeleteGame_SoftDeletesGame()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
-        setup.Game.IsDeleted.Should().BeFalse();
+	[Fact]
+	public async Task DeleteGame_SoftDeletesGame()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+		setup.Game.IsDeleted.Should().BeFalse();
 
-        // Simulate soft delete
-        setup.Game.IsDeleted = true;
-        setup.Game.DeletedAt = DateTimeOffset.UtcNow;
-        await DbContext.SaveChangesAsync();
+		// Simulate soft delete
+		setup.Game.IsDeleted = true;
+		setup.Game.DeletedAt = DateTimeOffset.UtcNow;
+		await DbContext.SaveChangesAsync();
 
-        // Assert
-        var deletedGame = await GetFreshDbContext().Games
-            .FirstAsync(g => g.Id == setup.Game.Id);
-        deletedGame.IsDeleted.Should().BeTrue();
-        deletedGame.DeletedAt.Should().NotBeNull();
-    }
+		// Assert
+		var deletedGame = await GetFreshDbContext().Games
+			.FirstAsync(g => g.Id == setup.Game.Id);
+		deletedGame.IsDeleted.Should().BeTrue();
+		deletedGame.DeletedAt.Should().NotBeNull();
+	}
 
-    [Fact]
-    public async Task DeleteGame_QueryExcludesDeletedGames()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
-        
-        // Soft delete
-        setup.Game.IsDeleted = true;
-        await DbContext.SaveChangesAsync();
+	[Fact]
+	public async Task DeleteGame_QueryExcludesDeletedGames()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
 
-        // Act - Query for non-deleted games
-        var games = await GetFreshDbContext().Games
-            .Where(g => !g.IsDeleted)
-            .ToListAsync();
+		// Soft delete
+		setup.Game.IsDeleted = true;
+		await DbContext.SaveChangesAsync();
 
-        // Assert
-        games.Should().NotContain(g => g.Id == setup.Game.Id);
-    }
+		// Act - Query for non-deleted games
+		var games = await GetFreshDbContext().Games
+			.Where(g => !g.IsDeleted)
+			.ToListAsync();
 
-    #endregion
+		// Assert
+		games.Should().NotContain(g => g.Id == setup.Game.Id);
+	}
 
-    #region UpdateTableSettings Tests
+	#endregion
 
-    [Fact]
-    public async Task UpdateTableSettings_UpdatesAnte()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4, ante: 10);
-        setup.Game.Ante.Should().Be(10);
+	#region UpdateTableSettings Tests
 
-        // Update ante
-        setup.Game.Ante = 25;
-        await DbContext.SaveChangesAsync();
+	[Fact]
+	public async Task UpdateTableSettings_UpdatesAnte()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4, ante: 10);
+		setup.Game.Ante.Should().Be(10);
 
-        // Assert
-        var updatedGame = await GetFreshDbContext().Games
-            .FirstAsync(g => g.Id == setup.Game.Id);
-        updatedGame.Ante.Should().Be(25);
-    }
+		// Update ante
+		setup.Game.Ante = 25;
+		await DbContext.SaveChangesAsync();
 
-    [Fact]
-    public async Task UpdateTableSettings_UpdatesMinBet()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+		// Assert
+		var updatedGame = await GetFreshDbContext().Games
+			.FirstAsync(g => g.Id == setup.Game.Id);
+		updatedGame.Ante.Should().Be(25);
+	}
 
-        // Update min bet
-        setup.Game.MinBet = 50;
-        await DbContext.SaveChangesAsync();
+	[Fact]
+	public async Task UpdateTableSettings_UpdatesMinBet()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
 
-        // Assert
-        var updatedGame = await GetFreshDbContext().Games
-            .FirstAsync(g => g.Id == setup.Game.Id);
-        updatedGame.MinBet.Should().Be(50);
-    }
+		// Update min bet
+		setup.Game.MinBet = 50;
+		await DbContext.SaveChangesAsync();
 
-    #endregion
+		// Assert
+		var updatedGame = await GetFreshDbContext().Games
+			.FirstAsync(g => g.Id == setup.Game.Id);
+		updatedGame.MinBet.Should().Be(50);
+	}
 
-    #region LeaveGame Tests
+	#endregion
 
-    [Fact]
-    public async Task LeaveGame_MarksPlayerAsLeft()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
-        var player = setup.GamePlayers[0];
-        player.Status.Should().Be(GamePlayerStatus.Active);
+	#region LeaveGame Tests
 
-        // Mark as left
-        player.Status = GamePlayerStatus.Left;
-        player.LeftAt = DateTimeOffset.UtcNow;
-        await DbContext.SaveChangesAsync();
+	[Fact]
+	public async Task LeaveGame_MarksPlayerAsLeft()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+		var player = setup.GamePlayers[0];
+		player.Status.Should().Be(GamePlayerStatus.Active);
 
-        // Assert
-        var leftPlayer = await GetFreshDbContext().GamePlayers
-            .FirstAsync(gp => gp.Id == player.Id);
-        leftPlayer.Status.Should().Be(GamePlayerStatus.Left);
-        leftPlayer.LeftAt.Should().NotBeNull();
-    }
+		// Mark as left
+		player.Status = GamePlayerStatus.Left;
+		player.LeftAt = DateTimeOffset.UtcNow;
+		await DbContext.SaveChangesAsync();
 
-    [Fact]
-    public async Task LeaveGame_RecordsFinalChipCount()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4, startingChips: 1000);
-        var player = setup.GamePlayers[0];
+		// Assert
+		var leftPlayer = await GetFreshDbContext().GamePlayers
+			.FirstAsync(gp => gp.Id == player.Id);
+		leftPlayer.Status.Should().Be(GamePlayerStatus.Left);
+		leftPlayer.LeftAt.Should().NotBeNull();
+	}
 
-        // Set final chip count and leave
-        player.Status = GamePlayerStatus.Left;
-        player.FinalChipCount = player.ChipStack;
-        await DbContext.SaveChangesAsync();
+	[Fact]
+	public async Task LeaveGame_RecordsFinalChipCount()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4,
+			startingChips: 1000);
+		var player = setup.GamePlayers[0];
 
-        // Assert
-        var leftPlayer = await GetFreshDbContext().GamePlayers
-            .FirstAsync(gp => gp.Id == player.Id);
-        leftPlayer.FinalChipCount.Should().Be(1000);
-    }
+		// Set final chip count and leave
+		player.Status = GamePlayerStatus.Left;
+		player.FinalChipCount = player.ChipStack;
+		await DbContext.SaveChangesAsync();
 
-    [Fact]
-    public async Task LeaveGame_ActivePlayersExcludesLeftPlayer()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
-        var player = setup.GamePlayers[0];
+		// Assert
+		var leftPlayer = await GetFreshDbContext().GamePlayers
+			.FirstAsync(gp => gp.Id == player.Id);
+		leftPlayer.FinalChipCount.Should().Be(1000);
+	}
 
-        // Mark as left
-        player.Status = GamePlayerStatus.Left;
-        await DbContext.SaveChangesAsync();
+	[Fact]
+	public async Task LeaveGame_ActivePlayersExcludesLeftPlayer()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+		var player = setup.GamePlayers[0];
 
-        // Act
-        var activePlayers = await GetFreshDbContext().GamePlayers
-            .Where(gp => gp.GameId == setup.Game.Id && gp.Status == GamePlayerStatus.Active)
-            .ToListAsync();
+		// Mark as left
+		player.Status = GamePlayerStatus.Left;
+		await DbContext.SaveChangesAsync();
 
-        // Assert
-        activePlayers.Should().HaveCount(3);
-        activePlayers.Should().NotContain(p => p.Id == player.Id);
-    }
+		// Act
+		var activePlayers = await GetFreshDbContext().GamePlayers
+			.Where(gp => gp.GameId == setup.Game.Id && gp.Status == GamePlayerStatus.Active)
+			.ToListAsync();
 
-    #endregion
+		// Assert
+		activePlayers.Should().HaveCount(3);
+		activePlayers.Should().NotContain(p => p.Id == player.Id);
+	}
+
+	#endregion
 }

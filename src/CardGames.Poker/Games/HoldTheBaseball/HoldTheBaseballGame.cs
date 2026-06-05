@@ -4,62 +4,40 @@ using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.CommunityCardHands;
 
 namespace CardGames.Poker.Games.HoldTheBaseball;
 
 /// <summary>
-/// Orchestrates a Hold the Baseball poker game with betting.
-/// 
-/// Hold the Baseball is identical to Texas Hold 'Em in gameplay,
-/// except that 3s and 9s are wild (including community cards).
+///     Orchestrates a Hold the Baseball poker game with betting.
+///     Hold the Baseball is identical to Texas Hold 'Em in gameplay,
+///     except that 3s and 9s are wild (including community cards).
 /// </summary>
 [PokerGameMetadata(
-	code:"HOLDTHEBASEBALL",
-	name:"Hold the Baseball",
-	description:"A Texas Hold 'Em variant where 3s and 9s are wild, including community cards.",
-	minimumNumberOfPlayers:2,
-	maximumNumberOfPlayers:10,
-	initialHoleCards:2,
-	initialBoardCards:0,
-	maxCommunityCards:5,
-	maxPlayerCards:2,
-	hasDrawPhase:false,
-	maxDiscards:0,
-	wildCardRule:WildCardRule.FixedRanks,
-	bettingStructure:BettingStructure.Blinds,
-	imageName:"holdthebaseball.png")]
+	code: "HOLDTHEBASEBALL",
+	name: "Hold the Baseball",
+	description: "A Texas Hold 'Em variant where 3s and 9s are wild, including community cards.",
+	minimumNumberOfPlayers: 2,
+	maximumNumberOfPlayers: 10,
+	initialHoleCards: 2,
+	initialBoardCards: 0,
+	maxCommunityCards: 5,
+	maxPlayerCards: 2,
+	hasDrawPhase: false,
+	maxDiscards: 0,
+	wildCardRule: WildCardRule.FixedRanks,
+	bettingStructure: BettingStructure.Blinds,
+	imageName: "holdthebaseball.png")]
 public class HoldTheBaseballGame : IPokerGame
 {
-	public string Name { get; } = "Hold the Baseball";
-	public string Description { get; } = "A Texas Hold 'Em variant where 3s and 9s are wild, including community cards.";
-	public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.HoldEm;
-	public int MinimumNumberOfPlayers { get; } = 2;
-	public int MaximumNumberOfPlayers { get; } = 10;
+	private readonly FrenchDeckDealer _dealer;
 
 	private readonly List<HoldTheBaseballGamePlayer> _gamePlayers;
-	private readonly FrenchDeckDealer _dealer;
-	private readonly int _smallBlind;
-	private readonly int _bigBlind;
-
-	private PotManager _potManager;
-	private BettingRound _currentBettingRound;
-	private int _dealerPosition;
 	private List<Card> _communityCards = [];
 
-	public Phases CurrentPhase { get; private set; }
-	public IReadOnlyList<HoldTheBaseballGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
-	public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
-	public int TotalPot => _potManager?.TotalPotAmount ?? 0;
-	public BettingRound CurrentBettingRound => _currentBettingRound;
-	public int DealerPosition => _dealerPosition;
-	public PotManager PotManager => _potManager;
-	public int SmallBlind => _smallBlind;
-	public int BigBlind => _bigBlind;
-	public IReadOnlyList<Card> CommunityCards => _communityCards.AsReadOnly();
-
 	/// <summary>
-	/// Constructor for rules discovery only.
+	///     Constructor for rules discovery only.
 	/// </summary>
 	public HoldTheBaseballGame()
 		: this(
@@ -90,14 +68,38 @@ public class HoldTheBaseballGame : IPokerGame
 			.ToList();
 
 		_dealer = FrenchDeckDealer.WithFullDeck();
-		_smallBlind = smallBlind;
-		_bigBlind = bigBlind;
-		_dealerPosition = 0;
+		SmallBlind = smallBlind;
+		BigBlind = bigBlind;
+		DealerPosition = 0;
 		CurrentPhase = Phases.WaitingToStart;
 	}
 
+	public Phases CurrentPhase { get; private set; }
+	public IReadOnlyList<HoldTheBaseballGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
+	public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
+	public int TotalPot => PotManager?.TotalPotAmount ?? 0;
+	public BettingRound CurrentBettingRound { get; private set; }
+
+	public int DealerPosition { get; private set; }
+
+	public PotManager PotManager { get; private set; }
+
+	public int SmallBlind { get; }
+
+	public int BigBlind { get; }
+
+	public IReadOnlyList<Card> CommunityCards => _communityCards.AsReadOnly();
+	public string Name { get; } = "Hold the Baseball";
+
+	public string Description { get; } =
+		"A Texas Hold 'Em variant where 3s and 9s are wild, including community cards.";
+
+	public VariantType VariantType { get; } = VariantType.HoldEm;
+	public int MinimumNumberOfPlayers { get; } = 2;
+	public int MaximumNumberOfPlayers { get; } = 10;
+
 	/// <inheritdoc />
-	public GameFlow.GameRules GetGameRules()
+	public GameRules GetGameRules()
 	{
 		return HoldTheBaseballRules.CreateGameRules();
 	}
@@ -105,7 +107,7 @@ public class HoldTheBaseballGame : IPokerGame
 	public void StartHand()
 	{
 		_dealer.Shuffle();
-		_potManager = new PotManager();
+		PotManager = new PotManager();
 		_communityCards = [];
 
 		foreach (var gamePlayer in _gamePlayers)
@@ -121,32 +123,35 @@ public class HoldTheBaseballGame : IPokerGame
 	{
 		if (_gamePlayers.Count == 2)
 		{
-			return _dealerPosition;
+			return DealerPosition;
 		}
-		return (_dealerPosition + 1) % _gamePlayers.Count;
+
+		return (DealerPosition + 1) % _gamePlayers.Count;
 	}
 
 	public int GetBigBlindPosition()
 	{
 		if (_gamePlayers.Count == 2)
 		{
-			return (_dealerPosition + 1) % _gamePlayers.Count;
+			return (DealerPosition + 1) % _gamePlayers.Count;
 		}
-		return (_dealerPosition + 2) % _gamePlayers.Count;
+
+		return (DealerPosition + 2) % _gamePlayers.Count;
 	}
 
 	private int GetFirstToActPreFlop()
 	{
 		if (_gamePlayers.Count == 2)
 		{
-			return _dealerPosition;
+			return DealerPosition;
 		}
+
 		return (GetBigBlindPosition() + 1) % _gamePlayers.Count;
 	}
 
 	private int GetFirstToActPostFlop()
 	{
-		var position = (_dealerPosition + 1) % _gamePlayers.Count;
+		var position = (DealerPosition + 1) % _gamePlayers.Count;
 		var count = 0;
 		while (count < _gamePlayers.Count)
 		{
@@ -154,10 +159,12 @@ public class HoldTheBaseballGame : IPokerGame
 			{
 				return position;
 			}
+
 			position = (position + 1) % _gamePlayers.Count;
 			count++;
 		}
-		return _dealerPosition;
+
+		return DealerPosition;
 	}
 
 	public List<BettingAction> CollectBlinds()
@@ -171,21 +178,21 @@ public class HoldTheBaseballGame : IPokerGame
 
 		var sbPosition = GetSmallBlindPosition();
 		var sbPlayer = _gamePlayers[sbPosition].Player;
-		var sbAmount = Math.Min(_smallBlind, sbPlayer.ChipStack);
+		var sbAmount = Math.Min(SmallBlind, sbPlayer.ChipStack);
 		if (sbAmount > 0)
 		{
 			var actualSb = sbPlayer.PlaceBet(sbAmount);
-			_potManager.AddContribution(sbPlayer.Name, actualSb);
+			PotManager.AddContribution(sbPlayer.Name, actualSb);
 			actions.Add(new BettingAction(sbPlayer.Name, BettingActionType.Post, actualSb));
 		}
 
 		var bbPosition = GetBigBlindPosition();
 		var bbPlayer = _gamePlayers[bbPosition].Player;
-		var bbAmount = Math.Min(_bigBlind, bbPlayer.ChipStack);
+		var bbAmount = Math.Min(BigBlind, bbPlayer.ChipStack);
 		if (bbAmount > 0)
 		{
 			var actualBb = bbPlayer.PlaceBet(bbAmount);
-			_potManager.AddContribution(bbPlayer.Name, actualBb);
+			PotManager.AddContribution(bbPlayer.Name, actualBb);
 			actions.Add(new BettingAction(bbPlayer.Name, BettingActionType.Post, actualBb));
 		}
 
@@ -225,11 +232,11 @@ public class HoldTheBaseballGame : IPokerGame
 		var bbPosition = GetBigBlindPosition();
 		var initialBet = _gamePlayers[bbPosition].Player.CurrentBet;
 
-		_currentBettingRound = new BettingRound(
+		CurrentBettingRound = new BettingRound(
 			activePlayers,
-			_potManager,
+			PotManager,
 			virtualDealerPosition,
-			_bigBlind,
+			BigBlind,
 			initialBet,
 			bbPosition);
 	}
@@ -283,26 +290,26 @@ public class HoldTheBaseballGame : IPokerGame
 		var firstToAct = GetFirstToActPostFlop();
 		var virtualDealerPosition = (firstToAct - 1 + _gamePlayers.Count) % _gamePlayers.Count;
 
-		_currentBettingRound = new BettingRound(
+		CurrentBettingRound = new BettingRound(
 			activePlayers,
-			_potManager,
+			PotManager,
 			virtualDealerPosition,
-			_bigBlind);
+			BigBlind);
 	}
 
 	public AvailableActions GetAvailableActions()
 	{
-		return _currentBettingRound?.GetAvailableActions();
+		return CurrentBettingRound?.GetAvailableActions();
 	}
 
 	public PokerPlayer GetCurrentPlayer()
 	{
-		return _currentBettingRound?.CurrentPlayer;
+		return CurrentBettingRound?.CurrentPlayer;
 	}
 
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
-		if (_currentBettingRound == null)
+		if (CurrentBettingRound == null)
 		{
 			return new BettingRoundResult
 			{
@@ -311,7 +318,7 @@ public class HoldTheBaseballGame : IPokerGame
 			};
 		}
 
-		var result = _currentBettingRound.ProcessAction(actionType, amount);
+		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
 		if (result.RoundComplete)
 		{
@@ -333,7 +340,7 @@ public class HoldTheBaseballGame : IPokerGame
 		var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
 		if (hasAllIn)
 		{
-			_potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
+			PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 		}
 
 		var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
@@ -381,7 +388,7 @@ public class HoldTheBaseballGame : IPokerGame
 		if (playersInHand.Count == 1)
 		{
 			var winner = playersInHand[0];
-			var totalPot = _potManager.TotalPotAmount;
+			var totalPot = PotManager.TotalPotAmount;
 			winner.Player.AddChips(totalPot);
 
 			CurrentPhase = Phases.Complete;
@@ -406,10 +413,11 @@ public class HoldTheBaseballGame : IPokerGame
 
 		var playerHands = playersInHand.ToDictionary(
 			gp => gp.Player.Name,
-			gp => (hand: new HoldTheBaseballHand(gp.HoleCards, _communityCards), holeCards: (IReadOnlyCollection<Card>)gp.HoleCards)
+			gp => (hand: new HoldTheBaseballHand(gp.HoleCards, _communityCards),
+				holeCards: (IReadOnlyCollection<Card>)gp.HoleCards)
 		);
 
-		var payouts = _potManager.AwardPots(eligiblePlayers =>
+		var payouts = PotManager.AwardPots(eligiblePlayers =>
 		{
 			var eligibleHands = playerHands
 				.Where(kvp => eligiblePlayers.Contains(kvp.Key))
@@ -438,7 +446,7 @@ public class HoldTheBaseballGame : IPokerGame
 
 	private void MoveDealer()
 	{
-		_dealerPosition = (_dealerPosition + 1) % _gamePlayers.Count;
+		DealerPosition = (DealerPosition + 1) % _gamePlayers.Count;
 	}
 
 	public IEnumerable<PokerPlayer> GetPlayersWithChips()
@@ -465,7 +473,7 @@ public class HoldTheBaseballGame : IPokerGame
 
 	public HoldTheBaseballGamePlayer GetDealer()
 	{
-		return _gamePlayers[_dealerPosition];
+		return _gamePlayers[DealerPosition];
 	}
 
 	public HoldTheBaseballGamePlayer GetSmallBlindPlayer()

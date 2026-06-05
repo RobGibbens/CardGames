@@ -10,9 +10,14 @@ public class GetActiveGamesQueryHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_WhitespaceVariant_IgnoresFilter_AndExcludesCompleteGames()
 	{
-		var fiveCardDraw = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode, name: "Five Card Draw Table");
-		var holdEm = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.HoldEmCode, name: "Hold 'Em Table");
-		var completed = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.OmahaCode, name: "Completed Table");
+		var fiveCardDraw = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode,
+			name: "Five Card Draw Table");
+		var holdEm =
+			await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.HoldEmCode,
+				name: "Hold 'Em Table");
+		var completed =
+			await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.OmahaCode,
+				name: "Completed Table");
 		completed.CurrentPhase = "Complete";
 		await DbContext.SaveChangesAsync();
 
@@ -25,7 +30,8 @@ public class GetActiveGamesQueryHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_UnknownVariant_ReturnsEmptyList()
 	{
-		await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode, name: "Known Table");
+		await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode,
+			name: "Known Table");
 
 		var result = await Mediator.Send(new GetActiveGamesQuery("NOT_A_REAL_VARIANT"));
 
@@ -69,7 +75,8 @@ public class GetActiveGamesQueryHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_UnauthenticatedUser_HidesLeagueGames_ButStillReturnsPublicGames()
 	{
-		var publicGame = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode, name: "Public Table");
+		var publicGame = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode,
+			name: "Public Table");
 		var league = await CreateLeagueAsync("league-owner", "Members Only League");
 		var leagueGame = await CreateLinkedLeagueGameAsync(league.Id, "league-owner", "League Table");
 		var currentUser = GetCurrentUser();
@@ -106,7 +113,8 @@ public class GetActiveGamesQueryHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_ConcurrentRequests_KeepLeagueVisibilityScopedPerUser()
 	{
-		var publicGame = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode, name: "Shared Public Table");
+		var publicGame = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode,
+			name: "Shared Public Table");
 		var league = await CreateLeagueAsync("league-owner", "Concurrent League");
 		var leagueGame = await CreateLinkedLeagueGameAsync(league.Id, "league-owner", "Shared League Table");
 
@@ -146,7 +154,8 @@ public class GetActiveGamesQueryHandlerTests : IntegrationTestBase
 
 	private FakeCurrentUserService GetCurrentUser(IServiceProvider? serviceProvider = null)
 	{
-		return (FakeCurrentUserService)(serviceProvider ?? Scope.ServiceProvider).GetRequiredService<ICurrentUserService>();
+		return (FakeCurrentUserService)(serviceProvider ?? Scope.ServiceProvider)
+			.GetRequiredService<ICurrentUserService>();
 	}
 
 	private async Task<League> CreateLeagueAsync(string ownerUserId, string name)
@@ -165,7 +174,8 @@ public class GetActiveGamesQueryHandlerTests : IntegrationTestBase
 
 	private async Task<Game> CreateLinkedLeagueGameAsync(Guid leagueId, string ownerUserId, string gameName)
 	{
-		var game = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode, name: gameName);
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.FiveCardDrawCode,
+			name: gameName);
 
 		DbContext.LeagueOneOffEvents.Add(new LeagueOneOffEvent
 		{

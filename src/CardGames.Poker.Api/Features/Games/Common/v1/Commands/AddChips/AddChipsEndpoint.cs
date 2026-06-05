@@ -5,34 +5,35 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
 
 /// <summary>
-/// Endpoint for adding chips to a player's stack.
+///     Endpoint for adding chips to a player's stack.
 /// </summary>
 public static class AddChipsEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for adding chips.
+	///     Maps the POST endpoint for adding chips.
 	/// </summary>
 	public static RouteGroupBuilder MapAddChips(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/players/{playerId:guid}/add-chips",
-			async (Guid gameId, Guid playerId, AddChipsRequest request, IMediator mediator, CancellationToken cancellationToken) =>
-			{
-				var command = new AddChipsCommand(gameId, playerId, request.Amount);
-				var result = await mediator.Send(command, cancellationToken);
+				async (Guid gameId, Guid playerId, AddChipsRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
+				{
+					var command = new AddChipsCommand(gameId, playerId, request.Amount);
+					var result = await mediator.Send(command, cancellationToken);
 
-				return result.Match(
-					success => Results.Ok(success),
-					error => error.Code switch
-					{
-						AddChipsErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
-						AddChipsErrorCode.PlayerNotInGame => Results.BadRequest(new { error.Message }),
-						AddChipsErrorCode.InvalidAmount => Results.BadRequest(new { error.Message }),
-						AddChipsErrorCode.GameEnded => Results.BadRequest(new { error.Message }),
-						AddChipsErrorCode.TournamentRebuyNotAllowed => Results.Conflict(new { error.Message }),
-						_ => Results.Problem(error.Message)
-					}
-				);
-			})
+					return result.Match(
+						success => Results.Ok(success),
+						error => error.Code switch
+						{
+							AddChipsErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
+							AddChipsErrorCode.PlayerNotInGame => Results.BadRequest(new { error.Message }),
+							AddChipsErrorCode.InvalidAmount => Results.BadRequest(new { error.Message }),
+							AddChipsErrorCode.GameEnded => Results.BadRequest(new { error.Message }),
+							AddChipsErrorCode.TournamentRebuyNotAllowed => Results.Conflict(new { error.Message }),
+							_ => Results.Problem(error.Message)
+						}
+					);
+				})
 			.WithName($"{nameof(MapAddChips).TrimPrefix("Map")}")
 			.WithSummary("Add Chips")
 			.WithDescription(

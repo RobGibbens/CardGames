@@ -1,140 +1,141 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Hands.HandTypes;
 using CardGames.Poker.Hands.Strength;
 using CardGames.Poker.Hands.WildCards;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace CardGames.Poker.Hands.StudHands;
 
 public class KingsAndLowsHand : StudHand
 {
-    private readonly WildCardRules _wildCardRules;
-    private IReadOnlyCollection<Card> _wildCards;
-    private HandType _evaluatedType;
-    private long _evaluatedStrength;
-    private IReadOnlyCollection<Card> _evaluatedBestCards;
-    private bool _evaluated;
+	private readonly WildCardRules _wildCardRules;
+	private bool _evaluated;
+	private IReadOnlyCollection<Card> _evaluatedBestCards;
+	private long _evaluatedStrength;
+	private HandType _evaluatedType;
+	private IReadOnlyCollection<Card> _wildCards;
 
-    /// <summary>
-    /// Gets the wild cards in this hand (using the optimal Ace evaluation).
-    /// </summary>
-    public IReadOnlyCollection<Card> WildCards
-    {
-        get
-        {
-            EvaluateIfNeeded();
-            return _wildCards;
-        }
-    }
+	public KingsAndLowsHand(
+		IReadOnlyCollection<Card> holeCards,
+		IReadOnlyCollection<Card> openCards,
+		Card downCard,
+		WildCardRules wildCardRules)
+		: base(holeCards, openCards, new[] { downCard })
+	{
+		if (holeCards.Count != 2)
+		{
+			throw new ArgumentException("Kings and Lows needs exactly two hole cards", nameof(holeCards));
+		}
 
-    /// <summary>
-    /// Gets the evaluated best 5-card hand after applying wild cards.
-    /// This represents what the hand would look like if wild cards were substituted
-    /// for their optimal values.
-    /// </summary>
-    public IReadOnlyCollection<Card> EvaluatedBestCards
-    {
-        get
-        {
-            EvaluateIfNeeded();
-            return _evaluatedBestCards;
-        }
-    }
+		if (openCards.Count > 4)
+		{
+			throw new ArgumentException("Kings and Lows has at most four open cards", nameof(openCards));
+		}
 
-    public KingsAndLowsHand(
-        IReadOnlyCollection<Card> holeCards,
-        IReadOnlyCollection<Card> openCards,
-        Card downCard,
-        WildCardRules wildCardRules) 
-        : base(holeCards, openCards, new[] { downCard })
-    {
-        if (holeCards.Count != 2)
-        {
-            throw new ArgumentException("Kings and Lows needs exactly two hole cards", nameof(holeCards));
-        }
-        if (openCards.Count > 4)
-        {
-            throw new ArgumentException("Kings and Lows has at most four open cards", nameof(openCards));
-        }
+		_wildCardRules = wildCardRules;
+	}
 
-        _wildCardRules = wildCardRules;
-    }
+	/// <summary>
+	///     Gets the wild cards in this hand (using the optimal Ace evaluation).
+	/// </summary>
+	public IReadOnlyCollection<Card> WildCards
+	{
+		get
+		{
+			EvaluateIfNeeded();
+			return _wildCards;
+		}
+	}
 
-    protected override long CalculateStrength()
-    {
-        EvaluateIfNeeded();
-        return _evaluatedStrength;
-    }
+	/// <summary>
+	///     Gets the evaluated best 5-card hand after applying wild cards.
+	///     This represents what the hand would look like if wild cards were substituted
+	///     for their optimal values.
+	/// </summary>
+	public IReadOnlyCollection<Card> EvaluatedBestCards
+	{
+		get
+		{
+			EvaluateIfNeeded();
+			return _evaluatedBestCards;
+		}
+	}
 
-    protected override HandType DetermineType()
-    {
-        EvaluateIfNeeded();
-        return _evaluatedType;
-    }
+	protected override long CalculateStrength()
+	{
+		EvaluateIfNeeded();
+		return _evaluatedStrength;
+	}
 
-    private void EvaluateIfNeeded()
-    {
-        if (_evaluated)
-        {
-            return;
-        }
+	protected override HandType DetermineType()
+	{
+		EvaluateIfNeeded();
+		return _evaluatedType;
+	}
 
-        _evaluated = true;
+	private void EvaluateIfNeeded()
+	{
+		if (_evaluated)
+		{
+			return;
+		}
 
-        // Get all possible wild card sets (Ace-high and Ace-low if applicable)
-        var wildCardSets = _wildCardRules.GetAllPossibleWildCardSets(Cards);
+		_evaluated = true;
 
-        HandType bestType = HandType.Incomplete;
-        long bestStrength = 0;
-        IReadOnlyCollection<Card> bestCards = Cards.Take(5).ToList();
-        IReadOnlyCollection<Card> bestWildCards = Array.Empty<Card>();
+		// Get all possible wild card sets (Ace-high and Ace-low if applicable)
+		var wildCardSets = _wildCardRules.GetAllPossibleWildCardSets(Cards);
 
-        foreach (var wildCards in wildCardSets)
-        {
-            HandType type;
-            long strength;
-            IReadOnlyCollection<Card> evaluatedCards;
+		HandType bestType = HandType.Incomplete;
+		long bestStrength = 0;
+		IReadOnlyCollection<Card> bestCards = Cards.Take(5).ToList();
+		IReadOnlyCollection<Card> bestWildCards = Array.Empty<Card>();
 
-            if (!wildCards.Any())
-            {
-                // Calculate type and strength directly without going through virtual properties
-                // to avoid circular dependency during evaluation
-                var handsAndTypes = PossibleHands()
-                    .Select(hand => new { hand, handType = HandTypeDetermination.DetermineHandType(hand) })
-                    .ToList();
+		foreach (var wildCards in wildCardSets)
+		{
+			HandType type;
+			long strength;
+			IReadOnlyCollection<Card> evaluatedCards;
 
-                type = HandStrength.GetEffectiveType(handsAndTypes.Select(pair => pair.handType), Ranking);
-                strength = handsAndTypes
-                    .Where(pair => pair.handType == type)
-                    .Select(pair => HandStrength.Calculate(pair.hand.ToList(), type, Ranking))
-                    .Max();
-                evaluatedCards = handsAndTypes
-                    .Where(pair => pair.handType == type)
-                    .OrderByDescending(pair => HandStrength.Calculate(pair.hand.ToList(), type, Ranking))
-                    .First()
-                    .hand
-                    .ToList();
-            }
-            else
-            {
-                (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
-                    Cards, wildCards, Ranking);
-            }
+			if (!wildCards.Any())
+			{
+				// Calculate type and strength directly without going through virtual properties
+				// to avoid circular dependency during evaluation
+				var handsAndTypes = PossibleHands()
+					.Select(hand => new { hand, handType = HandTypeDetermination.DetermineHandType(hand) })
+					.ToList();
 
-            if (strength > bestStrength)
-            {
-                bestType = type;
-                bestStrength = strength;
-                bestCards = evaluatedCards;
-                bestWildCards = wildCards;
-            }
-        }
+				type = HandStrength.GetEffectiveType(handsAndTypes.Select(pair => pair.handType), Ranking);
+				strength = handsAndTypes
+					.Where(pair => pair.handType == type)
+					.Select(pair => HandStrength.Calculate(pair.hand.ToList(), type, Ranking))
+					.Max();
+				evaluatedCards = handsAndTypes
+					.Where(pair => pair.handType == type)
+					.OrderByDescending(pair => HandStrength.Calculate(pair.hand.ToList(), type, Ranking))
+					.First()
+					.hand
+					.ToList();
+			}
+			else
+			{
+				(type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
+					Cards, wildCards, Ranking);
+			}
 
-        _evaluatedType = bestType;
-        _evaluatedStrength = bestStrength;
-        _evaluatedBestCards = bestCards;
-        _wildCards = bestWildCards;
-    }
+			if (strength > bestStrength)
+			{
+				bestType = type;
+				bestStrength = strength;
+				bestCards = evaluatedCards;
+				bestWildCards = wildCards;
+			}
+		}
+
+		_evaluatedType = bestType;
+		_evaluatedStrength = bestStrength;
+		_evaluatedBestCards = bestCards;
+		_wildCards = bestWildCards;
+	}
 }

@@ -1,11 +1,10 @@
 using CardGames.Poker.Api.Data.Entities;
-using System.Text.Json.Serialization;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 
 /// <summary>
-/// Response containing all properties of a specific game, including the game type code.
-/// This is used by the generic Games API which returns games regardless of type.
+///     Response containing all properties of a specific game, including the game type code.
+///     This is used by the generic Games API which returns games regardless of type.
 /// </summary>
 public sealed record GetGameResponse
 {

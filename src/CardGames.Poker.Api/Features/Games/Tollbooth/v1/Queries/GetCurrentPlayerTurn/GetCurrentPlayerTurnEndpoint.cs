@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Extensions;
 using MediatR;
-using SharedGetCurrentPlayerTurnResponse = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentPlayerTurn.GetCurrentPlayerTurnResponse;
+using SharedGetCurrentPlayerTurnResponse =
+	CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentPlayerTurn.GetCurrentPlayerTurnResponse;
 
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Queries.GetCurrentPlayerTurn;
 
@@ -18,9 +19,10 @@ public static class GetCurrentPlayerTurnEndpoint
 				})
 			.WithName($"Tollbooth{nameof(MapGetCurrentPlayerTurn).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetCurrentPlayerTurn).TrimPrefix("Map"))
-			.WithDescription("Retrieve the current player's turn state for a specific Tollbooth game, including available actions.")
+			.WithDescription(
+				"Retrieve the current player's turn state for a specific Tollbooth game, including available actions.")
 			.MapToApiVersion(1.0)
-			.Produces<SharedGetCurrentPlayerTurnResponse>(StatusCodes.Status200OK)
+			.Produces<SharedGetCurrentPlayerTurnResponse>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

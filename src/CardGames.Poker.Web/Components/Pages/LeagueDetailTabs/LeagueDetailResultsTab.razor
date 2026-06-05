@@ -1,6 +1,5 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Utilities
-
 <div class="league-detail-tab-content">
 	<section class="league-detail-card">
 		<div class="league-detail-card-header">
@@ -102,47 +101,33 @@
 </div>
 
 @code {
-	[Parameter, EditorRequired]
-	public List<LeagueSeasonDto> Seasons { get; set; } = [];
+	[Parameter, EditorRequired] public List<LeagueSeasonDto> Seasons { get; set; } = [];
 
-	[Parameter]
-	public Guid? SelectedSeasonId { get; set; }
+	[Parameter] public Guid? SelectedSeasonId { get; set; }
 
-	[Parameter]
-	public bool CanManageLeague { get; set; }
+	[Parameter] public bool CanManageLeague { get; set; }
 
-	[Parameter, EditorRequired]
-	public List<LeagueSeasonEventDto> SeasonEvents { get; set; } = [];
+	[Parameter, EditorRequired] public List<LeagueSeasonEventDto> SeasonEvents { get; set; } = [];
 
-	[Parameter]
-	public List<LeagueOneOffEventDto> CompletedOneOffEvents { get; set; } = [];
+	[Parameter] public List<LeagueOneOffEventDto> CompletedOneOffEvents { get; set; } = [];
 
-	[Parameter]
-	public Guid? LaunchingSeasonEventId { get; set; }
+	[Parameter] public Guid? LaunchingSeasonEventId { get; set; }
 
-	[Parameter]
-	public string BrowserTimeZoneId { get; set; } = "UTC";
+	[Parameter] public string BrowserTimeZoneId { get; set; } = "UTC";
 
-	[Parameter]
-	public EventCallback<ChangeEventArgs> OnSeasonSelectorChanged { get; set; }
+	[Parameter] public EventCallback<ChangeEventArgs> OnSeasonSelectorChanged { get; set; }
 
-	[Parameter]
-	public EventCallback OpenSeasonEventModal { get; set; }
+	[Parameter] public EventCallback OpenSeasonEventModal { get; set; }
 
-	[Parameter]
-	public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
+	[Parameter] public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
 
-	[Parameter]
-	public EventCallback<LeagueSeasonEventDto> DeleteSeasonEvent { get; set; }
+	[Parameter] public EventCallback<LeagueSeasonEventDto> DeleteSeasonEvent { get; set; }
 
-	[Parameter]
-	public EventCallback<Guid> OpenTable { get; set; }
+	[Parameter] public EventCallback<Guid> OpenTable { get; set; }
 
-	[Parameter]
-	public EventCallback<Guid> LaunchSeasonEvent { get; set; }
+	[Parameter] public EventCallback<Guid> LaunchSeasonEvent { get; set; }
 
-	[Parameter]
-	public bool ShowSeasonSelector { get; set; } = true;
+	[Parameter] public bool ShowSeasonSelector { get; set; } = true;
 
 	private string FormatDate(DateTimeOffset? value)
 	{
@@ -153,4 +138,5 @@
 	{
 		return seasonEvent.Status == LeagueSeasonEventStatus.Planned && !seasonEvent.LaunchedGameId.HasValue;
 	}
+
 }

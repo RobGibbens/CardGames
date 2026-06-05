@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using CardGames.Poker.Api.Clients;
 using CardGames.Poker.Api.Contracts;
 using Refit;
@@ -23,7 +20,8 @@ public class FollowTheQueenApiClientWrapper(IFollowTheQueenApi client) : IGameAp
 		return dealHandsResponse.IsSuccessStatusCode;
 	}
 
-	public async Task<IApiResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+	public async Task<IApiResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(Guid gameId,
+		ProcessBettingActionRequest request)
 	{
 		return await client.FollowTheQueenProcessBettingActionAsync(gameId, request);
 	}
@@ -31,10 +29,10 @@ public class FollowTheQueenApiClientWrapper(IFollowTheQueenApi client) : IGameAp
 	public Task<ProcessDrawResult> ProcessDrawAsync(Guid gameId, List<int> discardIndices, Guid playerId)
 	{
 		// Follow the Queen is a stud game - no draw phase
-		return Task.FromResult(new ProcessDrawResult 
-		{ 
-			IsSuccess = false, 
-			ErrorMessage = "Draw phase not supported for Follow the Queen." 
+		return Task.FromResult(new ProcessDrawResult
+		{
+			IsSuccess = false,
+			ErrorMessage = "Draw phase not supported for Follow the Queen."
 		});
 	}
 

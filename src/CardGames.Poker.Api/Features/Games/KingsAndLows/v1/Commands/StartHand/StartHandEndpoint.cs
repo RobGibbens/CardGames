@@ -14,7 +14,7 @@ public static class StartHandEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => Results.Problem(
 							title: "Start hand error",
 							detail: error.Message,
@@ -26,7 +26,7 @@ public static class StartHandEndpoint
 			.WithName($"KingsAndLows{nameof(MapStartHand).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapStartHand).TrimPrefix("Map"))
 			.WithDescription("Start a new hand in a Kings and Lows game.")
-			.Produces<StartHandSuccessful>(StatusCodes.Status200OK)
+			.Produces<StartHandSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

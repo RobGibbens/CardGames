@@ -1,7 +1,7 @@
 namespace CardGames.Poker.Games.KingsAndLows;
 
 /// <summary>
-/// Represents a player's decision in the drop-or-stay phase.
+///     Represents a player's decision in the drop-or-stay phase.
 /// </summary>
 public enum DropOrStayDecision
 {

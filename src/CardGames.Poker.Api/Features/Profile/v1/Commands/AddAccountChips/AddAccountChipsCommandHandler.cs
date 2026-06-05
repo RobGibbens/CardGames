@@ -4,7 +4,6 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Profile.v1.Commands.AddAccountChips;
@@ -15,7 +14,8 @@ public sealed class AddAccountChipsCommandHandler(
 	ILogger<AddAccountChipsCommandHandler> logger)
 	: IRequestHandler<AddAccountChipsCommand, OneOf<AddAccountChipsResponse, AddAccountChipsError>>
 {
-	public async Task<OneOf<AddAccountChipsResponse, AddAccountChipsError>> Handle(AddAccountChipsCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<AddAccountChipsResponse, AddAccountChipsError>> Handle(AddAccountChipsCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated)
 		{
@@ -29,13 +29,15 @@ public sealed class AddAccountChipsCommandHandler(
 
 		if (request.Amount > 1_000_000)
 		{
-			return new AddAccountChipsError(AddAccountChipsErrorCode.InvalidAmount, "Amount exceeds the maximum allowed per request.");
+			return new AddAccountChipsError(AddAccountChipsErrorCode.InvalidAmount,
+				"Amount exceeds the maximum allowed per request.");
 		}
 
 		var player = await CashierPlayerResolver.ResolveOrCreateAsync(context, currentUserService, cancellationToken);
 		if (player is null)
 		{
-			return new AddAccountChipsError(AddAccountChipsErrorCode.PlayerUnavailable, "Unable to resolve player account for current user.");
+			return new AddAccountChipsError(AddAccountChipsErrorCode.PlayerUnavailable,
+				"Unable to resolve player account for current user.");
 		}
 
 		var now = DateTimeOffset.UtcNow;

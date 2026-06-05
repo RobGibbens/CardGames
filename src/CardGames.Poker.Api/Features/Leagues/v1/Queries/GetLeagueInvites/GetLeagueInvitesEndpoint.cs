@@ -13,7 +13,7 @@ public static class GetLeagueInvitesEndpoint
 					var result = await mediator.Send(new GetLeagueInvitesQuery(leagueId), cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							GetLeagueInvitesErrorCode.Unauthorized => Results.Unauthorized(),
@@ -24,7 +24,7 @@ public static class GetLeagueInvitesEndpoint
 			.WithName("GetLeagueInvites")
 			.WithSummary("Get league invites")
 			.WithDescription("Returns league invites for active members.")
-			.Produces<IReadOnlyList<LeagueInviteSummaryDto>>(StatusCodes.Status200OK)
+			.Produces<IReadOnlyList<LeagueInviteSummaryDto>>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.RequireAuthorization();

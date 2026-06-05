@@ -5,14 +5,15 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Endpoint for processing betting actions in a Hold the Baseball game.
+///     Endpoint for processing betting actions in a Hold the Baseball game.
 /// </summary>
 public static class ProcessBettingActionEndpoint
 {
 	public static RouteGroupBuilder MapProcessBettingAction(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/betting/actions",
-				async (Guid gameId, ProcessBettingActionRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, ProcessBettingActionRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new ProcessBettingActionCommand(gameId, request.ActionType, request.Amount);
 					var result = await mediator.Send(command, cancellationToken);
@@ -25,7 +26,8 @@ public static class ProcessBettingActionEndpoint
 							ProcessBettingActionErrorCode.InvalidGameState => Results.Conflict(new { error.Message }),
 							ProcessBettingActionErrorCode.NoBettingRound => Results.Conflict(new { error.Message }),
 							ProcessBettingActionErrorCode.NotPlayerTurn => Results.Conflict(new { error.Message }),
-							ProcessBettingActionErrorCode.InvalidAction => Results.UnprocessableEntity(new { error.Message }),
+							ProcessBettingActionErrorCode.InvalidAction => Results.UnprocessableEntity(new
+								{ error.Message }),
 							_ => Results.Problem(error.Message)
 						}
 					);
@@ -33,7 +35,7 @@ public static class ProcessBettingActionEndpoint
 			.WithName($"HoldTheBaseball{nameof(MapProcessBettingAction).TrimPrefix("Map")}")
 			.WithSummary("Process Betting Action")
 			.WithDescription("Processes a betting action in a Hold the Baseball game.")
-			.Produces<ProcessBettingActionSuccessful>(StatusCodes.Status200OK)
+			.Produces<ProcessBettingActionSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict)
 			.ProducesProblem(StatusCodes.Status422UnprocessableEntity);

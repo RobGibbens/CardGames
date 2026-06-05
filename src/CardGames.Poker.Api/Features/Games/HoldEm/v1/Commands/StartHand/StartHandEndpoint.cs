@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.StartHand;
 
 /// <summary>
-/// Endpoint for starting a new hand in a Texas Hold 'Em game.
+///     Endpoint for starting a new hand in a Texas Hold 'Em game.
 /// </summary>
 public static class StartHandEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for starting a new hand.
+	///     Maps the POST endpoint for starting a new hand.
 	/// </summary>
 	public static RouteGroupBuilder MapStartHand(this RouteGroupBuilder group)
 	{
@@ -33,7 +33,7 @@ public static class StartHandEndpoint
 			.WithName($"HoldEm{nameof(MapStartHand).TrimPrefix("Map")}")
 			.WithSummary("Start Hand")
 			.WithDescription("Starts a new Hold'Em hand, posts blinds, and deals hole cards.")
-			.Produces<StartHandSuccessful>(StatusCodes.Status200OK)
+			.Produces<StartHandSuccessful>()
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);

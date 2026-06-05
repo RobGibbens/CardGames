@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
 
 /// <summary>
-/// Endpoint for leaving a game table.
+///     Endpoint for leaving a game table.
 /// </summary>
 public static class LeaveGameEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for leaving a game.
+	///     Maps the POST endpoint for leaving a game.
 	/// </summary>
 	public static RouteGroupBuilder MapLeaveGame(this RouteGroupBuilder group)
 	{

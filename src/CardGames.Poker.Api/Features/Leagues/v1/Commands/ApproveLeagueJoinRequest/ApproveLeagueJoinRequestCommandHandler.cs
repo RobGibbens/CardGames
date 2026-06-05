@@ -1,9 +1,9 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
-using CardGames.Contracts.SignalR;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -17,11 +17,13 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 	ILogger<ApproveLeagueJoinRequestCommandHandler> logger)
 	: IRequestHandler<ApproveLeagueJoinRequestCommand, OneOf<Unit, ApproveLeagueJoinRequestError>>
 {
-	public async Task<OneOf<Unit, ApproveLeagueJoinRequestError>> Handle(ApproveLeagueJoinRequestCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, ApproveLeagueJoinRequestError>> Handle(ApproveLeagueJoinRequestCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.Unauthorized, "User is not authenticated.");
+			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
@@ -32,15 +34,18 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.Forbidden, "Only league managers or admins can approve join requests.");
+			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.Forbidden,
+				"Only league managers or admins can approve join requests.");
 		}
 
 		var joinRequest = await context.LeagueJoinRequests
-			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.Id == request.JoinRequestId, cancellationToken);
+			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.Id == request.JoinRequestId,
+				cancellationToken);
 
 		if (joinRequest is null)
 		{
-			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.JoinRequestNotFound, "Join request not found.");
+			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.JoinRequestNotFound,
+				"Join request not found.");
 		}
 
 		var now = DateTimeOffset.UtcNow;
@@ -71,17 +76,20 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 					joinRequest.Id);
 			}
 
-			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState, "Join request has expired.");
+			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState,
+				"Join request has expired.");
 		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Denied)
 		{
-			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState, "Join request has already been denied.");
+			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState,
+				"Join request has already been denied.");
 		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Expired)
 		{
-			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState, "Join request has expired.");
+			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState,
+				"Join request has expired.");
 		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Approved)
@@ -90,7 +98,8 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 		}
 
 		var membership = await context.LeagueMembersCurrent
-			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == joinRequest.RequesterUserId, cancellationToken);
+			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == joinRequest.RequesterUserId,
+				cancellationToken);
 
 		var createdOrActivatedMembership = false;
 		if (membership is null)
@@ -144,7 +153,7 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 			{
 				LeagueId = request.LeagueId,
 				JoinRequestId = joinRequest.Id,
-				Status = LeagueJoinRequestStatus.Approved.ToString(),
+				Status = nameof(LeagueJoinRequestStatus.Approved),
 				UpdatedAtUtc = joinRequest.UpdatedAtUtc
 			}, joinRequest.RequesterUserId, cancellationToken);
 		}

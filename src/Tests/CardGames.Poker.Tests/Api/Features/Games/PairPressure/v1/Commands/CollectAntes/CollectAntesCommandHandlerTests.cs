@@ -55,13 +55,15 @@ public class CollectAntesCommandHandlerTests
 		result.IsT0.Should().BeTrue();
 		result.AsT0.CurrentPhase.Should().Be(nameof(Phases.ThirdStreet));
 		result.AsT0.TotalAntesCollected.Should().Be(15);
-		result.AsT0.AnteContributions.Should().ContainSingle(c => c.PlayerName == "Player 2" && c.Amount == 5 && c.WentAllIn);
+		result.AsT0.AnteContributions.Should()
+			.ContainSingle(c => c.PlayerName == "Player 2" && c.Amount == 5 && c.WentAllIn);
 
 		var players = await context.GamePlayers
 			.Where(player => player.GameId == game.Id)
 			.OrderBy(player => player.SeatPosition)
 			.ToListAsync();
-		var mainPot = await context.Pots.SingleAsync(pot => pot.GameId == game.Id && pot.HandNumber == game.CurrentHandNumber && pot.PotType == PotType.Main);
+		var mainPot = await context.Pots.SingleAsync(pot =>
+			pot.GameId == game.Id && pot.HandNumber == game.CurrentHandNumber && pot.PotType == PotType.Main);
 
 		players[0].ChipStack.Should().Be(90);
 		players[0].CurrentBet.Should().Be(0);

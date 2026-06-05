@@ -5,7 +5,8 @@ namespace CardGames.AppHost;
 
 public static class ServiceBusExtensions
 {
-	public static IResourceBuilder<AzureServiceBusResource> AddAndConfigureServiceBus(this IDistributedApplicationBuilder builder)
+	public static IResourceBuilder<AzureServiceBusResource> AddAndConfigureServiceBus(
+		this IDistributedApplicationBuilder builder)
 	{
 		AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
 

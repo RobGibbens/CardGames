@@ -5,7 +5,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 
 /// <summary>
-/// Command to join a player to a specific seat in a game.
+///     Command to join a player to a specific seat in a game.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game to join.</param>
 /// <param name="SeatIndex">The zero-based seat index to occupy.</param>

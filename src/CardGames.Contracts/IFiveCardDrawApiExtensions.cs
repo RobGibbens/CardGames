@@ -1,28 +1,22 @@
-using Refit;
-using System.Threading;
-using System.Threading.Tasks;
-using CardGames.Poker.Api.Contracts;
-
 namespace CardGames.Poker.Api.Clients;
 
 /// <summary>
-/// Manual extensions to the auto-generated IFiveCardDrawApi interface.
-/// Add new API methods here until the Refitter output is regenerated.
+///     Manual extensions to the auto-generated IFiveCardDrawApi interface.
+///     Add new API methods here until the Refitter output is regenerated.
 /// </summary>
 public partial interface IFiveCardDrawApi
 {
-
 }
 
 /// <summary>
-/// Request model for joining a game.
+///     Request model for joining a game.
 /// </summary>
 /// <param name="SeatIndex">The zero-based seat index to occupy.</param>
 /// <param name="StartingChips">The initial chip stack for the player. Defaults to 100.</param>
 public record JoinGameRequest(int SeatIndex, int StartingChips = 100);
 
 /// <summary>
-/// Response for a successful join game operation.
+///     Response for a successful join game operation.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="SeatIndex">The seat index the player was assigned to.</param>

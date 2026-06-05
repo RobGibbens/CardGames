@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Poker.Api.Data;
@@ -85,7 +84,8 @@ public class StartHandCommandHandlerTests
 		flowHandlerFactory.Received(1).GetHandler("HOLDTHEBASEBALL");
 	}
 
-	private static StartHandCommandHandler CreateSut(CardsDbContext context, out IGameFlowHandlerFactory flowHandlerFactory)
+	private static StartHandCommandHandler CreateSut(CardsDbContext context,
+		out IGameFlowHandlerFactory flowHandlerFactory)
 	{
 		var flowHandler = Substitute.For<IGameFlowHandler>();
 		flowHandler.GetInitialPhase(Arg.Any<Game>()).Returns(nameof(Phases.CollectingBlinds));
@@ -204,8 +204,8 @@ public class StartHandCommandHandlerTests
 				DealOrder = 1,
 				Location = CardLocation.Hole,
 				IsVisible = false,
-				Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts,
-				Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Ace,
+				Suit = CardSuit.Hearts,
+				Symbol = CardSymbol.Ace,
 				DealtAt = now,
 				DealtAtPhase = nameof(Phases.Dealing)
 			});

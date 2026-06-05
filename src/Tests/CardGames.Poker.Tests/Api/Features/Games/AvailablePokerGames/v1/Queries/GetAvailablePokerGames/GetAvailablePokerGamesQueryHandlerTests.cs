@@ -21,7 +21,7 @@ public class GetAvailablePokerGamesQueryHandlerTests
 	[Fact]
 	public async Task Handle_WithUnknownVariant_ReturnsEmptyList()
 	{
-		using var serviceProvider = CreateServiceProvider();
+		await using var serviceProvider = CreateServiceProvider();
 		var sut = new GetAvailablePokerGamesQueryHandler(serviceProvider.GetRequiredService<HybridCache>());
 
 		var response = await sut.Handle(new GetAvailablePokerGamesQuery("NotARealVariant"), CancellationToken.None);
@@ -32,7 +32,7 @@ public class GetAvailablePokerGamesQueryHandlerTests
 	[Fact]
 	public async Task Handle_ConcurrentRequests_ReturnConsistentResults()
 	{
-		using var serviceProvider = CreateServiceProvider();
+		await using var serviceProvider = CreateServiceProvider();
 		var sut = new GetAvailablePokerGamesQueryHandler(serviceProvider.GetRequiredService<HybridCache>());
 		var query = new GetAvailablePokerGamesQuery();
 
@@ -75,9 +75,9 @@ public class GetAvailablePokerGamesQueryHandlerTests
 	private static ServiceProvider CreateServiceProvider()
 	{
 		var services = new ServiceCollection();
-		#pragma warning disable EXTEXP0018
+#pragma warning disable EXTEXP0018
 		services.AddHybridCache();
-		#pragma warning restore EXTEXP0018
+#pragma warning restore EXTEXP0018
 		return services.BuildServiceProvider();
 	}
 
@@ -138,7 +138,10 @@ public class GetAvailablePokerGamesQueryHandlerTests
 		public int MinimumNumberOfPlayers => 2;
 		public int MaximumNumberOfPlayers => 6;
 
-		public GameRules GetGameRules() => CreatePlaceholderRules("NO_METADATA", "Missing Metadata");
+		public GameRules GetGameRules()
+		{
+			return CreatePlaceholderRules("NO_METADATA", "Missing Metadata");
+		}
 	}
 
 	[PokerGameMetadata(
@@ -157,17 +160,20 @@ public class GetAvailablePokerGamesQueryHandlerTests
 		bettingStructure: BettingStructure.Blinds)]
 	private sealed class GameWithFailingValidation(int seatCount) : IPokerGame
 	{
+		public int SeatCount { get; } = seatCount > 0
+			? seatCount
+			: throw new InvalidOperationException("seatCount must be positive");
+
 		public string Name => "Validation Failure";
 		public string Description => "Throws when default constructor arguments are invalid.";
 		public VariantType VariantType => VariantType.Other;
 		public int MinimumNumberOfPlayers => 2;
 		public int MaximumNumberOfPlayers => 6;
 
-		public GameRules GetGameRules() => CreatePlaceholderRules("TEST_INVALID", "Validation Failure");
-
-		public int SeatCount { get; } = seatCount > 0
-			? seatCount
-			: throw new InvalidOperationException("seatCount must be positive");
+		public GameRules GetGameRules()
+		{
+			return CreatePlaceholderRules("TEST_INVALID", "Validation Failure");
+		}
 	}
 
 	[PokerGameMetadata(
@@ -193,6 +199,9 @@ public class GetAvailablePokerGamesQueryHandlerTests
 		public int MinimumNumberOfPlayers => 99;
 		public int MaximumNumberOfPlayers => 100;
 
-		public GameRules GetGameRules() => CreatePlaceholderRules("UNUSED", "Unused");
+		public GameRules GetGameRules()
+		{
+			return CreatePlaceholderRules("UNUSED", "Unused");
+		}
 	}
 }

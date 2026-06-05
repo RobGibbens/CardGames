@@ -1,382 +1,373 @@
-using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
-using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
+using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
 /// <summary>
-/// Integration tests for <see cref="ProcessBettingActionCommandHandler"/>.
-/// Tests all betting action types and edge cases.
+///     Integration tests for <see cref="ProcessBettingActionCommandHandler" />.
+///     Tests all betting action types and edge cases.
 /// </summary>
 public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 {
-    private async Task<(GameSetup Setup, Game Game)> CreateGameInBettingPhaseAsync(int numPlayers = 4)
-    {
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", numPlayers, ante: 10);
-        
-        // Start hand
-        await Mediator.Send(new StartHandCommand(setup.Game.Id));
-        
-        // Collect antes
-        await Mediator.Send(new CollectAntesCommand(setup.Game.Id));
-        
-        // Deal hands
-        await Mediator.Send(new DealHandsCommand(setup.Game.Id));
+	private async Task<(GameSetup Setup, Game Game)> CreateGameInBettingPhaseAsync(int numPlayers = 4)
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", numPlayers, ante: 10);
 
-        // Reload game
-        var game = await DbContext.Games
-            .Include(g => g.GamePlayers).ThenInclude(gp => gp.Player)
-            .Include(g => g.BettingRounds.Where(br => !br.IsComplete))
-            .Include(g => g.Pots)
-            .FirstAsync(g => g.Id == setup.Game.Id);
+		// Start hand
+		await Mediator.Send(new StartHandCommand(setup.Game.Id));
 
-        return (setup, game);
-    }
+		// Collect antes
+		await Mediator.Send(new CollectAntesCommand(setup.Game.Id));
 
-    [Fact]
-    public async Task Handle_GameNotFound_ReturnsError()
-    {
-        // Arrange
-        var command = new ProcessBettingActionCommand(
-            Guid.NewGuid(),
-            BettingActionType.Check,
-            0);
+		// Deal hands
+		await Mediator.Send(new DealHandsCommand(setup.Game.Id));
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Reload game
+		var game = await DbContext.Games
+			.Include(g => g.GamePlayers).ThenInclude(gp => gp.Player)
+			.Include(g => g.BettingRounds.Where(br => !br.IsComplete))
+			.Include(g => g.Pots)
+			.FirstAsync(g => g.Id == setup.Game.Id);
 
-        // Assert
-        result.IsT1.Should().BeTrue();
-        result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.GameNotFound);
-    }
+		return (setup, game);
+	}
 
-    [Fact]
-    public async Task Handle_NotInBettingPhase_ReturnsError()
-    {
-        // Arrange
-        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
-        var command = new ProcessBettingActionCommand(
-            setup.Game.Id,
-            BettingActionType.Check,
-            0);
+	[Fact]
+	public async Task Handle_GameNotFound_ReturnsError()
+	{
+		// Arrange
+		var command = new ProcessBettingActionCommand(
+			Guid.NewGuid(),
+			BettingActionType.Check);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        result.IsT1.Should().BeTrue();
-        result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidGameState);
-    }
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.GameNotFound);
+	}
 
-    [Fact]
-    public async Task Handle_FoldAction_MarksPlayerAsFolded()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
+	[Fact]
+	public async Task Handle_NotInBettingPhase_ReturnsError()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+		var command = new ProcessBettingActionCommand(
+			setup.Game.Id,
+			BettingActionType.Check);
 
-        // First player bets so there is a bet to fold against
-        await Mediator.Send(new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Bet,
-            10));
+		// Act
+		var result = await Mediator.Send(command);
 
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Fold,
-            0);
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidGameState);
+	}
 
-        // Act
-        var result = await Mediator.Send(command);
+	[Fact]
+	public async Task Handle_FoldAction_MarksPlayerAsFolded()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.Action.ActionType.Should().Be(BettingActionType.Fold);
+		// First player bets so there is a bet to fold against
+		await Mediator.Send(new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Bet,
+			10));
 
-        // Verify player is marked as folded
-        var player = await GetFreshDbContext().GamePlayers
-            .FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == success.PlayerSeatIndex);
-        player.HasFolded.Should().BeTrue();
-    }
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Fold);
 
-    [Fact]
-    public async Task Handle_CheckAction_WhenNoBet_Succeeds()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Check,
-            0);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.Action.ActionType.Should().Be(BettingActionType.Fold);
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.Action.ActionType.Should().Be(BettingActionType.Check);
-    }
+		// Verify player is marked as folded
+		var player = await GetFreshDbContext().GamePlayers
+			.FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == success.PlayerSeatIndex);
+		player.HasFolded.Should().BeTrue();
+	}
 
-    [Fact]
-    public async Task Handle_BetAction_UpdatesPotAndCurrentBet()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        var betAmount = 50;
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Bet,
-            betAmount);
+	[Fact]
+	public async Task Handle_CheckAction_WhenNoBet_Succeeds()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Check);
 
-        var potBefore = game.Pots.Sum(p => p.Amount);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.Action.ActionType.Should().Be(BettingActionType.Check);
+	}
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.Action.ActionType.Should().Be(BettingActionType.Bet);
-        success.Action.Amount.Should().Be(betAmount);
-        success.PotTotal.Should().Be(potBefore + betAmount);
-        success.CurrentBet.Should().Be(betAmount);
-    }
+	[Fact]
+	public async Task Handle_BetAction_UpdatesPotAndCurrentBet()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
+		var betAmount = 50;
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Bet,
+			betAmount);
 
-    [Fact]
-    public async Task Handle_CallAction_MatchesCurrentBet()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        
-        // First player bets
-        await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
+		var potBefore = game.Pots.Sum(p => p.Amount);
 
-        // Second player calls
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Call,
-            0);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.Action.ActionType.Should().Be(BettingActionType.Bet);
+		success.Action.Amount.Should().Be(betAmount);
+		success.PotTotal.Should().Be(potBefore + betAmount);
+		success.CurrentBet.Should().Be(betAmount);
+	}
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.Action.ActionType.Should().Be(BettingActionType.Call);
-        success.Action.Amount.Should().Be(50); // Should match the bet
-    }
+	[Fact]
+	public async Task Handle_CallAction_MatchesCurrentBet()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
-    [Fact]
-    public async Task Handle_RaiseAction_IncreasesCurrentBet()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        
-        // First player bets 50
-        await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
+		// First player bets
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
 
-        // Second player raises to 100
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Raise,
-            100);
+		// Second player calls
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Call);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.Action.ActionType.Should().Be(BettingActionType.Raise);
-        success.CurrentBet.Should().Be(100);
-    }
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.Action.ActionType.Should().Be(BettingActionType.Call);
+		success.Action.Amount.Should().Be(50); // Should match the bet
+	}
 
-    [Fact]
-    public async Task Handle_AllInAction_MovesAllChips()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        var bettingRound = game.BettingRounds.First(br => !br.IsComplete);
-        var currentPlayer = game.GamePlayers.First(gp => gp.SeatPosition == bettingRound.CurrentActorIndex);
-        var chipsBefore = currentPlayer.ChipStack;
+	[Fact]
+	public async Task Handle_RaiseAction_IncreasesCurrentBet()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.AllIn,
-            0);
+		// First player bets 50
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Second player raises to 100
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Raise,
+			100);
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.Action.ActionType.Should().Be(BettingActionType.AllIn);
-        success.Action.ChipStackAfter.Should().Be(0);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Verify player is marked as all-in
-        var updatedPlayer = await GetFreshDbContext().GamePlayers
-            .FirstAsync(gp => gp.Id == currentPlayer.Id);
-        updatedPlayer.IsAllIn.Should().BeTrue();
-        updatedPlayer.ChipStack.Should().Be(0);
-    }
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.Action.ActionType.Should().Be(BettingActionType.Raise);
+		success.CurrentBet.Should().Be(100);
+	}
 
-    [Fact]
-    public async Task Handle_CheckWhenBetExists_ReturnsError()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        
-        // First player bets
-        await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
+	[Fact]
+	public async Task Handle_AllInAction_MovesAllChips()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
+		var bettingRound = game.BettingRounds.First(br => !br.IsComplete);
+		var currentPlayer = game.GamePlayers.First(gp => gp.SeatPosition == bettingRound.CurrentActorIndex);
+		var chipsBefore = currentPlayer.ChipStack;
 
-        // Second player tries to check
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Check,
-            0);
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.AllIn);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        result.IsT1.Should().BeTrue();
-        result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidAction);
-    }
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.Action.ActionType.Should().Be(BettingActionType.AllIn);
+		success.Action.ChipStackAfter.Should().Be(0);
 
-    [Fact]
-    public async Task Handle_BetWhenBetExists_ReturnsError()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        
-        // First player bets
-        await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
+		// Verify player is marked as all-in
+		var updatedPlayer = await GetFreshDbContext().GamePlayers
+			.FirstAsync(gp => gp.Id == currentPlayer.Id);
+		updatedPlayer.IsAllIn.Should().BeTrue();
+		updatedPlayer.ChipStack.Should().Be(0);
+	}
 
-        // Second player tries to bet again instead of raise/call
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Bet,
-            75);
+	[Fact]
+	public async Task Handle_CheckWhenBetExists_ReturnsError()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
-        // Act
-        var result = await Mediator.Send(command);
+		// First player bets
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
 
-        // Assert
-        result.IsT1.Should().BeTrue();
-        result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidAction);
-    }
+		// Second player tries to check
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Check);
 
-    [Fact]
-    public async Task Handle_RoundComplete_AdvancesToNextPhase()
-    {
-        // Arrange - Create 2-player game for simpler round completion
-        var (setup, game) = await CreateGameInBettingPhaseAsync(numPlayers: 2);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Both players check - round should complete
-        await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check, 0));
-        var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check, 0));
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidAction);
+	}
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.RoundComplete.Should().BeTrue();
-        success.CurrentPhase.Should().NotBe(nameof(Phases.FirstBettingRound));
-    }
+	[Fact]
+	public async Task Handle_BetWhenBetExists_ReturnsError()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
-    [Fact]
-    public async Task Handle_ActionCreatesRecord()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Check,
-            0);
+		// First player bets
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
 
-        // Act
-        await Mediator.Send(command);
+		// Second player tries to bet again instead of raise/call
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Bet,
+			75);
 
-        // Assert
-        var actionRecord = await GetFreshDbContext().BettingActionRecords
-            .FirstOrDefaultAsync(bar => bar.BettingRound.GameId == game.Id);
-        
-        actionRecord.Should().NotBeNull();
-        actionRecord!.ActionType.Should().Be(BettingActionType.Check);
-        actionRecord.ActionOrder.Should().Be(1);
-        actionRecord.IsForced.Should().BeFalse();
-        actionRecord.IsTimeout.Should().BeFalse();
-    }
+		// Act
+		var result = await Mediator.Send(command);
 
-    [Fact]
-    public async Task Handle_UpdatesPlayerCurrentBet()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        var bettingRound = game.BettingRounds.First(br => !br.IsComplete);
-        var currentActorIndex = bettingRound.CurrentActorIndex;
-        var betAmount = 75;
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidAction);
+	}
 
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Bet,
-            betAmount);
+	[Fact]
+	public async Task Handle_RoundComplete_AdvancesToNextPhase()
+	{
+		// Arrange - Create 2-player game for simpler round completion
+		var (setup, game) = await CreateGameInBettingPhaseAsync(numPlayers: 2);
 
-        // Act
-        await Mediator.Send(command);
+		// Both players check - round should complete
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 
-        // Assert
-        var player = await GetFreshDbContext().GamePlayers
-            .FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == currentActorIndex);
-        player.CurrentBet.Should().Be(betAmount);
-        player.TotalContributedThisHand.Should().BeGreaterThanOrEqualTo(betAmount);
-    }
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.RoundComplete.Should().BeTrue();
+		success.CurrentPhase.Should().NotBe(nameof(Phases.FirstBettingRound));
+	}
 
-    [Fact]
-    public async Task Handle_AdvancesToNextPlayer()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync();
-        var bettingRound = game.BettingRounds.First(br => !br.IsComplete);
-        var initialActorIndex = bettingRound.CurrentActorIndex;
+	[Fact]
+	public async Task Handle_ActionCreatesRecord()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Check);
 
-        var command = new ProcessBettingActionCommand(
-            game.Id,
-            BettingActionType.Check,
-            0);
+		// Act
+		await Mediator.Send(command);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Assert
+		var actionRecord = await GetFreshDbContext().BettingActionRecords
+			.FirstOrDefaultAsync(bar => bar.BettingRound.GameId == game.Id);
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.PlayerSeatIndex.Should().Be(initialActorIndex);
-        success.NextPlayerIndex.Should().NotBe(initialActorIndex);
-    }
+		actionRecord.Should().NotBeNull();
+		actionRecord!.ActionType.Should().Be(BettingActionType.Check);
+		actionRecord.ActionOrder.Should().Be(1);
+		actionRecord.IsForced.Should().BeFalse();
+		actionRecord.IsTimeout.Should().BeFalse();
+	}
 
-    [Fact]
-    public async Task Handle_AllButOneFold_EndsRoundEarly()
-    {
-        // Arrange
-        var (setup, game) = await CreateGameInBettingPhaseAsync(numPlayers: 3);
+	[Fact]
+	public async Task Handle_UpdatesPlayerCurrentBet()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
+		var bettingRound = game.BettingRounds.First(br => !br.IsComplete);
+		var currentActorIndex = bettingRound.CurrentActorIndex;
+		var betAmount = 75;
 
-        // Player 1 bets (to allow others to fold)
-        await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 10));
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Bet,
+			betAmount);
 
-        // Player 2 folds
-        await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold, 0));
+		// Act
+		await Mediator.Send(command);
 
-        // Player 3 folds
-        var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold, 0));
+		// Assert
+		var player = await GetFreshDbContext().GamePlayers
+			.FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == currentActorIndex);
+		player.CurrentBet.Should().Be(betAmount);
+		player.TotalContributedThisHand.Should().BeGreaterThanOrEqualTo(betAmount);
+	}
 
-        // Assert - With only one player remaining, should go to showdown
-        result.IsT0.Should().BeTrue();
-        var success = result.AsT0;
-        success.RoundComplete.Should().BeTrue();
-    }
+	[Fact]
+	public async Task Handle_AdvancesToNextPlayer()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync();
+		var bettingRound = game.BettingRounds.First(br => !br.IsComplete);
+		var initialActorIndex = bettingRound.CurrentActorIndex;
+
+		var command = new ProcessBettingActionCommand(
+			game.Id,
+			BettingActionType.Check);
+
+		// Act
+		var result = await Mediator.Send(command);
+
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.PlayerSeatIndex.Should().Be(initialActorIndex);
+		success.NextPlayerIndex.Should().NotBe(initialActorIndex);
+	}
+
+	[Fact]
+	public async Task Handle_AllButOneFold_EndsRoundEarly()
+	{
+		// Arrange
+		var (setup, game) = await CreateGameInBettingPhaseAsync(numPlayers: 3);
+
+		// Player 1 bets (to allow others to fold)
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 10));
+
+		// Player 2 folds
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+
+		// Player 3 folds
+		var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+
+		// Assert - With only one player remaining, should go to showdown
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.RoundComplete.Should().BeTrue();
+	}
 }

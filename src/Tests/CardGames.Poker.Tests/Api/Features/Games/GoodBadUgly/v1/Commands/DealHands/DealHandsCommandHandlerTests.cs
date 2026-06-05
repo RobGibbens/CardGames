@@ -94,7 +94,8 @@ public class DealHandsCommandHandlerTests
 				.FirstAsync();
 
 			staleCardIds = await setupContext.GameCards
-				.Where(gameCard => gameCard.GameId == gameId && gameCard.GamePlayerId == firstPlayerId && gameCard.Location != CardLocation.Deck)
+				.Where(gameCard => gameCard.GameId == gameId && gameCard.GamePlayerId == firstPlayerId &&
+				                   gameCard.Location != CardLocation.Deck)
 				.Select(gameCard => gameCard.Id)
 				.ToArrayAsync();
 		}
@@ -265,7 +266,7 @@ public class DealHandsCommandHandlerTests
 			DealOrder = 100 + cardIndex,
 			Location = CardLocation.Deck,
 			IsVisible = false,
-			Symbol = (CardSymbol)((cardIndex % 13) + 2),
+			Symbol = (CardSymbol)(cardIndex % 13 + 2),
 			Suit = (CardSuit)(cardIndex % 4),
 			DealtAt = now,
 			DealtAtPhase = nameof(Phases.ThirdStreet)

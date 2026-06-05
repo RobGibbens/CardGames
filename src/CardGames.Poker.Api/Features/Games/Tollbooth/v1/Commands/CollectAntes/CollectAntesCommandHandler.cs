@@ -18,21 +18,30 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		var now = DateTimeOffset.UtcNow;
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
 		{
-			return new CollectAntesError { Message = $"Game with ID '{command.GameId}' was not found.", Code = CollectAntesErrorCode.GameNotFound };
+			return new CollectAntesError
+			{
+				Message = $"Game with ID '{command.GameId}' was not found.", Code = CollectAntesErrorCode.GameNotFound
+			};
 		}
 
 		if (game.CurrentPhase != nameof(Phases.CollectingAntes))
 		{
-			return new CollectAntesError { Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase.", Code = CollectAntesErrorCode.InvalidGameState };
+			return new CollectAntesError
+			{
+				Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase.",
+				Code = CollectAntesErrorCode.InvalidGameState
+			};
 		}
 
 		var mainPot = await context.Pots
-			.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber && p.PotType == PotType.Main, cancellationToken);
+			.FirstOrDefaultAsync(
+				p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber && p.PotType == PotType.Main,
+				cancellationToken);
 
 		if (mainPot is null)
 		{

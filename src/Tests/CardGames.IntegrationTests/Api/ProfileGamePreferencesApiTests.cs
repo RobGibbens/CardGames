@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.Poker.Api.Contracts;
 
 namespace CardGames.IntegrationTests.Api;

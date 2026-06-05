@@ -1,7 +1,7 @@
 namespace CardGames.Poker.Api.Features.Games.Common.v1;
 
 /// <summary>
-/// Feature metadata for the Common Games API.
+///     Feature metadata for the Common Games API.
 /// </summary>
 public static class Feature
 {

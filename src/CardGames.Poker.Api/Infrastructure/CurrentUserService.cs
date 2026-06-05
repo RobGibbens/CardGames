@@ -3,8 +3,8 @@ using System.Security.Claims;
 namespace CardGames.Poker.Api.Infrastructure;
 
 /// <summary>
-/// Implementation of <see cref="ICurrentUserService"/> that retrieves user information
-/// from the current HTTP context's claims principal or custom headers from Blazor frontend.
+///     Implementation of <see cref="ICurrentUserService" /> that retrieves user information
+///     from the current HTTP context's claims principal or custom headers from Blazor frontend.
 /// </summary>
 public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
 {
@@ -17,8 +17,8 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 		get
 		{
 			var claimUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
-				?? User?.FindFirstValue("oid")
-				?? User?.FindFirstValue("sub");
+			                  ?? User?.FindFirstValue("oid")
+			                  ?? User?.FindFirstValue("sub");
 
 			if (!string.IsNullOrWhiteSpace(claimUserId))
 			{
@@ -41,9 +41,9 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 		get
 		{
 			var claimUserName = User?.FindFirstValue(ClaimTypes.Email)
-				?? User?.FindFirstValue("email")
-				?? User?.FindFirstValue("preferred_username")
-				?? User?.Identity?.Name;
+			                    ?? User?.FindFirstValue("email")
+			                    ?? User?.FindFirstValue("preferred_username")
+			                    ?? User?.Identity?.Name;
 
 			if (!string.IsNullOrWhiteSpace(claimUserName))
 			{
@@ -66,7 +66,7 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 		get
 		{
 			var claimEmail = User?.FindFirstValue(ClaimTypes.Email)
-				?? User?.FindFirstValue("email");
+			                 ?? User?.FindFirstValue("email");
 
 			if (!string.IsNullOrWhiteSpace(claimEmail))
 			{

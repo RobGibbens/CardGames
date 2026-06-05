@@ -1,39 +1,59 @@
 using System.Text.Json;
-using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.InBetween;
+using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.InBetween;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using static CardGames.Poker.Api.Features.Games.InBetween.InBetweenVariantState;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.GameFlow;
 
 /// <summary>
-/// Game flow handler for In-Between (Acey-Deucey / Between the Sheets).
+///     Game flow handler for In-Between (Acey-Deucey / Between the Sheets).
 /// </summary>
 /// <remarks>
-/// <para>
-/// In-Between is a pot-funded card game (not traditional poker):
-/// </para>
-/// <list type="number">
-///   <item><description>All players ante to build the pot.</description></item>
-///   <item><description>Starting left of dealer, two boundary cards are dealt face-up.</description></item>
-///   <item><description>If the first boundary card is an Ace, the player must declare it high or low.</description></item>
-///   <item><description>The player may bet (up to the pot) or pass.</description></item>
-///   <item><description>A third card is dealt. If its rank falls strictly between the two boundaries, the player wins their bet from the pot.</description></item>
-///   <item><description>If the third card matches a boundary, the player POSTs (pays double their bet into the pot).</description></item>
-///   <item><description>If the third card is outside the boundaries, the player loses their bet to the pot.</description></item>
-///   <item><description>During the first orbit (before all players have had a turn), full-pot bets are disallowed.</description></item>
-///   <item><description>The game ends when the pot is emptied by a winning bet.</description></item>
-/// </list>
-/// <para>
-/// Uses a continuous deck that is reshuffled when 3 or fewer cards remain.
-/// </para>
+///     <para>
+///         In-Between is a pot-funded card game (not traditional poker):
+///     </para>
+///     <list type="number">
+///         <item>
+///             <description>All players ante to build the pot.</description>
+///         </item>
+///         <item>
+///             <description>Starting left of dealer, two boundary cards are dealt face-up.</description>
+///         </item>
+///         <item>
+///             <description>If the first boundary card is an Ace, the player must declare it high or low.</description>
+///         </item>
+///         <item>
+///             <description>The player may bet (up to the pot) or pass.</description>
+///         </item>
+///         <item>
+///             <description>
+///                 A third card is dealt. If its rank falls strictly between the two boundaries, the player wins
+///                 their bet from the pot.
+///             </description>
+///         </item>
+///         <item>
+///             <description>If the third card matches a boundary, the player POSTs (pays double their bet into the pot).</description>
+///         </item>
+///         <item>
+///             <description>If the third card is outside the boundaries, the player loses their bet to the pot.</description>
+///         </item>
+///         <item>
+///             <description>During the first orbit (before all players have had a turn), full-pot bets are disallowed.</description>
+///         </item>
+///         <item>
+///             <description>The game ends when the pot is emptied by a winning bet.</description>
+///         </item>
+///     </list>
+///     <para>
+///         Uses a continuous deck that is reshuffled when 3 or fewer cards remain.
+///     </para>
 /// </remarks>
 public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 {
@@ -43,10 +63,35 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	public override string GameTypeCode => "INBETWEEN";
 
 	/// <inheritdoc />
-	public override GameRules GetGameRules() => InBetweenRules.CreateGameRules();
+	public override bool SkipsAnteCollection => false;
 
 	/// <inheritdoc />
-	public override string GetInitialPhase(Game game) => nameof(Phases.CollectingAntes);
+	public override bool AutoCollectsAntesOnStart => true;
+
+	/// <inheritdoc />
+	public override IReadOnlyList<string> SpecialPhases =>
+		[nameof(Phases.InBetweenTurn)];
+
+	/// <inheritdoc />
+	public override bool IsMultiHandVariant => false;
+
+	/// <inheritdoc />
+	public override bool RequiresChipCoverageCheck => false;
+
+	/// <inheritdoc />
+	public override bool SupportsInlineShowdown => true;
+
+	/// <inheritdoc />
+	public override GameRules GetGameRules()
+	{
+		return InBetweenRules.CreateGameRules();
+	}
+
+	/// <inheritdoc />
+	public override string GetInitialPhase(Game game)
+	{
+		return nameof(Phases.CollectingAntes);
+	}
 
 	/// <inheritdoc />
 	public override string? GetNextPhase(Game game, string currentPhase)
@@ -71,27 +116,10 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <inheritdoc />
-	public override bool SkipsAnteCollection => false;
-
-	/// <inheritdoc />
-	public override bool AutoCollectsAntesOnStart => true;
-
-	/// <inheritdoc />
-	public override IReadOnlyList<string> SpecialPhases =>
-		[nameof(Phases.InBetweenTurn)];
-
-	/// <inheritdoc />
-	public override bool IsMultiHandVariant => false;
-
-	/// <inheritdoc />
-	public override bool RequiresChipCoverageCheck => false;
-
-	/// <inheritdoc />
-	public override ChipCheckConfiguration GetChipCheckConfiguration() =>
-		ChipCheckConfiguration.Disabled;
-
-	/// <inheritdoc />
-	public override bool SupportsInlineShowdown => true;
+	public override ChipCheckConfiguration GetChipCheckConfiguration()
+	{
+		return ChipCheckConfiguration.Disabled;
+	}
 
 	/// <inheritdoc />
 	public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
@@ -157,11 +185,44 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		await Task.CompletedTask;
 	}
 
+	#region Auto Actions
+
+	/// <inheritdoc />
+	public override async Task PerformAutoActionAsync(AutoActionContext context)
+	{
+		if (context.CurrentPhase.Equals(nameof(Phases.InBetweenTurn), StringComparison.OrdinalIgnoreCase))
+		{
+			// Auto-action for timed-out player: pass (bet 0)
+			var player = context.Game.GamePlayers
+				.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
+
+			if (player is null) return;
+
+			try
+			{
+				var command = new PlaceBetCommand(
+					context.GameId, player.PlayerId, 0);
+				await context.Mediator.Send(command, context.CancellationToken);
+				context.Logger.LogInformation(
+					"Auto-pass completed for player {PlayerId} in In-Between game {GameId}",
+					player.PlayerId, context.GameId);
+			}
+			catch (Exception ex)
+			{
+				context.Logger.LogError(ex,
+					"Auto-pass failed for player {PlayerId} in In-Between game {GameId}",
+					player.PlayerId, context.GameId);
+			}
+		}
+	}
+
+	#endregion
+
 	#region Turn Management
 
 	/// <summary>
-	/// Deals the two boundary cards for the active player's turn.
-	/// Handles deck refresh if needed. If first card is an Ace, sets sub-phase to AwaitingAceChoice.
+	///     Deals the two boundary cards for the active player's turn.
+	///     Handles deck refresh if needed. If first card is an Ace, sets sub-phase to AwaitingAceChoice.
 	/// </summary>
 	internal static async Task DealBoundaryCardsAsync(
 		CardsDbContext context,
@@ -223,14 +284,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		secondCard.DealtAt = now;
 
 		// Check if first card is an Ace — requires player to choose high or low
-		if (firstCard.Symbol == CardSymbol.Ace)
-		{
-			state.SubPhase = TurnSubPhase.AwaitingAceChoice;
-		}
-		else
-		{
-			state.SubPhase = TurnSubPhase.AwaitingBetOrPass;
-		}
+		state.SubPhase = firstCard.Symbol == CardSymbol.Ace ? TurnSubPhase.AwaitingAceChoice : TurnSubPhase.AwaitingBetOrPass;
 
 		state.AceIsHigh = null;
 		state.BetAmount = 0;
@@ -244,7 +298,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Resolves the current turn: deals the third card, compares it to boundaries, and adjusts chips/pot.
+	///     Resolves the current turn: deals the third card, compares it to boundaries, and adjusts chips/pot.
 	/// </summary>
 	internal static async Task<TurnResult> ResolveTurnAsync(
 		CardsDbContext context,
@@ -307,8 +361,8 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 				cancellationToken) ?? throw new InvalidOperationException("No main pot found.");
 
 		var activePlayer = game.GamePlayers
-			.FirstOrDefault(gp => gp.SeatPosition == game.CurrentPlayerIndex)
-			?? throw new InvalidOperationException("Active player not found.");
+			                   .FirstOrDefault(gp => gp.SeatPosition == game.CurrentPlayerIndex)
+		                   ?? throw new InvalidOperationException("Active player not found.");
 
 		TurnResult result;
 		string description;
@@ -355,7 +409,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Advances to the next player's turn or completes the game if the pot is empty.
+	///     Advances to the next player's turn or completes the game if the pot is empty.
 	/// </summary>
 	internal static async Task AdvanceToNextPlayerOrCompleteAsync(
 		CardsDbContext context,
@@ -425,7 +479,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Determines the maximum legal bet for the active player.
+	///     Determines the maximum legal bet for the active player.
 	/// </summary>
 	internal static int GetMaxLegalBet(Game game, GamePlayer player)
 	{
@@ -441,7 +495,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Returns true if all active players have completed their first turn.
+	///     Returns true if all active players have completed their first turn.
 	/// </summary>
 	internal static bool AllPlayersCompletedFirstTurn(Game game, InBetweenState state)
 	{
@@ -482,45 +536,12 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 
 	#endregion
 
-	#region Auto Actions
-
-	/// <inheritdoc />
-	public override async Task PerformAutoActionAsync(AutoActionContext context)
-	{
-		if (context.CurrentPhase.Equals(nameof(Phases.InBetweenTurn), StringComparison.OrdinalIgnoreCase))
-		{
-			// Auto-action for timed-out player: pass (bet 0)
-			var player = context.Game.GamePlayers
-				.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
-
-			if (player is null) return;
-
-			try
-			{
-				var command = new Features.Games.InBetween.v1.Commands.PlaceBet.PlaceBetCommand(
-					context.GameId, player.PlayerId, 0);
-				await context.Mediator.Send(command, context.CancellationToken);
-				context.Logger.LogInformation(
-					"Auto-pass completed for player {PlayerId} in In-Between game {GameId}",
-					player.PlayerId, context.GameId);
-			}
-			catch (Exception ex)
-			{
-				context.Logger.LogError(ex,
-					"Auto-pass failed for player {PlayerId} in In-Between game {GameId}",
-					player.PlayerId, context.GameId);
-			}
-		}
-	}
-
-	#endregion
-
 	#region Helpers
 
 	/// <summary>
-	/// Gets the effective numeric value for a card symbol.
-	/// Ace value depends on player choice: high (14) or low (1).
-	/// Non-ace cards use their enum value.
+	///     Gets the effective numeric value for a card symbol.
+	///     Ace value depends on player choice: high (14) or low (1).
+	///     Non-ace cards use their enum value.
 	/// </summary>
 	internal static int GetEffectiveValue(CardSymbol symbol, bool? aceIsHigh)
 	{
@@ -655,7 +676,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	private static async Task CompleteGameAsync(
 		CardsDbContext context,
 		Game game,
-		Data.Entities.Pot mainPot,
+		Pot mainPot,
 		IHandHistoryRecorder handHistoryRecorder,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)

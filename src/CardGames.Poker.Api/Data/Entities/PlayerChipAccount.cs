@@ -46,7 +46,7 @@ public class PlayerChipLedgerEntry : EntityWithRowVersion
 	public string? ActorUserId { get; set; }
 
 	/// <summary>
-	/// The hand number associated with this entry (populated for HandSettlement entries).
+	///     The hand number associated with this entry (populated for HandSettlement entries).
 	/// </summary>
 	public int? HandNumber { get; set; }
 

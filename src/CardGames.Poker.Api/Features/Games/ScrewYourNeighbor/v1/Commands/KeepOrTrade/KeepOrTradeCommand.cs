@@ -5,7 +5,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
 
 /// <summary>
-/// Command for a player to make their keep or trade decision in Screw Your Neighbor.
+///     Command for a player to make their keep or trade decision in Screw Your Neighbor.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="PlayerId">The unique identifier of the player making the decision.</param>

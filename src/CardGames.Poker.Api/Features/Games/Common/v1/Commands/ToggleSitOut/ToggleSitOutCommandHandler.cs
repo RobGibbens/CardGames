@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -9,7 +10,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.ToggleSitOut;
 
 /// <summary>
-/// Handles the request effectively toggling the player's sit-out status.
+///     Handles the request effectively toggling the player's sit-out status.
 /// </summary>
 public sealed class ToggleSitOutCommandHandler(
 	CardsDbContext context,
@@ -32,7 +33,7 @@ public sealed class ToggleSitOutCommandHandler(
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game == null)
@@ -41,8 +42,8 @@ public sealed class ToggleSitOutCommandHandler(
 		}
 
 		var gamePlayer = game.GamePlayers
-			.FirstOrDefault(gp => 
-				gp.Player.Name.Equals(currentUserName, StringComparison.OrdinalIgnoreCase) && 
+			.FirstOrDefault(gp =>
+				gp.Player.Name.Equals(currentUserName, StringComparison.OrdinalIgnoreCase) &&
 				gp.Status != GamePlayerStatus.Left);
 
 		if (gamePlayer == null)
@@ -58,9 +59,9 @@ public sealed class ToggleSitOutCommandHandler(
 		if (!command.IsSittingOut && game.Status == GameStatus.InProgress)
 		{
 			var hasCards = await context.GameCards
-				.AnyAsync(gc => gc.GameId == game.Id && 
-								gc.GamePlayerId == gamePlayer.Id && 
-								gc.HandNumber == game.CurrentHandNumber, 
+				.AnyAsync(gc => gc.GameId == game.Id &&
+				                gc.GamePlayerId == gamePlayer.Id &&
+				                gc.HandNumber == game.CurrentHandNumber,
 					cancellationToken);
 
 			if (!hasCards)
@@ -70,7 +71,7 @@ public sealed class ToggleSitOutCommandHandler(
 		}
 
 		// If player is coming back and game is waiting for players, schedule next hand check immediately
-		if (!command.IsSittingOut && game.CurrentPhase == nameof(Betting.Phases.WaitingForPlayers))
+		if (!command.IsSittingOut && game.CurrentPhase == nameof(Phases.WaitingForPlayers))
 		{
 			game.NextHandStartsAt = DateTimeOffset.UtcNow;
 		}

@@ -6,13 +6,14 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using SharedDealHandsCommand = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsCommand;
 using SharedDealHandsError = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsError;
-using SharedDealHandsSuccessful = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
+using SharedDealHandsSuccessful =
+	CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
 
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.DealHands;
 
 /// <summary>
-/// Delegates to SevenCardStud DealHands, then places 2 Tollbooth display cards
-/// on the table after ThirdStreet dealing.
+///     Delegates to SevenCardStud DealHands, then places 2 Tollbooth display cards
+///     on the table after ThirdStreet dealing.
 /// </summary>
 public sealed class DealHandsCommandHandler(
 	IRequestHandler<SharedDealHandsCommand, OneOf<SharedDealHandsSuccessful, SharedDealHandsError>> innerHandler,
@@ -43,8 +44,8 @@ public sealed class DealHandsCommandHandler(
 			{
 				var deckCards = await context.GameCards
 					.Where(gc => gc.GameId == command.GameId &&
-								 gc.HandNumber == game.CurrentHandNumber &&
-								 gc.Location == CardLocation.Deck)
+					             gc.HandNumber == game.CurrentHandNumber &&
+					             gc.Location == CardLocation.Deck)
 					.OrderBy(gc => gc.DealOrder)
 					.Take(2)
 					.ToListAsync(cancellationToken);
@@ -53,8 +54,8 @@ public sealed class DealHandsCommandHandler(
 				{
 					var maxDealOrder = await context.GameCards
 						.Where(gc => gc.GameId == command.GameId &&
-									 gc.HandNumber == game.CurrentHandNumber &&
-									 gc.Location != CardLocation.Deck)
+						             gc.HandNumber == game.CurrentHandNumber &&
+						             gc.Location != CardLocation.Deck)
 						.MaxAsync(gc => (int?)gc.DealOrder, cancellationToken) ?? 0;
 
 					foreach (var card in deckCards)

@@ -1,7 +1,9 @@
 using CardGames.Poker.Api.Extensions;
 using MediatR;
-using SharedDealHandsErrorCode = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsErrorCode;
-using SharedDealHandsSuccessful = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
+using SharedDealHandsErrorCode =
+	CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsErrorCode;
+using SharedDealHandsSuccessful =
+	CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
 
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.DealHands;
 
@@ -20,15 +22,17 @@ public static class DealHandsEndpoint
 						{
 							SharedDealHandsErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
 							SharedDealHandsErrorCode.InvalidGameState => Results.Conflict(new { error.Message }),
-							SharedDealHandsErrorCode.InsufficientCards => Results.UnprocessableEntity(new { error.Message }),
+							SharedDealHandsErrorCode.InsufficientCards => Results.UnprocessableEntity(new
+								{ error.Message }),
 							_ => Results.Problem(error.Message)
 						}
 					);
 				})
 			.WithName($"Tollbooth{nameof(MapDealHands).TrimPrefix("Map")}")
 			.WithSummary("Deal Hands")
-			.WithDescription("Deals the current Tollbooth street and places display cards for the Tollbooth offer mechanic.")
-			.Produces<SharedDealHandsSuccessful>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Deals the current Tollbooth street and places display cards for the Tollbooth offer mechanic.")
+			.Produces<SharedDealHandsSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict)
 			.ProducesProblem(StatusCodes.Status422UnprocessableEntity);

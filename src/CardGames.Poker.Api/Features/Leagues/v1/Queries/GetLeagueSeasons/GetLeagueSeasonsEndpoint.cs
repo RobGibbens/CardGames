@@ -13,7 +13,7 @@ public static class GetLeagueSeasonsEndpoint
 					var result = await mediator.Send(new GetLeagueSeasonsQuery(leagueId), cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							GetLeagueSeasonsErrorCode.Unauthorized => Results.Unauthorized(),
@@ -24,7 +24,7 @@ public static class GetLeagueSeasonsEndpoint
 			.WithName("GetLeagueSeasons")
 			.WithSummary("Get league seasons")
 			.WithDescription("Returns seasons for an active member of a league.")
-			.Produces<IReadOnlyList<LeagueSeasonDto>>(StatusCodes.Status200OK)
+			.Produces<IReadOnlyList<LeagueSeasonDto>>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.RequireAuthorization();

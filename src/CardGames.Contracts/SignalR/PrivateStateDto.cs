@@ -1,269 +1,267 @@
-using CardGames.Poker.Api.Contracts;
-
 namespace CardGames.Contracts.SignalR;
 
 /// <summary>
-/// Private state sent only to the requesting player.
-/// Contains their face-up cards and available actions.
+///     Private state sent only to the requesting player.
+///     Contains their face-up cards and available actions.
 /// </summary>
 public sealed record PrivateStateDto
 {
-    /// <summary>
-    /// The unique identifier of the game.
-    /// </summary>
-    public required Guid GameId { get; init; }
-
-    /// <summary>
-    /// The player's name/identifier.
-    /// </summary>
-    public required string PlayerName { get; init; }
-
-    /// <summary>
-    /// The player's seat position.
-    /// </summary>
-    public int SeatPosition { get; init; }
-
-    /// <summary>
-    /// The player's hand with cards face-up.
-    /// </summary>
-    public required IReadOnlyList<CardPrivateDto> Hand { get; init; }
-
-    /// <summary>
-    /// A human-readable evaluation of the player's current hand (e.g., "Straight to the Ten").
-    /// Only sent to the requesting player.
-    /// </summary>
-    public string? HandEvaluationDescription { get; init; }
-
-    /// <summary>
-    /// Available betting actions when it is the player's turn.
-    /// Null if not the player's turn.
-    /// </summary>
-    public AvailableActionsDto? AvailableActions { get; init; }
-
-    /// <summary>
-    /// Draw phase information when in draw phase.
-    /// </summary>
-    public DrawPrivateDto? Draw { get; init; }
+	/// <summary>
+	///     The unique identifier of the game.
+	/// </summary>
+	public required Guid GameId { get; init; }
 
 	/// <summary>
-	/// Drop or Stay phase information when in decision phase (for Kings and Lows, etc.).
+	///     The player's name/identifier.
+	/// </summary>
+	public required string PlayerName { get; init; }
+
+	/// <summary>
+	///     The player's seat position.
+	/// </summary>
+	public int SeatPosition { get; init; }
+
+	/// <summary>
+	///     The player's hand with cards face-up.
+	/// </summary>
+	public required IReadOnlyList<CardPrivateDto> Hand { get; init; }
+
+	/// <summary>
+	///     A human-readable evaluation of the player's current hand (e.g., "Straight to the Ten").
+	///     Only sent to the requesting player.
+	/// </summary>
+	public string? HandEvaluationDescription { get; init; }
+
+	/// <summary>
+	///     Available betting actions when it is the player's turn.
+	///     Null if not the player's turn.
+	/// </summary>
+	public AvailableActionsDto? AvailableActions { get; init; }
+
+	/// <summary>
+	///     Draw phase information when in draw phase.
+	/// </summary>
+	public DrawPrivateDto? Draw { get; init; }
+
+	/// <summary>
+	///     Drop or Stay phase information when in decision phase (for Kings and Lows, etc.).
 	/// </summary>
 	public DropOrStayPrivateDto? DropOrStay { get; init; }
 
 	/// <summary>
-	/// Buy card offer information for Baseball (when a 4 is dealt face-up).
+	///     Buy card offer information for Baseball (when a 4 is dealt face-up).
 	/// </summary>
 	public BuyCardOfferPrivateDto? BuyCardOffer { get; init; }
 
 	/// <summary>
-	/// Tollbooth offer information when in the TollboothOffer phase.
+	///     Tollbooth offer information when in the TollboothOffer phase.
 	/// </summary>
 	public TollboothOfferPrivateDto? TollboothOffer { get; init; }
 
-        /// <summary>
-        /// Whether it is currently this player's turn to act.
-        /// </summary>
-        public bool IsMyTurn { get; init; }
-
-        /// <summary>
-        /// Hand history entries personalized for this player.
-        /// Contains the player's result label and chip delta for each hand.
-        /// </summary>
-        public IReadOnlyList<HandHistoryEntryDto>? HandHistory { get; init; }
+	/// <summary>
+	///     Whether it is currently this player's turn to act.
+	/// </summary>
+	public bool IsMyTurn { get; init; }
 
 	/// <summary>
-	/// Chip history and current chip state for this player.
+	///     Hand history entries personalized for this player.
+	///     Contains the player's result label and chip delta for each hand.
+	/// </summary>
+	public IReadOnlyList<HandHistoryEntryDto>? HandHistory { get; init; }
+
+	/// <summary>
+	///     Chip history and current chip state for this player.
 	/// </summary>
 	public ChipHistoryDto? ChipHistory { get; init; }
-    }
+}
 
 /// <summary>
-/// Private buy-card offer information for Baseball poker.
+///     Private buy-card offer information for Baseball poker.
 /// </summary>
 public sealed record BuyCardOfferPrivateDto
 {
 	/// <summary>
-	/// The buy-card price in chips.
+	///     The buy-card price in chips.
 	/// </summary>
 	public int BuyCardPrice { get; init; }
 
 	/// <summary>
-	/// The face-up card that triggered the buy option.
+	///     The face-up card that triggered the buy option.
 	/// </summary>
 	public CardPublicDto? TriggerCard { get; init; }
 
 	/// <summary>
-	/// The number of pending buy-card offers remaining.
+	///     The number of pending buy-card offers remaining.
 	/// </summary>
 	public int PendingOfferCount { get; init; }
 }
 
 /// <summary>
-/// Private card representation with full card details visible.
+///     Private card representation with full card details visible.
 /// </summary>
 public sealed record CardPrivateDto
 {
-    /// <summary>
-    /// The rank of the card (e.g., "A", "K", "10").
-    /// </summary>
-    public required string Rank { get; init; }
+	/// <summary>
+	///     The rank of the card (e.g., "A", "K", "10").
+	/// </summary>
+	public required string Rank { get; init; }
 
-    /// <summary>
-    /// The suit of the card (e.g., "Hearts", "Spades").
-    /// </summary>
-    public required string Suit { get; init; }
+	/// <summary>
+	///     The suit of the card (e.g., "Hearts", "Spades").
+	/// </summary>
+	public required string Suit { get; init; }
 
-    /// <summary>
-    /// The order in which this card was dealt.
-    /// </summary>
-    public int DealOrder { get; init; }
+	/// <summary>
+	///     The order in which this card was dealt.
+	/// </summary>
+	public int DealOrder { get; init; }
 
-    /// <summary>
-    /// Whether this card is selected for discard (during draw phase).
-    /// </summary>
-    public bool IsSelectedForDiscard { get; init; }
+	/// <summary>
+	///     Whether this card is selected for discard (during draw phase).
+	/// </summary>
+	public bool IsSelectedForDiscard { get; init; }
 
-    /// <summary>
-    /// Whether this card is publicly visible (face up) to other players.
-    /// </summary>
-    public bool IsPubliclyVisible { get; init; }
+	/// <summary>
+	///     Whether this card is publicly visible (face up) to other players.
+	/// </summary>
+	public bool IsPubliclyVisible { get; init; }
 
-    /// <summary>
-    /// Whether this card has been marked as the player's Bob Barker showcase card.
-    /// </summary>
-    public bool IsShowcaseCard { get; init; }
+	/// <summary>
+	///     Whether this card has been marked as the player's Bob Barker showcase card.
+	/// </summary>
+	public bool IsShowcaseCard { get; init; }
 }
 
 /// <summary>
-/// Available betting actions for the current player.
+///     Available betting actions for the current player.
 /// </summary>
 public sealed record AvailableActionsDto
 {
-    /// <summary>
-    /// Whether the player can fold.
-    /// </summary>
-    public bool CanFold { get; init; }
+	/// <summary>
+	///     Whether the player can fold.
+	/// </summary>
+	public bool CanFold { get; init; }
 
-    /// <summary>
-    /// Whether the player can check.
-    /// </summary>
-    public bool CanCheck { get; init; }
+	/// <summary>
+	///     Whether the player can check.
+	/// </summary>
+	public bool CanCheck { get; init; }
 
-    /// <summary>
-    /// Whether the player can call.
-    /// </summary>
-    public bool CanCall { get; init; }
+	/// <summary>
+	///     Whether the player can call.
+	/// </summary>
+	public bool CanCall { get; init; }
 
-    /// <summary>
-    /// Whether the player can bet.
-    /// </summary>
-    public bool CanBet { get; init; }
+	/// <summary>
+	///     Whether the player can bet.
+	/// </summary>
+	public bool CanBet { get; init; }
 
-    /// <summary>
-    /// Whether the player can raise.
-    /// </summary>
-    public bool CanRaise { get; init; }
+	/// <summary>
+	///     Whether the player can raise.
+	/// </summary>
+	public bool CanRaise { get; init; }
 
-    /// <summary>
-    /// Whether the player can go all-in.
-    /// </summary>
-    public bool CanAllIn { get; init; }
+	/// <summary>
+	///     Whether the player can go all-in.
+	/// </summary>
+	public bool CanAllIn { get; init; }
 
-    /// <summary>
-    /// The minimum bet amount allowed.
-    /// </summary>
-    public int MinBet { get; init; }
+	/// <summary>
+	///     The minimum bet amount allowed.
+	/// </summary>
+	public int MinBet { get; init; }
 
-    /// <summary>
-    /// The maximum bet amount allowed.
-    /// </summary>
-    public int MaxBet { get; init; }
+	/// <summary>
+	///     The maximum bet amount allowed.
+	/// </summary>
+	public int MaxBet { get; init; }
 
-    /// <summary>
-    /// The amount required to call.
-    /// </summary>
-    public int CallAmount { get; init; }
+	/// <summary>
+	///     The amount required to call.
+	/// </summary>
+	public int CallAmount { get; init; }
 
-    /// <summary>
-    /// The minimum raise amount.
-    /// </summary>
-    public int MinRaise { get; init; }
+	/// <summary>
+	///     The minimum raise amount.
+	/// </summary>
+	public int MinRaise { get; init; }
 }
 
 /// <summary>
-/// Draw phase information for the player.
+///     Draw phase information for the player.
 /// </summary>
 public sealed record DrawPrivateDto
 {
-    /// <summary>
-    /// Whether it is the player's turn to draw.
-    /// </summary>
-    public bool IsMyTurnToDraw { get; init; }
+	/// <summary>
+	///     Whether it is the player's turn to draw.
+	/// </summary>
+	public bool IsMyTurnToDraw { get; init; }
 
-    /// <summary>
-    /// Maximum number of cards the player can discard.
-    /// </summary>
-    public int MaxDiscards { get; init; }
+	/// <summary>
+	///     Maximum number of cards the player can discard.
+	/// </summary>
+	public int MaxDiscards { get; init; }
 
-    /// <summary>
-    /// Whether the player has already drawn this round.
-    /// </summary>
-    public bool HasDrawnThisRound { get; init; }
+	/// <summary>
+	///     Whether the player has already drawn this round.
+	/// </summary>
+	public bool HasDrawnThisRound { get; init; }
 }
 
 /// <summary>
-/// Drop or Stay phase information for the player.
+///     Drop or Stay phase information for the player.
 /// </summary>
 public sealed record DropOrStayPrivateDto
 {
-    /// <summary>
-    /// Whether it is the player's turn to decide.
-    /// </summary>
-    public bool IsMyTurnToDecide { get; init; }
+	/// <summary>
+	///     Whether it is the player's turn to decide.
+	/// </summary>
+	public bool IsMyTurnToDecide { get; init; }
 
-        /// <summary>
-        /// Whether the player has already made their decision this round.
-        /// </summary>
-        public bool HasDecidedThisRound { get; init; }
+	/// <summary>
+	///     Whether the player has already made their decision this round.
+	/// </summary>
+	public bool HasDecidedThisRound { get; init; }
 
-        /// <summary>
-        /// The decision made by the player ("Drop" or "Stay"), if any.
-        /// </summary>
-        public string? Decision { get; init; }
-    }
+	/// <summary>
+	///     The decision made by the player ("Drop" or "Stay"), if any.
+	/// </summary>
+	public string? Decision { get; init; }
+}
 
 /// <summary>
-/// Tollbooth offer information for the player during TollboothOffer phase.
+///     Tollbooth offer information for the player during TollboothOffer phase.
 /// </summary>
 public sealed record TollboothOfferPrivateDto
 {
 	/// <summary>
-	/// Whether it is the player's turn to choose a card.
+	///     Whether it is the player's turn to choose a card.
 	/// </summary>
 	public bool IsMyTurnToChoose { get; init; }
 
 	/// <summary>
-	/// Whether the player has already chosen this round.
+	///     Whether the player has already chosen this round.
 	/// </summary>
 	public bool HasChosenThisRound { get; init; }
 
 	/// <summary>
-	/// Cost of the Furthest display card (always 0, free).
+	///     Cost of the Furthest display card (always 0, free).
 	/// </summary>
 	public int FurthestCost { get; init; }
 
 	/// <summary>
-	/// Cost of the Nearest display card (1× ante).
+	///     Cost of the Nearest display card (1× ante).
 	/// </summary>
 	public int NearestCost { get; init; }
 
 	/// <summary>
-	/// Cost of drawing from the Deck (2× ante).
+	///     Cost of drawing from the Deck (2× ante).
 	/// </summary>
 	public int DeckCost { get; init; }
 
 	/// <summary>
-	/// The display cards currently available for selection (face-up community cards).
+	///     The display cards currently available for selection (face-up community cards).
 	/// </summary>
 	public IReadOnlyList<CardPublicDto> DisplayCards { get; init; } = [];
 }

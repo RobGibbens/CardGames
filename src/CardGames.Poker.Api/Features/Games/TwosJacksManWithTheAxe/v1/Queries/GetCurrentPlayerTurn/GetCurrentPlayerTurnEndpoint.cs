@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetCurrentPlayerTurn;
 
 /// <summary>
-/// Endpoint for retrieving the current player's turn state in a specific game.
+///     Endpoint for retrieving the current player's turn state in a specific game.
 /// </summary>
 public static class GetCurrentPlayerTurnEndpoint
 {
@@ -20,9 +20,10 @@ public static class GetCurrentPlayerTurnEndpoint
 				})
 			.WithName($"TwosJacksManWithTheAxe{nameof(MapGetCurrentPlayerTurn).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetCurrentPlayerTurn).TrimPrefix("Map"))
-			.WithDescription("Retrieve the current player's turn state for a specific game, including available actions.")
+			.WithDescription(
+				"Retrieve the current player's turn state for a specific game, including available actions.")
 			.MapToApiVersion(1.0)
-			.Produces<GetCurrentPlayerTurnResponse>(StatusCodes.Status200OK)
+			.Produces<GetCurrentPlayerTurnResponse>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

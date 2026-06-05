@@ -1,12 +1,14 @@
+using System.Text.Json;
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Data.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 
 /// <summary>
-/// Handles the <see cref="GetHandHistoryQuery"/> to retrieve hand history for a game.
+///     Handles the <see cref="GetHandHistoryQuery" /> to retrieve hand history for a game.
 /// </summary>
 public class GetHandHistoryQueryHandler(CardsDbContext context)
 	: IRequestHandler<GetHandHistoryQuery, HandHistoryListDto>
@@ -22,7 +24,7 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 		// Get hand history entries, ordered newest-first
 		var histories = await context.HandHistories
 			.Include(h => h.Winners)
-				.ThenInclude(w => w.Player)
+			.ThenInclude(w => w.Player)
 			.Include(h => h.PlayerResults)
 			.Where(h => h.GameId == request.GameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
@@ -72,8 +74,8 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 				var email = firstWinner.Player.Email;
 
 				if (!string.IsNullOrWhiteSpace(email) &&
-					winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
-					!string.IsNullOrWhiteSpace(firstName))
+				    winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
+				    !string.IsNullOrWhiteSpace(firstName))
 				{
 					return firstName;
 				}
@@ -104,9 +106,9 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 					{
 						try
 						{
-							visibleCards = System.Text.Json.JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
+							visibleCards = JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
 						}
-						catch (System.Text.Json.JsonException)
+						catch (JsonException)
 						{
 							// Log error but don't fail the request
 							visibleCards = null;
@@ -134,7 +136,7 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 				WinnerName = winnerDisplay,
 				AmountWon = totalWinnings,
 				WinningHandDescription = h.WinningHandDescription,
-				WonByFold = h.EndReason == Data.Entities.HandEndReason.FoldedToWinner,
+				WonByFold = h.EndReason == HandEndReason.FoldedToWinner,
 				WinnerCount = h.Winners.Count,
 				PlayerResults = playerResults
 			};

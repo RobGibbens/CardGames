@@ -4,10 +4,8 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformShowdown;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.SevenCardStud;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using OneOf;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
@@ -15,7 +13,7 @@ using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Handles the <see cref="ProcessBettingActionCommand"/> to process betting actions from players.
+///     Handles the <see cref="ProcessBettingActionCommand" /> to process betting actions from players.
 /// </summary>
 public class ProcessBettingActionCommandHandler(
 	CardsDbContext context,
@@ -37,7 +35,7 @@ public class ProcessBettingActionCommandHandler(
 		// 1. Load the game with its players and active betting round for the current hand
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -57,8 +55,8 @@ public class ProcessBettingActionCommandHandler(
 		// Load the active betting round for the current hand separately to avoid filtered include issues
 		var bettingRounds = await context.BettingRounds
 			.Where(br => br.GameId == game.Id &&
-						 br.HandNumber == game.CurrentHandNumber &&
-						 !br.IsComplete)
+			             br.HandNumber == game.CurrentHandNumber &&
+			             !br.IsComplete)
 			.Include(br => br.Actions)
 			.OrderByDescending(br => br.RoundNumber)
 			.ToListAsync(cancellationToken);
@@ -83,7 +81,7 @@ public class ProcessBettingActionCommandHandler(
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
-						  $"Betting is only allowed during '{nameof(Phases.ThirdStreet)}' or '{nameof(Phases.FourthStreet)}' phases.",
+				          $"Betting is only allowed during '{nameof(Phases.ThirdStreet)}' or '{nameof(Phases.FourthStreet)}' phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
 		}
@@ -105,12 +103,15 @@ public class ProcessBettingActionCommandHandler(
 				game.CurrentHandNumber,
 				game.CurrentPhase,
 				allRoundsForGame.Count,
-				string.Join(", ", allRoundsForGame.Select(r => $"[Hand:{r.HandNumber}, Round:{r.RoundNumber}, Street:{r.Street}, Complete:{r.IsComplete}]")));
+				string.Join(", ",
+					allRoundsForGame.Select(r =>
+						$"[Hand:{r.HandNumber}, Round:{r.RoundNumber}, Street:{r.Street}, Complete:{r.IsComplete}]")));
 
 			return new ProcessBettingActionError
 			{
-				Message = $"No active betting round found for hand {game.CurrentHandNumber} in phase '{game.CurrentPhase}'. " +
-						  $"Total betting rounds in database: {allRoundsForGame.Count}.",
+				Message =
+					$"No active betting round found for hand {game.CurrentHandNumber} in phase '{game.CurrentPhase}'. " +
+					$"Total betting rounds in database: {allRoundsForGame.Count}.",
 				Code = ProcessBettingActionErrorCode.NoBettingRound
 			};
 		}
@@ -278,11 +279,11 @@ public class ProcessBettingActionCommandHandler(
 			// 14. Check if we need to deal next street cards
 			var streetPhases = new[]
 			{
-					nameof(Phases.FourthStreet),
-					nameof(Phases.FifthStreet),
-					nameof(Phases.SixthStreet),
-					nameof(Phases.SeventhStreet)
-				};
+				nameof(Phases.FourthStreet),
+				nameof(Phases.FifthStreet),
+				nameof(Phases.SixthStreet),
+				nameof(Phases.SeventhStreet)
+			};
 
 			if (streetPhases.Contains(game.CurrentPhase))
 			{
@@ -415,7 +416,8 @@ public class ProcessBettingActionCommandHandler(
 		};
 	}
 
-	private string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player, BettingRound bettingRound)
+	private string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player,
+		BettingRound bettingRound)
 	{
 		var amountToCall = Math.Max(0, bettingRound.CurrentBet - player.CurrentBet);
 
@@ -434,7 +436,7 @@ public class ProcessBettingActionCommandHandler(
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
 			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount
-										 && amount < player.ChipStack + player.CurrentBet =>
+			                             && amount < player.ChipStack + player.CurrentBet =>
 				$"Raise must be to at least {bettingRound.CurrentBet + bettingRound.LastRaiseAmount}",
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
 				"Cannot fold when you can check",
@@ -518,6 +520,7 @@ public class ProcessBettingActionCommandHandler(
 						bettingRound.LastAggressorIndex = player.SeatPosition;
 						bettingRound.RaiseCount++;
 					}
+
 					bettingRound.CurrentBet = newTotal;
 				}
 
@@ -543,6 +546,7 @@ public class ProcessBettingActionCommandHandler(
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -647,6 +651,7 @@ public class ProcessBettingActionCommandHandler(
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -654,8 +659,8 @@ public class ProcessBettingActionCommandHandler(
 	}
 
 	/// <summary>
-	/// Determines if all remaining players are all-in, meaning no further betting can occur.
-	/// This happens when fewer than 2 non-folded players have chips remaining to bet.
+	///     Determines if all remaining players are all-in, meaning no further betting can occur.
+	///     This happens when fewer than 2 non-folded players have chips remaining to bet.
 	/// </summary>
 	/// <param name="activePlayers">The list of active players in the game.</param>
 	/// <returns>True if fewer than 2 non-folded players can still bet, meaning betting should skip to showdown.</returns>
@@ -680,114 +685,115 @@ public class ProcessBettingActionCommandHandler(
 		return playersWhoCanBet < 2;
 	}
 
-		/// <summary>
-		/// Deals all remaining street cards to players when all players are all-in.
-		/// This allows the hand to run out to showdown without betting.
-		/// </summary>
-		/// <param name="game">The current game.</param>
-		/// <param name="activePlayers">Players who are still in the hand (not folded).</param>
-		/// <param name="currentPhase">The phase to start dealing from.</param>
-		/// <param name="now">The current timestamp.</param>
-		/// <param name="cancellationToken">Cancellation token.</param>
-		private async Task DealRemainingStreetsAsync(
-			Game game,
-			List<GamePlayer> activePlayers,
-			string currentPhase,
-			DateTimeOffset now,
-			CancellationToken cancellationToken)
+	/// <summary>
+	///     Deals all remaining street cards to players when all players are all-in.
+	///     This allows the hand to run out to showdown without betting.
+	/// </summary>
+	/// <param name="game">The current game.</param>
+	/// <param name="activePlayers">Players who are still in the hand (not folded).</param>
+	/// <param name="currentPhase">The phase to start dealing from.</param>
+	/// <param name="now">The current timestamp.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	private async Task DealRemainingStreetsAsync(
+		Game game,
+		List<GamePlayer> activePlayers,
+		string currentPhase,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		// Define the street order for Seven Card Stud
+		var streetOrder = new[]
 		{
-			// Define the street order for Seven Card Stud
-			var streetOrder = new[]
+			nameof(Phases.FourthStreet),
+			nameof(Phases.FifthStreet),
+			nameof(Phases.SixthStreet),
+			nameof(Phases.SeventhStreet)
+		};
+
+		// Find which streets still need to be dealt
+		var startIndex = Array.IndexOf(streetOrder, currentPhase);
+		if (startIndex < 0)
+		{
+			// Already past all streets or not a street phase
+			return;
+		}
+
+		// Get players who haven't folded (they may be all-in)
+		var playersToReceiveCards = activePlayers.Where(p => !p.HasFolded).OrderBy(p => p.SeatPosition).ToList();
+
+		// Load remaining deck cards
+		var deckCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Deck)
+			.OrderBy(gc => gc.DealOrder)
+			.ToListAsync(cancellationToken);
+
+		var deckIndex = 0;
+		var dealtStreets = new List<string>();
+
+		// Deal cards for each remaining street
+		for (var streetIdx = startIndex; streetIdx < streetOrder.Length; streetIdx++)
+		{
+			var street = streetOrder[streetIdx];
+			dealtStreets.Add(street);
+
+			foreach (var player in playersToReceiveCards)
 			{
-						nameof(Phases.FourthStreet),
-						nameof(Phases.FifthStreet),
-						nameof(Phases.SixthStreet),
-						nameof(Phases.SeventhStreet)
-					};
-
-			// Find which streets still need to be dealt
-			var startIndex = Array.IndexOf(streetOrder, currentPhase);
-			if (startIndex < 0)
-			{
-				// Already past all streets or not a street phase
-				return;
-			}
-
-			// Get players who haven't folded (they may be all-in)
-			var playersToReceiveCards = activePlayers.Where(p => !p.HasFolded).OrderBy(p => p.SeatPosition).ToList();
-
-			// Load remaining deck cards
-			var deckCards = await context.GameCards
-				.Where(gc => gc.GameId == game.Id &&
-							 gc.HandNumber == game.CurrentHandNumber &&
-							 gc.Location == CardLocation.Deck)
-				.OrderBy(gc => gc.DealOrder)
-				.ToListAsync(cancellationToken);
-
-			var deckIndex = 0;
-			var dealtStreets = new List<string>();
-
-			// Deal cards for each remaining street
-			for (var streetIdx = startIndex; streetIdx < streetOrder.Length; streetIdx++)
-			{
-				var street = streetOrder[streetIdx];
-				dealtStreets.Add(street);
-
-				foreach (var player in playersToReceiveCards)
+				if (deckIndex >= deckCards.Count)
 				{
-					if (deckIndex >= deckCards.Count)
-					{
-						logger.LogWarning(
-							"Not enough cards in deck to deal remaining streets for game {GameId}",
-							game.Id);
-						break;
-					}
-
-					var existingCardCount = await context.GameCards
-						.CountAsync(gc => gc.GamePlayerId == player.Id &&
-										  gc.HandNumber == game.CurrentHandNumber &&
-										  gc.Location != CardLocation.Deck &&
-										  !gc.IsDiscarded, cancellationToken);
-
-					var playerDealOrder = existingCardCount + 1;
-					var gameCard = deckCards[deckIndex++];
-
-					// 7th street is a hole card, all others are board cards
-					var location = street == nameof(Phases.SeventhStreet) ? CardLocation.Hole : CardLocation.Board;
-					var isVisible = street != nameof(Phases.SeventhStreet);
-
-					gameCard.GamePlayerId = player.Id;
-					gameCard.Location = location;
-					gameCard.DealOrder = playerDealOrder;
-					gameCard.IsVisible = isVisible;
-					gameCard.DealtAt = now;
-					gameCard.DealtAtPhase = street;
+					logger.LogWarning(
+						"Not enough cards in deck to deal remaining streets for game {GameId}",
+						game.Id);
+					break;
 				}
 
-				logger.LogInformation(
-					"Dealt {Street} cards without betting (all players all-in) for game {GameId}",
-					street, game.Id);
+				var existingCardCount = await context.GameCards
+					.CountAsync(gc => gc.GamePlayerId == player.Id &&
+					                  gc.HandNumber == game.CurrentHandNumber &&
+					                  gc.Location != CardLocation.Deck &&
+					                  !gc.IsDiscarded, cancellationToken);
+
+				var playerDealOrder = existingCardCount + 1;
+				var gameCard = deckCards[deckIndex++];
+
+				// 7th street is a hole card, all others are board cards
+				var location = street == nameof(Phases.SeventhStreet) ? CardLocation.Hole : CardLocation.Board;
+				var isVisible = street != nameof(Phases.SeventhStreet);
+
+				gameCard.GamePlayerId = player.Id;
+				gameCard.Location = location;
+				gameCard.DealOrder = playerDealOrder;
+				gameCard.IsVisible = isVisible;
+				gameCard.DealtAt = now;
+				gameCard.DealtAtPhase = street;
 			}
 
-			// Store runout information in GameSettings for client-side animation
-			var existingSettings = string.IsNullOrEmpty(game.GameSettings) 
-				? new Dictionary<string, object>() 
-				: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ?? new Dictionary<string, object>();
-
-			existingSettings["allInRunout"] = true;
-			existingSettings["runoutStreets"] = dealtStreets;
-			existingSettings["runoutHandNumber"] = game.CurrentHandNumber;
-			existingSettings["runoutTimestamp"] = now.ToString("O");
-
-			game.GameSettings = JsonSerializer.Serialize(existingSettings);
-
-			// Update game phase to Showdown
-			game.CurrentPhase = nameof(Phases.Showdown);
-			game.CurrentPlayerIndex = -1;
-			game.UpdatedAt = now;
-
 			logger.LogInformation(
-				"All remaining streets dealt ({Streets}). Moving to Showdown for game {GameId}",
-				string.Join(", ", dealtStreets), game.Id);
+				"Dealt {Street} cards without betting (all players all-in) for game {GameId}",
+				street, game.Id);
 		}
+
+		// Store runout information in GameSettings for client-side animation
+		var existingSettings = string.IsNullOrEmpty(game.GameSettings)
+			? new Dictionary<string, object>()
+			: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ??
+			  new Dictionary<string, object>();
+
+		existingSettings["allInRunout"] = true;
+		existingSettings["runoutStreets"] = dealtStreets;
+		existingSettings["runoutHandNumber"] = game.CurrentHandNumber;
+		existingSettings["runoutTimestamp"] = now.ToString("O");
+
+		game.GameSettings = JsonSerializer.Serialize(existingSettings);
+
+		// Update game phase to Showdown
+		game.CurrentPhase = nameof(Phases.Showdown);
+		game.CurrentPlayerIndex = -1;
+		game.UpdatedAt = now;
+
+		logger.LogInformation(
+			"All remaining streets dealt ({Streets}). Moving to Showdown for game {GameId}",
+			string.Join(", ", dealtStreets), game.Id);
 	}
+}

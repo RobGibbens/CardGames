@@ -10,7 +10,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 namespace CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.StartHand;
 
 /// <summary>
-/// Handles the <see cref="StartHandCommand"/> to start a new hand in a Texas Hold 'Em game.
+///     Handles the <see cref="StartHandCommand" /> to start a new hand in a Texas Hold 'Em game.
 /// </summary>
 public class StartHandCommandHandler(
 	CardsDbContext context,
@@ -71,7 +71,8 @@ public class StartHandCommandHandler(
 		{
 			return new StartHandError
 			{
-				Message = "Not enough eligible players to start a new hand. At least 2 players with chips are required.",
+				Message =
+					"Not enough eligible players to start a new hand. At least 2 players with chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
 		}
@@ -85,9 +86,9 @@ public class StartHandCommandHandler(
 		var upcomingHandNumber = game.CurrentHandNumber + 1;
 		var existingPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-									  p.HandNumber == upcomingHandNumber &&
-									  p.PotType == PotType.Main,
-								 cancellationToken);
+			                          p.HandNumber == upcomingHandNumber &&
+			                          p.PotType == PotType.Main,
+				cancellationToken);
 
 		if (existingPot is null)
 		{
@@ -217,7 +218,8 @@ public class StartHandCommandHandler(
 		}
 	}
 
-	private async Task CompleteOpenBettingRoundsAsync(Game game, DateTimeOffset now, CancellationToken cancellationToken)
+	private async Task CompleteOpenBettingRoundsAsync(Game game, DateTimeOffset now,
+		CancellationToken cancellationToken)
 	{
 		var incompleteBettingRounds = await context.BettingRounds
 			.Where(br => br.GameId == game.Id && !br.IsComplete)

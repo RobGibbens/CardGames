@@ -1,7 +1,6 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
-using CardGames.Poker.Api.Features.Leagues.v1.Queries;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +13,8 @@ public sealed class GetLeagueDetailQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetLeagueDetailQuery, OneOf<LeagueDetailDto, GetLeagueDetailError>>
 {
-	public async Task<OneOf<LeagueDetailDto, GetLeagueDetailError>> Handle(GetLeagueDetailQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<LeagueDetailDto, GetLeagueDetailError>> Handle(GetLeagueDetailQuery request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -25,7 +25,8 @@ public sealed class GetLeagueDetailQueryHandler(
 
 		var membership = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserId && x.IsActive, cancellationToken);
+			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserId && x.IsActive,
+				cancellationToken);
 
 		if (membership is null)
 		{
@@ -35,7 +36,8 @@ public sealed class GetLeagueDetailQueryHandler(
 
 			if (!isLeagueCreator)
 			{
-				return new GetLeagueDetailError(GetLeagueDetailErrorCode.Forbidden, "Only active members can view league details.");
+				return new GetLeagueDetailError(GetLeagueDetailErrorCode.Forbidden,
+					"Only active members can view league details.");
 			}
 		}
 
@@ -64,8 +66,9 @@ public sealed class GetLeagueDetailQueryHandler(
 			Description = league.Description,
 			CreatedAtUtc = league.CreatedAtUtc,
 			CreatedByUserId = league.CreatedByUserId,
-			CreatedByDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, league.CreatedByUserId),
-			MyRole = (Contracts.LeagueRole)LeagueGovernanceRules.ToCurrentUserProjectedRole(
+			CreatedByDisplayName =
+				LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, league.CreatedByUserId),
+			MyRole = (LeagueRole)LeagueGovernanceRules.ToCurrentUserProjectedRole(
 				membership?.Role ?? Data.Entities.LeagueRole.Owner),
 			ActiveMemberCount = activeMemberCount
 		};

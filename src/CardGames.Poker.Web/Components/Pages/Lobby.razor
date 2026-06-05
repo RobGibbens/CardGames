@@ -2,655 +2,652 @@
 @page "/lobby/{Tab}"
 @attribute [Authorize]
 @rendermode InteractiveServer
-@implements IAsyncDisposable
-
-@using BlazorBlueprint.Primitives.Services
+@using System.Security.Claims
 @using CardGames.Contracts.SignalR
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Services
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.Authorization
-@using System.Security.Claims
+@implements IAsyncDisposable
 
 <PageTitle>Lobby - Dealer's Choice Poker</PageTitle>
 
 
+<NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose"/>
 
-<NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
-
-<AuthenticatedNavBar />
+<AuthenticatedNavBar/>
 
 <main class="lobby-main">
-    <div class="lobby-container">
-        <!-- Lobby Header -->
-        <div class="lobby-header">
-            <div class="lobby-header-content">
-                <h1 class="lobby-title">
-                    <i class="fa-regular fa-house"></i>
-                    Game Lobby
-                </h1>
-                <p class="lobby-subtitle">Find a table or create your own private game</p>
-            </div>
-            <a href="/table/create" class="btn btn-primary btn-lg lobby-create-btn">
-                <img src="/images/createtable.png" alt="Create New Table" />
-            </a>
-        </div>
+	<div class="lobby-container">
+		<!-- Lobby Header -->
+		<div class="lobby-header">
+			<div class="lobby-header-content">
+				<h1 class="lobby-title">
+					<i class="fa-regular fa-house"></i>
+					Game Lobby
+				</h1>
+				<p class="lobby-subtitle">Find a table or create your own private game</p>
+			</div>
+			<a href="/table/create" class="btn btn-primary btn-lg lobby-create-btn">
+				<img src="/images/createtable.png" alt="Create New Table"/>
+			</a>
+		</div>
 
-        <!-- Tab Navigation -->
-        <div class="lobby-tabs">
-            <a href="/lobby" class="lobby-tab @(IsActiveTab("") ? "active" : "")">
-                <span class="lobby-tab-icon"><i class="fa-solid fa-cards"></i></span>
-                <span class="lobby-tab-text">My Tables</span>
-                <BbBadge Variant="BadgeVariant.Secondary">@_myTablesCount</BbBadge>
-            </a>
-        </div>
+		<!-- Tab Navigation -->
+		<div class="lobby-tabs">
+			<a href="/lobby" class="lobby-tab @(IsActiveTab("") ? "active" : "")">
+				<span class="lobby-tab-icon">
+					<i class="fa-solid fa-cards"></i>
+				</span>
+				<span class="lobby-tab-text">My Tables</span>
+				<BbBadge Variant="BadgeVariant.Secondary">@_myTablesCount</BbBadge>
+			</a>
+		</div>
 
-        <!-- Filters Section -->
-        <div class="lobby-filters">
-            <div class="filter-group">
-                <label class="filter-label">Variant</label>
+		<!-- Filters Section -->
+		<div class="lobby-filters">
+			<div class="filter-group">
+				<label class="filter-label">Variant</label>
 
-                <select class="filter-select" @bind="_selectedVariant" @bind:after="OnSelectedVariantChangedAsync">
-                    <option value="">All Variants</option>
-                    @foreach (var gameType in _availableGameTypes)
-                    {
-                        <option value="@gameType.Name">@gameType.Name</option>
-                    }
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Seats</label>
-                <select class="filter-select" @bind="_selectedSeats">
-                    <option value="">Any Size</option>
-                    <option value="2">Heads Up (2)</option>
-                    <option value="6">6-Max</option>
-                    <option value="9">Full Ring (9)</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Status</label>
-                <select class="filter-select" @bind="_selectedStatus">
-                    <option value="">All</option>
-                    <option value="waiting">Waiting for Players</option>
-                    <option value="inprogress">In Progress</option>
-                </select>
-            </div>
-            <button class="filter-clear-btn" @onclick="ClearFilters">
-                <span><i class="fa-thin fa-circle-x"></i></span> Clear Filters
-            </button>
-            <BbButtonGroup AriaLabel="Lobby view mode">
-                <BbButton Variant="ButtonVariant.Outline"
-                          Size="ButtonSize.Icon"
-                          Class='@GetViewToggleButtonClass("grid")'
-                          OnClick='@(() => SetViewMode("grid"))'
-                          AriaLabel="Grid view"
-                          title="Grid View">
-                    <i class="fa-solid fa-th-large"></i>
-                </BbButton>
-                <BbButton Variant="ButtonVariant.Outline"
-                          Size="ButtonSize.Icon"
-                          Class='@GetViewToggleButtonClass("list")'
-                          OnClick='@(() => SetViewMode("list"))'
-                          AriaLabel="List view"
-                          title="List View">
-                    <i class="fa-solid fa-list"></i>
-                </BbButton>
-            </BbButtonGroup>
-        </div>
+				<select class="filter-select" @bind="_selectedVariant" @bind:after="OnSelectedVariantChangedAsync">
+					<option value="">All Variants</option>
+					@foreach (var gameType in _availableGameTypes)
+					{
+						<option value="@gameType.Name">@gameType.Name</option>
+					}
+				</select>
+			</div>
+			<div class="filter-group">
+				<label class="filter-label">Seats</label>
+				<select class="filter-select" @bind="_selectedSeats">
+					<option value="">Any Size</option>
+					<option value="2">Heads Up (2)</option>
+					<option value="6">6-Max</option>
+					<option value="9">Full Ring (9)</option>
+				</select>
+			</div>
+			<div class="filter-group">
+				<label class="filter-label">Status</label>
+				<select class="filter-select" @bind="_selectedStatus">
+					<option value="">All</option>
+					<option value="waiting">Waiting for Players</option>
+					<option value="inprogress">In Progress</option>
+				</select>
+			</div>
+			<button class="filter-clear-btn" @onclick="ClearFilters">
+				<span>
+					<i class="fa-thin fa-circle-x"></i>
+				</span> Clear Filters
+			</button>
+			<BbButtonGroup AriaLabel="Lobby view mode">
+				<BbButton Variant="ButtonVariant.Outline"
+				          Size="ButtonSize.Icon"
+				          Class='@GetViewToggleButtonClass("grid")'
+				          OnClick='@(() => SetViewMode("grid"))'
+				          AriaLabel="Grid view"
+				          title="Grid View">
+					<i class="fa-solid fa-th-large"></i>
+				</BbButton>
+				<BbButton Variant="ButtonVariant.Outline"
+				          Size="ButtonSize.Icon"
+				          Class='@GetViewToggleButtonClass("list")'
+				          OnClick='@(() => SetViewMode("list"))'
+				          AriaLabel="List view"
+				          title="List View">
+					<i class="fa-solid fa-list"></i>
+				</BbButton>
+			</BbButtonGroup>
+		</div>
 
-        <!-- Tables Grid -->
-        <div class="lobby-content">
-            @if (_isLoading)
-            {
-                <div class="lobby-loading">
-                    <div class="loading-spinner"></div>
-                    <p>Loading tables...</p>
-                </div>
-            }
-            else if (_filteredTables.Count == 0)
-            {
-                <div class="lobby-empty">
-                    <div class="empty-icon"><i class="fa-thin fa-bullseye"></i></div>
-                    <h3 class="empty-title">@GetEmptyTitle()</h3>
-                    <p class="empty-description">@GetEmptyDescription()</p>
-                    @if (IsActiveTab(""))
-                    {
-                        <a href="/table/create" class="btn btn-primary">
-                            <span><i class="fa-thin fa-plus"></i></span> Create a Table
-                        </a>
-                    }
-                </div>
-            }
-            else
-            {
-                var groupedTables = GetFilteredTableGroups();
+		<!-- Tables Grid -->
+		<div class="lobby-content">
+			@if (_isLoading)
+			{
+				<div class="lobby-loading">
+					<div class="loading-spinner"></div>
+					<p>Loading tables...</p>
+				</div>
+			}
+			else if (_filteredTables.Count == 0)
+			{
+				<div class="lobby-empty">
+					<div class="empty-icon">
+						<i class="fa-thin fa-bullseye"></i>
+					</div>
+					<h3 class="empty-title">@GetEmptyTitle()</h3>
+					<p class="empty-description">@GetEmptyDescription()</p>
+					@if (IsActiveTab(""))
+					{
+						<a href="/table/create" class="btn btn-primary">
+							<span>
+								<i class="fa-thin fa-plus"></i>
+							</span> Create a Table
+						</a>
+					}
+				</div>
+			}
+			else
+			{
+				var groupedTables = GetFilteredTableGroups();
 
-                @if (_viewMode == "grid")
-                {
-                    @for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
-                    {
-                        var group = groupedTables[groupIndex];
+				@if (_viewMode == "grid")
+				{
+					@for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
+					{
+						var group = groupedTables[groupIndex];
 
-                        <section class="@GetGroupSectionClass(groupIndex)">
-                            <div
-                                class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
-                                <div>
-                                    <h2 class="h5 mb-1">@group.DisplayName</h2>
-                                    <p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
-                                </div>
-                            </div>
+						<section class="@GetGroupSectionClass(groupIndex)">
+							<div
+								class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
+								<div>
+									<h2 class="h5 mb-1">@group.DisplayName</h2>
+									<p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
+								</div>
+							</div>
 
-                            <div class="tables-grid">
-                                @foreach (var table in group.Tables)
-                                {
-                                    <TableCard Table="table" CurrentUserId="@_currentUserId" OnDelete="HandleDeleteTableAsync" />
-                                }
-                            </div>
-                        </section>
-                    }
-                }
-                else
-                {
-                    @for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
-                    {
-                        var group = groupedTables[groupIndex];
+							<div class="tables-grid">
+								@foreach (var table in group.Tables)
+								{
+									<TableCard Table="table" CurrentUserId="@_currentUserId" OnDelete="HandleDeleteTableAsync"/>
+								}
+							</div>
+						</section>
+					}
+				}
+				else
+				{
+					@for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
+					{
+						var group = groupedTables[groupIndex];
 
-                        <section class="@GetGroupSectionClass(groupIndex)">
-                            <div
-                                class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
-                                <div>
-                                    <BbTypographyH2>@group.DisplayName</BbTypographyH2>
-                                    <BbTypographyMuted>@GetTableCountLabel(group.Tables.Count)</BbTypographyMuted>
-                                </div>
-                            </div>
+						<section class="@GetGroupSectionClass(groupIndex)">
+							<div
+								class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
+								<div>
+									<BbTypographyH2>@group.DisplayName</BbTypographyH2>
+									<BbTypographyMuted>@GetTableCountLabel(group.Tables.Count)</BbTypographyMuted>
+								</div>
+							</div>
 
-                            <div class="tables-list">
-                                <table class="table table-hover mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th></th>
-                                            <th>Game Type</th>
-                                            <th>Type</th>
-                                            <th>Scope</th>
-                                            <th>Table Name</th>
-                                            <th>Host</th>
-                                            <th>Phase</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var table in group.Tables)
-                                        {
-                                            <tr>
-                                                <td class="text-end">
-                                                    <BbButton Variant="ButtonVariant.Secondary"
-                                                              @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</BbButton>
-                                                </td>
-                                                <td>@FormatGameTypeName(table)</td>
-                                                <td>@table.TableTypeLabel</td>
-                                                <td>@table.TableScopeLabel</td>
-                                                <td>@table.Name</td>
-                                                <td>@table.CreatedByName</td>
-                                                <td>@table.CurrentPhaseDescription</td>
-                                                <td class="text-end">
-                                                    @if (CanDeleteTable(table))
-                                                    {
-                                                        <BbButton Variant="ButtonVariant.Destructive"
-                                                                  Disabled="@_isDeleting"
-                                                                  @onclick="() => HandleDeleteTableAsync(table.Id)"><i class="fa-solid fa-trash"></i></BbButton>
-                                                    }
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
-                    }
-                }
-            }
-        </div>
+							<div class="tables-list">
+								<table class="table table-hover mb-0">
+									<thead>
+									<tr>
+										<th></th>
+										<th>Game Type</th>
+										<th>Type</th>
+										<th>Scope</th>
+										<th>Table Name</th>
+										<th>Host</th>
+										<th>Phase</th>
+										<th></th>
+									</tr>
+									</thead>
+									<tbody>
+									@foreach (var table in group.Tables)
+									{
+										<tr>
+											<td class="text-end">
+												<BbButton Variant="ButtonVariant.Secondary"
+												          @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">
+													Join
+												</BbButton>
+											</td>
+											<td>@FormatGameTypeName(table)</td>
+											<td>@table.TableTypeLabel</td>
+											<td>@table.TableScopeLabel</td>
+											<td>@table.Name</td>
+											<td>@table.CreatedByName</td>
+											<td>@table.CurrentPhaseDescription</td>
+											<td class="text-end">
+												@if (CanDeleteTable(table))
+												{
+													<BbButton Variant="ButtonVariant.Destructive"
+													          Disabled="@_isDeleting"
+													          @onclick="() => HandleDeleteTableAsync(table.Id)">
+														<i class="fa-solid fa-trash"></i>
+													</BbButton>
+												}
+											</td>
+										</tr>
+									}
+									</tbody>
+								</table>
+							</div>
+						</section>
+					}
+				}
+			}
+		</div>
 
-        <BbAlertDialog @bind-Open="_showDeleteConfirmation">
-            <BbAlertDialogContent>
-                <BbAlertDialogHeader>
-                    <BbAlertDialogTitle>Delete Table</BbAlertDialogTitle>
-                    <BbAlertDialogDescription>@_deleteConfirmationMessage</BbAlertDialogDescription>
-                </BbAlertDialogHeader>
-                <BbAlertDialogFooter>
-                    <BbAlertDialogCancel>
-                        <BbButton Variant="ButtonVariant.Outline" Disabled="@_isDeleting"
-                                  @onclick="CancelDelete">Cancel</BbButton>
-                    </BbAlertDialogCancel>
-                    <BbButton Variant="ButtonVariant.Destructive" Disabled="@_isDeleting"
-                              @onclick="ConfirmDeleteTableAsync">
-                        @if (_isDeleting)
-                        {
-                            <span class="spinner-border spinner-border-sm" role="status"
-                                  aria-hidden="true"></span>
-                            <span>Deleting...</span>
-                        }
-                        else
-                        {
-                            <span>Delete</span>
-                        }
-                    </BbButton>
-                </BbAlertDialogFooter>
-            </BbAlertDialogContent>
-        </BbAlertDialog>
-    </div>
+		<BbAlertDialog @bind-Open="_showDeleteConfirmation">
+			<BbAlertDialogContent>
+				<BbAlertDialogHeader>
+					<BbAlertDialogTitle>Delete Table</BbAlertDialogTitle>
+					<BbAlertDialogDescription>@_deleteConfirmationMessage</BbAlertDialogDescription>
+				</BbAlertDialogHeader>
+				<BbAlertDialogFooter>
+					<BbAlertDialogCancel>
+						<BbButton Variant="ButtonVariant.Outline" Disabled="@_isDeleting"
+						          @onclick="CancelDelete">
+							Cancel
+						</BbButton>
+					</BbAlertDialogCancel>
+					<BbButton Variant="ButtonVariant.Destructive" Disabled="@_isDeleting"
+					          @onclick="ConfirmDeleteTableAsync">
+						@if (_isDeleting)
+						{
+							<span class="spinner-border spinner-border-sm" role="status"
+							      aria-hidden="true">
+							</span>
+							<span>Deleting...</span>
+						}
+						else
+						{
+							<span>Delete</span>
+						}
+					</BbButton>
+				</BbAlertDialogFooter>
+			</BbAlertDialogContent>
+		</BbAlertDialog>
+	</div>
 </main>
-<BlazorBlueprint.Primitives.Services.BbPortalHost />
+<BlazorBlueprint.Primitives.Services.BbPortalHost/>
 
 @code {
-    [Parameter]
-    public string? Tab { get; set; }
+	[Parameter] public string? Tab { get; set; }
 
-    [Inject]
-    private IActiveGamesApi ActiveGamesApi { get; set; } = default!;
+	[Inject] private IActiveGamesApi ActiveGamesApi { get; set; } = null!;
 
-    [Inject]
-    private LobbyHubClient LobbyHubClient { get; set; } = default!;
+	[Inject] private LobbyHubClient LobbyHubClient { get; set; } = null!;
 
-    [Inject]
-    private ILogger<Lobby> Logger { get; set; } = default!;
+	[Inject] private ILogger<Lobby> Logger { get; set; } = null!;
 
-    [Inject]
-    private IGamesApi GamesApi { get; set; } = default!;
+	[Inject] private IGamesApi GamesApi { get; set; } = null!;
 
-    [Inject]
-    private IAvailablePokerGamesApi AvailablePokerGamesApi { get; set; } = default!;
+	[Inject] private IAvailablePokerGamesApi AvailablePokerGamesApi { get; set; } = null!;
 
-    [Inject]
-    private ILeaguesApi LeaguesApi { get; set; } = default!;
+	[Inject] private ILeaguesApi LeaguesApi { get; set; } = null!;
 
-    [Inject]
-    private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+	[Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
 
-    [Inject]
-    private IProfileApi ProfileApi { get; set; } = default!;
+	[Inject] private IProfileApi ProfileApi { get; set; } = null!;
 
-    [Inject]
-    private NavigationManager NavigationManager { get; set; } = default!;
+	[Inject] private NavigationManager NavigationManager { get; set; } = null!;
 
-    private bool _isLoading = true;
-    private bool _showNoChipsModal;
-    private string _viewMode = "list";
-    private string _selectedVariant = "";
-    private string _selectedSeats = "";
-    private string _selectedStatus = "";
-    private string? _currentUserId;
-    private bool _isDeleting;
-    private bool _showDeleteConfirmation;
-    private Guid? _gameIdToDelete;
-    private string _deleteConfirmationMessage = "Are you sure you want to delete this table? This action cannot be undone.";
+	private bool _isLoading = true;
+	private bool _showNoChipsModal;
+	private string _viewMode = "list";
+	private string _selectedVariant = "";
+	private string _selectedSeats = "";
+	private string _selectedStatus = "";
+	private string? _currentUserId;
+	private bool _isDeleting;
+	private bool _showDeleteConfirmation;
+	private Guid? _gameIdToDelete;
+	private string _deleteConfirmationMessage = "Are you sure you want to delete this table? This action cannot be undone.";
 
-    private int _myTablesCount;
-    private HashSet<Guid> _joinedLeagueIds = [];
+	private int _myTablesCount;
+	private HashSet<Guid> _joinedLeagueIds = [];
 
-    private List<GetActiveGamesResponse> _allTables = [];
-    private List<GetActiveGamesResponse> _filteredTables = [];
-    private List<GetAvailablePokerGamesResponse> _availableGameTypes = [];
+	private List<GetActiveGamesResponse> _allTables = [];
+	private List<GetActiveGamesResponse> _filteredTables = [];
+	private List<GetAvailablePokerGamesResponse> _availableGameTypes = [];
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadCurrentUserAsync();
-        await LoadJoinedLeaguesAsync();
-        var loadTablesTask = LoadTablesAsync();
-        var loadAvailableGamesTask = LoadAvailableGamesAsync();
-        await Task.WhenAll(loadTablesTask, loadAvailableGamesTask);
-        await ConnectToLobbyHubAsync();
-    }
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadCurrentUserAsync();
+		await LoadJoinedLeaguesAsync();
+		var loadTablesTask = LoadTablesAsync();
+		var loadAvailableGamesTask = LoadAvailableGamesAsync();
+		await Task.WhenAll(loadTablesTask, loadAvailableGamesTask);
+		await ConnectToLobbyHubAsync();
+	}
 
-    private async Task LoadCurrentUserAsync()
-    {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            _currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        }
-    }
+	private async Task LoadCurrentUserAsync()
+	{
+		var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		var user = authState.User;
+		if (user.Identity?.IsAuthenticated == true)
+		{
+			_currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+		}
+	}
 
-    private async Task ConnectToLobbyHubAsync()
-    {
-        try
-        {
-            LobbyHubClient.OnGameCreated += HandleGameCreatedAsync;
-            LobbyHubClient.OnGameDeleted += HandleGameDeletedAsync;
+	private async Task ConnectToLobbyHubAsync()
+	{
+		try
+		{
+			LobbyHubClient.OnGameCreated += HandleGameCreatedAsync;
+			LobbyHubClient.OnGameDeleted += HandleGameDeletedAsync;
 
-            await LobbyHubClient.ConnectAsync();
-            await LobbyHubClient.JoinLobbyAsync();
+			await LobbyHubClient.ConnectAsync();
+			await LobbyHubClient.JoinLobbyAsync();
 
-            Logger.LogInformation("Connected to lobby hub and joined lobby group");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to connect to lobby hub");
-            // Continue without real-time updates - the page will still work with initial data
-        }
-    }
+			Logger.LogInformation("Connected to lobby hub and joined lobby group");
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to connect to lobby hub");
+			// Continue without real-time updates - the page will still work with initial data
+		}
+	}
 
-    private async Task HandleGameCreatedAsync(GameCreatedDto gameCreated)
-    {
-        Logger.LogInformation("Received new game: {GameId} ({GameName})", gameCreated.GameId, gameCreated.Name);
+	private async Task HandleGameCreatedAsync(GameCreatedDto gameCreated)
+	{
+		Logger.LogInformation("Received new game: {GameId} ({GameName})", gameCreated.GameId, gameCreated.Name);
 
-        // Check if game already exists in the list
-        var existingIndex = _allTables.FindIndex(t => t.Id == gameCreated.GameId);
-        var gameTypeDescription = gameCreated.GameTypeDescription ?? string.Empty;
-        var gameTypeImageName = gameCreated.GameTypeImageName ?? string.Empty;
-        var gameTypeMetadataName = gameCreated.GameTypeMetadataName ?? string.Empty;
-        var gameName = gameCreated.Name ?? string.Empty;
-        var gameStatus = Enum.TryParse<GameStatus>(gameCreated.Status, out var status)
-            ? status
-            : GameStatus.WaitingForPlayers;
+		// Check if game already exists in the list
+		var existingIndex = _allTables.FindIndex(t => t.Id == gameCreated.GameId);
+		var gameTypeDescription = gameCreated.GameTypeDescription ?? string.Empty;
+		var gameTypeImageName = gameCreated.GameTypeImageName ?? string.Empty;
+		var gameTypeMetadataName = gameCreated.GameTypeMetadataName ?? string.Empty;
+		var gameName = gameCreated.Name ?? string.Empty;
+		var gameStatus = Enum.TryParse<GameStatus>(gameCreated.Status, out var status)
+			? status
+			: GameStatus.WaitingForPlayers;
 
-        // Convert GameCreatedDto to GetActiveGamesResponse and add to the list
-        // The constructor takes parameters in alphabetical order (generated by NSwag)
-        var newTable = new GetActiveGamesResponse(
-            gameCreated.CreatedAt,
-            gameCreated.CreatedById ?? string.Empty,
-            gameCreated.CreatedByName ?? string.Empty,
-            gameCreated.CurrentPhase,
-            gameCreated.CurrentPhaseDescription,
-            gameCreated.GameTypeCode,
-            gameTypeDescription,
-            gameCreated.GameTypeId ?? Guid.Empty,
-            gameTypeImageName,
-            gameTypeMetadataName,
-            gameCreated.GameTypeName,
-            gameCreated.GameId,
-            gameName,
-            string.Empty,
-            gameStatus)
-        {
-            LeagueId = gameCreated.LeagueId,
-            IsDealersChoice = gameCreated.IsDealersChoice,
-            TournamentBuyIn = gameCreated.TournamentBuyIn
-        };
+		// Convert GameCreatedDto to GetActiveGamesResponse and add to the list
+		// The constructor takes parameters in alphabetical order (generated by NSwag)
+		var newTable = new GetActiveGamesResponse(
+			gameCreated.CreatedAt,
+			gameCreated.CreatedById ?? string.Empty,
+			gameCreated.CreatedByName ?? string.Empty,
+			gameCreated.CurrentPhase,
+			gameCreated.CurrentPhaseDescription,
+			gameCreated.GameTypeCode,
+			gameTypeDescription,
+			gameCreated.GameTypeId ?? Guid.Empty,
+			gameTypeImageName,
+			gameTypeMetadataName,
+			gameCreated.GameTypeName,
+			gameCreated.GameId,
+			gameName,
+			string.Empty,
+			gameStatus)
+		{
+			LeagueId = gameCreated.LeagueId,
+			IsDealersChoice = gameCreated.IsDealersChoice,
+			TournamentBuyIn = gameCreated.TournamentBuyIn
+		};
 
-        if (!CanDisplayTable(newTable))
-        {
-            return;
-        }
+		if (!CanDisplayTable(newTable))
+		{
+			return;
+		}
 
-        if (existingIndex >= 0)
-        {
-            _allTables[existingIndex] = newTable;
-        }
-        else
-        {
-            _allTables.Insert(0, newTable);
-        }
-        _myTablesCount = _allTables.Count;
-        ApplyFilters();
+		if (existingIndex >= 0)
+		{
+			_allTables[existingIndex] = newTable;
+		}
+		else
+		{
+			_allTables.Insert(0, newTable);
+		}
+
+		_myTablesCount = _allTables.Count;
+		ApplyFilters();
 
 
-        await InvokeAsync(StateHasChanged);
-    }
+		await InvokeAsync(StateHasChanged);
+	}
 
-    private async Task HandleGameDeletedAsync(Guid gameId)
-    {
-        Logger.LogInformation("Game deleted: {GameId}", gameId);
+	private async Task HandleGameDeletedAsync(Guid gameId)
+	{
+		Logger.LogInformation("Game deleted: {GameId}", gameId);
 
-        var tableToRemove = _allTables.FirstOrDefault(t => t.Id == gameId);
-        if (tableToRemove is not null)
-        {
-            _allTables.Remove(tableToRemove);
-            _myTablesCount = _allTables.Count;
-            ApplyFilters();
+		var tableToRemove = _allTables.FirstOrDefault(t => t.Id == gameId);
+		if (tableToRemove is not null)
+		{
+			_allTables.Remove(tableToRemove);
+			_myTablesCount = _allTables.Count;
+			ApplyFilters();
 
-            await InvokeAsync(StateHasChanged);
-        }
-    }
+			await InvokeAsync(StateHasChanged);
+		}
+	}
 
-    protected override void OnParametersSet()
-    {
-        ApplyFilters();
-    }
+	protected override void OnParametersSet()
+	{
+		ApplyFilters();
+	}
 
-    private async Task LoadTablesAsync()
-    {
-        _isLoading = true;
+	private async Task LoadTablesAsync()
+	{
+		_isLoading = true;
 
-        var response = await ActiveGamesApi.GetActiveGamesAsync(_selectedVariant);
-        _allTables = response.Content?.ToList() ?? [];
-        _myTablesCount = _allTables.Count;
+		var response = await ActiveGamesApi.GetActiveGamesAsync(_selectedVariant);
+		_allTables = response.Content?.ToList() ?? [];
+		_myTablesCount = _allTables.Count;
 
-        ApplyFilters();
-        _isLoading = false;
-    }
+		ApplyFilters();
+		_isLoading = false;
+	}
 
-    private async Task LoadAvailableGamesAsync()
-    {
-        try
-        {
-            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(string.Empty);
-            if (response.IsSuccessStatusCode && response.Content != null)
-            {
-                _availableGameTypes = response.Content.OrderBy(g => g.Name).ToList();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to load available game types");
-        }
-    }
+	private async Task LoadAvailableGamesAsync()
+	{
+		try
+		{
+			var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(string.Empty);
+			if (response.IsSuccessStatusCode && response.Content != null)
+			{
+				_availableGameTypes = response.Content.OrderBy(g => g.Name).ToList();
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to load available game types");
+		}
+	}
 
-    private async Task LoadJoinedLeaguesAsync()
-    {
-        try
-        {
-            var response = await LeaguesApi.GetMyLeaguesAsync();
-            if (response.IsSuccessStatusCode && response.Content is not null)
-            {
-                _joinedLeagueIds = response.Content.Select(x => x.LeagueId).ToHashSet();
-                ApplyFilters();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to load joined leagues for lobby filtering");
-        }
-    }
+	private async Task LoadJoinedLeaguesAsync()
+	{
+		try
+		{
+			var response = await LeaguesApi.GetMyLeaguesAsync();
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_joinedLeagueIds = response.Content.Select(x => x.LeagueId).ToHashSet();
+				ApplyFilters();
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed to load joined leagues for lobby filtering");
+		}
+	}
 
-    private async Task OnSelectedVariantChangedAsync()
-    {
-        await LoadTablesAsync();
-    }
+	private async Task OnSelectedVariantChangedAsync()
+	{
+		await LoadTablesAsync();
+	}
 
-    private void ApplyFilters()
-    {
-        _filteredTables = _allTables
-            .Where(CanDisplayTable)
-            .Where(t => string.IsNullOrEmpty(_selectedVariant) ||
-                        t.GameTypeCode.Contains(_selectedVariant, StringComparison.OrdinalIgnoreCase) ||
-                        t.GameTypeName.Contains(_selectedVariant, StringComparison.OrdinalIgnoreCase))
-            .Where(t => string.IsNullOrEmpty(_selectedStatus) ||
-                        t.Status.ToString().Contains(_selectedStatus, StringComparison.OrdinalIgnoreCase) ||
-                        t.CurrentPhase.Contains(_selectedStatus, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-    }
+	private void ApplyFilters()
+	{
+		_filteredTables = _allTables
+			.Where(CanDisplayTable)
+			.Where(t => string.IsNullOrEmpty(_selectedVariant) ||
+			            t.GameTypeCode.Contains(_selectedVariant, StringComparison.OrdinalIgnoreCase) ||
+			            t.GameTypeName.Contains(_selectedVariant, StringComparison.OrdinalIgnoreCase))
+			.Where(t => string.IsNullOrEmpty(_selectedStatus) ||
+			            t.Status.ToString().Contains(_selectedStatus, StringComparison.OrdinalIgnoreCase) ||
+			            t.CurrentPhase.Contains(_selectedStatus, StringComparison.OrdinalIgnoreCase))
+			.ToList();
+	}
 
-    private async Task ClearFilters()
-    {
-        _selectedVariant = "";
-        _selectedSeats = "";
-        _selectedStatus = "";
-        ApplyFilters();
-        await LoadAvailableGamesAsync();
-    }
+	private async Task ClearFilters()
+	{
+		_selectedVariant = "";
+		_selectedSeats = "";
+		_selectedStatus = "";
+		ApplyFilters();
+		await LoadAvailableGamesAsync();
+	}
 
-    private void SetViewMode(string viewMode)
-    {
-        _viewMode = viewMode;
-    }
+	private void SetViewMode(string viewMode)
+	{
+		_viewMode = viewMode;
+	}
 
-    private string GetViewToggleButtonClass(string viewMode)
-    {
-        return _viewMode == viewMode ? "btn-view-toggle active" : "btn-view-toggle";
-    }
+	private string GetViewToggleButtonClass(string viewMode)
+	{
+		return _viewMode == viewMode ? "btn-view-toggle active" : "btn-view-toggle";
+	}
 
-    private bool IsActiveTab(string tab)
-    {
-        return string.Equals(Tab ?? "", tab, StringComparison.OrdinalIgnoreCase);
-    }
+	private bool IsActiveTab(string tab)
+	{
+		return string.Equals(Tab ?? "", tab, StringComparison.OrdinalIgnoreCase);
+	}
 
-    private string GetEmptyTitle()
-    {
-        return "No Tables Yet";
-    }
+	private string GetEmptyTitle()
+	{
+		return "No Tables Yet";
+	}
 
-    private string GetEmptyDescription()
-    {
-        return "No active games found.";
-    }
+	private string GetEmptyDescription()
+	{
+		return "No active games found.";
+	}
 
-    private bool CanDeleteTable(GetActiveGamesResponse table)
-    {
-        return !string.IsNullOrEmpty(_currentUserId) &&
-               string.Equals(table.CreatedById, _currentUserId, StringComparison.OrdinalIgnoreCase);
-    }
+	private bool CanDeleteTable(GetActiveGamesResponse table)
+	{
+		return !string.IsNullOrEmpty(_currentUserId) &&
+		       string.Equals(table.CreatedById, _currentUserId, StringComparison.OrdinalIgnoreCase);
+	}
 
-    private bool CanDisplayTable(GetActiveGamesResponse table)
-    {
-        return !table.IsLeagueGame || (table.LeagueId.HasValue && _joinedLeagueIds.Contains(table.LeagueId.Value));
-    }
+	private bool CanDisplayTable(GetActiveGamesResponse table)
+	{
+		return !table.IsLeagueGame || (table.LeagueId.HasValue && _joinedLeagueIds.Contains(table.LeagueId.Value));
+	}
 
-    private async Task HandleDeleteTableAsync(Guid gameId)
-    {
-        // Find the table to get its name for the confirmation message
-        var table = _allTables.FirstOrDefault(t => t.Id == gameId);
-        if (table is not null)
-        {
-            _deleteConfirmationMessage = $"Are you sure you want to delete \"{table.Name}\"? This action cannot be undone.";
-        }
-        else
-        {
-            _deleteConfirmationMessage = "Are you sure you want to delete this table? This action cannot be undone.";
-        }
+	private async Task HandleDeleteTableAsync(Guid gameId)
+	{
+		// Find the table to get its name for the confirmation message
+		var table = _allTables.FirstOrDefault(t => t.Id == gameId);
+		_deleteConfirmationMessage = table is not null ? $"Are you sure you want to delete \"{table.Name}\"? This action cannot be undone." : "Are you sure you want to delete this table? This action cannot be undone.";
 
-        _gameIdToDelete = gameId;
-        _showDeleteConfirmation = true;
-        await Task.CompletedTask;
-    }
+		_gameIdToDelete = gameId;
+		_showDeleteConfirmation = true;
+		await Task.CompletedTask;
+	}
 
-    private async Task ConfirmDeleteTableAsync()
-    {
-        if (_gameIdToDelete is null || _isDeleting)
-            return;
+	private async Task ConfirmDeleteTableAsync()
+	{
+		if (_gameIdToDelete is null || _isDeleting)
+			return;
 
-        _isDeleting = true;
-        try
-        {
-            var response = await GamesApi.DeleteGameAsync(_gameIdToDelete.Value);
-            if (response.IsSuccessStatusCode)
-            {
-                Logger.LogInformation("Successfully deleted game {GameId}", _gameIdToDelete.Value);
-                // The SignalR broadcast will handle removing from the list
-            }
-            else
-            {
-                Logger.LogWarning("Failed to delete game {GameId}: {StatusCode}", _gameIdToDelete.Value, response.StatusCode);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting game {GameId}", _gameIdToDelete.Value);
-        }
-        finally
-        {
-            _isDeleting = false;
-            _showDeleteConfirmation = false;
-            _gameIdToDelete = null;
-        }
-    }
+		_isDeleting = true;
+		try
+		{
+			var response = await GamesApi.DeleteGameAsync(_gameIdToDelete.Value);
+			if (response.IsSuccessStatusCode)
+			{
+				Logger.LogInformation("Successfully deleted game {GameId}", _gameIdToDelete.Value);
+				// The SignalR broadcast will handle removing from the list
+			}
+			else
+			{
+				Logger.LogWarning("Failed to delete game {GameId}: {StatusCode}", _gameIdToDelete.Value, response.StatusCode);
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Error deleting game {GameId}", _gameIdToDelete.Value);
+		}
+		finally
+		{
+			_isDeleting = false;
+			_showDeleteConfirmation = false;
+			_gameIdToDelete = null;
+		}
+	}
 
-    private void CancelDelete()
-    {
-        _gameIdToDelete = null;
-        _showDeleteConfirmation = false;
-    }
+	private void CancelDelete()
+	{
+		_gameIdToDelete = null;
+		_showDeleteConfirmation = false;
+	}
 
-    private async Task NavigateToTableWithChipCheckAsync(Guid tableId)
-    {
-        try
-        {
-            var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
-            if (cashierSummary.IsSuccessStatusCode && (cashierSummary.Content?.CurrentBalance ?? 0) <= 0)
-            {
-                // Allow navigation — the player may have unreturned chips from a previous session.
-                // The table page handles the rejoin flow or shows the no-chips modal if ineligible.
-                NavigationManager.NavigateTo($"/table/{tableId}?autojoin=1");
-                return;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to check chip balance before joining table");
-        }
-        NavigationManager.NavigateTo($"/table/{tableId}?autojoin=1");
-    }
+	private async Task NavigateToTableWithChipCheckAsync(Guid tableId)
+	{
+		try
+		{
+			var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
+			if (cashierSummary.IsSuccessStatusCode && (cashierSummary.Content?.CurrentBalance ?? 0) <= 0)
+			{
+				// Allow navigation — the player may have unreturned chips from a previous session.
+				// The table page handles the rejoin flow or shows the no-chips modal if ineligible.
+				NavigationManager.NavigateTo($"/table/{tableId}?autojoin=1");
+				return;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed to check chip balance before joining table");
+		}
 
-    private void HandleNoChipsModalClose()
-    {
-        _showNoChipsModal = false;
-    }
+		NavigationManager.NavigateTo($"/table/{tableId}?autojoin=1");
+	}
 
-    private List<LobbyTableGroup> GetFilteredTableGroups()
-    {
-        return _filteredTables
-            .GroupBy(FormatGameTypeName)
-            .Select(group => new LobbyTableGroup(group.Key, group.ToList()))
-            .ToList();
-    }
+	private void HandleNoChipsModalClose()
+	{
+		_showNoChipsModal = false;
+	}
 
-    private static string GetTableCountLabel(int tableCount)
-    {
-        return tableCount == 1 ? "1 table" : $"{tableCount} tables";
-    }
+	private List<LobbyTableGroup> GetFilteredTableGroups()
+	{
+		return _filteredTables
+			.GroupBy(FormatGameTypeName)
+			.Select(group => new LobbyTableGroup(group.Key, group.ToList()))
+			.ToList();
+	}
 
-    private static string GetGroupSectionClass(int _)
-    {
-        return "lobby-group-section border rounded-3 p-3";
-    }
+	private static string GetTableCountLabel(int tableCount)
+	{
+		return tableCount == 1 ? "1 table" : $"{tableCount} tables";
+	}
 
-    private string FormatGameTypeName(GetActiveGamesResponse table)
-    {
-        if (table.IsDealersChoice)
-        {
-            if (string.IsNullOrWhiteSpace(table.GameTypeName))
-            {
-                return "Dealer's Choice";
-            }
+	private static string GetGroupSectionClass(int _)
+	{
+		return "lobby-group-section border rounded-3 p-3";
+	}
 
-            if (!string.Equals(table.GameTypeName, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
-            {
-                return $"Dealer's Choice ({table.GameTypeName})";
-            }
+	private string FormatGameTypeName(GetActiveGamesResponse table)
+	{
+		if (table.IsDealersChoice)
+		{
+			if (string.IsNullOrWhiteSpace(table.GameTypeName))
+			{
+				return "Dealer's Choice";
+			}
 
-            return "Dealer's Choice";
-        }
+			if (!string.Equals(table.GameTypeName, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
+			{
+				return $"Dealer's Choice ({table.GameTypeName})";
+			}
 
-        return table.GameTypeName;
-    }
+			return "Dealer's Choice";
+		}
 
-    private sealed record LobbyTableGroup(string DisplayName, List<GetActiveGamesResponse> Tables);
+		return table.GameTypeName;
+	}
 
-    public async ValueTask DisposeAsync()
-    {
-        LobbyHubClient.OnGameCreated -= HandleGameCreatedAsync;
-        LobbyHubClient.OnGameDeleted -= HandleGameDeletedAsync;
+	private sealed record LobbyTableGroup(string DisplayName, List<GetActiveGamesResponse> Tables);
 
-        try
-        {
-            await LobbyHubClient.LeaveLobbyAsync();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Error leaving lobby on dispose");
-        }
-    }
+	public async ValueTask DisposeAsync()
+	{
+		LobbyHubClient.OnGameCreated -= HandleGameCreatedAsync;
+		LobbyHubClient.OnGameDeleted -= HandleGameDeletedAsync;
+
+		try
+		{
+			await LobbyHubClient.LeaveLobbyAsync();
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Error leaving lobby on dispose");
+		}
+	}
+
 }

@@ -1,11 +1,10 @@
 @namespace CardGames.Poker.Web.Components.Shared
-@using static CardGames.Poker.Web.Components.Pages.TablePlay
-@using System.Threading
+@using static Pages.TablePlay
 @implements IDisposable
 @inject NavigationManager NavigationManager
 
 <div
- class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")"
+	class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")"
 	data-seat-index="@Seat.SeatIndex">
 	<div id="seat-particle-host-@Seat.SeatIndex" class="seat-particle-host" aria-hidden="true"></div>
 	@if (Seat.IsOccupied)
@@ -13,7 +12,7 @@
 		<!-- Cards -->
 		@if (ShowCards && Seat.Cards.Count > 0)
 		{
-			<div class="seat-cards-container" style="@((Seat.IsFolded || Seat.IsSittingOut) ? "opacity: 0.25" : null)">
+			<div class="seat-cards-container" style="@(Seat.IsFolded || Seat.IsSittingOut ? "opacity: 0.25" : null)">
 
 				<div class="cards-fan @(ShouldSeparateShowcaseCard ? "bob-barker-layout" : string.Empty)">
 					@{
@@ -22,7 +21,7 @@
 							? GetLowestNonKingRankValueForWild(Seat.Cards)
 							: null;
 						var orderedCards = GetOrderedCards().ToList();
-						var cardOpacity = (Seat.IsFolded || Seat.IsSittingOut) ? "0.25" : "1";
+						var cardOpacity = Seat.IsFolded || Seat.IsSittingOut ? "0.25" : "1";
 					}
 					@for (var cardIndex = 0; cardIndex < orderedCards.Count; cardIndex++)
 					{
@@ -39,8 +38,9 @@
 							{
 								<div class="card-shell face-up @showcaseCardClass" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
 									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up"
-												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
-												  courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity"></playing-card>
+									              suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+									              courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity">
+									</playing-card>
 								</div>
 							}
 							else if (!hasCardPayload)
@@ -52,9 +52,10 @@
 							else
 							{
 								<div class="card-shell face-down @showcaseCardClass" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
-                                   <playing-card rank="@rank" suit="@card.Suit" class="poker-card"
-												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
-												  courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity"></playing-card>
+									<playing-card rank="@rank" suit="@card.Suit" class="poker-card"
+									              suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+									              courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity">
+									</playing-card>
 								</div>
 							}
 						}
@@ -63,8 +64,9 @@
 							if (ShouldShowRemoteCardFace(card))
 							{
 								<playing-card @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)" rank="@rank" suit="@card.Suit" class="poker-card small @showcaseCardClass"
-											  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
-											  courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity"></playing-card>
+								              suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+								              courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity">
+								</playing-card>
 							}
 							else
 							{
@@ -95,7 +97,7 @@
 			<div class="avatar-circle @GetAvatarStateClass()">
 				@if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl) && !_imageLoadError)
 				{
-					<img class="avatar-img" src="@GetSafeAvatarUrl()" alt="@GetDisplayName()" @onerror="OnImageError" />
+					<img class="avatar-img" src="@GetSafeAvatarUrl()" alt="@GetDisplayName()" @onerror="OnImageError"/>
 				}
 				else
 				{
@@ -121,7 +123,7 @@
 			</div>
 
 			<!-- Info Pill -->
-			<div class="info-pill-container" style="@((Seat.IsFolded || Seat.IsSittingOut) ? "opacity: 0.25" : null)">
+			<div class="info-pill-container" style="@(Seat.IsFolded || Seat.IsSittingOut ? "opacity: 0.25" : null)">
 				<div class="info-pill">
 					<div class="pill-top-row @GetPillStatusClass()">
 						@if (ShouldShowStatusText())
@@ -157,7 +159,8 @@
 								{
 									<div class="syn-chip syn-chip-active">
 										<i class="fa-sharp-duotone fa-solid fa-poker-chip"
-										   style="--fa-primary-color: white; --fa-secondary-color:red;"></i>
+										   style="--fa-primary-color: white; --fa-secondary-color:red;">
+										</i>
 									</div>
 								}
 							</div>
@@ -177,7 +180,7 @@
 				{
 					<div class="seat-blind-button seat-sb-button" title="Small Blind">SB</div>
 				}
-				
+
 				@if (IsBigBlind)
 				{
 					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
@@ -208,55 +211,44 @@
 	else
 	{
 		<button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser"
-				title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
+		        title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
 			@(IsSeatSelectionDisabledForCurrentUser ? "Empty" : "Sit Here")
 		</button>
 	}
 </div>
 
 @code {
-	[Parameter, EditorRequired]
-	public required SeatInfo Seat { get; set; }
+	[Parameter, EditorRequired] public required SeatInfo Seat { get; set; }
 
-	[Parameter]
-	public bool IsDealer { get; set; }
+	[Parameter] public bool IsDealer { get; set; }
 
-	[Parameter]
-	public bool IsSmallBlind { get; set; }
+	[Parameter] public bool IsSmallBlind { get; set; }
 
-	[Parameter]
-	public bool IsBigBlind { get; set; }
+	[Parameter] public bool IsBigBlind { get; set; }
 
 	private static bool ShouldShowRemoteCardFace(CardInfo card)
 	{
 		return card.IsPubliclyVisible
-			&& !string.IsNullOrWhiteSpace(card.Rank)
-			&& !string.IsNullOrWhiteSpace(card.Suit);
+		       && !string.IsNullOrWhiteSpace(card.Rank)
+		       && !string.IsNullOrWhiteSpace(card.Suit);
 	}
 
-	[Parameter]
-	public bool IsCurrentActor { get; set; }
+	[Parameter] public bool IsCurrentActor { get; set; }
 
-	[Parameter]
-	public bool IsCurrentPlayer { get; set; }
+	[Parameter] public bool IsCurrentPlayer { get; set; }
 
-	[Parameter]
-	public bool ShowCards { get; set; }
+	[Parameter] public bool ShowCards { get; set; }
 
-	[Parameter]
-	public string? GameTypeCode { get; set; }
+	[Parameter] public string? GameTypeCode { get; set; }
 
-	[Parameter]
-	public IReadOnlyList<TableCanvas.WildCardDisplay>? WildCards { get; set; }
+	[Parameter] public IReadOnlyList<TableCanvas.WildCardDisplay>? WildCards { get; set; }
 
-	[Parameter]
-	public int Ante { get; set; }
+	[Parameter] public int Ante { get; set; }
 
-	[Parameter]
-	public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
+	[Parameter] public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
 
 	/// <summary>
-	/// Extra chips to add to the SYN stack display (to keep the old count visible until the chip-loss animation finishes).
+	///     Extra chips to add to the SYN stack display (to keep the old count visible until the chip-loss animation finishes).
 	/// </summary>
 	[Parameter]
 	public int SynBonusChips { get; set; }
@@ -267,7 +259,8 @@
 	private bool _showAlternateStatus = true;
 
 	private bool IsScrewYourNeighbor => string.Equals(GameTypeCode, "SCREWYOURNEIGHBOR",
-StringComparison.OrdinalIgnoreCase);
+		StringComparison.OrdinalIgnoreCase);
+
 	private bool IsBobBarker => string.Equals(GameTypeCode, "BOBBARKER", StringComparison.OrdinalIgnoreCase);
 	private bool IsPairPressure => string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase);
 	private bool IsKlondike => string.Equals(GameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
@@ -310,7 +303,7 @@ StringComparison.OrdinalIgnoreCase);
 
 		// Return original if it's absolute URL or data URI
 		if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ||
-			url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+		    url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
 		{
 			return url;
 		}
@@ -363,9 +356,9 @@ StringComparison.OrdinalIgnoreCase);
 	{
 		// Check for statuses that should alternate with the name
 		bool hasAlternateStatus = !string.IsNullOrWhiteSpace(Seat.LastActionDescription) ||
-								  IsCurrentActor ||
-								  Seat.SittingOutReason == "Observing" ||
-								  Seat.IsSittingOut;
+		                          IsCurrentActor ||
+		                          Seat.SittingOutReason == "Observing" ||
+		                          Seat.IsSittingOut;
 
 		// If we're alternating and currently showing the name, show passive/background status only
 		if (hasAlternateStatus && !_showAlternateStatus)
@@ -408,9 +401,9 @@ StringComparison.OrdinalIgnoreCase);
 		if (!_showAlternateStatus) return false;
 
 		return !string.IsNullOrWhiteSpace(Seat.LastActionDescription) ||
-			   IsCurrentActor ||
-			   Seat.SittingOutReason == "Observing" ||
-			   Seat.IsSittingOut;
+		       IsCurrentActor ||
+		       Seat.SittingOutReason == "Observing" ||
+		       Seat.IsSittingOut;
 	}
 
 	private bool ShouldShowHandEvaluationTooltip()
@@ -441,9 +434,9 @@ StringComparison.OrdinalIgnoreCase);
 		}
 
 		return string.Equals(description, "Kept", StringComparison.OrdinalIgnoreCase)
-			|| string.Equals(description, "Traded", StringComparison.OrdinalIgnoreCase)
-			|| string.Equals(description, "Keep", StringComparison.OrdinalIgnoreCase)
-			|| string.Equals(description, "Trade", StringComparison.OrdinalIgnoreCase);
+		       || string.Equals(description, "Traded", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(description, "Keep", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(description, "Trade", StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static string GetInitials(string? name)
@@ -490,15 +483,15 @@ StringComparison.OrdinalIgnoreCase);
 			return [];
 		}
 
-       // Stud-style variants: The API already orders cards correctly using a composite key
+		// Stud-style variants: The API already orders cards correctly using a composite key
 		// (phase + location + deal order). Do NOT re-sort here as DealOrder alone is unreliable
 		// (it can have ties across different streets, causing incorrect interleaving).
 		if (string.Equals(GameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(GameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase))
+		    string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase) ||
+		    string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase) ||
+		    string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase) ||
+		    string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase) ||
+		    string.Equals(GameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase))
 		{
 			// Preserve the API order - cards are already sorted by the server
 			return Seat.Cards;
@@ -511,6 +504,7 @@ StringComparison.OrdinalIgnoreCase);
 	}
 
 	private bool IsKingsAndLows => string.Equals(GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+
 	private bool IsBaseballLike =>
 		string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
@@ -621,4 +615,5 @@ StringComparison.OrdinalIgnoreCase);
 	{
 		return $"{index}:{card.DealOrder}:{card.Rank}:{card.Suit}:{card.IsPubliclyVisible}:{card.IsShowcaseCard}:{isWildForDisplay}";
 	}
+
 }

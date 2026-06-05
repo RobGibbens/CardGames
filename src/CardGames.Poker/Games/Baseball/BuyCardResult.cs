@@ -3,7 +3,7 @@ using CardGames.Core.French.Cards;
 namespace CardGames.Poker.Games.Baseball;
 
 /// <summary>
-/// Represents the result of a buy-card action in Baseball.
+///     Represents the result of a buy-card action in Baseball.
 /// </summary>
 public class BuyCardResult
 {

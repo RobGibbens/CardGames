@@ -11,24 +11,62 @@ using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Hands.DrawHands;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using DropOrStayDecision = CardGames.Poker.Api.Data.Entities.DropOrStayDecision;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.GameFlow;
 
 /// <summary>
-/// Game flow handler for Kings and Lows poker.
+///     Game flow handler for Kings and Lows poker.
 /// </summary>
 /// <remarks>
-/// <para> Kings and Lows is a unique poker variant with a non-linear flow: </para> <list type="number"> <item>
-/// <description> Collect antes from all players</description></item> <item> <description> Deal 5 cards face-down to
-/// each player</description></item> <item> <description> Drop or Stay decision (players choose to fold or
-/// continue)</description></item> <item> <description> Based on remaining players: <list type="bullet"> <item>
-/// <description> 0 players stay → Complete</description></item> <item> <description> 1 player stays → Player vs
-/// Deck</description></item> <item> <description> 2+ players stay → Draw Phase</description></item> </list>
-/// </description> </item> <item> <description> Draw Phase → Draw Complete → Showdown</description></item> <item>
-/// <description> Showdown → Complete (losers automatically match the pot)</description></item> </list> <para> Wild
-/// cards: All Kings and each player's lowest card are wild. </para>
+///     <para> Kings and Lows is a unique poker variant with a non-linear flow: </para>
+///     <list type="number">
+///         <item>
+///             <description> Collect antes from all players</description>
+///         </item>
+///         <item>
+///             <description>
+///                 Deal 5 cards face-down to
+///                 each player
+///             </description>
+///         </item>
+///         <item>
+///             <description>
+///                 Drop or Stay decision (players choose to fold or
+///                 continue)
+///             </description>
+///         </item>
+///         <item>
+///             <description>
+///                 Based on remaining players:
+///                 <list type="bullet">
+///                     <item>
+///                         <description> 0 players stay → Complete</description>
+///                     </item>
+///                     <item>
+///                         <description>
+///                             1 player stays → Player vs
+///                             Deck
+///                         </description>
+///                     </item>
+///                     <item>
+///                         <description> 2+ players stay → Draw Phase</description>
+///                     </item>
+///                 </list>
+///             </description>
+///         </item>
+///         <item>
+///             <description> Draw Phase → Draw Complete → Showdown</description>
+///         </item>
+///         <item>
+///             <description> Showdown → Complete (losers automatically match the pot)</description>
+///         </item>
+///     </list>
+///     <para>
+///         Wild
+///         cards: All Kings and each player's lowest card are wild.
+///     </para>
 /// </remarks>
 public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 {
@@ -36,7 +74,21 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 	public override string GameTypeCode => "KINGSANDLOWS";
 
 	/// <inheritdoc />
-	public override GameRules GetGameRules() => KingsAndLowsRules.CreateGameRules();
+	/// <remarks>
+	///     Kings and Lows collects antes only on the very first hand. Subsequent hands get their pot from losers matching the
+	///     previous pot. The background service handles pot carryover, so we skip the standard ante collection phase.
+	/// </remarks>
+	public override bool SkipsAnteCollection => true;
+
+	/// <inheritdoc />
+	public override IReadOnlyList<string> SpecialPhases =>
+		[nameof(Phases.DropOrStay), nameof(Phases.PlayerVsDeck)];
+
+	/// <inheritdoc />
+	public override GameRules GetGameRules()
+	{
+		return KingsAndLowsRules.CreateGameRules();
+	}
 
 	/// <inheritdoc />
 	public override string GetInitialPhase(Game game)
@@ -77,17 +129,6 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <inheritdoc />
-	/// <remarks>
-	/// Kings and Lows collects antes only on the very first hand. Subsequent hands get their pot from losers matching the
-	/// previous pot. The background service handles pot carryover, so we skip the standard ante collection phase.
-	/// </remarks>
-	public override bool SkipsAnteCollection => true;
-
-	/// <inheritdoc />
-	public override IReadOnlyList<string> SpecialPhases =>
-		[nameof(Phases.DropOrStay), nameof(Phases.PlayerVsDeck)];
-
-	/// <inheritdoc />
 	public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
 	{
 		// Reset all players' DropOrStay decisions and pot matching status
@@ -99,6 +140,66 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 		return Task.CompletedTask;
 	}
 
+
+	/// <summary>
+	///     Determines the phase to transition to after the DropOrStay phase completes.
+	/// </summary>
+	/// <param name="game">The game entity.</param>
+	/// <returns>The next phase name based on the number of staying players.</returns>
+	private static string DeterminePostDropPhase(Game game)
+	{
+		var stayingPlayers = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active &&
+			             !gp.HasFolded &&
+			             !gp.IsSittingOut &&
+			             gp.DropOrStayDecision == DropOrStayDecision.Stay)
+			.DistinctBy(gp => gp.PlayerId)
+			.Count();
+
+		return stayingPlayers switch
+		{
+			0 => nameof(Phases.Complete),
+			1 => nameof(Phases.PlayerVsDeck),
+			_ => nameof(Phases.DrawPhase)
+		};
+	}
+
+	/// <summary>
+	///     Moves the dealer button to the next occupied seat position (clockwise). Prefers active non-sitting-out players to
+	///     avoid placing the dealer on someone who isn't participating (which would break Player vs Deck decision-maker
+	///     logic).
+	/// </summary>
+	private static void MoveDealer(Game game)
+	{
+		var activePlayers = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
+			.OrderBy(gp => gp.SeatPosition)
+			.Select(gp => gp.SeatPosition)
+			.ToList();
+
+		// Fallback to all active players (including sitting out) if no active non-sitting-out players
+		if (activePlayers.Count == 0)
+		{
+			activePlayers = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active)
+				.OrderBy(gp => gp.SeatPosition)
+				.Select(gp => gp.SeatPosition)
+				.ToList();
+		}
+
+		if (activePlayers.Count == 0)
+		{
+			return;
+		}
+
+		var currentPosition = game.DealerPosition;
+		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
+
+		game.DealerPosition = seatsAfterCurrent.Count > 0
+			? seatsAfterCurrent.First()
+			: activePlayers.First();
+	}
+
 	#region Chip Check
 
 	/// <inheritdoc />
@@ -108,8 +209,10 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 	public override bool RequiresChipCoverageCheck => true;
 
 	/// <inheritdoc />
-	public override ChipCheckConfiguration GetChipCheckConfiguration() =>
-		ChipCheckConfiguration.KingsAndLowsDefault;
+	public override ChipCheckConfiguration GetChipCheckConfiguration()
+	{
+		return ChipCheckConfiguration.KingsAndLowsDefault;
+	}
 
 	#endregion
 
@@ -131,14 +234,14 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 		// Find staying players
 		var stayingPlayers = gamePlayersList
 			.Where(gp => !gp.HasFolded &&
-						 gp is { Status: GamePlayerStatus.Active, DropOrStayDecision: DropOrStayDecision.Stay })
+			             gp is { Status: GamePlayerStatus.Active, DropOrStayDecision: DropOrStayDecision.Stay })
 			.ToList();
 
 		// Load main pot
 		var mainPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-									  p.HandNumber == game.CurrentHandNumber,
-							 cancellationToken);
+			                          p.HandNumber == game.CurrentHandNumber,
+				cancellationToken);
 
 		if (mainPot == null)
 		{
@@ -152,8 +255,8 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 		{
 			var playerCards = game.GameCards
 				.Where(gc => gc.GamePlayerId == player.Id &&
-							 gc.HandNumber == game.CurrentHandNumber &&
-							 !gc.IsDiscarded)
+				             gc.HandNumber == game.CurrentHandNumber &&
+				             !gc.IsDiscarded)
 				.OrderBy(gc => gc.DealOrder)
 				.Select(gc => new Card(
 					(Suit)(int)gc.Suit,
@@ -194,6 +297,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 				payout++;
 				remainder--;
 			}
+
 			winner.ChipStack += payout;
 			payouts.Add((winner.PlayerId, winner.Player?.Name ?? "Unknown", payout));
 		}
@@ -216,7 +320,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 		// Create pot for next hand if there was any matching
 		if (totalMatched > 0)
 		{
-			var nextHandPot = new Data.Entities.Pot
+			var nextHandPot = new Pot
 			{
 				GameId = game.Id,
 				HandNumber = game.CurrentHandNumber + 1,
@@ -233,7 +337,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 		mainPot.IsAwarded = true;
 		mainPot.AwardedAt = now;
 		mainPot.WinnerPayouts = JsonSerializer.Serialize(
-			payouts.Select(p => new { playerId = p.playerId.ToString(), playerName = p.name, amount = p.amount }));
+			payouts.Select(p => new { playerId = p.playerId.ToString(), playerName = p.name, p.amount }));
 
 		// Set timestamps for continuous play - required for background service to start next hand
 		game.HandCompletedAt = now;
@@ -250,8 +354,8 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 			var winnerPlayer = winners[0];
 			var winnerCards = game.GameCards
 				.Where(gc => gc.GamePlayerId == winnerPlayer.Id &&
-							 gc.HandNumber == game.CurrentHandNumber &&
-							 !gc.IsDiscarded)
+				             gc.HandNumber == game.CurrentHandNumber &&
+				             !gc.IsDiscarded)
 				.OrderBy(gc => gc.DealOrder)
 				.Select(gc => new Card((Suit)(int)gc.Suit, (Symbol)(int)gc.Symbol))
 				.ToList();
@@ -305,7 +409,8 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 		var playerResults = gamePlayersList.Select(gp =>
 		{
 			var isWinner = winnerPlayerIds.Contains(gp.PlayerId);
-			var payoutAmount = isWinner ? winnerInfos.FirstOrDefault(w => w.PlayerId == gp.PlayerId)?.AmountWon ?? 0 : 0;
+			var payoutAmount =
+				isWinner ? winnerInfos.FirstOrDefault(w => w.PlayerId == gp.PlayerId)?.AmountWon ?? 0 : 0;
 			var netDelta = isWinner
 				? payoutAmount - gp.TotalContributedThisHand
 				: -gp.TotalContributedThisHand;
@@ -424,12 +529,15 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 			// Try to load from DB if not in memory
 			player = await context.DbContext.GamePlayers
 				.AsNoTracking()
-				.FirstOrDefaultAsync(gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex, context.CancellationToken);
+				.FirstOrDefaultAsync(gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex,
+					context.CancellationToken);
 		}
 
 		if (player is null)
 		{
-			context.Logger.LogWarning("Player not found for auto-draw action in KingsAndLows game {GameId}, seat {SeatIndex}", context.GameId, context.PlayerSeatIndex);
+			context.Logger.LogWarning(
+				"Player not found for auto-draw action in KingsAndLows game {GameId}, seat {SeatIndex}", context.GameId,
+				context.PlayerSeatIndex);
 			return;
 		}
 
@@ -454,9 +562,9 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 			// Global timer - handle all undecided players
 			var players = await context.DbContext.GamePlayers
 				.Where(gp => gp.GameId == context.GameId &&
-							 gp.Status == GamePlayerStatus.Active &&
-							 !gp.HasFolded &&
-							 (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision == DropOrStayDecision.Undecided))
+				             gp.Status == GamePlayerStatus.Active &&
+				             !gp.HasFolded &&
+				             (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision == DropOrStayDecision.Undecided))
 				.ToListAsync(context.CancellationToken);
 
 			foreach (var player in players)
@@ -472,7 +580,9 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 			{
 				player = await context.DbContext.GamePlayers
 					.AsNoTracking()
-					.FirstOrDefaultAsync(gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex, context.CancellationToken);
+					.FirstOrDefaultAsync(
+						gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex,
+						context.CancellationToken);
 			}
 
 			if (player != null)
@@ -488,7 +598,8 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 		{
 			var command = new DropOrStayCommand(context.GameId, playerId, "Drop");
 			await context.Mediator.Send(command, context.CancellationToken);
-			context.Logger.LogInformation("Auto-drop completed for player {PlayerId} in game {GameId}", playerId, context.GameId);
+			context.Logger.LogInformation("Auto-drop completed for player {PlayerId} in game {GameId}", playerId,
+				context.GameId);
 		}
 		catch (Exception ex)
 		{
@@ -497,64 +608,4 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 	}
 
 	#endregion
-
-
-	/// <summary>
-	/// Determines the phase to transition to after the DropOrStay phase completes.
-	/// </summary>
-	/// <param name="game">The game entity.</param>
-	/// <returns>The next phase name based on the number of staying players.</returns>
-	private static string DeterminePostDropPhase(Game game)
-	{
-		var stayingPlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.HasFolded &&
-						 !gp.IsSittingOut &&
-						 gp.DropOrStayDecision == DropOrStayDecision.Stay)
-			.DistinctBy(gp => gp.PlayerId)
-			.Count();
-
-		return stayingPlayers switch
-		{
-			0 => nameof(Phases.Complete),
-			1 => nameof(Phases.PlayerVsDeck),
-			_ => nameof(Phases.DrawPhase)
-		};
-	}
-
-	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise). Prefers active non-sitting-out players to
-	/// avoid placing the dealer on someone who isn't participating (which would break Player vs Deck decision-maker
-	/// logic).
-	/// </summary>
-	private static void MoveDealer(Game game)
-	{
-		var activePlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
-			.OrderBy(gp => gp.SeatPosition)
-			.Select(gp => gp.SeatPosition)
-			.ToList();
-
-		// Fallback to all active players (including sitting out) if no active non-sitting-out players
-		if (activePlayers.Count == 0)
-		{
-			activePlayers = game.GamePlayers
-				.Where(gp => gp.Status == GamePlayerStatus.Active)
-				.OrderBy(gp => gp.SeatPosition)
-				.Select(gp => gp.SeatPosition)
-				.ToList();
-		}
-
-		if (activePlayers.Count == 0)
-		{
-			return;
-		}
-
-		var currentPosition = game.DealerPosition;
-		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
-
-		game.DealerPosition = seatsAfterCurrent.Count > 0
-			? seatsAfterCurrent.First()
-			: activePlayers.First();
-	}
 }

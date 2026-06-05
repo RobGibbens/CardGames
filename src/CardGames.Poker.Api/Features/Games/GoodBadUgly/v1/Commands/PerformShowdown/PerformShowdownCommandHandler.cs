@@ -1,10 +1,9 @@
+using System.Text.Json;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.GoodBadUgly;
-using CardGames.Poker.Games.SevenCardStud;
 using CardGames.Poker.Hands.StudHands;
 using CardGames.Poker.Hands.WildCards;
 using MediatR;
@@ -16,9 +15,12 @@ using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 namespace CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.PerformShowdown;
 
 /// <summary>
-/// Handles the <see cref="PerformShowdownCommand"/> to evaluate hands and award pots.
+///     Handles the <see cref="PerformShowdownCommand" /> to evaluate hands and award pots.
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
+public class PerformShowdownCommandHandler(
+	CardsDbContext context,
+	IHandHistoryRecorder handHistoryRecorder,
+	IHandSettlementService handSettlementService)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -31,7 +33,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		// 1. Load the game with its players, cards, and pots
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameType)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
@@ -55,7 +57,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase. " +
-						  $"Showdown can only be performed when the game is in '{nameof(Phases.Showdown)}' phase.",
+				          $"Showdown can only be performed when the game is in '{nameof(Phases.Showdown)}' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 		}
@@ -82,10 +84,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		// 4. Load cards for players in hand
 		var playerCards = await context.GameCards
 			.Where(c => c.GameId == command.GameId &&
-						c.HandNumber == game.CurrentHandNumber &&
-						!c.IsDiscarded &&
-						c.GamePlayerId != null &&
-						playersInHand.Select(p => p.Id).Contains(c.GamePlayerId.Value))
+			            c.HandNumber == game.CurrentHandNumber &&
+			            !c.IsDiscarded &&
+			            c.GamePlayerId != null &&
+			            playersInHand.Select(p => p.Id).Contains(c.GamePlayerId.Value))
 			.ToListAsync(cancellationToken);
 
 		var playerCardGroups = playerCards
@@ -111,8 +113,14 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					pot.AwardedAt = now;
 					pot.WinReason = "All others folded";
 
-					var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
-					pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+					var winnerPayoutsList = new[]
+					{
+						new
+						{
+							playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot
+						}
+					};
+					pot.WinnerPayouts = JsonSerializer.Serialize(winnerPayoutsList);
 				}
 
 				game.CurrentPhase = nameof(Phases.Complete);
@@ -153,25 +161,26 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				PlayerHands =
 				[
 					new ShowdownPlayerHand
-							{
-								PlayerName = winner.Player.Name,
-								PlayerFirstName = winnerUser?.FirstName,
-								Cards = winnerCards.Select(c => new ShowdownCard
-								{
-									Suit = c.Suit,
-									Symbol = c.Symbol
-								}).ToList(),
-								HandType = null,
-								HandStrength = null,
-								IsWinner = true,
-								AmountWon = totalPot
-							}
+					{
+						PlayerName = winner.Player.Name,
+						PlayerFirstName = winnerUser?.FirstName,
+						Cards = winnerCards.Select(c => new ShowdownCard
+						{
+							Suit = c.Suit,
+							Symbol = c.Symbol
+						}).ToList(),
+						HandType = null,
+						HandStrength = null,
+						IsWinner = true,
+						AmountWon = totalPot
+					}
 				]
 			};
 		}
 
 		// 7. Evaluate all hands
-		var playerHandEvaluations = new Dictionary<string, (StudHand hand, List<GameCard> cards, GamePlayer gamePlayer)>();
+		var playerHandEvaluations =
+			new Dictionary<string, (StudHand hand, List<GameCard> cards, GamePlayer gamePlayer)>();
 		var goodBadUglyWildRules = new GoodBadUglyWildCardRules();
 
 		List<GameCard> communityCards = [];
@@ -180,9 +189,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		{
 			communityCards = await context.GameCards
 				.Where(c => c.GameId == command.GameId &&
-							c.HandNumber == game.CurrentHandNumber &&
-							c.Location == CardLocation.Community &&
-							!c.IsDiscarded)
+				            c.HandNumber == game.CurrentHandNumber &&
+				            c.Location == CardLocation.Community &&
+				            !c.IsDiscarded)
 				.OrderBy(c => c.DealOrder)
 				.ToListAsync(cancellationToken);
 
@@ -215,7 +224,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
 					.ToList();
 
-				int? wildRank = goodSymbol.HasValue ? (int)MapSymbol(goodSymbol.Value) : (int?)null;
+				int? wildRank = goodSymbol.HasValue ? (int)MapSymbol(goodSymbol.Value) : null;
 				var gbuHand = new GoodBadUglyHand(allCards, [], [], wildRank, goodBadUglyWildRules);
 				playerHandEvaluations[gamePlayer.Player.Name] = (gbuHand, allGameCards, gamePlayer);
 				continue;
@@ -254,7 +263,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		if (isGoodBadUgly)
 		{
 			var eligibleEvaluations = playerHandEvaluations
-				.Where(kvp => !string.Equals(kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase))
+				.Where(kvp => !string.Equals(kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED",
+					StringComparison.OrdinalIgnoreCase))
 				.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
 			if (eligibleEvaluations.Count > 0)
@@ -316,7 +326,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 			// 11. Mark pots as awarded
 			var allWinnersUglyEliminated = isGoodBadUgly && winners.All(w =>
-				string.Equals(playerHandEvaluations[w].gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase));
+				string.Equals(playerHandEvaluations[w].gamePlayer.VariantState, "UGLY_ELIMINATED",
+					StringComparison.OrdinalIgnoreCase));
 
 			var winReason = allWinnersUglyEliminated
 				? "Split pot - all remaining players were eliminated by The Ugly"
@@ -329,7 +340,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				var gp = playerHandEvaluations[p.Key].gamePlayer;
 				return new { playerId = gp.PlayerId.ToString(), playerName = p.Key, amount = p.Value };
 			}).ToList();
-			var winnerPayoutsJson = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+			var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
 
 			foreach (var pot in currentHandPots)
 			{
@@ -388,8 +399,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				for (var i = 0; i < cardsList.Count; i++)
 				{
 					if (!usedIndexes.Contains(i) &&
-						cardsList[i].Suit == (CardSuit)bestCard.Suit &&
-						cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
+					    cardsList[i].Suit == (CardSuit)bestCard.Suit &&
+					    cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
 					{
 						bestCardIndexes.Add(i);
 						usedIndexes.Add(i);
@@ -428,8 +439,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 	}
 
 	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise). Skips empty seats but allows sitting-out
-	/// players to hold the button.
+	///     Moves the dealer button to the next occupied seat position (clockwise). Skips empty seats but allows sitting-out
+	///     players to hold the button.
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
@@ -450,53 +461,53 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		// Look for seats with higher position numbers first
 		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
 
-		if (seatsAfterCurrent.Count > 0)
-		{
-			// Found a seat after the current dealer position
-			game.DealerPosition = seatsAfterCurrent.First();
-		}
-		else
-		{
+		// Found a seat after the current dealer position
+		game.DealerPosition = seatsAfterCurrent.Count > 0 ? seatsAfterCurrent.First() :
 			// No seats after current position, wrap around to first occupied seat
-			game.DealerPosition = occupiedSeats.First();
-		}
+			occupiedSeats.First();
 	}
 
 	/// <summary>
-	/// Maps entity CardSuit to core library Suit.
+	///     Maps entity CardSuit to core library Suit.
 	/// </summary>
-	private static Suit MapSuit(CardSuit suit) => suit switch
+	private static Suit MapSuit(CardSuit suit)
 	{
-		CardSuit.Hearts => Suit.Hearts,
-		CardSuit.Diamonds => Suit.Diamonds,
-		CardSuit.Spades => Suit.Spades,
-		CardSuit.Clubs => Suit.Clubs,
-		_ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
-	};
+		return suit switch
+		{
+			CardSuit.Hearts => Suit.Hearts,
+			CardSuit.Diamonds => Suit.Diamonds,
+			CardSuit.Spades => Suit.Spades,
+			CardSuit.Clubs => Suit.Clubs,
+			_ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
+		};
+	}
 
 	/// <summary>
-	/// Maps entity CardSymbol to core library Symbol.
+	///     Maps entity CardSymbol to core library Symbol.
 	/// </summary>
-	private static Symbol MapSymbol(CardSymbol symbol) => symbol switch
+	private static Symbol MapSymbol(CardSymbol symbol)
 	{
-		CardSymbol.Deuce => Symbol.Deuce,
-		CardSymbol.Three => Symbol.Three,
-		CardSymbol.Four => Symbol.Four,
-		CardSymbol.Five => Symbol.Five,
-		CardSymbol.Six => Symbol.Six,
-		CardSymbol.Seven => Symbol.Seven,
-		CardSymbol.Eight => Symbol.Eight,
-		CardSymbol.Nine => Symbol.Nine,
-		CardSymbol.Ten => Symbol.Ten,
-		CardSymbol.Jack => Symbol.Jack,
-		CardSymbol.Queen => Symbol.Queen,
-		CardSymbol.King => Symbol.King,
-		CardSymbol.Ace => Symbol.Ace,
-		_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
-	};
+		return symbol switch
+		{
+			CardSymbol.Deuce => Symbol.Deuce,
+			CardSymbol.Three => Symbol.Three,
+			CardSymbol.Four => Symbol.Four,
+			CardSymbol.Five => Symbol.Five,
+			CardSymbol.Six => Symbol.Six,
+			CardSymbol.Seven => Symbol.Seven,
+			CardSymbol.Eight => Symbol.Eight,
+			CardSymbol.Nine => Symbol.Nine,
+			CardSymbol.Ten => Symbol.Ten,
+			CardSymbol.Jack => Symbol.Jack,
+			CardSymbol.Queen => Symbol.Queen,
+			CardSymbol.King => Symbol.King,
+			CardSymbol.Ace => Symbol.Ace,
+			_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
+		};
+	}
 
 	/// <summary>
-	/// Records hand history asynchronously after a hand completes.
+	///     Records hand history asynchronously after a hand completes.
 	/// </summary>
 	private async Task RecordHandHistoryAsync(
 		Game game,
@@ -525,7 +536,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			List<string>? showdownCards = null;
 			var reachedShowdown = !gp.HasFolded && !wonByFold;
 			if (reachedShowdown && playerHandEvaluations != null &&
-				playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
+			    playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
 			{
 				// Get the best 5-card hand from the 7 cards
 				var bestHand = handEvaluation.hand.GetBestHand();
@@ -573,7 +584,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 	}
 
 	/// <summary>
-	/// Formats a card as text (e.g., "3s", "Ah", "Td").
+	///     Formats a card as text (e.g., "3s", "Ah", "Td").
 	/// </summary>
 	private static string FormatCard(CardSymbol symbol, CardSuit suit)
 	{
@@ -607,4 +618,3 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		return $"{symbolStr}{suitStr}";
 	}
 }
-

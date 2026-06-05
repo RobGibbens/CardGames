@@ -7,667 +7,681 @@ using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
+using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.GameFlow;
 
 /// <summary>
-/// Base implementation of <see cref="IGameFlowHandler"/> with common poker game logic.
-/// Game-specific handlers inherit from this and override specific behaviors.
+///     Base implementation of <see cref="IGameFlowHandler" /> with common poker game logic.
+///     Game-specific handlers inherit from this and override specific behaviors.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This base class provides default implementations for common poker operations:
-/// </para>
-/// <list type="bullet">
-///   <item><description>Initial phase transitions (defaults to CollectingAntes)</description></item>
-///   <item><description>Sequential phase navigation based on GameRules.Phases</description></item>
-///   <item><description>Helper methods for phase categorization</description></item>
-/// </list>
-/// <para>
-/// Derived classes should override specific methods to customize game-specific behavior
-/// while inheriting common logic.
-/// </para>
+///     <para>
+///         This base class provides default implementations for common poker operations:
+///     </para>
+///     <list type="bullet">
+///         <item>
+///             <description>Initial phase transitions (defaults to CollectingAntes)</description>
+///         </item>
+///         <item>
+///             <description>Sequential phase navigation based on GameRules.Phases</description>
+///         </item>
+///         <item>
+///             <description>Helper methods for phase categorization</description>
+///         </item>
+///     </list>
+///     <para>
+///         Derived classes should override specific methods to customize game-specific behavior
+///         while inheriting common logic.
+///     </para>
 /// </remarks>
 public abstract class BaseGameFlowHandler : IGameFlowHandler
 {
-    /// <inheritdoc />
-    public abstract string GameTypeCode { get; }
-
-    /// <inheritdoc />
-    public abstract GameRules GetGameRules();
-
-    /// <inheritdoc />
-    public virtual string GetInitialPhase(Game game)
-    {
-        // Default: Start with ante collection
-        return nameof(Phases.CollectingAntes);
-    }
-
-    /// <inheritdoc />
-    public virtual string? GetNextPhase(Game game, string currentPhase)
-    {
-        var rules = GetGameRules();
-        var phases = rules.Phases;
-
-        // Find the current phase index
-        var currentIndex = -1;
-        for (var i = 0; i < phases.Count; i++)
-        {
-            if (string.Equals(phases[i].PhaseId, currentPhase, StringComparison.OrdinalIgnoreCase))
-            {
-                currentIndex = i;
-                break;
-            }
-        }
-
-        // If current phase not found or is the last phase, no transition
-        if (currentIndex < 0 || currentIndex >= phases.Count - 1)
-        {
-            return null;
-        }
-
-        return phases[currentIndex + 1].PhaseId;
-    }
-
-    /// <inheritdoc />
-    public abstract DealingConfiguration GetDealingConfiguration();
-
-    /// <inheritdoc />
-    public virtual bool SkipsAnteCollection => false;
-
-    /// <inheritdoc />
-    public virtual bool AutoCollectsAntesOnStart => false;
-
-    /// <inheritdoc />
-    public virtual IReadOnlyList<string> SpecialPhases => [];
-
-    /// <inheritdoc />
-    public virtual Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
-    {
-        // Default: No special initialization
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
-    public virtual async Task PrepareForNewHandAsync(
-        CardsDbContext context,
-        Game game,
-        List<GamePlayer> eligiblePlayers,
-        int upcomingHandNumber,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        var existingCards = await context.GameCards
-            .Where(gc => gc.GameId == game.Id)
-            .ToListAsync(cancellationToken);
-
-        if (existingCards.Count > 0)
-        {
-            context.GameCards.RemoveRange(existingCards);
-        }
-    }
-
-    /// <inheritdoc />
-    public virtual Task OnHandCompletedAsync(Game game, CancellationToken cancellationToken = default)
-    {
-        // Default: No special cleanup
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
-    public virtual async Task PerformAutoActionAsync(AutoActionContext context)
-    {
-        // Default implementation handles standard betting and drawing phases
-        if (IsBettingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
-        {
-            await PerformAutoBettingActionAsync(context);
-        }
-        else if (IsDrawingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
-        {
-            await PerformAutoDrawActionAsync(context);
-        }
-    }
-
-    #region Auto Actions
-
-    /// <summary>
-    /// Performs an automatic betting action (Check if possible, otherwise Fold).
-    /// </summary>
-    protected virtual async Task PerformAutoBettingActionAsync(AutoActionContext context)
-    {
-        var gameId = context.GameId;
-        var playerSeatIndex = context.PlayerSeatIndex;
-        var cancellationToken = context.CancellationToken;
-
-        // Get the player's current bet
-        // We can't rely on context.Game.GamePlayers being fully loaded/up-to-date depending on how context was created, 
-        // but AutoActionService passed the game with GameType included. 
-        // Let's assume we need to check current round state carefully.
-        // The implementation in AutoActionService loaded GamePlayers again to be sure? 
-        // No, it used context.Game.GamePlayers if available?
-        // AutoActionService loaded: 
-        // var game = await context.Games.Include(g => g.GameType)...
-        // var gamePlayer = await context.GamePlayers...
-        
-        // We should query DB to be safe as this runs in a fresh scope/timer
-        var gamePlayer = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == playerSeatIndex);
-        if (gamePlayer is null)
-        {
-            // If the collection wasn't loaded or player missing, try to fetch
-            gamePlayer = await context.DbContext.GamePlayers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(gp => gp.GameId == gameId && gp.SeatPosition == playerSeatIndex, cancellationToken);
-        }
-
-        if (gamePlayer is null)
-        {
-            return;
-        }
-
-        // Calculate if can check
-        var currentBetInRound = await context.DbContext.GamePlayers
-            .Where(gp => gp.GameId == gameId && gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
-            .Select(gp => gp.CurrentBet)
-            .MaxAsync(cancellationToken);
-
-        var canCheck = currentBetInRound == gamePlayer.CurrentBet;
-        var actionType = canCheck ? BettingActionType.Check : BettingActionType.Fold;
-
-        context.Logger.LogInformation(
-            "Auto-action determined for game {GameId}: {Action} (CanCheck={CanCheck})",
-            gameId, actionType, canCheck);
-
-        await SendBettingActionAsync(context, actionType);
-    }
-
-    /// <summary>
-    /// Sends the betting action command.
-    /// Default implementation sends FiveCardDraw command.
-    /// </summary>
-    protected virtual async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action, int amount = 0)
-    {
-        // Default: Use FiveCardDraw command (legacy behavior)
-        // Games that use different commands MUST override this method
-        var command = new ProcessBettingActionCommand(context.GameId, action, amount);
-        
-        try 
-        {
-            await context.Mediator.Send(command, context.CancellationToken);
-        }
-        catch (Exception ex)
-        {
-            context.Logger.LogError(ex, "Error performing auto-betting action for game {GameId}", context.GameId);
-        }
-    }
-
-    /// <summary>
-    /// Performs an automatic draw action (Stand Pat).
-    /// </summary>
-    protected virtual async Task PerformAutoDrawActionAsync(AutoActionContext context)
-    {
-        context.Logger.LogInformation("Performing auto-draw action (stand pat) for game {GameId}", context.GameId);
-        await SendDrawActionAsync(context);
-    }
-
-    /// <summary>
-    /// Sends the draw action command.
-    /// Default implementation sends FiveCardDraw ProcessDrawCommand (Stand Pat).
-    /// </summary>
-    protected virtual async Task SendDrawActionAsync(AutoActionContext context)
-    {
-        // Default: Use FiveCardDraw command (legacy behavior)
-        var command = new ProcessDrawCommand(context.GameId, []);
-        
-        try
-        {
-            await context.Mediator.Send(command, context.CancellationToken);
-        }
-        catch (Exception ex)
-        {
-             context.Logger.LogError(ex, "Error performing auto-draw action for game {GameId}", context.GameId);
-        }
-    }
-
-    #endregion
-
-    #region Dealing
-
-    /// <inheritdoc />
-    public virtual Task DealCardsAsync(
-        CardsDbContext context,
-        Game game,
-        List<GamePlayer> eligiblePlayers,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        // Default implementation for draw-style games
-        return DealDrawStyleCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
-    }
-
-    /// <summary>
-    /// Standard dealing implementation for draw-style games.
-    /// Deals a fixed number of cards face-down to each player.
-    /// </summary>
-    /// <param name="context">The database context.</param>
-    /// <param name="game">The game entity.</param>
-    /// <param name="eligiblePlayers">Players to receive cards.</param>
-    /// <param name="now">The current timestamp.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A task representing the async operation.</returns>
-    protected async Task DealDrawStyleCardsAsync(
-        CardsDbContext context,
-        Game game,
-        List<GamePlayer> eligiblePlayers,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        var config = GetDealingConfiguration();
-        var cardsPerPlayer = config.InitialCardsPerPlayer > 0 ? config.InitialCardsPerPlayer : 5;
-
-        // Create a shuffled deck
-        var deck = CreateShuffledDeck();
-
-        // Persist all 52 cards with their shuffled order
-        var deckCards = new List<GameCard>();
-        var deckOrder = 0;
-        foreach (var (suit, symbol) in deck)
-        {
-            var gameCard = new GameCard
-            {
-                GameId = game.Id,
-                GamePlayerId = null,
-                HandNumber = game.CurrentHandNumber,
-                Suit = suit,
-                Symbol = symbol,
-                DealOrder = deckOrder++,
-                Location = CardLocation.Deck,
-                IsVisible = false,
-                IsDiscarded = false,
-                DealtAt = now
-            };
-            deckCards.Add(gameCard);
-            context.GameCards.Add(gameCard);
-        }
-
-        var deckIndex = 0;
-
-        // Sort players starting from left of dealer
-        var dealerPosition = game.DealerPosition;
-        var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
-        var totalSeats = maxSeatPosition + 1;
-
-        var playersInDealOrder = eligiblePlayers
-            .OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
-            .ToList();
-
-        // Deal cards to each player
-        var dealOrder = 1;
-        foreach (var player in playersInDealOrder)
-        {
-            for (var cardIndex = 0; cardIndex < cardsPerPlayer; cardIndex++)
-            {
-                if (deckIndex >= deckCards.Count) break;
-
-                var card = deckCards[deckIndex++];
-                card.GamePlayerId = player.Id;
-                card.Location = CardLocation.Hand;
-                card.DealOrder = dealOrder++;
-                card.IsVisible = !config.AllFaceDown;
-                card.DealtAt = now;
-            }
-        }
-
-        var isBlindBasedHand = SkipsAnteCollection;
-
-        // Ante-based variants start betting rounds with all players at 0.
-        // Blind-based variants preserve posted blind contributions into pre-flop.
-        if (!isBlindBasedHand)
-        {
-            foreach (var player in game.GamePlayers)
-            {
-                player.CurrentBet = 0;
-            }
-        }
-
-        var openingCurrentBet = isBlindBasedHand && eligiblePlayers.Count > 0
-            ? eligiblePlayers.Max(p => p.CurrentBet)
-            : 0;
-
-        // Determine next phase and set up game state
-        var nextPhase = GetNextPhase(game, nameof(Phases.Dealing));
-
-        if (SpecialPhases.Contains(nextPhase ?? "", StringComparer.OrdinalIgnoreCase))
-        {
-            // Special phase - no betting round setup
-            game.CurrentPhase = nextPhase!;
-            game.CurrentPlayerIndex = -1;
-        }
-        else
-        {
-            // Standard poker - set up first betting round
-            var firstActorIndex = isBlindBasedHand
-                ? FindFirstActivePlayerAfterBigBlind(game, eligiblePlayers)
-                : FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
-
-            var bettingRound = new Data.Entities.BettingRound
-            {
-                GameId = game.Id,
-                HandNumber = game.CurrentHandNumber,
-                RoundNumber = 1,
-                Street = nextPhase ?? nameof(Phases.FirstBettingRound),
-                CurrentBet = openingCurrentBet,
-                MinBet = game.MinBet ?? 0,
-                RaiseCount = 0,
-                MaxRaises = 0,
-                LastRaiseAmount = 0,
-                PlayersInHand = eligiblePlayers.Count,
-                PlayersActed = 0,
-                CurrentActorIndex = firstActorIndex,
-                LastAggressorIndex = -1,
-                IsComplete = false,
-                StartedAt = now
-            };
-
-            context.Set<Data.Entities.BettingRound>().Add(bettingRound);
-
-            game.CurrentPhase = nextPhase ?? nameof(Phases.FirstBettingRound);
-            game.CurrentPlayerIndex = firstActorIndex;
-        }
-
-        game.UpdatedAt = now;
-        await context.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// Creates a shuffled 52-card deck using <see cref="FrenchDeckDealer"/>.
-    /// </summary>
-    /// <returns>A list of (suit, symbol) tuples representing the shuffled deck.</returns>
-    protected static List<(CardSuit Suit, CardSymbol Symbol)> CreateShuffledDeck()
-    {
-        var dealer = FrenchDeckDealer.WithFullDeck();
-        dealer.Shuffle();
-
-        return dealer.DealCards(52)
-            .Select(card => ((CardSuit)(int)card.Suit, (CardSymbol)(int)card.Symbol))
-            .ToList();
-    }
-
-    /// <summary>
-    /// Finds the first active player after the dealer position who can act.
-    /// </summary>
-    /// <param name="game">The game entity.</param>
-    /// <param name="activePlayers">List of active players.</param>
-    /// <returns>The seat position of the first actor, or -1 if none found.</returns>
-    protected static int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
-        => FindFirstActivePlayerAfterSeat(game, activePlayers, game.DealerPosition);
-
-    /// <summary>
-    /// Finds the first active player after the specified seat position who can act.
-    /// </summary>
-    protected static int FindFirstActivePlayerAfterSeat(Game game, List<GamePlayer> activePlayers, int seatPosition)
-    {
-        if (activePlayers.Count == 0)
-        {
-            return -1;
-        }
-
-        var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
-        var totalSeats = maxSeatPosition + 1;
-        var searchIndex = (seatPosition + 1) % totalSeats;
-
-        // Search through all seat positions starting left of the provided seat
-        for (var i = 0; i < totalSeats; i++)
-        {
-            var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-            if (player is not null && !player.HasFolded && !player.IsAllIn)
-            {
-                return searchIndex;
-            }
-            searchIndex = (searchIndex + 1) % totalSeats;
-        }
-
-        return -1;
-    }
-
-    /// <summary>
-    /// Finds the first active pre-flop actor for blind-based games (player after the big blind).
-    /// </summary>
-    protected static int FindFirstActivePlayerAfterBigBlind(Game game, List<GamePlayer> eligiblePlayers)
-    {
-        if (eligiblePlayers.Count == 0)
-        {
-            return -1;
-        }
-
-        var sortedPlayers = eligiblePlayers.OrderBy(p => p.SeatPosition).ToList();
-        var dealerIndex = sortedPlayers.FindIndex(p => p.SeatPosition == game.DealerPosition);
-        if (dealerIndex == -1)
-        {
-            dealerIndex = sortedPlayers.Count - 1;
-        }
-
-        var bigBlindIndex = sortedPlayers.Count == 2
-            ? (dealerIndex + 1) % sortedPlayers.Count
-            : (dealerIndex + 2) % sortedPlayers.Count;
-
-        var bigBlindSeat = sortedPlayers[bigBlindIndex].SeatPosition;
-        return FindFirstActivePlayerAfterSeat(game, eligiblePlayers, bigBlindSeat);
-    }
-
-    /// <summary>
-    /// Collects small blind and big blind from the appropriate players.
-    /// Shared by all blind-based game types (Hold'Em, Omaha, etc.).
-    /// </summary>
-    protected async Task CollectBlindsAsync(
-        CardsDbContext context,
-        Game game,
-        List<GamePlayer> eligiblePlayers,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        if (eligiblePlayers.Count < 2) return;
-
-        var sbAmount = game.SmallBlind ?? 0;
-        var bbAmount = game.BigBlind ?? 0;
-
-        if (sbAmount == 0 && bbAmount == 0) return;
-
-        var dealerPos = game.DealerPosition;
-
-        // Sort players by seat position for consistent ordering
-        var sortedPlayers = eligiblePlayers.OrderBy(p => p.SeatPosition).ToList();
-
-        // Find Dealer index
-        var dealerIndex = sortedPlayers.FindIndex(p => p.SeatPosition == dealerPos);
-        if (dealerIndex == -1)
-        {
-            // Fallback if dealer not found in eligible players
-            dealerIndex = sortedPlayers.Count - 1;
-        }
-
-        GamePlayer sbPlayer;
-        GamePlayer bbPlayer;
-
-        if (sortedPlayers.Count == 2)
-        {
-            // Heads up: Dealer is SB, Other is BB
-            sbPlayer = sortedPlayers[dealerIndex];
-            bbPlayer = sortedPlayers[(dealerIndex + 1) % sortedPlayers.Count];
-        }
-        else
-        {
-            // Normal play: Dealer -> SB -> BB
-            sbPlayer = sortedPlayers[(dealerIndex + 1) % sortedPlayers.Count];
-            bbPlayer = sortedPlayers[(dealerIndex + 2) % sortedPlayers.Count];
-        }
-
-        await PostBlindAsync(context, game, sbPlayer, sbAmount, now);
-        await PostBlindAsync(context, game, bbPlayer, bbAmount, now);
-    }
-
-    /// <summary>
-    /// Posts a blind for a single player, deducting from their chip stack and adding to the main pot.
-    /// </summary>
-    protected async Task PostBlindAsync(CardsDbContext context, Game game, GamePlayer player, int amount, DateTimeOffset now)
-    {
-        if (amount <= 0) return;
-
-        var actualAmount = Math.Min(amount, player.ChipStack);
-        player.ChipStack -= actualAmount;
-        player.CurrentBet += actualAmount;
-        player.TotalContributedThisHand += actualAmount;
-
-        var pot = await context.Pots
-            .FirstOrDefaultAsync(p => p.GameId == game.Id &&
-                                      p.HandNumber == game.CurrentHandNumber &&
-                                      p.PotType == PotType.Main);
-
-        if (pot != null)
-        {
-            pot.Amount += actualAmount;
-        }
-    }
-
-    #endregion
-
-    #region Showdown
-
-    /// <inheritdoc />
-    public virtual bool SupportsInlineShowdown => false;
-
-    /// <inheritdoc />
-    public virtual Task<ShowdownResult> PerformShowdownAsync(
-        CardsDbContext context,
-        Game game,
-        IHandHistoryRecorder handHistoryRecorder,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        // Default: Use the generic PerformShowdownCommandHandler via MediatR
-        // This is a fallback - games with inline showdown should override this
-        throw new NotSupportedException(
-            $"Inline showdown is not supported for {GameTypeCode}. " +
-            $"Use the PerformShowdownCommand handler instead.");
-    }
-
-    #endregion
-
-    #region Post-Phase Processing
-
-    /// <inheritdoc />
-    public virtual Task<string> ProcessDrawCompleteAsync(
-        CardsDbContext context,
-        Game game,
-        IHandHistoryRecorder handHistoryRecorder,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        // Default: Transition to second betting round
-        return Task.FromResult(nameof(Phases.SecondBettingRound));
-    }
-
-    /// <inheritdoc />
-    public virtual Task<string> ProcessPostShowdownAsync(
-        CardsDbContext context,
-        Game game,
-        ShowdownResult showdownResult,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        // Default: Go directly to Complete phase
-        return Task.FromResult(nameof(Phases.Complete));
-    }
-
-    #endregion
-
-    #region Chip Check
-
-    /// <inheritdoc />
-    public virtual bool IsMultiHandVariant => false;
-
-    /// <inheritdoc />
-    public virtual bool RequiresChipCoverageCheck => false;
-
-    /// <inheritdoc />
-    public virtual ChipCheckConfiguration GetChipCheckConfiguration() =>
-        ChipCheckConfiguration.Disabled;
-
-    #endregion
-
-    /// <summary>
-    /// Determines if the specified phase is a betting phase.
-    /// </summary>
-    /// <param name="phase">The phase name to check.</param>
-    /// <returns>True if the phase is categorized as Betting; otherwise, false.</returns>
-    protected bool IsBettingPhase(string phase)
-    {
-        var rules = GetGameRules();
-        var phaseDescriptor = rules.Phases
-            .FirstOrDefault(p => string.Equals(p.PhaseId, phase, StringComparison.OrdinalIgnoreCase));
-
-        return string.Equals(phaseDescriptor?.Category, "Betting", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Determines if the specified phase is a drawing phase.
-    /// </summary>
-    /// <param name="phase">The phase name to check.</param>
-    /// <returns>True if the phase is categorized as Drawing; otherwise, false.</returns>
-    protected bool IsDrawingPhase(string phase)
-    {
-        var rules = GetGameRules();
-        var phaseDescriptor = rules.Phases
-            .FirstOrDefault(p => string.Equals(p.PhaseId, phase, StringComparison.OrdinalIgnoreCase));
-
-        return string.Equals(phaseDescriptor?.Category, "Drawing", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Determines if the specified phase is a resolution phase (Showdown, Complete).
-    /// </summary>
-    /// <param name="phase">The phase name to check.</param>
-    /// <returns>True if the phase is categorized as Resolution; otherwise, false.</returns>
-    protected bool IsResolutionPhase(string phase)
-    {
-        var rules = GetGameRules();
-        var phaseDescriptor = rules.Phases
-            .FirstOrDefault(p => string.Equals(p.PhaseId, phase, StringComparison.OrdinalIgnoreCase));
-
-        return string.Equals(phaseDescriptor?.Category, "Resolution", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Gets the phase descriptor for the specified phase ID.
-    /// </summary>
-    /// <param name="phaseId">The phase ID to look up.</param>
-    /// <returns>The phase descriptor, or null if not found.</returns>
-    protected GamePhaseDescriptor? GetPhaseDescriptor(string phaseId)
-    {
-        var rules = GetGameRules();
-        return rules.Phases
-            .FirstOrDefault(p => string.Equals(p.PhaseId, phaseId, StringComparison.OrdinalIgnoreCase));
-    }
-
-    /// <summary>
-    /// Counts the number of active players who haven't folded.
-    /// </summary>
-    /// <param name="game">The game entity.</param>
-    /// <returns>The count of active, non-folded players.</returns>
-    protected static int CountActivePlayers(Game game)
-    {
-        return game.GamePlayers
-            .Count(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded && !gp.IsSittingOut);
-    }
-
-    /// <summary>
-    /// Determines if only one player remains active (potential early win).
-    /// </summary>
-    /// <param name="game">The game entity.</param>
-    /// <returns>True if only one active player remains; otherwise, false.</returns>
-    protected static bool IsSinglePlayerRemaining(Game game)
-    {
-        return CountActivePlayers(game) == 1;
-    }
+	/// <inheritdoc />
+	public abstract string GameTypeCode { get; }
+
+	/// <inheritdoc />
+	public abstract GameRules GetGameRules();
+
+	/// <inheritdoc />
+	public virtual string GetInitialPhase(Game game)
+	{
+		// Default: Start with ante collection
+		return nameof(Phases.CollectingAntes);
+	}
+
+	/// <inheritdoc />
+	public virtual string? GetNextPhase(Game game, string currentPhase)
+	{
+		var rules = GetGameRules();
+		var phases = rules.Phases;
+
+		// Find the current phase index
+		var currentIndex = -1;
+		for (var i = 0; i < phases.Count; i++)
+		{
+			if (string.Equals(phases[i].PhaseId, currentPhase, StringComparison.OrdinalIgnoreCase))
+			{
+				currentIndex = i;
+				break;
+			}
+		}
+
+		// If current phase not found or is the last phase, no transition
+		if (currentIndex < 0 || currentIndex >= phases.Count - 1)
+		{
+			return null;
+		}
+
+		return phases[currentIndex + 1].PhaseId;
+	}
+
+	/// <inheritdoc />
+	public abstract DealingConfiguration GetDealingConfiguration();
+
+	/// <inheritdoc />
+	public virtual bool SkipsAnteCollection => false;
+
+	/// <inheritdoc />
+	public virtual bool AutoCollectsAntesOnStart => false;
+
+	/// <inheritdoc />
+	public virtual IReadOnlyList<string> SpecialPhases => [];
+
+	/// <inheritdoc />
+	public virtual Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
+	{
+		// Default: No special initialization
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public virtual async Task PrepareForNewHandAsync(
+		CardsDbContext context,
+		Game game,
+		List<GamePlayer> eligiblePlayers,
+		int upcomingHandNumber,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var existingCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id)
+			.ToListAsync(cancellationToken);
+
+		if (existingCards.Count > 0)
+		{
+			context.GameCards.RemoveRange(existingCards);
+		}
+	}
+
+	/// <inheritdoc />
+	public virtual Task OnHandCompletedAsync(Game game, CancellationToken cancellationToken = default)
+	{
+		// Default: No special cleanup
+		return Task.CompletedTask;
+	}
+
+	/// <inheritdoc />
+	public virtual async Task PerformAutoActionAsync(AutoActionContext context)
+	{
+		// Default implementation handles standard betting and drawing phases
+		if (IsBettingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
+		{
+			await PerformAutoBettingActionAsync(context);
+		}
+		else if (IsDrawingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
+		{
+			await PerformAutoDrawActionAsync(context);
+		}
+	}
+
+	/// <summary>
+	///     Determines if the specified phase is a betting phase.
+	/// </summary>
+	/// <param name="phase">The phase name to check.</param>
+	/// <returns>True if the phase is categorized as Betting; otherwise, false.</returns>
+	protected bool IsBettingPhase(string phase)
+	{
+		var rules = GetGameRules();
+		var phaseDescriptor = rules.Phases
+			.FirstOrDefault(p => string.Equals(p.PhaseId, phase, StringComparison.OrdinalIgnoreCase));
+
+		return string.Equals(phaseDescriptor?.Category, "Betting", StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>
+	///     Determines if the specified phase is a drawing phase.
+	/// </summary>
+	/// <param name="phase">The phase name to check.</param>
+	/// <returns>True if the phase is categorized as Drawing; otherwise, false.</returns>
+	protected bool IsDrawingPhase(string phase)
+	{
+		var rules = GetGameRules();
+		var phaseDescriptor = rules.Phases
+			.FirstOrDefault(p => string.Equals(p.PhaseId, phase, StringComparison.OrdinalIgnoreCase));
+
+		return string.Equals(phaseDescriptor?.Category, "Drawing", StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>
+	///     Determines if the specified phase is a resolution phase (Showdown, Complete).
+	/// </summary>
+	/// <param name="phase">The phase name to check.</param>
+	/// <returns>True if the phase is categorized as Resolution; otherwise, false.</returns>
+	protected bool IsResolutionPhase(string phase)
+	{
+		var rules = GetGameRules();
+		var phaseDescriptor = rules.Phases
+			.FirstOrDefault(p => string.Equals(p.PhaseId, phase, StringComparison.OrdinalIgnoreCase));
+
+		return string.Equals(phaseDescriptor?.Category, "Resolution", StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>
+	///     Gets the phase descriptor for the specified phase ID.
+	/// </summary>
+	/// <param name="phaseId">The phase ID to look up.</param>
+	/// <returns>The phase descriptor, or null if not found.</returns>
+	protected GamePhaseDescriptor? GetPhaseDescriptor(string phaseId)
+	{
+		var rules = GetGameRules();
+		return rules.Phases
+			.FirstOrDefault(p => string.Equals(p.PhaseId, phaseId, StringComparison.OrdinalIgnoreCase));
+	}
+
+	/// <summary>
+	///     Counts the number of active players who haven't folded.
+	/// </summary>
+	/// <param name="game">The game entity.</param>
+	/// <returns>The count of active, non-folded players.</returns>
+	protected static int CountActivePlayers(Game game)
+	{
+		return game.GamePlayers
+			.Count(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded && !gp.IsSittingOut);
+	}
+
+	/// <summary>
+	///     Determines if only one player remains active (potential early win).
+	/// </summary>
+	/// <param name="game">The game entity.</param>
+	/// <returns>True if only one active player remains; otherwise, false.</returns>
+	protected static bool IsSinglePlayerRemaining(Game game)
+	{
+		return CountActivePlayers(game) == 1;
+	}
+
+	#region Auto Actions
+
+	/// <summary>
+	///     Performs an automatic betting action (Check if possible, otherwise Fold).
+	/// </summary>
+	protected virtual async Task PerformAutoBettingActionAsync(AutoActionContext context)
+	{
+		var gameId = context.GameId;
+		var playerSeatIndex = context.PlayerSeatIndex;
+		var cancellationToken = context.CancellationToken;
+
+		// Get the player's current bet
+		// We can't rely on context.Game.GamePlayers being fully loaded/up-to-date depending on how context was created, 
+		// but AutoActionService passed the game with GameType included. 
+		// Let's assume we need to check current round state carefully.
+		// The implementation in AutoActionService loaded GamePlayers again to be sure? 
+		// No, it used context.Game.GamePlayers if available?
+		// AutoActionService loaded: 
+		// var game = await context.Games.Include(g => g.GameType)...
+		// var gamePlayer = await context.GamePlayers...
+
+		// We should query DB to be safe as this runs in a fresh scope/timer
+		var gamePlayer = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == playerSeatIndex);
+		if (gamePlayer is null)
+		{
+			// If the collection wasn't loaded or player missing, try to fetch
+			gamePlayer = await context.DbContext.GamePlayers
+				.AsNoTracking()
+				.FirstOrDefaultAsync(gp => gp.GameId == gameId && gp.SeatPosition == playerSeatIndex,
+					cancellationToken);
+		}
+
+		if (gamePlayer is null)
+		{
+			return;
+		}
+
+		// Calculate if can check
+		var currentBetInRound = await context.DbContext.GamePlayers
+			.Where(gp => gp.GameId == gameId && gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
+			.Select(gp => gp.CurrentBet)
+			.MaxAsync(cancellationToken);
+
+		var canCheck = currentBetInRound == gamePlayer.CurrentBet;
+		var actionType = canCheck ? BettingActionType.Check : BettingActionType.Fold;
+
+		context.Logger.LogInformation(
+			"Auto-action determined for game {GameId}: {Action} (CanCheck={CanCheck})",
+			gameId, actionType, canCheck);
+
+		await SendBettingActionAsync(context, actionType);
+	}
+
+	/// <summary>
+	///     Sends the betting action command.
+	///     Default implementation sends FiveCardDraw command.
+	/// </summary>
+	protected virtual async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action,
+		int amount = 0)
+	{
+		// Default: Use FiveCardDraw command (legacy behavior)
+		// Games that use different commands MUST override this method
+		var command = new ProcessBettingActionCommand(context.GameId, action, amount);
+
+		try
+		{
+			await context.Mediator.Send(command, context.CancellationToken);
+		}
+		catch (Exception ex)
+		{
+			context.Logger.LogError(ex, "Error performing auto-betting action for game {GameId}", context.GameId);
+		}
+	}
+
+	/// <summary>
+	///     Performs an automatic draw action (Stand Pat).
+	/// </summary>
+	protected virtual async Task PerformAutoDrawActionAsync(AutoActionContext context)
+	{
+		context.Logger.LogInformation("Performing auto-draw action (stand pat) for game {GameId}", context.GameId);
+		await SendDrawActionAsync(context);
+	}
+
+	/// <summary>
+	///     Sends the draw action command.
+	///     Default implementation sends FiveCardDraw ProcessDrawCommand (Stand Pat).
+	/// </summary>
+	protected virtual async Task SendDrawActionAsync(AutoActionContext context)
+	{
+		// Default: Use FiveCardDraw command (legacy behavior)
+		var command = new ProcessDrawCommand(context.GameId, []);
+
+		try
+		{
+			await context.Mediator.Send(command, context.CancellationToken);
+		}
+		catch (Exception ex)
+		{
+			context.Logger.LogError(ex, "Error performing auto-draw action for game {GameId}", context.GameId);
+		}
+	}
+
+	#endregion
+
+	#region Dealing
+
+	/// <inheritdoc />
+	public virtual Task DealCardsAsync(
+		CardsDbContext context,
+		Game game,
+		List<GamePlayer> eligiblePlayers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		// Default implementation for draw-style games
+		return DealDrawStyleCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+	}
+
+	/// <summary>
+	///     Standard dealing implementation for draw-style games.
+	///     Deals a fixed number of cards face-down to each player.
+	/// </summary>
+	/// <param name="context">The database context.</param>
+	/// <param name="game">The game entity.</param>
+	/// <param name="eligiblePlayers">Players to receive cards.</param>
+	/// <param name="now">The current timestamp.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>A task representing the async operation.</returns>
+	protected async Task DealDrawStyleCardsAsync(
+		CardsDbContext context,
+		Game game,
+		List<GamePlayer> eligiblePlayers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var config = GetDealingConfiguration();
+		var cardsPerPlayer = config.InitialCardsPerPlayer > 0 ? config.InitialCardsPerPlayer : 5;
+
+		// Create a shuffled deck
+		var deck = CreateShuffledDeck();
+
+		// Persist all 52 cards with their shuffled order
+		var deckCards = new List<GameCard>();
+		var deckOrder = 0;
+		foreach (var (suit, symbol) in deck)
+		{
+			var gameCard = new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = null,
+				HandNumber = game.CurrentHandNumber,
+				Suit = suit,
+				Symbol = symbol,
+				DealOrder = deckOrder++,
+				Location = CardLocation.Deck,
+				IsVisible = false,
+				IsDiscarded = false,
+				DealtAt = now
+			};
+			deckCards.Add(gameCard);
+			context.GameCards.Add(gameCard);
+		}
+
+		var deckIndex = 0;
+
+		// Sort players starting from left of dealer
+		var dealerPosition = game.DealerPosition;
+		var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
+		var totalSeats = maxSeatPosition + 1;
+
+		var playersInDealOrder = eligiblePlayers
+			.OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
+			.ToList();
+
+		// Deal cards to each player
+		var dealOrder = 1;
+		foreach (var player in playersInDealOrder)
+		{
+			for (var cardIndex = 0; cardIndex < cardsPerPlayer; cardIndex++)
+			{
+				if (deckIndex >= deckCards.Count) break;
+
+				var card = deckCards[deckIndex++];
+				card.GamePlayerId = player.Id;
+				card.Location = CardLocation.Hand;
+				card.DealOrder = dealOrder++;
+				card.IsVisible = !config.AllFaceDown;
+				card.DealtAt = now;
+			}
+		}
+
+		var isBlindBasedHand = SkipsAnteCollection;
+
+		// Ante-based variants start betting rounds with all players at 0.
+		// Blind-based variants preserve posted blind contributions into pre-flop.
+		if (!isBlindBasedHand)
+		{
+			foreach (var player in game.GamePlayers)
+			{
+				player.CurrentBet = 0;
+			}
+		}
+
+		var openingCurrentBet = isBlindBasedHand && eligiblePlayers.Count > 0
+			? eligiblePlayers.Max(p => p.CurrentBet)
+			: 0;
+
+		// Determine next phase and set up game state
+		var nextPhase = GetNextPhase(game, nameof(Phases.Dealing));
+
+		if (SpecialPhases.Contains(nextPhase ?? "", StringComparer.OrdinalIgnoreCase))
+		{
+			// Special phase - no betting round setup
+			game.CurrentPhase = nextPhase!;
+			game.CurrentPlayerIndex = -1;
+		}
+		else
+		{
+			// Standard poker - set up first betting round
+			var firstActorIndex = isBlindBasedHand
+				? FindFirstActivePlayerAfterBigBlind(game, eligiblePlayers)
+				: FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
+
+			var bettingRound = new BettingRound
+			{
+				GameId = game.Id,
+				HandNumber = game.CurrentHandNumber,
+				RoundNumber = 1,
+				Street = nextPhase ?? nameof(Phases.FirstBettingRound),
+				CurrentBet = openingCurrentBet,
+				MinBet = game.MinBet ?? 0,
+				RaiseCount = 0,
+				MaxRaises = 0,
+				LastRaiseAmount = 0,
+				PlayersInHand = eligiblePlayers.Count,
+				PlayersActed = 0,
+				CurrentActorIndex = firstActorIndex,
+				LastAggressorIndex = -1,
+				IsComplete = false,
+				StartedAt = now
+			};
+
+			context.Set<BettingRound>().Add(bettingRound);
+
+			game.CurrentPhase = nextPhase ?? nameof(Phases.FirstBettingRound);
+			game.CurrentPlayerIndex = firstActorIndex;
+		}
+
+		game.UpdatedAt = now;
+		await context.SaveChangesAsync(cancellationToken);
+	}
+
+	/// <summary>
+	///     Creates a shuffled 52-card deck using <see cref="FrenchDeckDealer" />.
+	/// </summary>
+	/// <returns>A list of (suit, symbol) tuples representing the shuffled deck.</returns>
+	protected static List<(CardSuit Suit, CardSymbol Symbol)> CreateShuffledDeck()
+	{
+		var dealer = FrenchDeckDealer.WithFullDeck();
+		dealer.Shuffle();
+
+		return dealer.DealCards(52)
+			.Select(card => ((CardSuit)(int)card.Suit, (CardSymbol)(int)card.Symbol))
+			.ToList();
+	}
+
+	/// <summary>
+	///     Finds the first active player after the dealer position who can act.
+	/// </summary>
+	/// <param name="game">The game entity.</param>
+	/// <param name="activePlayers">List of active players.</param>
+	/// <returns>The seat position of the first actor, or -1 if none found.</returns>
+	protected static int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
+	{
+		return FindFirstActivePlayerAfterSeat(game, activePlayers, game.DealerPosition);
+	}
+
+	/// <summary>
+	///     Finds the first active player after the specified seat position who can act.
+	/// </summary>
+	protected static int FindFirstActivePlayerAfterSeat(Game game, List<GamePlayer> activePlayers, int seatPosition)
+	{
+		if (activePlayers.Count == 0)
+		{
+			return -1;
+		}
+
+		var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
+		var totalSeats = maxSeatPosition + 1;
+		var searchIndex = (seatPosition + 1) % totalSeats;
+
+		// Search through all seat positions starting left of the provided seat
+		for (var i = 0; i < totalSeats; i++)
+		{
+			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
+			if (player is not null && !player.HasFolded && !player.IsAllIn)
+			{
+				return searchIndex;
+			}
+
+			searchIndex = (searchIndex + 1) % totalSeats;
+		}
+
+		return -1;
+	}
+
+	/// <summary>
+	///     Finds the first active pre-flop actor for blind-based games (player after the big blind).
+	/// </summary>
+	protected static int FindFirstActivePlayerAfterBigBlind(Game game, List<GamePlayer> eligiblePlayers)
+	{
+		if (eligiblePlayers.Count == 0)
+		{
+			return -1;
+		}
+
+		var sortedPlayers = eligiblePlayers.OrderBy(p => p.SeatPosition).ToList();
+		var dealerIndex = sortedPlayers.FindIndex(p => p.SeatPosition == game.DealerPosition);
+		if (dealerIndex == -1)
+		{
+			dealerIndex = sortedPlayers.Count - 1;
+		}
+
+		var bigBlindIndex = sortedPlayers.Count == 2
+			? (dealerIndex + 1) % sortedPlayers.Count
+			: (dealerIndex + 2) % sortedPlayers.Count;
+
+		var bigBlindSeat = sortedPlayers[bigBlindIndex].SeatPosition;
+		return FindFirstActivePlayerAfterSeat(game, eligiblePlayers, bigBlindSeat);
+	}
+
+	/// <summary>
+	///     Collects small blind and big blind from the appropriate players.
+	///     Shared by all blind-based game types (Hold'Em, Omaha, etc.).
+	/// </summary>
+	protected async Task CollectBlindsAsync(
+		CardsDbContext context,
+		Game game,
+		List<GamePlayer> eligiblePlayers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		if (eligiblePlayers.Count < 2) return;
+
+		var sbAmount = game.SmallBlind ?? 0;
+		var bbAmount = game.BigBlind ?? 0;
+
+		if (sbAmount == 0 && bbAmount == 0) return;
+
+		var dealerPos = game.DealerPosition;
+
+		// Sort players by seat position for consistent ordering
+		var sortedPlayers = eligiblePlayers.OrderBy(p => p.SeatPosition).ToList();
+
+		// Find Dealer index
+		var dealerIndex = sortedPlayers.FindIndex(p => p.SeatPosition == dealerPos);
+		if (dealerIndex == -1)
+		{
+			// Fallback if dealer not found in eligible players
+			dealerIndex = sortedPlayers.Count - 1;
+		}
+
+		GamePlayer sbPlayer;
+		GamePlayer bbPlayer;
+
+		if (sortedPlayers.Count == 2)
+		{
+			// Heads up: Dealer is SB, Other is BB
+			sbPlayer = sortedPlayers[dealerIndex];
+			bbPlayer = sortedPlayers[(dealerIndex + 1) % sortedPlayers.Count];
+		}
+		else
+		{
+			// Normal play: Dealer -> SB -> BB
+			sbPlayer = sortedPlayers[(dealerIndex + 1) % sortedPlayers.Count];
+			bbPlayer = sortedPlayers[(dealerIndex + 2) % sortedPlayers.Count];
+		}
+
+		await PostBlindAsync(context, game, sbPlayer, sbAmount, now);
+		await PostBlindAsync(context, game, bbPlayer, bbAmount, now);
+	}
+
+	/// <summary>
+	///     Posts a blind for a single player, deducting from their chip stack and adding to the main pot.
+	/// </summary>
+	protected async Task PostBlindAsync(CardsDbContext context, Game game, GamePlayer player, int amount,
+		DateTimeOffset now)
+	{
+		if (amount <= 0) return;
+
+		var actualAmount = Math.Min(amount, player.ChipStack);
+		player.ChipStack -= actualAmount;
+		player.CurrentBet += actualAmount;
+		player.TotalContributedThisHand += actualAmount;
+
+		var pot = await context.Pots
+			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
+			                          p.HandNumber == game.CurrentHandNumber &&
+			                          p.PotType == PotType.Main);
+
+		if (pot != null)
+		{
+			pot.Amount += actualAmount;
+		}
+	}
+
+	#endregion
+
+	#region Showdown
+
+	/// <inheritdoc />
+	public virtual bool SupportsInlineShowdown => false;
+
+	/// <inheritdoc />
+	public virtual Task<ShowdownResult> PerformShowdownAsync(
+		CardsDbContext context,
+		Game game,
+		IHandHistoryRecorder handHistoryRecorder,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		// Default: Use the generic PerformShowdownCommandHandler via MediatR
+		// This is a fallback - games with inline showdown should override this
+		throw new NotSupportedException(
+			$"Inline showdown is not supported for {GameTypeCode}. " +
+			$"Use the PerformShowdownCommand handler instead.");
+	}
+
+	#endregion
+
+	#region Post-Phase Processing
+
+	/// <inheritdoc />
+	public virtual Task<string> ProcessDrawCompleteAsync(
+		CardsDbContext context,
+		Game game,
+		IHandHistoryRecorder handHistoryRecorder,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		// Default: Transition to second betting round
+		return Task.FromResult(nameof(Phases.SecondBettingRound));
+	}
+
+	/// <inheritdoc />
+	public virtual Task<string> ProcessPostShowdownAsync(
+		CardsDbContext context,
+		Game game,
+		ShowdownResult showdownResult,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		// Default: Go directly to Complete phase
+		return Task.FromResult(nameof(Phases.Complete));
+	}
+
+	#endregion
+
+	#region Chip Check
+
+	/// <inheritdoc />
+	public virtual bool IsMultiHandVariant => false;
+
+	/// <inheritdoc />
+	public virtual bool RequiresChipCoverageCheck => false;
+
+	/// <inheritdoc />
+	public virtual ChipCheckConfiguration GetChipCheckConfiguration()
+	{
+		return ChipCheckConfiguration.Disabled;
+	}
+
+	#endregion
 }

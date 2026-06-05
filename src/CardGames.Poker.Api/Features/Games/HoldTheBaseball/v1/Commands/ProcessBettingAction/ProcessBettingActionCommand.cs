@@ -6,7 +6,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Command to process a betting action from the current player in a Hold the Baseball game.
+///     Command to process a betting action from the current player in a Hold the Baseball game.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="ActionType">The type of betting action to perform.</param>

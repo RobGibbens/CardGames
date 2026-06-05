@@ -4,7 +4,6 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using OneOf;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
@@ -13,8 +12,8 @@ using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 namespace CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Handles the <see cref="ProcessBettingActionCommand"/> to process betting actions from players
-/// in a Texas Hold 'Em game.
+///     Handles the <see cref="ProcessBettingActionCommand" /> to process betting actions from players
+///     in a Texas Hold 'Em game.
 /// </summary>
 public class ProcessBettingActionCommandHandler(
 	CardsDbContext context,
@@ -22,7 +21,7 @@ public class ProcessBettingActionCommandHandler(
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
 {
 	/// <summary>
-	/// Valid Hold 'Em betting phases.
+	///     Valid Hold 'Em betting phases.
 	/// </summary>
 	private static readonly string[] ValidBettingPhases = ["PreFlop", "Flop", "Turn", "River"];
 
@@ -40,7 +39,7 @@ public class ProcessBettingActionCommandHandler(
 		// 1. Load the game with its players and pots
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameType)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
@@ -64,7 +63,7 @@ public class ProcessBettingActionCommandHandler(
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
-						  "Betting is only allowed during PreFlop, Flop, Turn, or River phases.",
+				          "Betting is only allowed during PreFlop, Flop, Turn, or River phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
 		}
@@ -72,8 +71,8 @@ public class ProcessBettingActionCommandHandler(
 		// 3. Load the active betting round for the current hand
 		var bettingRounds = await context.BettingRounds
 			.Where(br => br.GameId == game.Id &&
-						 br.HandNumber == game.CurrentHandNumber &&
-						 !br.IsComplete)
+			             br.HandNumber == game.CurrentHandNumber &&
+			             !br.IsComplete)
 			.Include(br => br.Actions)
 			.OrderByDescending(br => br.RoundNumber)
 			.ToListAsync(cancellationToken);
@@ -97,12 +96,15 @@ public class ProcessBettingActionCommandHandler(
 				game.CurrentHandNumber,
 				game.CurrentPhase,
 				allRoundsForGame.Count,
-				string.Join(", ", allRoundsForGame.Select(r => $"[Hand:{r.HandNumber}, Round:{r.RoundNumber}, Street:{r.Street}, Complete:{r.IsComplete}]")));
+				string.Join(", ",
+					allRoundsForGame.Select(r =>
+						$"[Hand:{r.HandNumber}, Round:{r.RoundNumber}, Street:{r.Street}, Complete:{r.IsComplete}]")));
 
 			return new ProcessBettingActionError
 			{
-				Message = $"No active betting round found for hand {game.CurrentHandNumber} in phase '{game.CurrentPhase}'. " +
-						  $"Total betting rounds in database: {allRoundsForGame.Count}.",
+				Message =
+					$"No active betting round found for hand {game.CurrentHandNumber} in phase '{game.CurrentPhase}'. " +
+					$"Total betting rounds in database: {allRoundsForGame.Count}.",
 				Code = ProcessBettingActionErrorCode.NoBettingRound
 			};
 		}
@@ -207,7 +209,8 @@ public class ProcessBettingActionCommandHandler(
 				await DealRemainingCommunityCardsAsync(game, game.CurrentPhase, now, cancellationToken);
 
 				// Safety check: ensure Red River bonus-card rule is applied on all-in runouts at River.
-				if (IsRedRiverGame(game) && string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
+				if (IsRedRiverGame(game) &&
+				    string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
 				{
 					await DealRedRiverBonusCommunityCardIfNeededAsync(game, now, cancellationToken);
 				}
@@ -240,8 +243,8 @@ public class ProcessBettingActionCommandHandler(
 			AdvanceToNextPhase(game, activePlayers);
 
 			if (IsRedRiverGame(game)
-				&& string.Equals(previousPhase, "River", StringComparison.OrdinalIgnoreCase)
-				&& string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
+			    && string.Equals(previousPhase, "River", StringComparison.OrdinalIgnoreCase)
+			    && string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
 			{
 				await DealRedRiverBonusCommunityCardIfNeededAsync(game, now, cancellationToken);
 			}
@@ -284,7 +287,8 @@ public class ProcessBettingActionCommandHandler(
 					},
 					PlayerSeatIndex = currentPlayer.SeatPosition,
 					NextPlayerIndex = firstDrawPlayerIndex,
-					NextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstDrawPlayerIndex)?.Player.Name,
+					NextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstDrawPlayerIndex)?.Player
+						.Name,
 					PotTotal = game.Pots.Sum(p => p.Amount),
 					CurrentBet = bettingRound.CurrentBet
 				};
@@ -319,7 +323,8 @@ public class ProcessBettingActionCommandHandler(
 					},
 					PlayerSeatIndex = currentPlayer.SeatPosition,
 					NextPlayerIndex = firstDrawPlayerIndex,
-					NextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstDrawPlayerIndex)?.Player.Name,
+					NextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstDrawPlayerIndex)?.Player
+						.Name,
 					PotTotal = game.Pots.Sum(p => p.Amount),
 					CurrentBet = bettingRound.CurrentBet
 				};
@@ -332,7 +337,8 @@ public class ProcessBettingActionCommandHandler(
 
 				// Red River rule: if the revealed river card is red, immediately expose
 				// the sixth community card before any River betting actions occur.
-				if (IsRedRiverGame(game) && string.Equals(game.CurrentPhase, "River", StringComparison.OrdinalIgnoreCase))
+				if (IsRedRiverGame(game) &&
+				    string.Equals(game.CurrentPhase, "River", StringComparison.OrdinalIgnoreCase))
 				{
 					await DealRedRiverBonusCommunityCardIfNeededAsync(game, now, cancellationToken);
 				}
@@ -372,13 +378,15 @@ public class ProcessBettingActionCommandHandler(
 				game.CurrentPlayerIndex = -1;
 			}
 
-			if (IsRedRiverGame(game) && string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
+			if (IsRedRiverGame(game) &&
+			    string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
 			{
 				await DealRedRiverBonusCommunityCardIfNeededAsync(game, now, cancellationToken);
 			}
 
 			// Klondike: reveal the wild card and record the timestamp for the timed delay
-			if (IsKlondikeGame(game) && string.Equals(game.CurrentPhase, "KlondikeReveal", StringComparison.OrdinalIgnoreCase))
+			if (IsKlondikeGame(game) &&
+			    string.Equals(game.CurrentPhase, "KlondikeReveal", StringComparison.OrdinalIgnoreCase))
 			{
 				await RevealKlondikeCardAsync(game, now, cancellationToken);
 				game.DrawCompletedAt = now;
@@ -419,7 +427,8 @@ public class ProcessBettingActionCommandHandler(
 
 	#region Validation
 
-	private static string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player, BettingRound bettingRound)
+	private static string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player,
+		BettingRound bettingRound)
 	{
 		var amountToCall = Math.Max(0, bettingRound.CurrentBet - player.CurrentBet);
 
@@ -438,7 +447,7 @@ public class ProcessBettingActionCommandHandler(
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
 			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount
-										 && amount < player.ChipStack + player.CurrentBet =>
+			                             && amount < player.ChipStack + player.CurrentBet =>
 				$"Raise must be to at least {bettingRound.CurrentBet + bettingRound.LastRaiseAmount}",
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
 				"Cannot fold when you can check",
@@ -546,6 +555,7 @@ public class ProcessBettingActionCommandHandler(
 						bettingRound.LastAggressorIndex = player.SeatPosition;
 						bettingRound.RaiseCount++;
 					}
+
 					bettingRound.CurrentBet = newTotal;
 				}
 
@@ -575,6 +585,7 @@ public class ProcessBettingActionCommandHandler(
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -582,7 +593,7 @@ public class ProcessBettingActionCommandHandler(
 	}
 
 	/// <summary>
-	/// Finds the first active player to the left of the dealer — used for post-flop action.
+	///     Finds the first active player to the left of the dealer — used for post-flop action.
 	/// </summary>
 	private static int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
 	{
@@ -596,6 +607,7 @@ public class ProcessBettingActionCommandHandler(
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -694,6 +706,7 @@ public class ProcessBettingActionCommandHandler(
 				{
 					game.CurrentPhase = "Turn";
 				}
+
 				break;
 
 			case "Turn":
@@ -702,46 +715,59 @@ public class ProcessBettingActionCommandHandler(
 				{
 					game.CurrentPlayerIndex = -1;
 				}
+
 				break;
 
 			case "River":
-				if (IsKlondikeGame(game))
-				{
-					game.CurrentPhase = "KlondikeReveal";
-				}
-				else
-				{
-					game.CurrentPhase = "Showdown";
-				}
+				game.CurrentPhase = IsKlondikeGame(game) ? "KlondikeReveal" : "Showdown";
+
 				game.CurrentPlayerIndex = -1;
 				break;
 		}
 	}
 
 	private static bool IsIrishHoldEmGame(Game game)
-		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.IrishHoldEmCode, StringComparison.OrdinalIgnoreCase);
+	{
+		return string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.IrishHoldEmCode,
+			StringComparison.OrdinalIgnoreCase);
+	}
 
 	private static bool IsPhilsMomGame(Game game)
-		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.PhilsMomCode, StringComparison.OrdinalIgnoreCase);
+	{
+		return string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.PhilsMomCode,
+			StringComparison.OrdinalIgnoreCase);
+	}
 
 	private static bool IsCrazyPineappleGame(Game game)
-		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.CrazyPineappleCode, StringComparison.OrdinalIgnoreCase);
+	{
+		return string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.CrazyPineappleCode,
+			StringComparison.OrdinalIgnoreCase);
+	}
 
 	private static bool IsRedRiverGame(Game game)
-		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.RedRiverCode, StringComparison.OrdinalIgnoreCase);
+	{
+		return string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.RedRiverCode,
+			StringComparison.OrdinalIgnoreCase);
+	}
 
 	private static bool IsSouthDakotaGame(Game game)
-		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SouthDakotaCode, StringComparison.OrdinalIgnoreCase);
+	{
+		return string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SouthDakotaCode,
+			StringComparison.OrdinalIgnoreCase);
+	}
 
 	private static bool IsKlondikeGame(Game game)
-		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase);
+	{
+		return string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.KlondikeCode,
+			StringComparison.OrdinalIgnoreCase);
+	}
 
 	#endregion
 
 	#region Community Card Dealing
 
 	/// <summary>
-	/// Deals community cards for the specified phase (Flop = 3 cards, Turn = 1 card, River = 1 card).
+	///     Deals community cards for the specified phase (Flop = 3 cards, Turn = 1 card, River = 1 card).
 	/// </summary>
 	private async Task DealCommunityCardsForPhaseAsync(
 		Game game,
@@ -752,7 +778,7 @@ public class ProcessBettingActionCommandHandler(
 		var isSouthDakota = IsSouthDakotaGame(game);
 		var (cardCount, dealPhase, nextDealOrder) = phase switch
 		{
-			"Flop" => (isSouthDakota ? 2 : 3, "Flop", 1),    // Flop: South Dakota=2, default=3
+			"Flop" => (isSouthDakota ? 2 : 3, "Flop", 1), // Flop: South Dakota=2, default=3
 			"Turn" => (1, "Turn", isSouthDakota ? 3 : 4),
 			"River" => (1, "River", 5),
 			"RedRiverBonus" => (1, "RedRiverBonus", 6), // Red River bonus board card
@@ -763,8 +789,8 @@ public class ProcessBettingActionCommandHandler(
 
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id
-				&& gc.HandNumber == game.CurrentHandNumber
-				&& gc.Location == CardLocation.Deck)
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -791,7 +817,7 @@ public class ProcessBettingActionCommandHandler(
 	}
 
 	/// <summary>
-	/// Deals all remaining community cards when all players are all-in (runout to showdown).
+	///     Deals all remaining community cards when all players are all-in (runout to showdown).
 	/// </summary>
 	private async Task DealRemainingCommunityCardsAsync(
 		Game game,
@@ -816,8 +842,8 @@ public class ProcessBettingActionCommandHandler(
 		// Load remaining deck cards
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id
-				&& gc.HandNumber == game.CurrentHandNumber
-				&& gc.Location == CardLocation.Deck)
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -866,7 +892,8 @@ public class ProcessBettingActionCommandHandler(
 		// Store runout information in GameSettings for client-side animation
 		var existingSettings = string.IsNullOrEmpty(game.GameSettings)
 			? new Dictionary<string, object>()
-			: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ?? new Dictionary<string, object>();
+			: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ??
+			  new Dictionary<string, object>();
 
 		existingSettings["allInRunout"] = true;
 		existingSettings["runoutStreets"] = dealtPhases;
@@ -886,6 +913,7 @@ public class ProcessBettingActionCommandHandler(
 		{
 			game.CurrentPhase = "Showdown";
 		}
+
 		game.CurrentPlayerIndex = -1;
 		game.UpdatedAt = now;
 
@@ -903,11 +931,11 @@ public class ProcessBettingActionCommandHandler(
 		// trigger the immediate Red River bonus flow before River betting starts.
 		var riverCard = context.GameCards.Local
 			.Where(gc => gc.GameId == game.Id
-				&& gc.HandNumber == game.CurrentHandNumber
-				&& gc.Location == CardLocation.Community
-				&& !gc.IsDiscarded
-				&& gc.DealtAtPhase == "River"
-				&& context.Entry(gc).State is EntityState.Added or EntityState.Modified)
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Community
+			             && !gc.IsDiscarded
+			             && gc.DealtAtPhase == "River"
+			             && context.Entry(gc).State is EntityState.Added or EntityState.Modified)
 			.OrderByDescending(gc => gc.DealOrder)
 			.FirstOrDefault();
 
@@ -918,10 +946,10 @@ public class ProcessBettingActionCommandHandler(
 			riverCard = await context.GameCards
 				.AsNoTracking()
 				.Where(gc => gc.GameId == game.Id
-					&& gc.HandNumber == game.CurrentHandNumber
-					&& gc.Location == CardLocation.Community
-					&& !gc.IsDiscarded
-					&& gc.DealtAtPhase == "River")
+				             && gc.HandNumber == game.CurrentHandNumber
+				             && gc.Location == CardLocation.Community
+				             && !gc.IsDiscarded
+				             && gc.DealtAtPhase == "River")
 				.OrderByDescending(gc => gc.DealOrder)
 				.FirstOrDefaultAsync(cancellationToken);
 		}
@@ -939,12 +967,12 @@ public class ProcessBettingActionCommandHandler(
 		var hasBonusCard = await context.GameCards
 			.AsNoTracking()
 			.AnyAsync(
-			gc => gc.GameId == game.Id
-				&& gc.HandNumber == game.CurrentHandNumber
-				&& gc.Location == CardLocation.Community
-				&& !gc.IsDiscarded
-				&& gc.DealtAtPhase == "RedRiverBonus",
-			cancellationToken);
+				gc => gc.GameId == game.Id
+				      && gc.HandNumber == game.CurrentHandNumber
+				      && gc.Location == CardLocation.Community
+				      && !gc.IsDiscarded
+				      && gc.DealtAtPhase == "RedRiverBonus",
+				cancellationToken);
 
 		if (hasBonusCard)
 		{
@@ -956,8 +984,8 @@ public class ProcessBettingActionCommandHandler(
 	}
 
 	/// <summary>
-	/// Reveals the face-down Klondike wild card so all players can see it
-	/// during the KlondikeReveal phase before showdown begins.
+	///     Reveals the face-down Klondike wild card so all players can see it
+	///     during the KlondikeReveal phase before showdown begins.
 	/// </summary>
 	private async Task RevealKlondikeCardAsync(
 		Game game,
@@ -966,9 +994,9 @@ public class ProcessBettingActionCommandHandler(
 	{
 		var klondikeCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id
-				&& gc.HandNumber == game.CurrentHandNumber
-				&& gc.DealtAtPhase == "KlondikeCard"
-				&& !gc.IsVisible)
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.DealtAtPhase == "KlondikeCard"
+			             && !gc.IsVisible)
 			.ToListAsync(cancellationToken);
 
 		foreach (var card in klondikeCards)

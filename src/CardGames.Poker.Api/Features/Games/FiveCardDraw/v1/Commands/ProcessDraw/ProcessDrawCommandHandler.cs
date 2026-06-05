@@ -1,7 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -12,7 +11,7 @@ using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
 
 /// <summary>
-/// Handles the <see cref="ProcessDrawCommand"/> to process draw actions from players.
+///     Handles the <see cref="ProcessDrawCommand" /> to process draw actions from players.
 /// </summary>
 public class ProcessDrawCommandHandler(CardsDbContext context)
 	: IRequestHandler<ProcessDrawCommand, OneOf<ProcessDrawSuccessful, ProcessDrawError>>
@@ -29,7 +28,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players and cards
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards.Where(gc => gc.HandNumber == context.Games
 				.Where(g2 => g2.Id == command.GameId)
 				.Select(g2 => g2.CurrentHandNumber)
@@ -152,9 +151,9 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			// These are cards with GamePlayerId = null and Location = Deck
 			var availableDeckCards = await context.GameCards
 				.Where(gc => gc.GameId == game.Id
-					&& gc.HandNumber == game.CurrentHandNumber
-					&& gc.GamePlayerId == null
-					&& gc.Location == CardLocation.Deck)
+				             && gc.HandNumber == game.CurrentHandNumber
+				             && gc.GamePlayerId == null
+				             && gc.Location == CardLocation.Deck)
 				.OrderBy(gc => gc.DealOrder)
 				.Take(command.DiscardIndices.Count)
 				.ToListAsync(cancellationToken);
@@ -188,8 +187,9 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 				// All hands should have a persisted deck generated via FrenchDeckDealer at hand start.
 				return new ProcessDrawError
 				{
-					Message = $"Not enough cards remaining in the deck to deal {command.DiscardIndices.Count} replacement card(s). " +
-					          $"Available: {availableDeckCards.Count}. This indicates an inconsistent deck state.",
+					Message =
+						$"Not enough cards remaining in the deck to deal {command.DiscardIndices.Count} replacement card(s). " +
+						$"Available: {availableDeckCards.Count}. This indicates an inconsistent deck state.",
 					Code = ProcessDrawErrorCode.InsufficientDeckCards
 				};
 			}
@@ -212,50 +212,50 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			nextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == nextDrawPlayerIndex)?.Player.Name;
 		}
 
-			// 10. Update timestamps
-			game.UpdatedAt = now;
+		// 10. Update timestamps
+		game.UpdatedAt = now;
 
-			// 11. Persist changes
-			await context.SaveChangesAsync(cancellationToken);
+		// 11. Persist changes
+		await context.SaveChangesAsync(cancellationToken);
 
-			return new ProcessDrawSuccessful
-			{
-				GameId = game.Id,
-				PlayerName = currentDrawPlayer.Player.Name,
-				PlayerSeatIndex = currentDrawPlayer.SeatPosition,
-				DiscardedCards = discardedCards,
-				NewCards = newCards,
-				DrawComplete = drawComplete,
-				CurrentPhase = game.CurrentPhase,
-				NextDrawPlayerIndex = nextDrawPlayerIndex,
-				NextDrawPlayerName = nextPlayerName
-			};
-		}
-
-		private static int FindNextDrawPlayer(Game game, List<GamePlayer> activePlayers, int currentIndex)
+		return new ProcessDrawSuccessful
 		{
-			// Consider active players who have not folded and have not drawn this round
-			// All-in players are included - they can still draw cards even though they cannot bet
-			var eligiblePlayers = activePlayers
-				.Where(p => !p.HasFolded && !p.HasDrawnThisRound)
-				.OrderBy(p => p.SeatPosition)
-				.ToList();
+			GameId = game.Id,
+			PlayerName = currentDrawPlayer.Player.Name,
+			PlayerSeatIndex = currentDrawPlayer.SeatPosition,
+			DiscardedCards = discardedCards,
+			NewCards = newCards,
+			DrawComplete = drawComplete,
+			CurrentPhase = game.CurrentPhase,
+			NextDrawPlayerIndex = nextDrawPlayerIndex,
+			NextDrawPlayerName = nextPlayerName
+		};
+	}
 
-			if (!eligiblePlayers.Any())
-			{
-				return -1; // All players have drawn
-			}
+	private static int FindNextDrawPlayer(Game game, List<GamePlayer> activePlayers, int currentIndex)
+	{
+		// Consider active players who have not folded and have not drawn this round
+		// All-in players are included - they can still draw cards even though they cannot bet
+		var eligiblePlayers = activePlayers
+			.Where(p => !p.HasFolded && !p.HasDrawnThisRound)
+			.OrderBy(p => p.SeatPosition)
+			.ToList();
 
-			// Find the next eligible player after currentIndex
-			var next = eligiblePlayers.FirstOrDefault(p => p.SeatPosition > currentIndex);
-			if (next != null)
-			{
-				return next.SeatPosition;
-			}
-
-			// If none found after currentIndex, wrap around to the first eligible
-			return eligiblePlayers.First().SeatPosition;
+		if (!eligiblePlayers.Any())
+		{
+			return -1; // All players have drawn
 		}
+
+		// Find the next eligible player after currentIndex
+		var next = eligiblePlayers.FirstOrDefault(p => p.SeatPosition > currentIndex);
+		if (next != null)
+		{
+			return next.SeatPosition;
+		}
+
+		// If none found after currentIndex, wrap around to the first eligible
+		return eligiblePlayers.First().SeatPosition;
+	}
 
 	private void StartSecondBettingRound(Game game, List<GamePlayer> activePlayers, DateTimeOffset now)
 	{
@@ -306,8 +306,8 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Finds the first active player after the dealer who can bet.
-	/// Excludes folded and all-in players since they cannot participate in betting.
+	///     Finds the first active player after the dealer who can bet.
+	///     Excludes folded and all-in players since they cannot participate in betting.
 	/// </summary>
 	private static int FindFirstActivePlayerAfterDealerForBetting(Game game, List<GamePlayer> activePlayers)
 	{
@@ -321,6 +321,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -349,10 +350,6 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 
 		var suitStr = suit switch
 		{
-			CardSuit.Hearts => "?",
-			CardSuit.Diamonds => "?",
-			CardSuit.Spades => "?",
-			CardSuit.Clubs => "?",
 			_ => "?"
 		};
 

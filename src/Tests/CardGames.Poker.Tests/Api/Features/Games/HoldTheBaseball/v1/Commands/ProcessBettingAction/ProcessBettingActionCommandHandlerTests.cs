@@ -29,7 +29,8 @@ public class ProcessBettingActionCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(Guid.NewGuid(), BettingActionType.Check), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBettingActionCommand(Guid.NewGuid(), BettingActionType.Check),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.GameNotFound);
@@ -39,10 +40,12 @@ public class ProcessBettingActionCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInBettingPhase_ReturnsInvalidGameState()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.CollectingBlinds), includeBettingRound: false);
+		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.CollectingBlinds),
+			includeBettingRound: false);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidGameState);
@@ -56,7 +59,8 @@ public class ProcessBettingActionCommandHandlerTests
 		var game = await SeedGameAsync(context, includeBettingRound: false);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.NoBettingRound);
@@ -69,7 +73,8 @@ public class ProcessBettingActionCommandHandlerTests
 		var game = await SeedGameAsync(context, currentActorIndex: 99);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidGameState);
@@ -83,7 +88,8 @@ public class ProcessBettingActionCommandHandlerTests
 		var game = await SeedGameAsync(context, currentBet: 0, minBet: 10);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, Amount: 5), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, Amount: 5),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidAction);
@@ -110,7 +116,8 @@ public class ProcessBettingActionCommandHandlerTests
 		await context.SaveChangesAsync();
 
 		var sut = CreateSut(context);
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.AllIn), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.AllIn),
+			CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.CurrentPhase.Should().Be(nameof(Phases.Showdown));
@@ -124,9 +131,11 @@ public class ProcessBettingActionCommandHandlerTests
 		communityCards.Select(card => card.Id).Should().OnlyHaveUniqueItems();
 		communityCards.Select(card => card.DealtAtPhase).Should().Equal("Flop", "Flop", "Flop", "Turn", "River");
 
-		using var gameSettings = JsonDocument.Parse((await context.Games.SingleAsync(g => g.Id == game.Id)).GameSettings!);
+		using var gameSettings =
+			JsonDocument.Parse((await context.Games.SingleAsync(g => g.Id == game.Id)).GameSettings!);
 		gameSettings.RootElement.GetProperty("allInRunout").GetBoolean().Should().BeTrue();
-		gameSettings.RootElement.GetProperty("runoutStreets").EnumerateArray().Select(item => item.GetString()).Should().Equal("Flop", "Turn", "River");
+		gameSettings.RootElement.GetProperty("runoutStreets").EnumerateArray().Select(item => item.GetString()).Should()
+			.Equal("Flop", "Turn", "River");
 	}
 
 	private static ProcessBettingActionCommandHandler CreateSut(CardsDbContext context)

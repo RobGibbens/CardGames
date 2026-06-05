@@ -95,18 +95,21 @@ public static class HandOddsCalculationService
 		return new HandOddsResponse(probabilities);
 	}
 
-	private static string GetDisplayName(HandType handType) => handType switch
+	private static string GetDisplayName(HandType handType)
 	{
-		HandType.HighCard => "High Card",
-		HandType.OnePair => "One Pair",
-		HandType.TwoPair => "Two Pair",
-		HandType.Trips => "Three of a Kind",
-		HandType.Straight => "Straight",
-		HandType.Flush => "Flush",
-		HandType.FullHouse => "Full House",
-		HandType.Quads => "Four of a Kind",
-		HandType.StraightFlush => "Straight Flush",
-		HandType.FiveOfAKind => "Five of a Kind",
-		_ => handType.ToString()
-	};
+		return handType switch
+		{
+			HandType.HighCard => "High Card",
+			HandType.OnePair => "One Pair",
+			HandType.TwoPair => "Two Pair",
+			HandType.Trips => "Three of a Kind",
+			HandType.Straight => "Straight",
+			HandType.Flush => "Flush",
+			HandType.FullHouse => "Full House",
+			HandType.Quads => "Four of a Kind",
+			HandType.StraightFlush => "Straight Flush",
+			HandType.FiveOfAKind => "Five of a Kind",
+			_ => handType.ToString()
+		};
+	}
 }

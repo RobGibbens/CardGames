@@ -1,7 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -12,7 +11,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Handles the <see cref="ProcessBettingActionCommand"/> to process betting actions from players.
+///     Handles the <see cref="ProcessBettingActionCommand" /> to process betting actions from players.
 /// </summary>
 public class ProcessBettingActionCommandHandler(CardsDbContext context)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
@@ -27,9 +26,9 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players and active betting round
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.BettingRounds.Where(br => !br.IsComplete))
-				.ThenInclude(br => br.Actions)
+			.ThenInclude(br => br.Actions)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -54,7 +53,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
-						  $"Betting is only allowed during '{nameof(Phases.FirstBettingRound)}' or '{nameof(Phases.SecondBettingRound)}' phases.",
+				          $"Betting is only allowed during '{nameof(Phases.FirstBettingRound)}' or '{nameof(Phases.SecondBettingRound)}' phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
 		}
@@ -188,7 +187,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		};
 	}
 
-	private string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player, BettingRound bettingRound)
+	private string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player,
+		BettingRound bettingRound)
 	{
 		var amountToCall = Math.Max(0, bettingRound.CurrentBet - player.CurrentBet);
 
@@ -207,7 +207,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
 			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount
-										 && amount < player.ChipStack + player.CurrentBet =>
+			                             && amount < player.ChipStack + player.CurrentBet =>
 				$"Raise must be to at least {bettingRound.CurrentBet + bettingRound.LastRaiseAmount}",
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
 				"Cannot fold when you can check",
@@ -291,6 +291,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 						bettingRound.LastAggressorIndex = player.SeatPosition;
 						bettingRound.RaiseCount++;
 					}
+
 					bettingRound.CurrentBet = newTotal;
 				}
 
@@ -316,6 +317,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -399,8 +401,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Finds the first active player after the dealer for betting rounds. Excludes folded and all-in players since they
-	/// cannot participate in betting.
+	///     Finds the first active player after the dealer for betting rounds. Excludes folded and all-in players since they
+	///     cannot participate in betting.
 	/// </summary>
 	private int FindFirstActivePlayerAfterDealerForBetting(Game game, List<GamePlayer> activePlayers)
 	{
@@ -414,6 +416,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -421,8 +424,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Finds the first eligible player after the dealer for the draw phase. Includes all-in players since they can still
-	/// draw cards even though they cannot bet.
+	///     Finds the first eligible player after the dealer for the draw phase. Includes all-in players since they can still
+	///     draw cards even though they cannot bet.
 	/// </summary>
 	private static int FindFirstEligibleDrawPlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
 	{
@@ -437,6 +440,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -444,7 +448,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Calculates and creates side pots when players are all-in for different amounts.
+	///     Calculates and creates side pots when players are all-in for different amounts.
 	/// </summary>
 	private void CalculateSidePots(Game game, List<GamePlayer> activePlayers)
 	{
@@ -642,9 +646,9 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		if (calculatedTotal != totalContributions && game.Pots.Any(p => p.HandNumber == game.CurrentHandNumber))
 		{
 			// Adjust last pot to match
-			var lastPot = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).OrderByDescending(p => p.PotOrder).First();
+			var lastPot = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber)
+				.OrderByDescending(p => p.PotOrder).First();
 			lastPot.Amount += totalContributions - calculatedTotal;
 		}
 	}
 }
-

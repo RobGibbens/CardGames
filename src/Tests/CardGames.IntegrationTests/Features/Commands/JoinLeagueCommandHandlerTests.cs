@@ -1,11 +1,10 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
-using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague;
 using CardGames.Poker.Api.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+using LeagueJoinRequestStatus = CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -19,13 +18,13 @@ public class JoinLeagueCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Join League"
 		}));
 
 		var leagueId = createLeague.AsT0.LeagueId;
-		var createInvite = await Mediator.Send(new CreateLeagueInviteCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueInviteRequest
+		var createInvite = await Mediator.Send(new CreateLeagueInviteCommand(leagueId, new CreateLeagueInviteRequest
 		{
 			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
 		}));
@@ -34,19 +33,19 @@ public class JoinLeagueCommandHandlerTests : IntegrationTestBase
 
 		fakeCurrentUser.UserId = "league-member";
 
-		var firstJoin = await Mediator.Send(new JoinLeagueCommand(new CardGames.Poker.Api.Contracts.JoinLeagueRequest { Token = token }));
-		var secondJoin = await Mediator.Send(new JoinLeagueCommand(new CardGames.Poker.Api.Contracts.JoinLeagueRequest { Token = token }));
+		var firstJoin = await Mediator.Send(new JoinLeagueCommand(new JoinLeagueRequest { Token = token }));
+		var secondJoin = await Mediator.Send(new JoinLeagueCommand(new JoinLeagueRequest { Token = token }));
 
 		firstJoin.IsT0.Should().BeTrue();
 		firstJoin.AsT0.RequestSubmitted.Should().BeTrue();
 		firstJoin.AsT0.JoinRequestId.Should().NotBeNull();
-		firstJoin.AsT0.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Pending);
+		firstJoin.AsT0.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Pending);
 		firstJoin.AsT0.Joined.Should().BeFalse();
 
 		secondJoin.IsT0.Should().BeTrue();
 		secondJoin.AsT0.RequestSubmitted.Should().BeTrue();
 		secondJoin.AsT0.JoinRequestId.Should().Be(firstJoin.AsT0.JoinRequestId);
-		secondJoin.AsT0.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Pending);
+		secondJoin.AsT0.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Pending);
 		secondJoin.AsT0.AlreadyMember.Should().BeFalse();
 
 		var activeMemberships = await DbContext.LeagueMembersCurrent
@@ -58,7 +57,8 @@ public class JoinLeagueCommandHandlerTests : IntegrationTestBase
 
 		var pendingRequests = await DbContext.LeagueJoinRequests
 			.AsNoTracking()
-			.Where(x => x.LeagueId == leagueId && x.RequesterUserId == "league-member" && x.Status == LeagueJoinRequestStatus.Pending)
+			.Where(x => x.LeagueId == leagueId && x.RequesterUserId == "league-member" &&
+			            x.Status == Poker.Api.Data.Entities.LeagueJoinRequestStatus.Pending)
 			.ToListAsync();
 
 		pendingRequests.Should().HaveCount(1);

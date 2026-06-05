@@ -12,7 +12,7 @@ public static class CollectAntesEndpoint
 				{
 					var result = await mediator.Send(new CollectAntesCommand(gameId), cancellationToken);
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							CollectAntesErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
@@ -23,7 +23,7 @@ public static class CollectAntesEndpoint
 			.WithName($"PairPressure{nameof(MapCollectAntes).TrimPrefix("Map")}")
 			.WithSummary("Collect Antes")
 			.WithDescription("Collects antes from active Pair Pressure players and advances the game to Third Street.")
-			.Produces<CollectAntesSuccessful>(StatusCodes.Status200OK)
+			.Produces<CollectAntesSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);
 

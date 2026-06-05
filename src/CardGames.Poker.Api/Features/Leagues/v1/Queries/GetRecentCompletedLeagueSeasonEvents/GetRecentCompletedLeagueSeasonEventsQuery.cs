@@ -14,4 +14,6 @@ public enum GetRecentCompletedLeagueSeasonEventsErrorCode
 	SeasonNotFound
 }
 
-public sealed record GetRecentCompletedLeagueSeasonEventsError(GetRecentCompletedLeagueSeasonEventsErrorCode Code, string Message);
+public sealed record GetRecentCompletedLeagueSeasonEventsError(
+	GetRecentCompletedLeagueSeasonEventsErrorCode Code,
+	string Message);

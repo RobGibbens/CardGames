@@ -14,7 +14,7 @@ public static class DealHandsEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							DealHandsErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
@@ -27,7 +27,7 @@ public static class DealHandsEndpoint
 			.WithName($"Baseball{nameof(MapDealHands).TrimPrefix("Map")}")
 			.WithSummary("Deal Hands")
 			.WithDescription("Deals the next street of cards for Baseball and sets up the betting round.")
-			.Produces<DealHandsSuccessful>(StatusCodes.Status200OK)
+			.Produces<DealHandsSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict)
 			.ProducesProblem(StatusCodes.Status422UnprocessableEntity);

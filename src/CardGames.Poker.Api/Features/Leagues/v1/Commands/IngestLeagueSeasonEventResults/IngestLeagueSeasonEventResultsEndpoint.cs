@@ -8,9 +8,13 @@ public static class IngestLeagueSeasonEventResultsEndpoint
 	public static RouteGroupBuilder MapIngestLeagueSeasonEventResults(this RouteGroupBuilder group)
 	{
 		group.MapPost("{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/results",
-				async (Guid leagueId, Guid seasonId, Guid eventId, IngestLeagueSeasonEventResultsRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, Guid seasonId, Guid eventId, IngestLeagueSeasonEventResultsRequest request,
+					IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new IngestLeagueSeasonEventResultsCommand(leagueId, seasonId, eventId, request), cancellationToken);
+					var result =
+						await mediator.Send(
+							new IngestLeagueSeasonEventResultsCommand(leagueId, seasonId, eventId, request),
+							cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),
@@ -18,13 +22,20 @@ public static class IngestLeagueSeasonEventResultsEndpoint
 						{
 							IngestLeagueSeasonEventResultsErrorCode.Unauthorized => Results.Unauthorized(),
 							IngestLeagueSeasonEventResultsErrorCode.Forbidden => Results.Forbid(),
-							IngestLeagueSeasonEventResultsErrorCode.LeagueNotFound => Results.NotFound(new { error.Message }),
-							IngestLeagueSeasonEventResultsErrorCode.SeasonNotFound => Results.NotFound(new { error.Message }),
-							IngestLeagueSeasonEventResultsErrorCode.EventNotFound => Results.NotFound(new { error.Message }),
-							IngestLeagueSeasonEventResultsErrorCode.MismatchedLeagueOrSeason => Results.BadRequest(new { error.Message }),
-							IngestLeagueSeasonEventResultsErrorCode.MemberNotFound => Results.NotFound(new { error.Message }),
-							IngestLeagueSeasonEventResultsErrorCode.ResultsAlreadyIngested => Results.Conflict(new { error.Message }),
-							IngestLeagueSeasonEventResultsErrorCode.InvalidRequest => Results.BadRequest(new { error.Message }),
+							IngestLeagueSeasonEventResultsErrorCode.LeagueNotFound => Results.NotFound(new
+								{ error.Message }),
+							IngestLeagueSeasonEventResultsErrorCode.SeasonNotFound => Results.NotFound(new
+								{ error.Message }),
+							IngestLeagueSeasonEventResultsErrorCode.EventNotFound => Results.NotFound(new
+								{ error.Message }),
+							IngestLeagueSeasonEventResultsErrorCode.MismatchedLeagueOrSeason => Results.BadRequest(new
+								{ error.Message }),
+							IngestLeagueSeasonEventResultsErrorCode.MemberNotFound => Results.NotFound(new
+								{ error.Message }),
+							IngestLeagueSeasonEventResultsErrorCode.ResultsAlreadyIngested => Results.Conflict(new
+								{ error.Message }),
+							IngestLeagueSeasonEventResultsErrorCode.InvalidRequest => Results.BadRequest(new
+								{ error.Message }),
 							_ => Results.Problem(error.Message)
 						});
 				})

@@ -7,8 +7,8 @@ public static class MapFeatureEndpoints
 	private const string MapEndpointsMethodName = "MapEndpoints";
 
 	/// <summary>
-	/// Discovers and registers all endpoint map groups marked with <see cref="EndpointMapGroupAttribute"/>
-	/// via assembly scanning.
+	///     Discovers and registers all endpoint map groups marked with <see cref="EndpointMapGroupAttribute" />
+	///     via assembly scanning.
 	/// </summary>
 	public static void AddFeatureEndpoints(this IEndpointRouteBuilder app)
 	{

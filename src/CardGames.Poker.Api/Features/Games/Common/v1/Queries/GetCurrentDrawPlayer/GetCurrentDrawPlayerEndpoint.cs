@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentDrawPlayer;
 
 /// <summary>
-/// Endpoint for retrieving the current player who must act during the draw phase.
+///     Endpoint for retrieving the current player who must act during the draw phase.
 /// </summary>
 public static class GetCurrentDrawPlayerEndpoint
 {
@@ -20,9 +20,10 @@ public static class GetCurrentDrawPlayerEndpoint
 				})
 			.WithName($"{nameof(MapGetCurrentDrawPlayer).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetCurrentDrawPlayer).TrimPrefix("Map"))
-			.WithDescription("Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.")
+			.WithDescription(
+				"Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.")
 			.MapToApiVersion(1.0)
-			.Produces<GetCurrentDrawPlayerResponse>(StatusCodes.Status200OK)
+			.Produces<GetCurrentDrawPlayerResponse>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

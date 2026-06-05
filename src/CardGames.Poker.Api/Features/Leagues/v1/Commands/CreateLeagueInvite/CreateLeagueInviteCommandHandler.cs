@@ -8,6 +8,7 @@ using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueInviteStatus = CardGames.Poker.Api.Data.Entities.LeagueInviteStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite;
 
@@ -16,7 +17,8 @@ public sealed class CreateLeagueInviteCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<CreateLeagueInviteCommand, OneOf<CreateLeagueInviteResponse, CreateLeagueInviteError>>
 {
-	public async Task<OneOf<CreateLeagueInviteResponse, CreateLeagueInviteError>> Handle(CreateLeagueInviteCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<CreateLeagueInviteResponse, CreateLeagueInviteError>> Handle(
+		CreateLeagueInviteCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -25,7 +27,8 @@ public sealed class CreateLeagueInviteCommandHandler(
 
 		if (request.Request.ExpiresAtUtc <= DateTimeOffset.UtcNow)
 		{
-			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.InvalidExpiry, "Invite expiry must be in the future.");
+			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.InvalidExpiry,
+				"Invite expiry must be in the future.");
 		}
 
 		var league = await context.Leagues
@@ -45,7 +48,8 @@ public sealed class CreateLeagueInviteCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.Forbidden, "Only league managers or admins can create invites.");
+			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.Forbidden,
+				"Only league managers or admins can create invites.");
 		}
 
 		var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -57,7 +61,7 @@ public sealed class CreateLeagueInviteCommandHandler(
 			LeagueId = request.LeagueId,
 			TokenHash = tokenHash,
 			InviteCode = token,
-			Status = Data.Entities.LeagueInviteStatus.Active,
+			Status = LeagueInviteStatus.Active,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow,
 			ExpiresAtUtc = request.Request.ExpiresAtUtc,

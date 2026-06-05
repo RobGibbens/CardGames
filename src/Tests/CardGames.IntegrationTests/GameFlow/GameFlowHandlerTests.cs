@@ -1,85 +1,82 @@
-using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
-using FluentAssertions;
-using Xunit;
 
 namespace CardGames.IntegrationTests.GameFlow;
 
 public class GameFlowHandlerTests
 {
-    [Fact]
-    public void Factory_CanResolve_HoldEmHandler()
-    {
-        // Arrange
-        var factory = new GameFlowHandlerFactory();
+	[Fact]
+	public void Factory_CanResolve_HoldEmHandler()
+	{
+		// Arrange
+		var factory = new GameFlowHandlerFactory();
 
-        // Act
-        var handler = factory.GetHandler(PokerGameMetadataRegistry.HoldEmCode);
+		// Act
+		var handler = factory.GetHandler(PokerGameMetadataRegistry.HoldEmCode);
 
-        // Assert
-        handler.Should().NotBeNull();
-        handler.Should().BeOfType<HoldEmFlowHandler>();
-        handler.GameTypeCode.Should().Be("HOLDEM");
-        handler.SkipsAnteCollection.Should().BeTrue();
-    }
+		// Assert
+		handler.Should().NotBeNull();
+		handler.Should().BeOfType<HoldEmFlowHandler>();
+		handler.GameTypeCode.Should().Be("HOLDEM");
+		handler.SkipsAnteCollection.Should().BeTrue();
+	}
 
-    [Fact]
-    public void Factory_CanResolve_OmahaHandler()
-    {
-        // Arrange
-        var factory = new GameFlowHandlerFactory();
+	[Fact]
+	public void Factory_CanResolve_OmahaHandler()
+	{
+		// Arrange
+		var factory = new GameFlowHandlerFactory();
 
-        // Act
-        var handler = factory.GetHandler(PokerGameMetadataRegistry.OmahaCode);
+		// Act
+		var handler = factory.GetHandler(PokerGameMetadataRegistry.OmahaCode);
 
-        // Assert
-        handler.Should().NotBeNull();
-        handler.Should().BeOfType<OmahaFlowHandler>();
-        handler.GameTypeCode.Should().Be("OMAHA");
-    }
+		// Assert
+		handler.Should().NotBeNull();
+		handler.Should().BeOfType<OmahaFlowHandler>();
+		handler.GameTypeCode.Should().Be("OMAHA");
+	}
 
-    [Fact]
-    public void Factory_CanResolve_NebraskaHandler()
-    {
-        // Arrange
-        var factory = new GameFlowHandlerFactory();
+	[Fact]
+	public void Factory_CanResolve_NebraskaHandler()
+	{
+		// Arrange
+		var factory = new GameFlowHandlerFactory();
 
-        // Act
-        var handler = factory.GetHandler(PokerGameMetadataRegistry.NebraskaCode);
+		// Act
+		var handler = factory.GetHandler(PokerGameMetadataRegistry.NebraskaCode);
 
-        // Assert
-        handler.Should().NotBeNull();
-        handler.Should().BeOfType<NebraskaFlowHandler>();
-        handler.GameTypeCode.Should().Be("NEBRASKA");
-    }
+		// Assert
+		handler.Should().NotBeNull();
+		handler.Should().BeOfType<NebraskaFlowHandler>();
+		handler.GameTypeCode.Should().Be("NEBRASKA");
+	}
 
-    [Fact]
-    public void Factory_CanResolve_SouthDakotaHandler()
-    {
-        // Arrange
-        var factory = new GameFlowHandlerFactory();
+	[Fact]
+	public void Factory_CanResolve_SouthDakotaHandler()
+	{
+		// Arrange
+		var factory = new GameFlowHandlerFactory();
 
-        // Act
-        var handler = factory.GetHandler(PokerGameMetadataRegistry.SouthDakotaCode);
+		// Act
+		var handler = factory.GetHandler(PokerGameMetadataRegistry.SouthDakotaCode);
 
-        // Assert
-        handler.Should().NotBeNull();
-        handler.Should().BeOfType<SouthDakotaFlowHandler>();
-        handler.GameTypeCode.Should().Be("SOUTHDAKOTA");
-    }
+		// Assert
+		handler.Should().NotBeNull();
+		handler.Should().BeOfType<SouthDakotaFlowHandler>();
+		handler.GameTypeCode.Should().Be("SOUTHDAKOTA");
+	}
 
-    [Fact]
-    public void Factory_CanResolve_FollowTheQueenHandler()
-    {
-        // Arrange
-        var factory = new GameFlowHandlerFactory();
+	[Fact]
+	public void Factory_CanResolve_FollowTheQueenHandler()
+	{
+		// Arrange
+		var factory = new GameFlowHandlerFactory();
 
-        // Act
-        var handler = factory.GetHandler(PokerGameMetadataRegistry.FollowTheQueenCode);
+		// Act
+		var handler = factory.GetHandler(PokerGameMetadataRegistry.FollowTheQueenCode);
 
-        // Assert
-        handler.Should().NotBeNull();
-        handler.Should().BeOfType<FollowTheQueenFlowHandler>();
-        handler.GameTypeCode.Should().Be("FOLLOWTHEQUEEN");
-    }
+		// Assert
+		handler.Should().NotBeNull();
+		handler.Should().BeOfType<FollowTheQueenFlowHandler>();
+		handler.GameTypeCode.Should().Be("FOLLOWTHEQUEEN");
+	}
 }

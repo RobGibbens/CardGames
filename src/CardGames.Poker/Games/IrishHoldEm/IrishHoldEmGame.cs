@@ -4,63 +4,41 @@ using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.CommunityCardHands;
 
 namespace CardGames.Poker.Games.IrishHoldEm;
 
 /// <summary>
-/// Orchestrates an Irish Hold 'Em poker game.
-/// Deals 4 hole cards like Omaha; after the flop betting round, each player must discard
-/// exactly 2 of their 4 hole cards, then play continues as Texas Hold 'Em.
+///     Orchestrates an Irish Hold 'Em poker game.
+///     Deals 4 hole cards like Omaha; after the flop betting round, each player must discard
+///     exactly 2 of their 4 hole cards, then play continues as Texas Hold 'Em.
 /// </summary>
 [PokerGameMetadata(
-    code: "IRISHHOLDEM",
-    name: "Irish Hold 'Em",
-    description: "Deal 4 hole cards, discard 2 after the flop, then play like Hold 'Em with community cards.",
-    minimumNumberOfPlayers: 2,
-    maximumNumberOfPlayers: 10,
-    initialHoleCards: 4,
-    initialBoardCards: 0,
-    maxCommunityCards: 5,
-    maxPlayerCards: 4,
-    hasDrawPhase: true,
-    maxDiscards: 2,
-    wildCardRule: WildCardRule.None,
-    bettingStructure: BettingStructure.Blinds,
-    imageName: "irishholdem.png")]
+	code: "IRISHHOLDEM",
+	name: "Irish Hold 'Em",
+	description: "Deal 4 hole cards, discard 2 after the flop, then play like Hold 'Em with community cards.",
+	minimumNumberOfPlayers: 2,
+	maximumNumberOfPlayers: 10,
+	initialHoleCards: 4,
+	initialBoardCards: 0,
+	maxCommunityCards: 5,
+	maxPlayerCards: 4,
+	hasDrawPhase: true,
+	maxDiscards: 2,
+	wildCardRule: WildCardRule.None,
+	bettingStructure: BettingStructure.Blinds,
+	imageName: "irishholdem.png")]
 public class IrishHoldEmGame : IPokerGame
 {
-	public string Name { get; } = "Irish Hold 'Em";
-	public string Description { get; } = "Deal 4 hole cards, discard 2 after the flop, then play like Hold 'Em with community cards.";
-	public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.HoldEm;
-	public int MinimumNumberOfPlayers { get; } = 2;
-	public int MaximumNumberOfPlayers { get; } = 10;
-
 	private const int HoleCardsCount = 4;
+	private readonly List<Card> _communityCards = new();
+	private readonly FrenchDeckDealer _dealer;
 
 	private readonly List<IrishHoldEmGamePlayer> _gamePlayers;
-	private readonly FrenchDeckDealer _dealer;
-	private readonly int _smallBlind;
-	private readonly int _bigBlind;
-
-	private PotManager _potManager;
-	private BettingRound _currentBettingRound;
-	private int _dealerPosition;
-	private List<Card> _communityCards = new List<Card>();
-
-	public Phases CurrentPhase { get; private set; }
-	public IReadOnlyList<IrishHoldEmGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
-	public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
-	public IReadOnlyList<Card> CommunityCards => _communityCards.AsReadOnly();
-	public int TotalPot => _potManager?.TotalPotAmount ?? 0;
-	public BettingRound CurrentBettingRound => _currentBettingRound;
-	public int DealerPosition => _dealerPosition;
-	public PotManager PotManager => _potManager;
-	public int SmallBlind => _smallBlind;
-	public int BigBlind => _bigBlind;
 
 	/// <summary>
-	/// Constructor for rules discovery only.
+	///     Constructor for rules discovery only.
 	/// </summary>
 	public IrishHoldEmGame()
 		: this(
@@ -91,27 +69,61 @@ public class IrishHoldEmGame : IPokerGame
 			.ToList();
 
 		_dealer = FrenchDeckDealer.WithFullDeck();
-		_smallBlind = smallBlind;
-		_bigBlind = bigBlind;
-		_dealerPosition = 0;
+		SmallBlind = smallBlind;
+		BigBlind = bigBlind;
+		DealerPosition = 0;
 		CurrentPhase = Phases.WaitingToStart;
 	}
 
+	public Phases CurrentPhase { get; private set; }
+	public IReadOnlyList<IrishHoldEmGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
+	public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
+	public IReadOnlyList<Card> CommunityCards => _communityCards.AsReadOnly();
+	public int TotalPot => PotManager?.TotalPotAmount ?? 0;
+	public BettingRound CurrentBettingRound { get; private set; }
+
+	public int DealerPosition { get; private set; }
+
+	public PotManager PotManager { get; private set; }
+
+	public int SmallBlind { get; }
+
+	public int BigBlind { get; }
+
 	/// <summary>
-	/// Gets the game rules metadata for Irish Hold 'Em.
+	///     Gets the small blind player position (left of dealer).
 	/// </summary>
-	public GameFlow.GameRules GetGameRules()
+	public int SmallBlindPosition => (DealerPosition + 1) % _gamePlayers.Count;
+
+	/// <summary>
+	///     Gets the big blind player position (left of small blind).
+	/// </summary>
+	public int BigBlindPosition => (DealerPosition + 2) % _gamePlayers.Count;
+
+	public string Name { get; } = "Irish Hold 'Em";
+
+	public string Description { get; } =
+		"Deal 4 hole cards, discard 2 after the flop, then play like Hold 'Em with community cards.";
+
+	public VariantType VariantType { get; } = VariantType.HoldEm;
+	public int MinimumNumberOfPlayers { get; } = 2;
+	public int MaximumNumberOfPlayers { get; } = 10;
+
+	/// <summary>
+	///     Gets the game rules metadata for Irish Hold 'Em.
+	/// </summary>
+	public GameRules GetGameRules()
 	{
 		return IrishHoldEmRules.CreateGameRules();
 	}
 
 	/// <summary>
-	/// Starts a new hand.
+	///     Starts a new hand.
 	/// </summary>
 	public void StartHand()
 	{
 		_dealer.Shuffle();
-		_potManager = new PotManager();
+		PotManager = new PotManager();
 		_communityCards.Clear();
 
 		foreach (var gamePlayer in _gamePlayers)
@@ -124,17 +136,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Gets the small blind player position (left of dealer).
-	/// </summary>
-	public int SmallBlindPosition => (_dealerPosition + 1) % _gamePlayers.Count;
-
-	/// <summary>
-	/// Gets the big blind player position (left of small blind).
-	/// </summary>
-	public int BigBlindPosition => (_dealerPosition + 2) % _gamePlayers.Count;
-
-	/// <summary>
-	/// Collects blinds from players.
+	///     Collects blinds from players.
 	/// </summary>
 	public List<BettingAction> PostBlinds()
 	{
@@ -147,21 +149,21 @@ public class IrishHoldEmGame : IPokerGame
 
 		// Small blind
 		var sbPlayer = _gamePlayers[SmallBlindPosition];
-		var sbAmount = Math.Min(_smallBlind, sbPlayer.Player.ChipStack);
+		var sbAmount = Math.Min(SmallBlind, sbPlayer.Player.ChipStack);
 		if (sbAmount > 0)
 		{
 			var actualSb = sbPlayer.Player.PlaceBet(sbAmount);
-			_potManager.AddContribution(sbPlayer.Player.Name, actualSb);
+			PotManager.AddContribution(sbPlayer.Player.Name, actualSb);
 			actions.Add(new BettingAction(sbPlayer.Player.Name, BettingActionType.Post, actualSb));
 		}
 
 		// Big blind
 		var bbPlayer = _gamePlayers[BigBlindPosition];
-		var bbAmount = Math.Min(_bigBlind, bbPlayer.Player.ChipStack);
+		var bbAmount = Math.Min(BigBlind, bbPlayer.Player.ChipStack);
 		if (bbAmount > 0)
 		{
 			var actualBb = bbPlayer.Player.PlaceBet(bbAmount);
-			_potManager.AddContribution(bbPlayer.Player.Name, actualBb);
+			PotManager.AddContribution(bbPlayer.Player.Name, actualBb);
 			actions.Add(new BettingAction(bbPlayer.Player.Name, BettingActionType.Post, actualBb));
 		}
 
@@ -170,7 +172,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Deals 4 hole cards to each player.
+	///     Deals 4 hole cards to each player.
 	/// </summary>
 	public void DealHoleCards()
 	{
@@ -195,7 +197,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Starts the betting round for the current phase.
+	///     Starts the betting round for the current phase.
 	/// </summary>
 	public void StartBettingRound()
 	{
@@ -219,20 +221,21 @@ public class IrishHoldEmGame : IPokerGame
 		{
 			case Phases.PreFlop:
 				startPosition = GetDealerPositionForFirstActingPlayer((BigBlindPosition + 1) % _gamePlayers.Count);
-				minBet = _bigBlind;
-				initialBet = _bigBlind;
+				minBet = BigBlind;
+				initialBet = BigBlind;
 				forcedBetPlayerIndex = BigBlindPosition;
 				break;
 			case Phases.Turn:
 			case Phases.River:
-				startPosition = _dealerPosition;
-				minBet = _bigBlind;
+				startPosition = DealerPosition;
+				minBet = BigBlind;
 				break;
 			default:
 				throw new InvalidOperationException("Cannot start betting round in current phase");
 		}
 
-		_currentBettingRound = new BettingRound(activePlayers, _potManager, startPosition, minBet, initialBet, forcedBetPlayerIndex);
+		CurrentBettingRound = new BettingRound(activePlayers, PotManager, startPosition, minBet, initialBet,
+			forcedBetPlayerIndex);
 	}
 
 	private int GetDealerPositionForFirstActingPlayer(int firstActingPlayerIndex)
@@ -241,27 +244,27 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Gets the available actions for the current player in a betting round.
+	///     Gets the available actions for the current player in a betting round.
 	/// </summary>
 	public AvailableActions GetAvailableActions()
 	{
-		return _currentBettingRound?.GetAvailableActions();
+		return CurrentBettingRound?.GetAvailableActions();
 	}
 
 	/// <summary>
-	/// Gets the current player who needs to act.
+	///     Gets the current player who needs to act.
 	/// </summary>
 	public PokerPlayer GetCurrentPlayer()
 	{
-		return _currentBettingRound?.CurrentPlayer;
+		return CurrentBettingRound?.CurrentPlayer;
 	}
 
 	/// <summary>
-	/// Processes a betting action from the current player.
+	///     Processes a betting action from the current player.
 	/// </summary>
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
-		if (_currentBettingRound == null)
+		if (CurrentBettingRound == null)
 		{
 			return new BettingRoundResult
 			{
@@ -270,7 +273,7 @@ public class IrishHoldEmGame : IPokerGame
 			};
 		}
 
-		var result = _currentBettingRound.ProcessAction(actionType, amount);
+		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
 		if (result.RoundComplete)
 		{
@@ -308,14 +311,14 @@ public class IrishHoldEmGame : IPokerGame
 				CurrentPhase = Phases.River;
 				break;
 			case Phases.River:
-				_potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
+				PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 				CurrentPhase = Phases.Showdown;
 				break;
 		}
 	}
 
 	/// <summary>
-	/// Discards exactly 2 cards from a player's hand during the discard phase.
+	///     Discards exactly 2 cards from a player's hand during the discard phase.
 	/// </summary>
 	/// <param name="playerName">The name of the player discarding.</param>
 	/// <param name="discardIndices">Exactly 2 zero-based indices of cards to discard.</param>
@@ -347,7 +350,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Checks whether all active (non-folded) players have completed their discards.
+	///     Checks whether all active (non-folded) players have completed their discards.
 	/// </summary>
 	public bool IsDiscardingComplete()
 	{
@@ -357,7 +360,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Deals the flop (3 community cards).
+	///     Deals the flop (3 community cards).
 	/// </summary>
 	public void DealFlop()
 	{
@@ -375,7 +378,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Deals the turn (4th community card).
+	///     Deals the turn (4th community card).
 	/// </summary>
 	public void DealTurn()
 	{
@@ -388,7 +391,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Deals the river (5th community card).
+	///     Deals the river (5th community card).
 	/// </summary>
 	public void DealRiver()
 	{
@@ -401,8 +404,8 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Performs the showdown and determines winners.
-	/// Post-discard, players have 2 hole cards — evaluated as Hold 'Em hands.
+	///     Performs the showdown and determines winners.
+	///     Post-discard, players have 2 hole cards — evaluated as Hold 'Em hands.
 	/// </summary>
 	public IrishHoldEmShowdownResult PerformShowdown()
 	{
@@ -421,7 +424,7 @@ public class IrishHoldEmGame : IPokerGame
 		if (playersInHand.Count == 1)
 		{
 			var winner = playersInHand[0];
-			var totalPot = _potManager.TotalPotAmount;
+			var totalPot = PotManager.TotalPotAmount;
 			winner.Player.AddChips(totalPot);
 
 			CurrentPhase = Phases.Complete;
@@ -431,10 +434,12 @@ public class IrishHoldEmGame : IPokerGame
 			{
 				Success = true,
 				Payouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } },
-				PlayerHands = new Dictionary<string, (HoldemHand hand, IReadOnlyCollection<Card> holeCards, IReadOnlyCollection<Card> communityCards)>
-				{
-					{ winner.Player.Name, (null, winner.HoleCards.ToList(), _communityCards.ToList()) }
-				},
+				PlayerHands =
+					new Dictionary<string, (HoldemHand hand, IReadOnlyCollection<Card> holeCards,
+						IReadOnlyCollection<Card> communityCards)>
+					{
+						{ winner.Player.Name, (null, winner.HoleCards.ToList(), _communityCards.ToList()) }
+					},
 				WonByFold = true
 			};
 		}
@@ -445,12 +450,13 @@ public class IrishHoldEmGame : IPokerGame
 			gp =>
 			{
 				var hand = new HoldemHand(gp.HoleCards.ToList(), _communityCards.ToList());
-				return (hand, holeCards: (IReadOnlyCollection<Card>)gp.HoleCards.ToList(), communityCards: (IReadOnlyCollection<Card>)_communityCards.ToList());
+				return (hand, holeCards: (IReadOnlyCollection<Card>)gp.HoleCards.ToList(),
+					communityCards: (IReadOnlyCollection<Card>)_communityCards.ToList());
 			}
 		);
 
 		// Award pots
-		var payouts = _potManager.AwardPots(eligiblePlayers =>
+		var payouts = PotManager.AwardPots(eligiblePlayers =>
 		{
 			var eligibleHands = playerHands
 				.Where(kvp => eligiblePlayers.Contains(kvp.Key))
@@ -480,11 +486,11 @@ public class IrishHoldEmGame : IPokerGame
 
 	private void MoveDealer()
 	{
-		_dealerPosition = (_dealerPosition + 1) % _gamePlayers.Count;
+		DealerPosition = (DealerPosition + 1) % _gamePlayers.Count;
 	}
 
 	/// <summary>
-	/// Gets the players who can continue playing (have chips).
+	///     Gets the players who can continue playing (have chips).
 	/// </summary>
 	public IEnumerable<PokerPlayer> GetPlayersWithChips()
 	{
@@ -492,7 +498,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Checks if the game can continue (at least 2 players have chips).
+	///     Checks if the game can continue (at least 2 players have chips).
 	/// </summary>
 	public bool CanContinue()
 	{
@@ -500,15 +506,15 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Gets the current minimum bet for this street.
+	///     Gets the current minimum bet for this street.
 	/// </summary>
 	public int GetCurrentMinBet()
 	{
-		return _bigBlind;
+		return BigBlind;
 	}
 
 	/// <summary>
-	/// Gets the street name for display purposes.
+	///     Gets the street name for display purposes.
 	/// </summary>
 	public string GetCurrentStreetName()
 	{
@@ -524,15 +530,15 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Gets the dealer player.
+	///     Gets the dealer player.
 	/// </summary>
 	public IrishHoldEmGamePlayer GetDealer()
 	{
-		return _gamePlayers[_dealerPosition];
+		return _gamePlayers[DealerPosition];
 	}
 
 	/// <summary>
-	/// Gets the small blind player.
+	///     Gets the small blind player.
 	/// </summary>
 	public IrishHoldEmGamePlayer GetSmallBlindPlayer()
 	{
@@ -540,7 +546,7 @@ public class IrishHoldEmGame : IPokerGame
 	}
 
 	/// <summary>
-	/// Gets the big blind player.
+	///     Gets the big blind player.
 	/// </summary>
 	public IrishHoldEmGamePlayer GetBigBlindPlayer()
 	{

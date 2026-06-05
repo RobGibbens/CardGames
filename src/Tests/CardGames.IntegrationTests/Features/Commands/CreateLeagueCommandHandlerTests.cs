@@ -1,10 +1,7 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using ContractsLeagueRole = CardGames.Poker.Api.Contracts.LeagueRole;
 using DataLeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 
@@ -24,7 +21,7 @@ public class CreateLeagueCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserEmail = "league-user-1@example.com";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var command = new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var command = new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Weekend League",
 			Description = "Saturday games"

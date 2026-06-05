@@ -1,15 +1,15 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
 
 /// <summary>
-/// Synchronizes league event state when a linked game completes.
-/// When a game marked as Completed is detected, finds any linked league season or one-off event
-/// and marks it as Completed, triggering standings updates for season tournaments.
+///     Synchronizes league event state when a linked game completes.
+///     When a game marked as Completed is detected, finds any linked league season or one-off event
+///     and marks it as Completed, triggering standings updates for season tournaments.
 /// </summary>
 public sealed class LeagueGameCompletionSyncService
 {
@@ -28,8 +28,8 @@ public sealed class LeagueGameCompletionSyncService
 	}
 
 	/// <summary>
-	/// Processes a completed game: finds any linked league event and marks it completed,
-	/// captures tournament results if applicable, and broadcasts the change.
+	///     Processes a completed game: finds any linked league event and marks it completed,
+	///     captures tournament results if applicable, and broadcasts the change.
 	/// </summary>
 	public async Task SyncLeagueEventCompletionAsync(Guid gameId, CancellationToken cancellationToken = default)
 	{
@@ -72,13 +72,13 @@ public sealed class LeagueGameCompletionSyncService
 						"Marked season event {EventId} as completed for game {GameId}",
 						linkedSeasonEvent.Id, gameId);
 
-					await _leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+					await _leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 					{
 						LeagueId = linkedSeasonEvent.LeagueId,
 						EventId = linkedSeasonEvent.Id,
-						SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.Season,
+						SourceType = LeagueEventSourceType.Season,
 						SeasonId = linkedSeasonEvent.LeagueSeasonId,
-						ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.ResultsRecorded,
+						ChangeKind = LeagueEventChangeKind.ResultsRecorded,
 						ChangedAtUtc = now
 					}, cancellationToken);
 				}
@@ -101,12 +101,12 @@ public sealed class LeagueGameCompletionSyncService
 						"Marked one-off event {EventId} as completed for game {GameId}",
 						linkedOneOffEvent.Id, gameId);
 
-					await _leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+					await _leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 					{
 						LeagueId = linkedOneOffEvent.LeagueId,
 						EventId = linkedOneOffEvent.Id,
-						SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff,
-						ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.Updated,
+						SourceType = LeagueEventSourceType.OneOff,
+						ChangeKind = LeagueEventChangeKind.Updated,
 						ChangedAtUtc = now
 					}, cancellationToken);
 				}
@@ -198,8 +198,8 @@ public sealed class LeagueGameCompletionSyncService
 	}
 
 	/// <summary>
-	/// Derives tournament placements from game state.
-	/// Returns list of (player user ID, placement) tuples ordered by placement (1 = best).
+	///     Derives tournament placements from game state.
+	///     Returns list of (player user ID, placement) tuples ordered by placement (1 = best).
 	/// </summary>
 	private static List<(string PlayerNameOrUserId, int Placement)> DerivePlayerPlacementsFromGameState(Game game)
 	{
@@ -235,6 +235,6 @@ public sealed class LeagueGameCompletionSyncService
 	private static DateTimeOffset GetTournamentFinishTime(GamePlayer gamePlayer)
 	{
 		return gamePlayer.LeftAt
-			?? gamePlayer.JoinedAt;
+		       ?? gamePlayer.JoinedAt;
 	}
 }

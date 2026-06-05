@@ -10,10 +10,11 @@ public static class GetLeagueStandingsEndpoint
 		group.MapGet("{leagueId:guid}/standings",
 				async (Guid leagueId, Guid? seasonId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new GetLeagueStandingsQuery(leagueId, seasonId), cancellationToken);
+					var result = await mediator.Send(new GetLeagueStandingsQuery(leagueId, seasonId),
+						cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							GetLeagueStandingsErrorCode.Unauthorized => Results.Unauthorized(),
@@ -24,7 +25,7 @@ public static class GetLeagueStandingsEndpoint
 			.WithName("GetLeagueStandings")
 			.WithSummary("Get league standings")
 			.WithDescription("Returns current league standings for active league members.")
-			.Produces<IReadOnlyList<LeagueStandingEntryDto>>(StatusCodes.Status200OK)
+			.Produces<IReadOnlyList<LeagueStandingEntryDto>>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.RequireAuthorization();

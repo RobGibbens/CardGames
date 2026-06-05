@@ -24,7 +24,9 @@ public class SelectShowcaseCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(Guid.NewGuid(), ShowcaseCardIndex: 0, PlayerSeatIndex: 0), CancellationToken.None);
+		var result =
+			await sut.Handle(new SelectShowcaseCommand(Guid.NewGuid(), ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+				CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(SelectShowcaseErrorCode.GameNotFound);
@@ -37,7 +39,8 @@ public class SelectShowcaseCommandHandlerTests
 		var game = await SeedBobBarkerGameAsync(context, currentPhase: nameof(Phases.PreFlop));
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(SelectShowcaseErrorCode.NotInShowcasePhase);
@@ -50,7 +53,8 @@ public class SelectShowcaseCommandHandlerTests
 		var game = await SeedBobBarkerGameAsync(context);
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 99), CancellationToken.None);
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 99),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(SelectShowcaseErrorCode.NotPlayerTurn);
@@ -67,7 +71,8 @@ public class SelectShowcaseCommandHandlerTests
 
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(SelectShowcaseErrorCode.AlreadySelected);
@@ -80,7 +85,8 @@ public class SelectShowcaseCommandHandlerTests
 		var game = await SeedBobBarkerGameAsync(context, cardsPerPlayer: 4);
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(SelectShowcaseErrorCode.InsufficientCards);
@@ -93,7 +99,8 @@ public class SelectShowcaseCommandHandlerTests
 		var game = await SeedBobBarkerGameAsync(context);
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 5, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 5, PlayerSeatIndex: 0),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(SelectShowcaseErrorCode.InvalidCardIndex);
@@ -117,7 +124,7 @@ public class SelectShowcaseCommandHandlerTests
 
 		_ = await staleContext.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameType)
 			.Include(g => g.GameCards.Where(gc => gc.HandNumber == 1 && !gc.IsDiscarded))
 			.Include(g => g.Pots)
@@ -126,8 +133,12 @@ public class SelectShowcaseCommandHandlerTests
 		var freshSut = new SelectShowcaseCommandHandler(freshContext);
 		var staleSut = new SelectShowcaseCommandHandler(staleContext);
 
-		var firstResult = await freshSut.Handle(new SelectShowcaseCommand(gameId, ShowcaseCardIndex: 0, PlayerSeatIndex: 0), CancellationToken.None);
-		var secondResult = await staleSut.Handle(new SelectShowcaseCommand(gameId, ShowcaseCardIndex: 1, PlayerSeatIndex: 1), CancellationToken.None);
+		var firstResult =
+			await freshSut.Handle(new SelectShowcaseCommand(gameId, ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+				CancellationToken.None);
+		var secondResult =
+			await staleSut.Handle(new SelectShowcaseCommand(gameId, ShowcaseCardIndex: 1, PlayerSeatIndex: 1),
+				CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
 		secondResult.IsT0.Should().BeTrue();
@@ -142,7 +153,8 @@ public class SelectShowcaseCommandHandlerTests
 		persistedGame.CurrentPhase.Should().Be(nameof(Phases.PreFlop));
 		persistedGame.CurrentDrawPlayerIndex.Should().Be(-1);
 		players.Should().OnlyContain(player => player.HasDrawnThisRound);
-		verificationContext.BettingRounds.Should().ContainSingle(round => round.GameId == gameId && round.Street == nameof(Phases.PreFlop));
+		verificationContext.BettingRounds.Should()
+			.ContainSingle(round => round.GameId == gameId && round.Street == nameof(Phases.PreFlop));
 	}
 
 	private static CardsDbContext CreateContext()

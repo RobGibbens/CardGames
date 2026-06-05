@@ -1,1304 +1,1301 @@
-@using CardGames.Poker.Api.Contracts
+@using System.Globalization
+@using System.Text.RegularExpressions
+@using CardGames.Contracts.SignalR
 @using CardGames.Core.Extensions
 @using CardGames.Core.French.Cards
+@using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Evaluation
 @using CardGames.Poker.Hands
+@using CardGames.Poker.Hands.DrawHands
 @using CardGames.Poker.Hands.HandTypes
 @using CardGames.Poker.Hands.Strength
-@using CardGames.Poker.Hands.DrawHands
 @using CardGames.Poker.Hands.StudHands
-@using CardGames.Contracts.SignalR
-
-@using System.Globalization
-
 <div class="table-overlay showdown-overlay" role="dialog" aria-modal="true" aria-label="Showdown results">
-    <div class="overlay-content showdown-content @(ShowdownWon ? "showdown-won" : "")">
-        <header class="showdown-header">
-            <div class="showdown-header-main">
-                <div class="showdown-icon" aria-hidden="true">
-                    <i class="fa-solid fa-trophy"></i>
-                </div>
-                <div class="showdown-heading">
-                    <h2 class="showdown-title">@GetOverlayTitle()</h2>
-                    <div class="showdown-subtitle">@GetOutcomeSubtitle()</div>
-                </div>
-            </div>
-            <button type="button"
-                    class="btn btn-link btn-sm showdown-close"
-                    title="Close showdown"
-                    aria-label="Close showdown"
-                    @onclick="OnClose">
-                <i class="fa-solid fa-xmark game-info-overlay-close-icon"></i>
-            </button>
-        </header>
+	<div class="overlay-content showdown-content @(ShowdownWon ? "showdown-won" : "")">
+		<header class="showdown-header">
+			<div class="showdown-header-main">
+				<div class="showdown-icon" aria-hidden="true">
+					<i class="fa-solid fa-trophy"></i>
+				</div>
+				<div class="showdown-heading">
+					<h2 class="showdown-title">@GetOverlayTitle()</h2>
+					<div class="showdown-subtitle">@GetOutcomeSubtitle()</div>
+				</div>
+			</div>
+			<button type="button"
+			        class="btn btn-link btn-sm showdown-close"
+			        title="Close showdown"
+			        aria-label="Close showdown"
+			        @onclick="OnClose">
+				<i class="fa-solid fa-xmark game-info-overlay-close-icon"></i>
+			</button>
+		</header>
 
-        @if (ShowdownResult is null)
-        {
-            <p class="showdown-empty">No showdown data.</p>
-        }
-        else
-        {
-            var isRazz = IsRazzGame;
-            var winnerHand = GetPrimaryWinnerHand(ShowdownResult);
-            var otherHands = GetLoserHands(ShowdownResult, winnerHand);
-            var sharedCommunityCards = SharedCommunityCards is { Count: > 0 }
-                ? SharedCommunityCards
-                : GetSharedCommunityCards(winnerHand);
-            var winnerCards = winnerHand is not null ? GetDisplayCardsForShowdown(winnerHand, sharedCommunityCards, isRazz) : [];
-            var winnerName = GetWinnerDisplayName(ShowdownResult, winnerHand);
-            var winnerDescription = GetWinnerDescription(ShowdownResult, winnerHand, isRazz);
-            var winnerAmount = GetWinnerAmount(ShowdownResult, winnerHand);
-            var winnerVerb = GetWinnerVerb(ShowdownResult, winnerHand);
+		@if (ShowdownResult is null)
+		{
+			<p class="showdown-empty">No showdown data.</p>
+		}
+		else
+		{
+			var isRazz = IsRazzGame;
+			var winnerHand = GetPrimaryWinnerHand(ShowdownResult);
+			var otherHands = GetLoserHands(ShowdownResult, winnerHand);
+			var sharedCommunityCards = SharedCommunityCards is { Count: > 0 }
+				? SharedCommunityCards
+				: GetSharedCommunityCards(winnerHand);
+			var winnerCards = winnerHand is not null ? GetDisplayCardsForShowdown(winnerHand, sharedCommunityCards, isRazz) : [];
+			var winnerName = GetWinnerDisplayName(ShowdownResult, winnerHand);
+			var winnerDescription = GetWinnerDescription(ShowdownResult, winnerHand, isRazz);
+			var winnerAmount = GetWinnerAmount(ShowdownResult, winnerHand);
+			var winnerVerb = GetWinnerVerb(ShowdownResult, winnerHand);
 
-            <section class="showdown-stage" aria-label="Showdown summary">
-                <section class="showdown-winner" aria-label="Winner">
-                    <div class="winner-banner @(ShowdownWon ? "winner-banner-celebrate" : "")">
-                        @if (ShowdownWon)
-                        {
-                            <div class="winner-celebration" aria-hidden="true">
-                                <span class="winner-ribbon">Winner</span>
-                                <i class="fa-solid fa-sparkles celebration-star celebration-star-left"></i>
-                                <i class="fa-solid fa-sparkles celebration-star celebration-star-right"></i>
-                                @for (var i = 0; i < 14; i++)
-                                {
-                                    <span class="celebration-confetti" style="--i:@i"></span>
-                                }
-                            </div>
-                        }
+			<section class="showdown-stage" aria-label="Showdown summary">
+				<section class="showdown-winner" aria-label="Winner">
+					<div class="winner-banner @(ShowdownWon ? "winner-banner-celebrate" : "")">
+						@if (ShowdownWon)
+						{
+							<div class="winner-celebration" aria-hidden="true">
+								<span class="winner-ribbon">Winner</span>
+								<i class="fa-solid fa-sparkles celebration-star celebration-star-left"></i>
+								<i class="fa-solid fa-sparkles celebration-star celebration-star-right"></i>
+								@for (var i = 0; i < 14; i++)
+								{
+									<span class="celebration-confetti" style="--i:@i"></span>
+								}
+							</div>
+						}
 
-                        <div class="winner-main">
-                            <div class="winner-copy">
+						<div class="winner-main">
+							<div class="winner-copy">
 
-                                <div class="winner-headline">
-                                    @if (ShowdownWon)
-                                    {
-                                        <span class="winner-crown" aria-hidden="true"><i class="fa-solid fa-crown"></i></span>
-                                    }
-                                    <h3 class="winner-first">@winnerName</h3>
-                                    <span class="winner-rest">@winnerVerb</span>
-                                </div>
+								<div class="winner-headline">
+									@if (ShowdownWon)
+									{
+										<span class="winner-crown" aria-hidden="true">
+											<i class="fa-solid fa-crown"></i>
+										</span>
+									}
+									<h3 class="winner-first">@winnerName</h3>
+									<span class="winner-rest">@winnerVerb</span>
+								</div>
 
-                                @if (!string.IsNullOrWhiteSpace(winnerDescription))
-                                {
-                                    <p class="winner-hand-callout">@winnerDescription</p>
-                                }
+								@if (!string.IsNullOrWhiteSpace(winnerDescription))
+								{
+									<p class="winner-hand-callout">@winnerDescription</p>
+								}
 
-                                @if (!string.IsNullOrWhiteSpace(winnerDescription) || winnerAmount > 0)
-                                {
-                                    <div class="winner-pills">
-                                        @if (!string.IsNullOrWhiteSpace(winnerDescription))
-                                        {
-                                            <span class="sd-pill sd-pill-muted">Best hand</span>
-                                        }
-                                        @if (winnerAmount > 0)
-                                        {
-                                            <span class="sd-pill sd-pill-gold">+@winnerAmount chips</span>
-                                        }
-                                    </div>
-                                }
-                            </div>
+								@if (!string.IsNullOrWhiteSpace(winnerDescription) || winnerAmount > 0)
+								{
+									<div class="winner-pills">
+										@if (!string.IsNullOrWhiteSpace(winnerDescription))
+										{
+											<span class="sd-pill sd-pill-muted">Best hand</span>
+										}
+										@if (winnerAmount > 0)
+										{
+											<span class="sd-pill sd-pill-gold">+@winnerAmount chips</span>
+										}
+									</div>
+								}
+							</div>
 
-                            <div class="winner-illustration-shell" aria-hidden="true">
-                                <div class="winner-illustration-frame">
-                                    <img class="winner-illustration" src="@(ShowdownLost ? "/images/loser.png" : "/images/winner.png")" alt="" />
-                                </div>
-                            </div>
-                        </div>
+							<div class="winner-illustration-shell" aria-hidden="true">
+								<div class="winner-illustration-frame">
+									<img class="winner-illustration" src="@(ShowdownLost ? "/images/loser.png" : "/images/winner.png")" alt=""/>
+								</div>
+							</div>
+						</div>
 
-                        @if (winnerCards.Count > 0)
-                        {
-                            <div class="winner-hand-stage">
-                                <div class="winner-hand-header">
-                                    <span class="winner-hand-label">Winning cards</span>
-                                    @if (!string.IsNullOrWhiteSpace(winnerDescription))
-                                    {
-                                        <span class="winner-hand-detail">@winnerDescription</span>
-                                    }
-                                </div>
+						@if (winnerCards.Count > 0)
+						{
+							<div class="winner-hand-stage">
+								<div class="winner-hand-header">
+									<span class="winner-hand-label">Winning cards</span>
+									@if (!string.IsNullOrWhiteSpace(winnerDescription))
+									{
+										<span class="winner-hand-detail">@winnerDescription</span>
+									}
+								</div>
 
-                                <div class="showdown-cards winner-cards" aria-label="Winning cards">
-                                    @for (var i = 0; i < winnerCards.Count; i++)
-                                    {
-                                        var (card, isWild) = winnerCards[i];
-                                        <div class="sd-card-wrapper" style="--i:@i" @key="GetShowdownCardRenderKey(card, i, isWild)">
-                                            <playing-card class="showdown-card showdown-card-winner" rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </section>
+								<div class="showdown-cards winner-cards" aria-label="Winning cards">
+									@for (var i = 0; i < winnerCards.Count; i++)
+									{
+										var (card, isWild) = winnerCards[i];
+										<div class="sd-card-wrapper" style="--i:@i" @key="GetShowdownCardRenderKey(card, i, isWild)">
+											<playing-card class="showdown-card showdown-card-winner" rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
+										</div>
+									}
+								</div>
+							</div>
+						}
+					</div>
+				</section>
 
-                <div class="showdown-sidepanels">
-                    @if (IsBobBarkerGame && ShowdownState?.BobBarker is { } bobBarker)
-                    {
-                        <section class="showdown-others showdown-others-showcase" aria-label="Bob Barker showcase results">
-                            <div class="showdown-section-heading">
-                                <h3 class="showdown-section-title">Showcase Results</h3>
-                                <p class="showdown-section-subtitle">Dealer target and player showcase cards</p>
-                            </div>
+				<div class="showdown-sidepanels">
+					@if (IsBobBarkerGame && ShowdownState?.BobBarker is { } bobBarker)
+					{
+						<section class="showdown-others showdown-others-showcase" aria-label="Bob Barker showcase results">
+							<div class="showdown-section-heading">
+								<h3 class="showdown-section-title">Showcase Results</h3>
+								<p class="showdown-section-subtitle">Dealer target and player showcase cards</p>
+							</div>
 
-                            <div class="other-hand-row bob-barker-showcase-row">
-                                <div class="bob-barker-showcase-item bob-barker-showcase-item-dealer">
-                                    <div class="other-hand-info">
-                                        <span class="other-hand-name">Dealer target</span>
-                                    </div>
-                                    @if (bobBarker.DealerCard is not null)
-                                    {
-                                        <div class="showdown-cards other-cards bob-barker-showcase-cards">
-                                            <div>
-                                                <playing-card class="showdown-card showdown-card-loser" rank="@bobBarker.DealerCard.Rank" suit="@bobBarker.DealerCard.Suit"></playing-card>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
+							<div class="other-hand-row bob-barker-showcase-row">
+								<div class="bob-barker-showcase-item bob-barker-showcase-item-dealer">
+									<div class="other-hand-info">
+										<span class="other-hand-name">Dealer target</span>
+									</div>
+									@if (bobBarker.DealerCard is not null)
+									{
+										<div class="showdown-cards other-cards bob-barker-showcase-cards">
+											<div>
+												<playing-card class="showdown-card showdown-card-loser" rank="@bobBarker.DealerCard.Rank" suit="@bobBarker.DealerCard.Suit"></playing-card>
+											</div>
+										</div>
+									}
+								</div>
 
-                                <div class="bob-barker-showcase-spacer" aria-hidden="true"></div>
+								<div class="bob-barker-showcase-spacer" aria-hidden="true"></div>
 
-                                @foreach (var player in GetBobBarkerPlayers())
-                                {
-                                    <div class="bob-barker-showcase-item">
-                                        <div class="other-hand-info">
-                                            <span class="other-hand-name">@GetPlayerDisplayName(player)</span>
-                                        </div>
-                                        @if (player.ShowcaseCard is not null)
-                                        {
-                                            <div class="showdown-cards other-cards bob-barker-showcase-cards">
-                                                <div>
-                                                    <playing-card class="showdown-card showdown-card-loser" rank="@player.ShowcaseCard.Rank" suit="@player.ShowcaseCard.Suit"></playing-card>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        </section>
-                    }
+								@foreach (var player in GetBobBarkerPlayers())
+								{
+									<div class="bob-barker-showcase-item">
+										<div class="other-hand-info">
+											<span class="other-hand-name">@GetPlayerDisplayName(player)</span>
+										</div>
+										@if (player.ShowcaseCard is not null)
+										{
+											<div class="showdown-cards other-cards bob-barker-showcase-cards">
+												<div>
+													<playing-card class="showdown-card showdown-card-loser" rank="@player.ShowcaseCard.Rank" suit="@player.ShowcaseCard.Suit"></playing-card>
+												</div>
+											</div>
+										}
+									</div>
+								}
+							</div>
+						</section>
+					}
 
-                    @if (CanRequestRabbitHunt || RabbitHuntResult is not null || IsRabbitHuntLoading || !string.IsNullOrWhiteSpace(RabbitHuntError))
-                    {
-                        var rabbitHuntCards = GetOrderedRabbitHuntCards(RabbitHuntResult);
-                        var rabbitHuntPlayerCards = GetRabbitHuntPlayerCards(RabbitHuntResult);
-                        var newlyRevealedCount = RabbitHuntResult?.NewlyRevealedCards.Count ?? 0;
+					@if (CanRequestRabbitHunt || RabbitHuntResult is not null || IsRabbitHuntLoading || !string.IsNullOrWhiteSpace(RabbitHuntError))
+					{
+						var rabbitHuntCards = GetOrderedRabbitHuntCards(RabbitHuntResult);
+						var rabbitHuntPlayerCards = GetRabbitHuntPlayerCards(RabbitHuntResult);
+						var newlyRevealedCount = RabbitHuntResult?.NewlyRevealedCards.Count ?? 0;
 
-                        <section class="showdown-others rabbit-hunt-panel" aria-label="Rabbit Hunt">
-                            <div class="showdown-section-heading rabbit-hunt-heading">
-                                <div>
-                                    <h3 class="showdown-section-title">Rabbit Hunt</h3>
-                                    <p class="showdown-section-subtitle">Private look at the exact board runout for this hand.</p>
-                                </div>
-                                <span class="sd-pill sd-pill-muted rabbit-hunt-private-pill">Only you can see this</span>
-                            </div>
+						<section class="showdown-others rabbit-hunt-panel" aria-label="Rabbit Hunt">
+							<div class="showdown-section-heading rabbit-hunt-heading">
+								<div>
+									<h3 class="showdown-section-title">Rabbit Hunt</h3>
+									<p class="showdown-section-subtitle">Private look at the exact board runout for this hand.</p>
+								</div>
+								<span class="sd-pill sd-pill-muted rabbit-hunt-private-pill">Only you can see this</span>
+							</div>
 
-                            @if (RabbitHuntResult is null)
-                            {
-                                <div class="rabbit-hunt-intro">
-                                    <div class="rabbit-hunt-intro-layout">
-                                        <div class="rabbit-hunt-copy-block">
-                                            <div class="rabbit-hunt-copy-stack">
-                                                <p class="rabbit-hunt-copy">Reveal the remaining community cards that would have been dealt if the hand had continued.</p>
-                                                <p class="rabbit-hunt-copy rabbit-hunt-copy-subtle">See the missing flop, turn, and river runout in the exact order the board would have finished.</p>
-                                            </div>
+							@if (RabbitHuntResult is null)
+							{
+								<div class="rabbit-hunt-intro">
+									<div class="rabbit-hunt-intro-layout">
+										<div class="rabbit-hunt-copy-block">
+											<div class="rabbit-hunt-copy-stack">
+												<p class="rabbit-hunt-copy">Reveal the remaining community cards that would have been dealt if the hand had continued.</p>
+												<p class="rabbit-hunt-copy rabbit-hunt-copy-subtle">See the missing flop, turn, and river runout in the exact order the board would have finished.</p>
+											</div>
 
-                                            <button type="button"
-                                                    class="btn btn-secondary rabbit-hunt-button"
-                                                    @onclick="OnRabbitHunt"
-                                                    disabled="@(!CanRequestRabbitHunt || IsRabbitHuntLoading)">
-                                                @if (IsRabbitHuntLoading)
-                                                {
-                                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                                    <span>Revealing...</span>
-                                                }
-                                                else
-                                                {
-                                                    <i class="fa-solid fa-rabbit-running"></i>
-                                                    <span>Rabbit Hunt</span>
-                                                }
-                                            </button>
-                                        </div>
+											<button type="button"
+											        class="btn btn-secondary rabbit-hunt-button"
+											        @onclick="OnRabbitHunt"
+											        disabled="@(!CanRequestRabbitHunt || IsRabbitHuntLoading)">
+												@if (IsRabbitHuntLoading)
+												{
+													<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+													<span>Revealing...</span>
+												}
+												else
+												{
+													<i class="fa-solid fa-rabbit-running"></i>
+													<span>Rabbit Hunt</span>
+												}
+											</button>
+										</div>
 
-                                        <div class="rabbit-hunt-art-frame" aria-hidden="true">
-                                            <img class="rabbit-hunt-art" src="/images/rabbithunt.png" alt="" />
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="rabbit-hunt-summary-panel">
-                                    <div class="rabbit-hunt-summary">
-                                        <span class="sd-pill sd-pill-gold">@newlyRevealedCount new @(newlyRevealedCount == 1 ? "card" : "cards")</span>
-                                        
-                                        @if (!string.IsNullOrWhiteSpace(GetRabbitHuntProjectedHandDescription(RabbitHuntResult)))
-                                        {
-                                            <span class="sd-pill sd-pill-gold">@GetRabbitHuntProjectedHandDescription(RabbitHuntResult)</span>
-                                        }
-                                        
-                                        <span class="rabbit-hunt-note">Highlighted cards were hidden before the hand ended.</span>
-                                        
-                                    </div>
+										<div class="rabbit-hunt-art-frame" aria-hidden="true">
+											<img class="rabbit-hunt-art" src="/images/rabbithunt.png" alt=""/>
+										</div>
+									</div>
+								</div>
+							}
+							else
+							{
+								<div class="rabbit-hunt-summary-panel">
+									<div class="rabbit-hunt-summary">
+										<span class="sd-pill sd-pill-gold">@newlyRevealedCount new @(newlyRevealedCount == 1 ? "card" : "cards")</span>
 
-                                    <div class="rabbit-hunt-art-frame rabbit-hunt-art-frame-compact" aria-hidden="true">
-                                        <img class="rabbit-hunt-art" src="/images/rabbithunt.png" alt="" />
-                                    </div>
-                                </div>
+										@if (!string.IsNullOrWhiteSpace(GetRabbitHuntProjectedHandDescription(RabbitHuntResult)))
+										{
+											<span class="sd-pill sd-pill-gold">@GetRabbitHuntProjectedHandDescription(RabbitHuntResult)</span>
+										}
 
-                                <div class="rabbit-hunt-card-layout">
-                                    @if (rabbitHuntPlayerCards.Count > 0)
-                                    {
-                                        <div class="rabbit-hunt-card-group" aria-label="Your hole cards">
-                                            <span class="rabbit-hunt-card-group-label">Your cards</span>
-                                            <div class="showdown-cards rabbit-hunt-cards rabbit-hunt-player-cards">
-                                                @for (var i = 0; i < rabbitHuntPlayerCards.Count; i++)
-                                                {
-                                                    var playerCard = rabbitHuntPlayerCards[i];
-                                                    var playerCardRenderKey = GetShowdownCardRenderKey(playerCard, $"rabbit-player-{i}", false);
-                                                      <div class="rabbit-hunt-card-shell rabbit-hunt-player-card-shell"
-                                                         @key="playerCardRenderKey">
-                                                        <playing-card class="showdown-card rabbit-hunt-card" rank="@GetPlayingCardRank(playerCard)" suit="@GetPlayingCardSuit(playerCard)"></playing-card>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
+										<span class="rabbit-hunt-note">Highlighted cards were hidden before the hand ended.</span>
 
-                                    <div class="rabbit-hunt-card-group" aria-label="Rabbit Hunt community cards">
-                                        <span class="rabbit-hunt-card-group-label">Runout</span>
-                                        <div class="showdown-cards rabbit-hunt-cards rabbit-hunt-board-cards">
-                                            @for (var i = 0; i < rabbitHuntCards.Count; i++)
-                                            {
-                                                var projectedCard = rabbitHuntCards[i];
-                                                <div class="rabbit-hunt-card-shell @(projectedCard.WasAlreadyVisible ? "rabbit-hunt-card-known" : "rabbit-hunt-card-revealed")"
-                                                     @key="GetRabbitHuntCardRenderKey(projectedCard, i)">
-                                                    <playing-card class="showdown-card rabbit-hunt-card" rank="@GetPlayingCardRank(projectedCard.Card)" suit="@GetPlayingCardSuit(projectedCard.Card)"></playing-card>
-                                                    <span class="rabbit-hunt-card-tag">@(projectedCard.WasAlreadyVisible ? "Shown" : "Rabbit")</span>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            }
+									</div>
 
-                            @if (!string.IsNullOrWhiteSpace(RabbitHuntError))
-                            {
-                                <p class="rabbit-hunt-error">@RabbitHuntError</p>
-                            }
-                        </section>
-                    }
+									<div class="rabbit-hunt-art-frame rabbit-hunt-art-frame-compact" aria-hidden="true">
+										<img class="rabbit-hunt-art" src="/images/rabbithunt.png" alt=""/>
+									</div>
+								</div>
 
-                    @if (otherHands.Count > 0)
-                    {
-                        <section class="showdown-others showdown-others-grid" aria-label="Other hands">
-                            <div class="showdown-section-heading">
-                                <h3 class="showdown-section-title">Other Hands</h3>
-                                <p class="showdown-section-subtitle">Every revealed hand remains visible for comparison</p>
-                            </div>
+								<div class="rabbit-hunt-card-layout">
+									@if (rabbitHuntPlayerCards.Count > 0)
+									{
+										<div class="rabbit-hunt-card-group" aria-label="Your hole cards">
+											<span class="rabbit-hunt-card-group-label">Your cards</span>
+											<div class="showdown-cards rabbit-hunt-cards rabbit-hunt-player-cards">
+												@for (var i = 0; i < rabbitHuntPlayerCards.Count; i++)
+												{
+													var playerCard = rabbitHuntPlayerCards[i];
+													var playerCardRenderKey = GetShowdownCardRenderKey(playerCard, $"rabbit-player-{i}", false);
+													<div class="rabbit-hunt-card-shell rabbit-hunt-player-card-shell"
+													     @key="playerCardRenderKey">
+														<playing-card class="showdown-card rabbit-hunt-card" rank="@GetPlayingCardRank(playerCard)" suit="@GetPlayingCardSuit(playerCard)"></playing-card>
+													</div>
+												}
+											</div>
+										</div>
+									}
 
-                            @foreach (var hand in otherHands)
-                            {
-                                var handCards = GetDisplayCardsForShowdown(hand, sharedCommunityCards, isRazz);
-                                <div class="other-hand-row">
-                                    <div class="other-hand-info">
-                                        <span class="other-hand-name">@DisplayFirstName(hand)</span>
-                                        @if (hand.IsEliminatedByUgly == true)
-                                        {
-                                            <span class="sd-pill sd-pill-muted">Dead Hand (The Ugly)</span>
-                                        }
-                                        else if (isRazz || !string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
-                                        {
-                                            <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand, isRazz)</span>
-                                        }
-                                        @if (hand.AmountWon.GetValueOrDefault() > 0)
-                                        {
-                                            <span class="sd-pill sd-pill-gold">+@hand.AmountWon.GetValueOrDefault() chips</span>
-                                        }
-                                    </div>
-                                    @if (handCards.Count > 0)
-                                    {
-                                        <div class="showdown-cards other-cards">
-                                            @foreach (var (c, isWild) in handCards)
-                                            {
-                                                <div @key="GetShowdownCardRenderKey(c, hand.PlayerName, isWild)">
-                                                    <playing-card class="showdown-card showdown-card-loser" rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </section>
-                    }
-                </div>
-            </section>
-        }
+									<div class="rabbit-hunt-card-group" aria-label="Rabbit Hunt community cards">
+										<span class="rabbit-hunt-card-group-label">Runout</span>
+										<div class="showdown-cards rabbit-hunt-cards rabbit-hunt-board-cards">
+											@for (var i = 0; i < rabbitHuntCards.Count; i++)
+											{
+												var projectedCard = rabbitHuntCards[i];
+												<div class="rabbit-hunt-card-shell @(projectedCard.WasAlreadyVisible ? "rabbit-hunt-card-known" : "rabbit-hunt-card-revealed")"
+												     @key="GetRabbitHuntCardRenderKey(projectedCard, i)">
+													<playing-card class="showdown-card rabbit-hunt-card" rank="@GetPlayingCardRank(projectedCard.Card)" suit="@GetPlayingCardSuit(projectedCard.Card)"></playing-card>
+													<span class="rabbit-hunt-card-tag">@(projectedCard.WasAlreadyVisible ? "Shown" : "Rabbit")</span>
+												</div>
+											}
+										</div>
+									</div>
+								</div>
+							}
 
-        <div class="showdown-countdown">
-            @if (IsGameEnded)
-            {
-                <p class="showdown-hint">Returning to lobby in <strong>@SecondsUntilNextHand</strong> seconds...</p>
-            }
-            else if (SecondsUntilNextHand > 0)
-            {
-                <p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
-            }
-            else
-            {
-                <p class="showdown-hint">Starting next hand...</p>
-            }
-        </div>
-    </div>
+							@if (!string.IsNullOrWhiteSpace(RabbitHuntError))
+							{
+								<p class="rabbit-hunt-error">@RabbitHuntError</p>
+							}
+						</section>
+					}
+
+					@if (otherHands.Count > 0)
+					{
+						<section class="showdown-others showdown-others-grid" aria-label="Other hands">
+							<div class="showdown-section-heading">
+								<h3 class="showdown-section-title">Other Hands</h3>
+								<p class="showdown-section-subtitle">Every revealed hand remains visible for comparison</p>
+							</div>
+
+							@foreach (var hand in otherHands)
+							{
+								var handCards = GetDisplayCardsForShowdown(hand, sharedCommunityCards, isRazz);
+								<div class="other-hand-row">
+									<div class="other-hand-info">
+										<span class="other-hand-name">@DisplayFirstName(hand)</span>
+										@if (hand.IsEliminatedByUgly == true)
+										{
+											<span class="sd-pill sd-pill-muted">Dead Hand (The Ugly)</span>
+										}
+										else if (isRazz || !string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
+										{
+											<span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand, isRazz)</span>
+										}
+										@if (hand.AmountWon.GetValueOrDefault() > 0)
+										{
+											<span class="sd-pill sd-pill-gold">+@hand.AmountWon.GetValueOrDefault() chips</span>
+										}
+									</div>
+									@if (handCards.Count > 0)
+									{
+										<div class="showdown-cards other-cards">
+											@foreach (var (c, isWild) in handCards)
+											{
+												<div @key="GetShowdownCardRenderKey(c, hand.PlayerName, isWild)">
+													<playing-card class="showdown-card showdown-card-loser" rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
+												</div>
+											}
+										</div>
+									}
+								</div>
+							}
+						</section>
+					}
+				</div>
+			</section>
+		}
+
+		<div class="showdown-countdown">
+			@if (IsGameEnded)
+			{
+				<p class="showdown-hint">Returning to lobby in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+			}
+			else if (SecondsUntilNextHand > 0)
+			{
+				<p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+			}
+			else
+			{
+				<p class="showdown-hint">Starting next hand...</p>
+			}
+		</div>
+	</div>
 </div>
 
 @code {
-            [Parameter]
-            public PerformShowdownSuccessful? ShowdownResult { get; set; }
-
-            [Parameter]
-            public bool ShowdownWon { get; set; }
-
-            [Parameter]
-            public bool ShowdownLost { get; set; }
-
-            [Parameter]
-            public int SecondsUntilNextHand { get; set; }
-
-            [Parameter]
-            public bool IsGameEnded { get; set; }
-
-            [Parameter]
-            public string? GameTypeCode { get; set; }
-
-            [Parameter]
-            public IReadOnlyList<TableCanvas.WildCardDisplay>? ActiveWildCards { get; set; }
-
-            [Parameter]
-            public IReadOnlyList<ShowdownCard>? SharedCommunityCards { get; set; }
-
-            [Parameter]
-            public ShowdownPublicDto? ShowdownState { get; set; }
-
-            [Parameter]
-            public bool CanRequestRabbitHunt { get; set; }
-
-            [Parameter]
-            public GetRabbitHuntSuccessful? RabbitHuntResult { get; set; }
-
-            [Parameter]
-            public bool IsRabbitHuntLoading { get; set; }
-
-            [Parameter]
-            public string? RabbitHuntError { get; set; }
-
-            [Parameter]
-            public EventCallback OnRabbitHunt { get; set; }
-
-            [Parameter]
-            public EventCallback OnClose { get; set; }
-
-    private bool IsRazzGame => string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
-    private bool IsBobBarkerGame => string.Equals(GameTypeCode, "BOBBARKER", StringComparison.OrdinalIgnoreCase);
-    private bool IsPairPressureGame => string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase);
-
-    private IEnumerable<ShowdownPlayerResultDto> GetBobBarkerPlayers()
-    {
-        return (ShowdownState?.PlayerResults ?? Enumerable.Empty<ShowdownPlayerResultDto>())
-            .Where(player => player.ShowcaseCard is not null)
-            .OrderByDescending(player => player.IsShowcaseWinner)
-            .ThenByDescending(player => player.ShowcaseAmountWon)
-            .ThenBy(player => player.PlayerName);
-    }
-
-    private List<(ShowdownCard Card, bool IsWild)> GetDisplayCardsForShowdown(
-        ShowdownPlayerHand hand,
-        IReadOnlyList<ShowdownCard>? sharedCommunityCards,
-        bool isRazz)
-    {
-        var displayCards = GetDisplayCards(hand, sharedCommunityCards, isRazz);
-
-        if (IsBobBarkerGame && !isRazz && displayCards.Count != 5)
-        {
-            displayCards = GetBobBarkerDisplayCards(hand, sharedCommunityCards, GetBobBarkerShowcaseCard(hand), displayCards);
-        }
-
-        return ApplyPairPressureWildHighlighting(displayCards);
-    }
-
-    private List<(ShowdownCard Card, bool IsWild)> ApplyPairPressureWildHighlighting(
-        List<(ShowdownCard Card, bool IsWild)> displayCards)
-    {
-        if (!IsPairPressureGame || ActiveWildCards is not { Count: > 0 })
-        {
-            return displayCards;
-        }
-
-        return displayCards
-            .Select(entry => (
-                entry.Card,
-                IsWild: WildCardDisplayMatcher.IsActiveWildCard(
-                    GetPlayingCardRank(entry.Card),
-                    GetPlayingCardSuit(entry.Card),
-                    ActiveWildCards)))
-            .ToList();
-    }
-
-    private ShowdownCard? GetBobBarkerShowcaseCard(ShowdownPlayerHand hand)
-    {
-        var showcaseCard = ShowdownState?.PlayerResults?
-            .FirstOrDefault(player => string.Equals(player.PlayerName, hand.PlayerName, StringComparison.OrdinalIgnoreCase))?
-            .ShowcaseCard;
-
-        return ToShowdownCard(showcaseCard);
-    }
-
-    private static string GetPlayerDisplayName(ShowdownPlayerResultDto player)
-    {
-        return !string.IsNullOrWhiteSpace(player.PlayerFirstName)
-            ? player.PlayerFirstName
-            : GetDisplayNameFromPlayerName(player.PlayerName);
-    }
-
-    private static string GetRabbitHuntCardRenderKey(RabbitHuntCardDto projectedCard, int index)
-    {
-        return $"rabbit-{projectedCard.DealOrder}-{projectedCard.Card.Symbol}-{projectedCard.Card.Suit}-{index}";
-    }
-
-    private static IReadOnlyList<RabbitHuntCardDto> GetOrderedRabbitHuntCards(GetRabbitHuntSuccessful? result)
-    {
-        if (result?.CommunityCards is not { Count: > 0 })
-        {
-            return [];
-        }
-
-        return result.CommunityCards
-            .OrderBy(card => card.DealOrder)
-            .ToList();
-    }
-
-    private static IReadOnlyList<ShowdownCard> GetRabbitHuntPlayerCards(GetRabbitHuntSuccessful? result)
-    {
-        if (result?.PlayerCards is not { Count: > 0 })
-        {
-            return [];
-        }
-
-        return result.PlayerCards.ToList();
-    }
-
-    private static string? GetRabbitHuntProjectedHandDescription(GetRabbitHuntSuccessful? result)
-    {
-        return string.IsNullOrWhiteSpace(result?.ProjectedHandEvaluationDescription)
-            ? null
-            : result.ProjectedHandEvaluationDescription.Trim();
-    }
-
-    private static ShowdownPlayerHand? GetPrimaryWinnerHand(PerformShowdownSuccessful result)
-    {
-        if (result.PlayerHands is null || result.PlayerHands.Count == 0)
-        {
-            return null;
-        }
-
-        return result.PlayerHands
-            .Where(h => h is not null)
-            .Select(h => EnrichHand(h, result.Payouts))
-            .OrderByDescending(h => h.IsWinner == true)
-            .ThenByDescending(h => h.AmountWon ?? 0)
-            .ThenByDescending(h => h.HandStrength ?? 0)
-            .FirstOrDefault();
-    }
-
-    private static List<ShowdownPlayerHand> GetLoserHands(PerformShowdownSuccessful result, ShowdownPlayerHand? winner)
-    {
-        if (result.PlayerHands is null)
-        {
-            return [];
-        }
-
-        var hands = result.PlayerHands
-            .Where(h => h is not null)
-            .Select(h => EnrichHand(h, result.Payouts))
-            .ToList();
-
-        if (winner is not null)
-        {
-            var toRemove = hands.FirstOrDefault(h => h.PlayerName == winner.PlayerName);
-            if (toRemove is not null)
-            {
-                hands.Remove(toRemove);
-            }
-
-            hands = hands.Where(h => h.IsWinner != true).ToList();
-        }
-        else
-        {
-            hands = hands.Where(h => h.IsWinner != true).ToList();
-        }
-
-        return hands
-            .OrderByDescending(h => h.AmountWon ?? 0)
-            .ThenBy(h => h.PlayerName)
-            .ToList();
-    }
-
-    private static string GetWinnerDisplayName(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
-    {
-        if (winnerHand is not null)
-        {
-            return DisplayFirstName(winnerHand);
-        }
-
-        if (result.Payouts is not null && result.Payouts.Count > 0)
-        {
-            var winnerName = result.Payouts.First().Key;
-            if (!string.IsNullOrWhiteSpace(winnerName))
-            {
-                var matchingHand = result.PlayerHands?
-                    .FirstOrDefault(h => string.Equals(h.PlayerName, winnerName, StringComparison.OrdinalIgnoreCase));
-
-                if (matchingHand is not null)
-                {
-                    return DisplayFirstName(matchingHand);
-                }
-
-                return GetDisplayNameFromPlayerName(winnerName);
-            }
-        }
-
-        return "Winner";
-    }
-
-    private static int GetWinnerAmount(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
-    {
-        if (winnerHand?.AmountWon is > 0)
-        {
-            return winnerHand.AmountWon.Value;
-        }
-
-        if (result.Payouts is not null && result.Payouts.Count > 0)
-        {
-            return result.Payouts.First().Value;
-        }
-
-        return 0;
-    }
-
-    private static string GetWinnerDescription(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand, bool isRazz)
-    {
-        if (winnerHand is not null)
-        {
-            return GetDetailedHandDescription(winnerHand, isRazz);
-        }
-
-        return result.WonByFold == true ? "Won by fold" : string.Empty;
-    }
-
-    private static string GetWinnerVerb(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
-    {
-        if (result.WonByFold == true)
-        {
-            return "wins by fold";
-        }
-
-        if (IsDeckHand(winnerHand))
-        {
-            return "wins this hand";
-        }
-
-        return "wins the hand";
-    }
-
-    private static bool IsDeckHand(ShowdownPlayerHand? hand)
-    {
-        return string.Equals(hand?.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static IReadOnlyList<ShowdownCard> GetSharedCommunityCards(ShowdownPlayerHand? winnerHand)
-    {
-        // Community-card showdowns keep hole cards first, followed by shared board cards.
-        if (winnerHand?.Cards is null || winnerHand.Cards.Count <= 2)
-        {
-            return [];
-        }
-
-        return winnerHand.Cards.Skip(2).ToList();
-    }
-
-    private static ShowdownPlayerHand EnrichHand(ShowdownPlayerHand hand, IDictionary<string, int>? payouts)
-    {
-        if (payouts is not null && payouts.TryGetValue(hand.PlayerName, out var amount))
-        {
-            // Always prefer the value in Payouts if it's larger (or if AmountWon is missing/zero)
-            var current = hand.AmountWon ?? 0;
-            if (amount > current)
-            {
-                return hand with { AmountWon = amount };
-            }
-        }
-        return hand;
-    }
-
-    /// <summary>
-    /// Gets the cards to display for a player's hand.
-    /// For Seven Card Stud (7 cards), returns only the best 5 cards.
-    /// Uses BestCardIndexes if provided by API, otherwise computes client-side.
-    /// For other games, returns all cards sorted by symbol.
-    /// </summary>
-    private static List<(ShowdownCard Card, bool IsWild)> GetDisplayCards(ShowdownPlayerHand hand, IReadOnlyList<ShowdownCard>? sharedCommunityCards = null, bool isRazz = false)
-    {
-        if (hand.Cards is null || hand.Cards.Count == 0)
-        {
-            return [];
-        }
-
-        var cardsList = hand.Cards.ToList();
-
-        // Some Hold the Baseball loser payloads contain only hole cards while BestCardIndexes
-        // still reference hole+community indexes. Rehydrate with shared community cards so
-        // every player shows the same board cards.
-        var reconstructedCommunityCards = cardsList.Count == 2
-            && sharedCommunityCards is { Count: > 0 }
-            && ((hand.BestCardIndexes is not null && hand.BestCardIndexes.Any(idx => idx >= 2))
-                || sharedCommunityCards.Count >= 3);
-
-        if (reconstructedCommunityCards)
-        {
-            cardsList.AddRange(sharedCommunityCards!);
-        }
-
-        var wildSet = hand.WildCardIndexes is not null
-            ? new HashSet<int>(hand.WildCardIndexes)
-            : new HashSet<int>();
-
-        // If BestCardIndexes is provided and valid, use only those cards.
-        // Razz always computes client-side low cards because BestCardIndexes
-        // may refer to a high-hand evaluation from other game variants.
-        if (!isRazz && hand.BestCardIndexes is not null)
-        {
-            var validBestIndexes = hand.BestCardIndexes
-                .Where(idx => idx >= 0 && idx < cardsList.Count)
-                .Distinct()
-                .ToList();
-
-            if (validBestIndexes.Count == 5)
-            {
-                return validBestIndexes
-                .Select(idx => (Card: cardsList[idx], IsWild: wildSet.Contains(idx)))
-                .OrderBy(x => GetCardDisplayOrder(x.Card))
-                .ToList();
-            }
-        }
-
-        // For wild-card hands, show all cards to avoid incorrect best-5 selection client-side
-        if (hand.WildCardIndexes is not null && hand.WildCardIndexes.Count > 0 && cardsList.Count > 5)
-        {
-            return cardsList
-                .Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
-                .OrderBy(x => GetCardDisplayOrder(x.Card))
-                .ToList();
-        }
-
-        if (isRazz && cardsList.Count >= 5)
-        {
-            var coreCards = cardsList
-                .Where(c => c is { Suit: not null, Symbol: not null })
-                .Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
-                .ToList();
-
-            if (coreCards.Count >= 5)
-            {
-                var razzHand = new RazzHand([], coreCards, []);
-                var bestLowCards = razzHand.GetBestLowHand();
-
-                var neededByLowValue = bestLowCards
-                    .GroupBy(GetRazzDisplayValue)
-                    .ToDictionary(g => g.Key, g => g.Count());
-
-                var result = new List<(ShowdownCard Card, bool IsWild)>();
-
-                // Prefer the earliest matching card instance from the original list so
-                // duplicates (like two sixes) are selected predictably for display.
-                for (var i = 0; i < cardsList.Count; i++)
-                {
-                    var showdownCard = cardsList[i];
-                    if (showdownCard.Symbol is null)
-                    {
-                        continue;
-                    }
-
-                    var lowValue = GetRazzDisplayValue(showdownCard.Symbol.Value);
-                    if (neededByLowValue.TryGetValue(lowValue, out var neededCount) && neededCount > 0)
-                    {
-                        result.Add((showdownCard, wildSet.Contains(i)));
-                        neededByLowValue[lowValue] = neededCount - 1;
-                    }
-                }
-
-                return result
-                    .OrderBy(x => GetRazzDisplayValue(x.Card.Symbol ?? CardSymbol.Ace))
-                    .ToList();
-            }
-        }
-
-        // For 7-card hands (Seven Card Stud), compute best 5 cards client-side
-        if (cardsList.Count == 7)
-        {
-            var coreCards = cardsList
-                .Where(c => c is { Suit: not null, Symbol: not null })
-                .Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
-                .ToList();
-
-            if (coreCards.Count == 7)
-            {
-                var studHand = new StudHand([], coreCards, []);
-                var bestCards = studHand.GetBestHand();
-
-                // Map back to ShowdownCards by matching suit and symbol
-                // Use a list to track which cards have been used (to handle potential duplicates)
-                var result = new List<(ShowdownCard Card, bool IsWild)>();
-                var usedIndexes = new HashSet<int>();
-
-                foreach (var bc in bestCards)
-                {
-                    for (var i = 0; i < cardsList.Count; i++)
-                    {
-                        if (usedIndexes.Contains(i))
-                        {
-                            continue;
-                        }
-
-                        var sc = cardsList[i];
-                        if (sc.Suit.HasValue && sc.Symbol.HasValue &&
-                            MapSuit(sc.Suit.Value) == bc.Suit &&
-                            MapSymbol(sc.Symbol.Value) == bc.Symbol)
-                        {
-                            result.Add((sc, wildSet.Contains(i)));
-                            usedIndexes.Add(i);
-                            break;
-                        }
-                    }
-                }
-
-                return result.OrderBy(x => x.Card.Symbol).ToList();
-            }
-        }
-
-        // Fall back to showing all cards (for 5-card games)
-        return cardsList
-            .Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
-            .OrderBy(x => x.Card.Symbol)
-            .ToList();
-    }
-
-    private static List<(ShowdownCard Card, bool IsWild)> GetBobBarkerDisplayCards(
-        ShowdownPlayerHand hand,
-        IReadOnlyList<ShowdownCard>? sharedCommunityCards,
-        ShowdownCard? showcaseCard,
-        List<(ShowdownCard Card, bool IsWild)> fallbackCards)
-    {
-        if (hand.Cards is null || hand.Cards.Count == 0)
-        {
-            return [];
-        }
-
-        var allCards = hand.Cards.ToList();
-        var communityCards = sharedCommunityCards?.ToList() ?? [];
-        var playerCards = allCards;
-        var hasValidSharedSuffix = communityCards.Count == 5 && CardsEndWith(allCards, communityCards);
-
-        if (hasValidSharedSuffix)
-        {
-            playerCards = allCards.Take(allCards.Count - communityCards.Count).ToList();
-        }
-        else if (allCards.Count >= 9)
-        {
-            communityCards = allCards.Skip(5).ToList();
-            playerCards = allCards.Take(5).ToList();
-        }
-
-        if (showcaseCard is { } showcase)
-        {
-            var showcaseIndex = playerCards.FindIndex(card => CardsMatch(card, showcase));
-            if (showcaseIndex >= 0)
-            {
-                playerCards.RemoveAt(showcaseIndex);
-            }
-        }
-
-        if (playerCards.Count != 4 || communityCards.Count < 3)
-        {
-            return fallbackCards;
-        }
-
-        var holeCards = playerCards
-            .Where(card => card is { Suit: not null, Symbol: not null })
-            .Select(card => (Card: card, Core: new Card(MapSuit(card.Suit!.Value), MapSymbol(card.Symbol!.Value))))
-            .ToList();
-        var boardCards = communityCards
-            .Where(card => card is { Suit: not null, Symbol: not null })
-            .Select(card => (Card: card, Core: new Card(MapSuit(card.Suit!.Value), MapSymbol(card.Symbol!.Value))))
-            .ToList();
-
-        if (holeCards.Count != 4 || boardCards.Count < 3)
-        {
-            return fallbackCards;
-        }
-
-        List<(ShowdownCard Card, Card Core)>? bestCombo = null;
-        long bestStrength = long.MinValue;
-
-        foreach (var holePair in holeCards.SubsetsOfSize(2))
-        {
-            foreach (var communityTriple in boardCards.SubsetsOfSize(3))
-            {
-                var combo = holePair.Concat(communityTriple).ToList();
-                var coreCards = combo.Select(entry => entry.Core).ToList();
-                var handType = HandTypeDetermination.DetermineHandType(coreCards);
-                var strength = HandStrength.Calculate(coreCards, handType, HandTypeStrengthRanking.Classic);
-
-                if (strength > bestStrength)
-                {
-                    bestStrength = strength;
-                    bestCombo = combo;
-                }
-            }
-        }
-
-        return bestCombo is null
-            ? fallbackCards
-            : bestCombo
-                .Select(entry => (entry.Card, IsWild: false))
-                .OrderBy(entry => GetCardDisplayOrder(entry.Card))
-                .ToList();
-    }
-
-    private static bool CardsEndWith(IReadOnlyList<ShowdownCard> cards, IReadOnlyList<ShowdownCard> suffix)
-    {
-        if (suffix.Count == 0 || cards.Count < suffix.Count)
-        {
-            return false;
-        }
-
-        var offset = cards.Count - suffix.Count;
-        for (var i = 0; i < suffix.Count; i++)
-        {
-            if (!CardsMatch(cards[offset + i], suffix[i]))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool CardsMatch(ShowdownCard left, ShowdownCard right)
-    {
-        return left.Suit == right.Suit && left.Symbol == right.Symbol;
-    }
-
-    private static ShowdownCard? ToShowdownCard(CardPublicDto? card)
-    {
-        if (card is null || !TryMapPublicSuit(card.Suit, out var suit) || !TryMapPublicRank(card.Rank, out var symbol))
-        {
-            return null;
-        }
-
-        return new ShowdownCard(suit, symbol);
-    }
-
-    private static bool TryMapPublicSuit(string? suit, out CardSuit mappedSuit)
-    {
-        mappedSuit = suit?.Trim() switch
-        {
-            "Hearts" => CardSuit.Hearts,
-            "Diamonds" => CardSuit.Diamonds,
-            "Clubs" => CardSuit.Clubs,
-            "Spades" => CardSuit.Spades,
-            _ => default
-        };
-
-        return suit is "Hearts" or "Diamonds" or "Clubs" or "Spades";
-    }
-
-    private static bool TryMapPublicRank(string? rank, out CardSymbol mappedSymbol)
-    {
-        mappedSymbol = rank?.Trim().ToUpperInvariant() switch
-        {
-            "A" or "ACE" => CardSymbol.Ace,
-            "K" or "KING" => CardSymbol.King,
-            "Q" or "QUEEN" => CardSymbol.Queen,
-            "J" or "JACK" => CardSymbol.Jack,
-            "10" => CardSymbol.Ten,
-            "9" => CardSymbol.Nine,
-            "8" => CardSymbol.Eight,
-            "7" => CardSymbol.Seven,
-            "6" => CardSymbol.Six,
-            "5" => CardSymbol.Five,
-            "4" => CardSymbol.Four,
-            "3" => CardSymbol.Three,
-            "2" => CardSymbol.Deuce,
-            _ => default
-        };
-
-        return rank?.Trim().ToUpperInvariant() is "A" or "ACE"
-            or "K" or "KING"
-            or "Q" or "QUEEN"
-            or "J" or "JACK"
-            or "10"
-            or "9"
-            or "8"
-            or "7"
-            or "6"
-            or "5"
-            or "4"
-            or "3"
-            or "2";
-    }
-
-    private string? GetPlayingCardSuit(ShowdownCard card)
-    {
-        var suit = card.Suit switch
-        {
-            CardSuit.Hearts => "Hearts",
-            CardSuit.Diamonds => "Diamonds",
-            CardSuit.Clubs => "Clubs",
-            CardSuit.Spades => "Spades",
-            _ => ""
-        };
-        return suit;
-    }
-
-    private string? GetPlayingCardRank(ShowdownCard card)
-    {
-        var rank = card.Symbol switch
-        {
-            CardSymbol.Ace => "Ace",
-            CardSymbol.Deuce => "2",
-            CardSymbol.Three => "3",
-            CardSymbol.Four => "4",
-            CardSymbol.Five => "5",
-            CardSymbol.Six => "6",
-            CardSymbol.Seven => "7",
-            CardSymbol.Eight => "8",
-            CardSymbol.Nine => "9",
-            CardSymbol.Ten => "10",
-            CardSymbol.Jack => "Jack",
-            CardSymbol.Queen => "Queen",
-            CardSymbol.King => "King",
-            _ => ""
-        };
-
-        return rank;
-    }
-    private string GetOutcomeSubtitle()
-    {
-        // Handle player-vs-deck scenario first
-        if (IsPlayerVsDeckScenario())
-        {
-            var playerHand = GetPlayerHand();
-            var playerWon = playerHand?.IsWinner == true;
-            if (IsGameEnded && playerWon)
-            {
-                return "You beat the deck! Game Over";
-            }
-            return playerWon ? "You beat the deck!" : "The deck wins this round";
-        }
-
-        if (ShowdownResult?.WonByFold == true)
-        {
-            return "Everyone folded";
-        }
-
-        if (ShowdownWon)
-        {
-            return IsGameEnded ? "You won the game!" : "You won the hand";
-        }
-
-        if (ShowdownLost)
-        {
-            return IsGameEnded ? "Game Over" : "Hand complete";
-        }
-
-        return "Results are in";
-    }
-
-    private string GetOverlayTitle() => IsGameEnded ? "Game Over" : "Showdown";
-
-    private static string DisplayFirstName(ShowdownPlayerHand? hand)
-    {
-        if (!string.IsNullOrWhiteSpace(hand?.PlayerFirstName))
-        {
-            return hand.PlayerFirstName;
-        }
-
-        if (string.IsNullOrWhiteSpace(hand?.PlayerName))
-        {
-            return "Player";
-        }
-
-        return GetDisplayNameFromPlayerName(hand.PlayerName);
-    }
-
-    private static string GetDisplayNameFromPlayerName(string playerName)
-    {
-        var parts = playerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0)
-        {
-            return "Player";
-        }
-
-        var firstToken = parts[0];
-        var atIndex = firstToken.IndexOf('@');
-
-        if (atIndex > 0)
-        {
-            var emailLocalPart = firstToken[..atIndex];
-            var localPartParts = emailLocalPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
-            if (localPartParts.Length > 0)
-            {
-                return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(localPartParts[0]);
-            }
-        }
-
-        return firstToken;
-    }
-
-    private static string HumanizeHandType(string? handType)
-    {
-        if (string.IsNullOrWhiteSpace(handType))
-        {
-            return "";
-        }
-
-        // Handles values like "FullHouse", "TwoPair", "HighCard".
-        var s = handType.Trim();
-        s = System.Text.RegularExpressions.Regex.Replace(s, "([a-z])([A-Z])", "$1 $2");
-        s = System.Text.RegularExpressions.Regex.Replace(s, "([A-Z])([A-Z][a-z])", "$1 $2");
-        return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(s);
-    }
-
-    private static string GetSuitColorClass(CardSuit? suit)
-    {
-        return suit switch
-        {
-            CardSuit.Hearts or CardSuit.Diamonds => "suit-red",
-            _ => "suit-black"
-        };
-    }
-
-    private static int GetCardDisplayOrder(ShowdownCard card)
-    {
-        var symbolValue = card.Symbol.HasValue ? (int)card.Symbol.Value : 0;
-        var suitValue = card.Suit.HasValue ? (int)card.Suit.Value : 0;
-        return symbolValue * 10 + suitValue;
-    }
-
-    private static string GetDetailedHandDescription(ShowdownPlayerHand hand, bool isRazz = false)
-    {
-        if (isRazz)
-        {
-            if (hand.Cards is null || hand.Cards.Count < 5)
-            {
-                return string.Empty;
-            }
-
-            var razzCoreCards = hand.Cards
-                .Where(c => c is { Suit: not null, Symbol: not null })
-                .Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
-                .ToList();
-
-            if (razzCoreCards.Count < 5)
-            {
-                return string.Empty;
-            }
-
-            var razzHand = new RazzHand([], razzCoreCards, []);
-            return FormatRazzLowDescription(razzHand.GetBestLowHand());
-        }
-
-        // Prefer server-provided hand description (already handles wild cards)
-        if (!string.IsNullOrWhiteSpace(hand.HandDescription))
-        {
-            return hand.HandDescription;
-        }
-
-        if (hand.Cards is null || hand.Cards.Count < 5)
-        {
-            return HumanizeHandType(hand.HandType);
-        }
-
-        var coreCards = hand.Cards
-            .Where(c => c is { Suit: not null, Symbol: not null })
-            .Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
-            .ToList();
-
-        if (coreCards.Count < 5)
-        {
-            return HumanizeHandType(hand.HandType);
-        }
-
-        // If the server did not provide a description, do not try to infer variant rules from card faces.
-        // (A Five Card Draw hand can contain 2s/Jacks/Kd too.)
-        // For hands with more than 5 cards (e.g., Seven Card Stud with 7), use StudHand to find the best 5-card combination.
-        HandBase evaluatedHand = coreCards.Count == 5
-            ? new DrawHand(coreCards)
-            : new StudHand([], coreCards, []);
-
-        return HandDescriptionFormatter.GetHandDescription(evaluatedHand);
-    }
-
-    private static Suit MapSuit(CardSuit suit) => suit switch
-    {
-        CardSuit.Hearts => Suit.Hearts,
-        CardSuit.Diamonds => Suit.Diamonds,
-        CardSuit.Spades => Suit.Spades,
-        CardSuit.Clubs => Suit.Clubs,
-        _ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
-    };
-
-    private static Symbol MapSymbol(CardSymbol symbol) => symbol switch
-    {
-        CardSymbol.Deuce => Symbol.Deuce,
-        CardSymbol.Three => Symbol.Three,
-        CardSymbol.Four => Symbol.Four,
-        CardSymbol.Five => Symbol.Five,
-        CardSymbol.Six => Symbol.Six,
-        CardSymbol.Seven => Symbol.Seven,
-        CardSymbol.Eight => Symbol.Eight,
-        CardSymbol.Nine => Symbol.Nine,
-        CardSymbol.Ten => Symbol.Ten,
-        CardSymbol.Jack => Symbol.Jack,
-        CardSymbol.Queen => Symbol.Queen,
-        CardSymbol.King => Symbol.King,
-        CardSymbol.Ace => Symbol.Ace,
-        _ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
-    };
-
-    private static string FormatRazzLowDescription(IReadOnlyCollection<Card> cards)
-    {
-        var labels = cards
-            .OrderByDescending(GetRazzDisplayValue)
-            .Select(GetRazzRankLabel)
-            .ToList();
-
-        return string.Join("-", labels);
-    }
-
-    private static int GetRazzDisplayValue(Card card)
-    {
-        return card.Value == 14 ? 1 : card.Value;
-    }
-
-    private static int GetRazzDisplayValue(CardSymbol symbol)
-    {
-        return symbol switch
-        {
-            CardSymbol.Ace => 1,
-            CardSymbol.Deuce => 2,
-            CardSymbol.Three => 3,
-            CardSymbol.Four => 4,
-            CardSymbol.Five => 5,
-            CardSymbol.Six => 6,
-            CardSymbol.Seven => 7,
-            CardSymbol.Eight => 8,
-            CardSymbol.Nine => 9,
-            CardSymbol.Ten => 10,
-            CardSymbol.Jack => 11,
-            CardSymbol.Queen => 12,
-            CardSymbol.King => 13,
-            _ => 99
-        };
-    }
-
-    private static string GetRazzRankLabel(Card card)
-    {
-        return card.Symbol switch
-        {
-            Symbol.Ace => "Ace",
-            Symbol.King => "King",
-            Symbol.Queen => "Queen",
-            Symbol.Jack => "Jack",
-            Symbol.Ten => "10",
-            Symbol.Nine => "9",
-            Symbol.Eight => "8",
-            Symbol.Seven => "7",
-            Symbol.Six => "6",
-            Symbol.Five => "5",
-            Symbol.Four => "4",
-            Symbol.Three => "3",
-            Symbol.Deuce => "2",
-            _ => card.Value.ToString(CultureInfo.InvariantCulture)
-        };
-    }
-
-    private static string GetShowdownCardRenderKey(ShowdownCard card, int index, bool isWild)
-    {
-        return $"{index}:{card.Symbol}:{card.Suit}:{isWild}";
-    }
-
-    private static string GetShowdownCardRenderKey(ShowdownCard card, string? owner, bool isWild)
-    {
-        return $"{owner}:{card.Symbol}:{card.Suit}:{isWild}";
-    }
-
-        private static string GetSuitFaIcon(CardSuit? suit)
-        {
-            return suit switch
-            {
-                CardSuit.Hearts => "fa-heart",
-                CardSuit.Diamonds => "fa-diamond",
-                CardSuit.Clubs => "fa-club",
-                CardSuit.Spades => "fa-spade",
-                _ => "fa-question"
-            };
-        }
-
-        private static string GetRankLabel(CardSymbol? symbol)
-        {
-            return symbol switch
-            {
-                CardSymbol.Deuce => "2",
-                CardSymbol.Three => "3",
-                CardSymbol.Four => "4",
-                CardSymbol.Five => "5",
-                CardSymbol.Six => "6",
-                CardSymbol.Seven => "7",
-                CardSymbol.Eight => "8",
-                CardSymbol.Nine => "9",
-                CardSymbol.Ten => "10",
-                CardSymbol.Jack => "J",
-                CardSymbol.Queen => "Q",
-                CardSymbol.King => "K",
-                CardSymbol.Ace => "A",
-                _ => "?"
-            };
-        }
-
-        /// <summary>
-        /// Detects if this is a player-vs-deck scenario (Kings and Lows).
-        /// Identified by having "The Deck" as one of the player hands.
-        /// </summary>
-        private bool IsPlayerVsDeckScenario()
-        {
-            return ShowdownResult?.PlayerHands?.Any(h =>
-                string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase)) == true;
-        }
-
-        /// <summary>
-        /// Gets the player's hand in a player-vs-deck scenario.
-        /// </summary>
-        private ShowdownPlayerHand? GetPlayerHand()
-        {
-            return ShowdownResult?.PlayerHands?.FirstOrDefault(h =>
-                !string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase));
-        }
-
-        /// <summary>
-        /// Gets the deck's hand in a player-vs-deck scenario.
-        /// </summary>
-        private ShowdownPlayerHand? GetDeckHand()
-        {
-            return ShowdownResult?.PlayerHands?.FirstOrDefault(h =>
-                string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase));
-        }
-    }
+	[Parameter] public PerformShowdownSuccessful? ShowdownResult { get; set; }
+
+	[Parameter] public bool ShowdownWon { get; set; }
+
+	[Parameter] public bool ShowdownLost { get; set; }
+
+	[Parameter] public int SecondsUntilNextHand { get; set; }
+
+	[Parameter] public bool IsGameEnded { get; set; }
+
+	[Parameter] public string? GameTypeCode { get; set; }
+
+	[Parameter] public IReadOnlyList<TableCanvas.WildCardDisplay>? ActiveWildCards { get; set; }
+
+	[Parameter] public IReadOnlyList<ShowdownCard>? SharedCommunityCards { get; set; }
+
+	[Parameter] public ShowdownPublicDto? ShowdownState { get; set; }
+
+	[Parameter] public bool CanRequestRabbitHunt { get; set; }
+
+	[Parameter] public GetRabbitHuntSuccessful? RabbitHuntResult { get; set; }
+
+	[Parameter] public bool IsRabbitHuntLoading { get; set; }
+
+	[Parameter] public string? RabbitHuntError { get; set; }
+
+	[Parameter] public EventCallback OnRabbitHunt { get; set; }
+
+	[Parameter] public EventCallback OnClose { get; set; }
+
+	private bool IsRazzGame => string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
+	private bool IsBobBarkerGame => string.Equals(GameTypeCode, "BOBBARKER", StringComparison.OrdinalIgnoreCase);
+	private bool IsPairPressureGame => string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase);
+
+	private IEnumerable<ShowdownPlayerResultDto> GetBobBarkerPlayers()
+	{
+		return (ShowdownState?.PlayerResults ?? Enumerable.Empty<ShowdownPlayerResultDto>())
+			.Where(player => player.ShowcaseCard is not null)
+			.OrderByDescending(player => player.IsShowcaseWinner)
+			.ThenByDescending(player => player.ShowcaseAmountWon)
+			.ThenBy(player => player.PlayerName);
+	}
+
+	private List<(ShowdownCard Card, bool IsWild)> GetDisplayCardsForShowdown(
+		ShowdownPlayerHand hand,
+		IReadOnlyList<ShowdownCard>? sharedCommunityCards,
+		bool isRazz)
+	{
+		var displayCards = GetDisplayCards(hand, sharedCommunityCards, isRazz);
+
+		if (IsBobBarkerGame && !isRazz && displayCards.Count != 5)
+		{
+			displayCards = GetBobBarkerDisplayCards(hand, sharedCommunityCards, GetBobBarkerShowcaseCard(hand), displayCards);
+		}
+
+		return ApplyPairPressureWildHighlighting(displayCards);
+	}
+
+	private List<(ShowdownCard Card, bool IsWild)> ApplyPairPressureWildHighlighting(
+		List<(ShowdownCard Card, bool IsWild)> displayCards)
+	{
+		if (!IsPairPressureGame || ActiveWildCards is not { Count: > 0 })
+		{
+			return displayCards;
+		}
+
+		return displayCards
+			.Select(entry => entry with { IsWild = WildCardDisplayMatcher.IsActiveWildCard(
+				GetPlayingCardRank(entry.Card),
+				GetPlayingCardSuit(entry.Card),
+				ActiveWildCards) })
+			.ToList();
+	}
+
+	private ShowdownCard? GetBobBarkerShowcaseCard(ShowdownPlayerHand hand)
+	{
+		var showcaseCard = ShowdownState?.PlayerResults?
+			.FirstOrDefault(player => string.Equals(player.PlayerName, hand.PlayerName, StringComparison.OrdinalIgnoreCase))?
+			.ShowcaseCard;
+
+		return ToShowdownCard(showcaseCard);
+	}
+
+	private static string GetPlayerDisplayName(ShowdownPlayerResultDto player)
+	{
+		return !string.IsNullOrWhiteSpace(player.PlayerFirstName)
+			? player.PlayerFirstName
+			: GetDisplayNameFromPlayerName(player.PlayerName);
+	}
+
+	private static string GetRabbitHuntCardRenderKey(RabbitHuntCardDto projectedCard, int index)
+	{
+		return $"rabbit-{projectedCard.DealOrder}-{projectedCard.Card.Symbol}-{projectedCard.Card.Suit}-{index}";
+	}
+
+	private static IReadOnlyList<RabbitHuntCardDto> GetOrderedRabbitHuntCards(GetRabbitHuntSuccessful? result)
+	{
+		if (result?.CommunityCards is not { Count: > 0 })
+		{
+			return [];
+		}
+
+		return result.CommunityCards
+			.OrderBy(card => card.DealOrder)
+			.ToList();
+	}
+
+	private static IReadOnlyList<ShowdownCard> GetRabbitHuntPlayerCards(GetRabbitHuntSuccessful? result)
+	{
+		if (result?.PlayerCards is not { Count: > 0 })
+		{
+			return [];
+		}
+
+		return result.PlayerCards.ToList();
+	}
+
+	private static string? GetRabbitHuntProjectedHandDescription(GetRabbitHuntSuccessful? result)
+	{
+		return string.IsNullOrWhiteSpace(result?.ProjectedHandEvaluationDescription)
+			? null
+			: result.ProjectedHandEvaluationDescription.Trim();
+	}
+
+	private static ShowdownPlayerHand? GetPrimaryWinnerHand(PerformShowdownSuccessful result)
+	{
+		if (result.PlayerHands is null || result.PlayerHands.Count == 0)
+		{
+			return null;
+		}
+
+		return result.PlayerHands
+			.Where(h => h is not null)
+			.Select(h => EnrichHand(h, result.Payouts))
+			.OrderByDescending(h => h.IsWinner == true)
+			.ThenByDescending(h => h.AmountWon ?? 0)
+			.ThenByDescending(h => h.HandStrength ?? 0)
+			.FirstOrDefault();
+	}
+
+	private static List<ShowdownPlayerHand> GetLoserHands(PerformShowdownSuccessful result, ShowdownPlayerHand? winner)
+	{
+		if (result.PlayerHands is null)
+		{
+			return [];
+		}
+
+		var hands = result.PlayerHands
+			.Where(h => h is not null)
+			.Select(h => EnrichHand(h, result.Payouts))
+			.ToList();
+
+		if (winner is not null)
+		{
+			var toRemove = hands.FirstOrDefault(h => h.PlayerName == winner.PlayerName);
+			if (toRemove is not null)
+			{
+				hands.Remove(toRemove);
+			}
+
+			hands = hands.Where(h => h.IsWinner != true).ToList();
+		}
+		else
+		{
+			hands = hands.Where(h => h.IsWinner != true).ToList();
+		}
+
+		return hands
+			.OrderByDescending(h => h.AmountWon ?? 0)
+			.ThenBy(h => h.PlayerName)
+			.ToList();
+	}
+
+	private static string GetWinnerDisplayName(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
+	{
+		if (winnerHand is not null)
+		{
+			return DisplayFirstName(winnerHand);
+		}
+
+		if (result.Payouts is not null && result.Payouts.Count > 0)
+		{
+			var winnerName = result.Payouts.First().Key;
+			if (!string.IsNullOrWhiteSpace(winnerName))
+			{
+				var matchingHand = result.PlayerHands?
+					.FirstOrDefault(h => string.Equals(h.PlayerName, winnerName, StringComparison.OrdinalIgnoreCase));
+
+				if (matchingHand is not null)
+				{
+					return DisplayFirstName(matchingHand);
+				}
+
+				return GetDisplayNameFromPlayerName(winnerName);
+			}
+		}
+
+		return "Winner";
+	}
+
+	private static int GetWinnerAmount(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
+	{
+		if (winnerHand?.AmountWon is > 0)
+		{
+			return winnerHand.AmountWon.Value;
+		}
+
+		if (result.Payouts is not null && result.Payouts.Count > 0)
+		{
+			return result.Payouts.First().Value;
+		}
+
+		return 0;
+	}
+
+	private static string GetWinnerDescription(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand, bool isRazz)
+	{
+		if (winnerHand is not null)
+		{
+			return GetDetailedHandDescription(winnerHand, isRazz);
+		}
+
+		return result.WonByFold == true ? "Won by fold" : string.Empty;
+	}
+
+	private static string GetWinnerVerb(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
+	{
+		if (result.WonByFold == true)
+		{
+			return "wins by fold";
+		}
+
+		if (IsDeckHand(winnerHand))
+		{
+			return "wins this hand";
+		}
+
+		return "wins the hand";
+	}
+
+	private static bool IsDeckHand(ShowdownPlayerHand? hand)
+	{
+		return string.Equals(hand?.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static IReadOnlyList<ShowdownCard> GetSharedCommunityCards(ShowdownPlayerHand? winnerHand)
+	{
+		// Community-card showdowns keep hole cards first, followed by shared board cards.
+		if (winnerHand?.Cards is null || winnerHand.Cards.Count <= 2)
+		{
+			return [];
+		}
+
+		return winnerHand.Cards.Skip(2).ToList();
+	}
+
+	private static ShowdownPlayerHand EnrichHand(ShowdownPlayerHand hand, IDictionary<string, int>? payouts)
+	{
+		if (payouts is not null && payouts.TryGetValue(hand.PlayerName, out var amount))
+		{
+			// Always prefer the value in Payouts if it's larger (or if AmountWon is missing/zero)
+			var current = hand.AmountWon ?? 0;
+			if (amount > current)
+			{
+				return hand with { AmountWon = amount };
+			}
+		}
+
+		return hand;
+	}
+
+	/// <summary>
+	///     Gets the cards to display for a player's hand.
+	///     For Seven Card Stud (7 cards), returns only the best 5 cards.
+	///     Uses BestCardIndexes if provided by API, otherwise computes client-side.
+	///     For other games, returns all cards sorted by symbol.
+	/// </summary>
+	private static List<(ShowdownCard Card, bool IsWild)> GetDisplayCards(ShowdownPlayerHand hand, IReadOnlyList<ShowdownCard>? sharedCommunityCards = null, bool isRazz = false)
+	{
+		if (hand.Cards is null || hand.Cards.Count == 0)
+		{
+			return [];
+		}
+
+		var cardsList = hand.Cards.ToList();
+
+		// Some Hold the Baseball loser payloads contain only hole cards while BestCardIndexes
+		// still reference hole+community indexes. Rehydrate with shared community cards so
+		// every player shows the same board cards.
+		var reconstructedCommunityCards = cardsList.Count == 2
+		                                  && sharedCommunityCards is { Count: > 0 }
+		                                  && ((hand.BestCardIndexes is not null && hand.BestCardIndexes.Any(idx => idx >= 2))
+		                                      || sharedCommunityCards.Count >= 3);
+
+		if (reconstructedCommunityCards)
+		{
+			cardsList.AddRange(sharedCommunityCards!);
+		}
+
+		var wildSet = hand.WildCardIndexes is not null
+			? new HashSet<int>(hand.WildCardIndexes)
+			: new HashSet<int>();
+
+		// If BestCardIndexes is provided and valid, use only those cards.
+		// Razz always computes client-side low cards because BestCardIndexes
+		// may refer to a high-hand evaluation from other game variants.
+		if (!isRazz && hand.BestCardIndexes is not null)
+		{
+			var validBestIndexes = hand.BestCardIndexes
+				.Where(idx => idx >= 0 && idx < cardsList.Count)
+				.Distinct()
+				.ToList();
+
+			if (validBestIndexes.Count == 5)
+			{
+				return validBestIndexes
+					.Select(idx => (Card: cardsList[idx], IsWild: wildSet.Contains(idx)))
+					.OrderBy(x => GetCardDisplayOrder(x.Card))
+					.ToList();
+			}
+		}
+
+		// For wild-card hands, show all cards to avoid incorrect best-5 selection client-side
+		if (hand.WildCardIndexes is not null && hand.WildCardIndexes.Count > 0 && cardsList.Count > 5)
+		{
+			return cardsList
+				.Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
+				.OrderBy(x => GetCardDisplayOrder(x.Card))
+				.ToList();
+		}
+
+		if (isRazz && cardsList.Count >= 5)
+		{
+			var coreCards = cardsList
+				.Where(c => c is { Suit: not null, Symbol: not null })
+				.Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
+				.ToList();
+
+			if (coreCards.Count >= 5)
+			{
+				var razzHand = new RazzHand([], coreCards, []);
+				var bestLowCards = razzHand.GetBestLowHand();
+
+				var neededByLowValue = bestLowCards
+					.GroupBy(GetRazzDisplayValue)
+					.ToDictionary(g => g.Key, g => g.Count());
+
+				var result = new List<(ShowdownCard Card, bool IsWild)>();
+
+				// Prefer the earliest matching card instance from the original list so
+				// duplicates (like two sixes) are selected predictably for display.
+				for (var i = 0; i < cardsList.Count; i++)
+				{
+					var showdownCard = cardsList[i];
+					if (showdownCard.Symbol is null)
+					{
+						continue;
+					}
+
+					var lowValue = GetRazzDisplayValue(showdownCard.Symbol.Value);
+					if (neededByLowValue.TryGetValue(lowValue, out var neededCount) && neededCount > 0)
+					{
+						result.Add((showdownCard, wildSet.Contains(i)));
+						neededByLowValue[lowValue] = neededCount - 1;
+					}
+				}
+
+				return result
+					.OrderBy(x => GetRazzDisplayValue(x.Card.Symbol ?? CardSymbol.Ace))
+					.ToList();
+			}
+		}
+
+		// For 7-card hands (Seven Card Stud), compute best 5 cards client-side
+		if (cardsList.Count == 7)
+		{
+			var coreCards = cardsList
+				.Where(c => c is { Suit: not null, Symbol: not null })
+				.Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
+				.ToList();
+
+			if (coreCards.Count == 7)
+			{
+				var studHand = new StudHand([], coreCards, []);
+				var bestCards = studHand.GetBestHand();
+
+				// Map back to ShowdownCards by matching suit and symbol
+				// Use a list to track which cards have been used (to handle potential duplicates)
+				var result = new List<(ShowdownCard Card, bool IsWild)>();
+				var usedIndexes = new HashSet<int>();
+
+				foreach (var bc in bestCards)
+				{
+					for (var i = 0; i < cardsList.Count; i++)
+					{
+						if (usedIndexes.Contains(i))
+						{
+							continue;
+						}
+
+						var sc = cardsList[i];
+						if (sc.Suit.HasValue && sc.Symbol.HasValue &&
+						    MapSuit(sc.Suit.Value) == bc.Suit &&
+						    MapSymbol(sc.Symbol.Value) == bc.Symbol)
+						{
+							result.Add((sc, wildSet.Contains(i)));
+							usedIndexes.Add(i);
+							break;
+						}
+					}
+				}
+
+				return result.OrderBy(x => x.Card.Symbol).ToList();
+			}
+		}
+
+		// Fall back to showing all cards (for 5-card games)
+		return cardsList
+			.Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
+			.OrderBy(x => x.Card.Symbol)
+			.ToList();
+	}
+
+	private static List<(ShowdownCard Card, bool IsWild)> GetBobBarkerDisplayCards(
+		ShowdownPlayerHand hand,
+		IReadOnlyList<ShowdownCard>? sharedCommunityCards,
+		ShowdownCard? showcaseCard,
+		List<(ShowdownCard Card, bool IsWild)> fallbackCards)
+	{
+		if (hand.Cards is null || hand.Cards.Count == 0)
+		{
+			return [];
+		}
+
+		var allCards = hand.Cards.ToList();
+		var communityCards = sharedCommunityCards?.ToList() ?? [];
+		var playerCards = allCards;
+		var hasValidSharedSuffix = communityCards.Count == 5 && CardsEndWith(allCards, communityCards);
+
+		if (hasValidSharedSuffix)
+		{
+			playerCards = allCards.Take(allCards.Count - communityCards.Count).ToList();
+		}
+		else if (allCards.Count >= 9)
+		{
+			communityCards = allCards.Skip(5).ToList();
+			playerCards = allCards.Take(5).ToList();
+		}
+
+		if (showcaseCard is { } showcase)
+		{
+			var showcaseIndex = playerCards.FindIndex(card => CardsMatch(card, showcase));
+			if (showcaseIndex >= 0)
+			{
+				playerCards.RemoveAt(showcaseIndex);
+			}
+		}
+
+		if (playerCards.Count != 4 || communityCards.Count < 3)
+		{
+			return fallbackCards;
+		}
+
+		var holeCards = playerCards
+			.Where(card => card is { Suit: not null, Symbol: not null })
+			.Select(card => (Card: card, Core: new Card(MapSuit(card.Suit!.Value), MapSymbol(card.Symbol!.Value))))
+			.ToList();
+		var boardCards = communityCards
+			.Where(card => card is { Suit: not null, Symbol: not null })
+			.Select(card => (Card: card, Core: new Card(MapSuit(card.Suit!.Value), MapSymbol(card.Symbol!.Value))))
+			.ToList();
+
+		if (holeCards.Count != 4 || boardCards.Count < 3)
+		{
+			return fallbackCards;
+		}
+
+		List<(ShowdownCard Card, Card Core)>? bestCombo = null;
+		long bestStrength = long.MinValue;
+
+		foreach (var holePair in holeCards.SubsetsOfSize(2))
+		{
+			foreach (var communityTriple in boardCards.SubsetsOfSize(3))
+			{
+				var combo = holePair.Concat(communityTriple).ToList();
+				var coreCards = combo.Select(entry => entry.Core).ToList();
+				var handType = HandTypeDetermination.DetermineHandType(coreCards);
+				var strength = HandStrength.Calculate(coreCards, handType, HandTypeStrengthRanking.Classic);
+
+				if (strength > bestStrength)
+				{
+					bestStrength = strength;
+					bestCombo = combo;
+				}
+			}
+		}
+
+		return bestCombo is null
+			? fallbackCards
+			: bestCombo
+				.Select(entry => (entry.Card, IsWild: false))
+				.OrderBy(entry => GetCardDisplayOrder(entry.Card))
+				.ToList();
+	}
+
+	private static bool CardsEndWith(IReadOnlyList<ShowdownCard> cards, IReadOnlyList<ShowdownCard> suffix)
+	{
+		if (suffix.Count == 0 || cards.Count < suffix.Count)
+		{
+			return false;
+		}
+
+		var offset = cards.Count - suffix.Count;
+		for (var i = 0; i < suffix.Count; i++)
+		{
+			if (!CardsMatch(cards[offset + i], suffix[i]))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private static bool CardsMatch(ShowdownCard left, ShowdownCard right)
+	{
+		return left.Suit == right.Suit && left.Symbol == right.Symbol;
+	}
+
+	private static ShowdownCard? ToShowdownCard(CardPublicDto? card)
+	{
+		if (card is null || !TryMapPublicSuit(card.Suit, out var suit) || !TryMapPublicRank(card.Rank, out var symbol))
+		{
+			return null;
+		}
+
+		return new ShowdownCard(suit, symbol);
+	}
+
+	private static bool TryMapPublicSuit(string? suit, out CardSuit mappedSuit)
+	{
+		mappedSuit = suit?.Trim() switch
+		{
+			"Hearts" => CardSuit.Hearts,
+			"Diamonds" => CardSuit.Diamonds,
+			"Clubs" => CardSuit.Clubs,
+			"Spades" => CardSuit.Spades,
+			_ => default
+		};
+
+		return suit is "Hearts" or "Diamonds" or "Clubs" or "Spades";
+	}
+
+	private static bool TryMapPublicRank(string? rank, out CardSymbol mappedSymbol)
+	{
+		mappedSymbol = rank?.Trim().ToUpperInvariant() switch
+		{
+			"A" or "ACE" => CardSymbol.Ace,
+			"K" or "KING" => CardSymbol.King,
+			"Q" or "QUEEN" => CardSymbol.Queen,
+			"J" or "JACK" => CardSymbol.Jack,
+			"10" => CardSymbol.Ten,
+			"9" => CardSymbol.Nine,
+			"8" => CardSymbol.Eight,
+			"7" => CardSymbol.Seven,
+			"6" => CardSymbol.Six,
+			"5" => CardSymbol.Five,
+			"4" => CardSymbol.Four,
+			"3" => CardSymbol.Three,
+			"2" => CardSymbol.Deuce,
+			_ => default
+		};
+
+		return rank?.Trim().ToUpperInvariant() is "A" or "ACE"
+			or "K" or "KING"
+			or "Q" or "QUEEN"
+			or "J" or "JACK"
+			or "10"
+			or "9"
+			or "8"
+			or "7"
+			or "6"
+			or "5"
+			or "4"
+			or "3"
+			or "2";
+	}
+
+	private string? GetPlayingCardSuit(ShowdownCard card)
+	{
+		var suit = card.Suit switch
+		{
+			CardSuit.Hearts => "Hearts",
+			CardSuit.Diamonds => "Diamonds",
+			CardSuit.Clubs => "Clubs",
+			CardSuit.Spades => "Spades",
+			_ => ""
+		};
+		return suit;
+	}
+
+	private string? GetPlayingCardRank(ShowdownCard card)
+	{
+		var rank = card.Symbol switch
+		{
+			CardSymbol.Ace => "Ace",
+			CardSymbol.Deuce => "2",
+			CardSymbol.Three => "3",
+			CardSymbol.Four => "4",
+			CardSymbol.Five => "5",
+			CardSymbol.Six => "6",
+			CardSymbol.Seven => "7",
+			CardSymbol.Eight => "8",
+			CardSymbol.Nine => "9",
+			CardSymbol.Ten => "10",
+			CardSymbol.Jack => "Jack",
+			CardSymbol.Queen => "Queen",
+			CardSymbol.King => "King",
+			_ => ""
+		};
+
+		return rank;
+	}
+
+	private string GetOutcomeSubtitle()
+	{
+		// Handle player-vs-deck scenario first
+		if (IsPlayerVsDeckScenario())
+		{
+			var playerHand = GetPlayerHand();
+			var playerWon = playerHand?.IsWinner == true;
+			if (IsGameEnded && playerWon)
+			{
+				return "You beat the deck! Game Over";
+			}
+
+			return playerWon ? "You beat the deck!" : "The deck wins this round";
+		}
+
+		if (ShowdownResult?.WonByFold == true)
+		{
+			return "Everyone folded";
+		}
+
+		if (ShowdownWon)
+		{
+			return IsGameEnded ? "You won the game!" : "You won the hand";
+		}
+
+		if (ShowdownLost)
+		{
+			return IsGameEnded ? "Game Over" : "Hand complete";
+		}
+
+		return "Results are in";
+	}
+
+	private string GetOverlayTitle()
+	{
+		return IsGameEnded ? "Game Over" : "Showdown";
+	}
+
+	private static string DisplayFirstName(ShowdownPlayerHand? hand)
+	{
+		if (!string.IsNullOrWhiteSpace(hand?.PlayerFirstName))
+		{
+			return hand.PlayerFirstName;
+		}
+
+		if (string.IsNullOrWhiteSpace(hand?.PlayerName))
+		{
+			return "Player";
+		}
+
+		return GetDisplayNameFromPlayerName(hand.PlayerName);
+	}
+
+	private static string GetDisplayNameFromPlayerName(string playerName)
+	{
+		var parts = playerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		if (parts.Length == 0)
+		{
+			return "Player";
+		}
+
+		var firstToken = parts[0];
+		var atIndex = firstToken.IndexOf('@');
+
+		if (atIndex > 0)
+		{
+			var emailLocalPart = firstToken[..atIndex];
+			var localPartParts = emailLocalPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+			if (localPartParts.Length > 0)
+			{
+				return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(localPartParts[0]);
+			}
+		}
+
+		return firstToken;
+	}
+
+	private static string HumanizeHandType(string? handType)
+	{
+		if (string.IsNullOrWhiteSpace(handType))
+		{
+			return "";
+		}
+
+		// Handles values like "FullHouse", "TwoPair", "HighCard".
+		var s = handType.Trim();
+		s = Regex.Replace(s, "([a-z])([A-Z])", "$1 $2");
+		s = Regex.Replace(s, "([A-Z])([A-Z][a-z])", "$1 $2");
+		return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(s);
+	}
+
+	private static string GetSuitColorClass(CardSuit? suit)
+	{
+		return suit switch
+		{
+			CardSuit.Hearts or CardSuit.Diamonds => "suit-red",
+			_ => "suit-black"
+		};
+	}
+
+	private static int GetCardDisplayOrder(ShowdownCard card)
+	{
+		var symbolValue = card.Symbol.HasValue ? (int)card.Symbol.Value : 0;
+		var suitValue = card.Suit.HasValue ? (int)card.Suit.Value : 0;
+		return symbolValue * 10 + suitValue;
+	}
+
+	private static string GetDetailedHandDescription(ShowdownPlayerHand hand, bool isRazz = false)
+	{
+		if (isRazz)
+		{
+			if (hand.Cards is null || hand.Cards.Count < 5)
+			{
+				return string.Empty;
+			}
+
+			var razzCoreCards = hand.Cards
+				.Where(c => c is { Suit: not null, Symbol: not null })
+				.Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
+				.ToList();
+
+			if (razzCoreCards.Count < 5)
+			{
+				return string.Empty;
+			}
+
+			var razzHand = new RazzHand([], razzCoreCards, []);
+			return FormatRazzLowDescription(razzHand.GetBestLowHand());
+		}
+
+		// Prefer server-provided hand description (already handles wild cards)
+		if (!string.IsNullOrWhiteSpace(hand.HandDescription))
+		{
+			return hand.HandDescription;
+		}
+
+		if (hand.Cards is null || hand.Cards.Count < 5)
+		{
+			return HumanizeHandType(hand.HandType);
+		}
+
+		var coreCards = hand.Cards
+			.Where(c => c is { Suit: not null, Symbol: not null })
+			.Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
+			.ToList();
+
+		if (coreCards.Count < 5)
+		{
+			return HumanizeHandType(hand.HandType);
+		}
+
+		// If the server did not provide a description, do not try to infer variant rules from card faces.
+		// (A Five Card Draw hand can contain 2s/Jacks/Kd too.)
+		// For hands with more than 5 cards (e.g., Seven Card Stud with 7), use StudHand to find the best 5-card combination.
+		HandBase evaluatedHand = coreCards.Count == 5
+			? new DrawHand(coreCards)
+			: new StudHand([], coreCards, []);
+
+		return HandDescriptionFormatter.GetHandDescription(evaluatedHand);
+	}
+
+	private static Suit MapSuit(CardSuit suit)
+	{
+		return suit switch
+		{
+			CardSuit.Hearts => Suit.Hearts,
+			CardSuit.Diamonds => Suit.Diamonds,
+			CardSuit.Spades => Suit.Spades,
+			CardSuit.Clubs => Suit.Clubs,
+			_ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
+		};
+	}
+
+	private static Symbol MapSymbol(CardSymbol symbol)
+	{
+		return symbol switch
+		{
+			CardSymbol.Deuce => Symbol.Deuce,
+			CardSymbol.Three => Symbol.Three,
+			CardSymbol.Four => Symbol.Four,
+			CardSymbol.Five => Symbol.Five,
+			CardSymbol.Six => Symbol.Six,
+			CardSymbol.Seven => Symbol.Seven,
+			CardSymbol.Eight => Symbol.Eight,
+			CardSymbol.Nine => Symbol.Nine,
+			CardSymbol.Ten => Symbol.Ten,
+			CardSymbol.Jack => Symbol.Jack,
+			CardSymbol.Queen => Symbol.Queen,
+			CardSymbol.King => Symbol.King,
+			CardSymbol.Ace => Symbol.Ace,
+			_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
+		};
+	}
+
+	private static string FormatRazzLowDescription(IReadOnlyCollection<Card> cards)
+	{
+		var labels = cards
+			.OrderByDescending(GetRazzDisplayValue)
+			.Select(GetRazzRankLabel)
+			.ToList();
+
+		return string.Join("-", labels);
+	}
+
+	private static int GetRazzDisplayValue(Card card)
+	{
+		return card.Value == 14 ? 1 : card.Value;
+	}
+
+	private static int GetRazzDisplayValue(CardSymbol symbol)
+	{
+		return symbol switch
+		{
+			CardSymbol.Ace => 1,
+			CardSymbol.Deuce => 2,
+			CardSymbol.Three => 3,
+			CardSymbol.Four => 4,
+			CardSymbol.Five => 5,
+			CardSymbol.Six => 6,
+			CardSymbol.Seven => 7,
+			CardSymbol.Eight => 8,
+			CardSymbol.Nine => 9,
+			CardSymbol.Ten => 10,
+			CardSymbol.Jack => 11,
+			CardSymbol.Queen => 12,
+			CardSymbol.King => 13,
+			_ => 99
+		};
+	}
+
+	private static string GetRazzRankLabel(Card card)
+	{
+		return card.Symbol switch
+		{
+			Symbol.Ace => "Ace",
+			Symbol.King => "King",
+			Symbol.Queen => "Queen",
+			Symbol.Jack => "Jack",
+			Symbol.Ten => "10",
+			Symbol.Nine => "9",
+			Symbol.Eight => "8",
+			Symbol.Seven => "7",
+			Symbol.Six => "6",
+			Symbol.Five => "5",
+			Symbol.Four => "4",
+			Symbol.Three => "3",
+			Symbol.Deuce => "2",
+			_ => card.Value.ToString(CultureInfo.InvariantCulture)
+		};
+	}
+
+	private static string GetShowdownCardRenderKey(ShowdownCard card, int index, bool isWild)
+	{
+		return $"{index}:{card.Symbol}:{card.Suit}:{isWild}";
+	}
+
+	private static string GetShowdownCardRenderKey(ShowdownCard card, string? owner, bool isWild)
+	{
+		return $"{owner}:{card.Symbol}:{card.Suit}:{isWild}";
+	}
+
+	private static string GetSuitFaIcon(CardSuit? suit)
+	{
+		return suit switch
+		{
+			CardSuit.Hearts => "fa-heart",
+			CardSuit.Diamonds => "fa-diamond",
+			CardSuit.Clubs => "fa-club",
+			CardSuit.Spades => "fa-spade",
+			_ => "fa-question"
+		};
+	}
+
+	private static string GetRankLabel(CardSymbol? symbol)
+	{
+		return symbol switch
+		{
+			CardSymbol.Deuce => "2",
+			CardSymbol.Three => "3",
+			CardSymbol.Four => "4",
+			CardSymbol.Five => "5",
+			CardSymbol.Six => "6",
+			CardSymbol.Seven => "7",
+			CardSymbol.Eight => "8",
+			CardSymbol.Nine => "9",
+			CardSymbol.Ten => "10",
+			CardSymbol.Jack => "J",
+			CardSymbol.Queen => "Q",
+			CardSymbol.King => "K",
+			CardSymbol.Ace => "A",
+			_ => "?"
+		};
+	}
+
+	/// <summary>
+	///     Detects if this is a player-vs-deck scenario (Kings and Lows).
+	///     Identified by having "The Deck" as one of the player hands.
+	/// </summary>
+	private bool IsPlayerVsDeckScenario()
+	{
+		return ShowdownResult?.PlayerHands?.Any(h =>
+			string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase)) == true;
+	}
+
+	/// <summary>
+	///     Gets the player's hand in a player-vs-deck scenario.
+	/// </summary>
+	private ShowdownPlayerHand? GetPlayerHand()
+	{
+		return ShowdownResult?.PlayerHands?.FirstOrDefault(h =>
+			!string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase));
+	}
+
+	/// <summary>
+	///     Gets the deck's hand in a player-vs-deck scenario.
+	/// </summary>
+	private ShowdownPlayerHand? GetDeckHand()
+	{
+		return ShowdownResult?.PlayerHands?.FirstOrDefault(h =>
+			string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase));
+	}
+
+}

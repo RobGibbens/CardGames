@@ -2,11 +2,11 @@ using System.Security.Cryptography;
 using System.Text;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Features.Leagues.v1.Queries;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueInviteStatus = CardGames.Poker.Api.Data.Entities.LeagueInviteStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueJoinPreview;
 
@@ -15,16 +15,19 @@ public sealed class GetLeagueJoinPreviewQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetLeagueJoinPreviewQuery, OneOf<LeagueJoinPreviewDto, GetLeagueJoinPreviewError>>
 {
-	public async Task<OneOf<LeagueJoinPreviewDto, GetLeagueJoinPreviewError>> Handle(GetLeagueJoinPreviewQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<LeagueJoinPreviewDto, GetLeagueJoinPreviewError>> Handle(GetLeagueJoinPreviewQuery request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.Unauthorized, "User is not authenticated.");
+			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		if (string.IsNullOrWhiteSpace(request.Token))
 		{
-			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite, "Invite code is required.");
+			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite,
+				"Invite code is required.");
 		}
 
 		var tokenHash = ComputeSha256(request.Token.Trim());
@@ -34,9 +37,10 @@ public sealed class GetLeagueJoinPreviewQueryHandler(
 			.AsNoTracking()
 			.FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
 
-		if (invite is null || invite.Status != Data.Entities.LeagueInviteStatus.Active || invite.ExpiresAtUtc <= now)
+		if (invite is null || invite.Status != LeagueInviteStatus.Active || invite.ExpiresAtUtc <= now)
 		{
-			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite, "Invite is invalid, revoked, or expired.");
+			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite,
+				"Invite is invalid, revoked, or expired.");
 		}
 
 		var league = await context.Leagues
@@ -45,7 +49,8 @@ public sealed class GetLeagueJoinPreviewQueryHandler(
 
 		if (league is null)
 		{
-			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite, "Invite is invalid, revoked, or expired.");
+			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite,
+				"Invite is invalid, revoked, or expired.");
 		}
 
 		var activeMemberCount = await context.LeagueMembersCurrent
@@ -62,7 +67,8 @@ public sealed class GetLeagueJoinPreviewQueryHandler(
 			LeagueId = league.Id,
 			LeagueName = league.Name,
 			LeagueDescription = league.Description,
-			ManagerDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, league.CreatedByUserId),
+			ManagerDisplayName =
+				LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, league.CreatedByUserId),
 			ActiveMemberCount = activeMemberCount,
 			JoinPolicy = "Private league access by code or invite. Duplicate submissions are safe."
 		};

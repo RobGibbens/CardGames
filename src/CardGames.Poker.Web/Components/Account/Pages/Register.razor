@@ -1,16 +1,12 @@
 ﻿@page "/Account/Register"
-
 @using System.ComponentModel.DataAnnotations
 @using System.Text
 @using System.Text.Encodings.Web
 @using CardGames.Poker.Api.Clients
-@using CardGames.Poker.Api.Contracts
-@using Microsoft.AspNetCore.Identity
-@using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.AspNetCore.WebUtilities
 @using CardGames.Poker.Web.Data
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
 @using Refit
-@using Microsoft.AspNetCore.Http
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
@@ -24,281 +20,282 @@
 <PageTitle>Create Account - Dealer's Choice Poker</PageTitle>
 
 <AccountShell Title="Create your account" Subtitle="Prefer Google or Microsoft to join the tables in seconds">
-    <StatusMessage Message="@Message" />
+	<StatusMessage Message="@Message"/>
 
-    <div class="auth-social">
-        <ExternalLoginPicker />
-    </div>
+	<div class="auth-social">
+		<ExternalLoginPicker/>
+	</div>
 
-    <div class="auth-divider">
-        <span>or register with a local account instead</span>
-    </div>
+	<div class="auth-divider">
+		<span>or register with a local account instead</span>
+	</div>
 
-    <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register" class="auth-form" enctype="multipart/form-data">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="text-danger" role="alert" />
+	<EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register" class="auth-form" enctype="multipart/form-data">
+		<DataAnnotationsValidator/>
+		<ValidationSummary class="text-danger" role="alert"/>
 
-        <div class="form-floating mb-3" data-label="First name">
-            <InputText @bind-Value="Input.FirstName" id="Input.FirstName" class="form-control" autocomplete="given-name" aria-required="true" placeholder="First" />
-            <ValidationMessage For="() => Input.FirstName" class="text-danger" />
-        </div>
-        <div class="form-floating mb-3" data-label="Last name">
-            <InputText @bind-Value="Input.LastName" id="Input.LastName" class="form-control" autocomplete="family-name" aria-required="true" placeholder="Last" />
-            <ValidationMessage For="() => Input.LastName" class="text-danger" />
-        </div>
+		<div class="form-floating mb-3" data-label="First name">
+			<InputText @bind-Value="Input.FirstName" id="Input.FirstName" class="form-control" autocomplete="given-name" aria-required="true" placeholder="First"/>
+			<ValidationMessage For="() => Input.FirstName" class="text-danger"/>
+		</div>
+		<div class="form-floating mb-3" data-label="Last name">
+			<InputText @bind-Value="Input.LastName" id="Input.LastName" class="form-control" autocomplete="family-name" aria-required="true" placeholder="Last"/>
+			<ValidationMessage For="() => Input.LastName" class="text-danger"/>
+		</div>
 
-        <div class="form-floating mb-3" data-label="Email address">
-            <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-            <ValidationMessage For="() => Input.Email" class="text-danger" />
-        </div>
+		<div class="form-floating mb-3" data-label="Email address">
+			<InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com"/>
+			<ValidationMessage For="() => Input.Email" class="text-danger"/>
+		</div>
 
-        <div class="form-floating mb-3" data-label="Password">
-            <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-            <ValidationMessage For="() => Input.Password" class="text-danger" />
-        </div>
+		<div class="form-floating mb-3" data-label="Password">
+			<InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password"/>
+			<ValidationMessage For="() => Input.Password" class="text-danger"/>
+		</div>
 
-        <div class="form-floating mb-3" data-label="Confirm Password">
-            <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-            <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
-        </div>
+		<div class="form-floating mb-3" data-label="Confirm Password">
+			<InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password"/>
+			<ValidationMessage For="() => Input.ConfirmPassword" class="text-danger"/>
+		</div>
 
-        <div class="form-floating mb-3" data-label="Avatar URL (optional)">
-            <InputText @bind-Value="Input.AvatarUrl" id="Input.AvatarUrl" class="form-control" autocomplete="photo" placeholder="https://..." />
-            <ValidationMessage For="() => Input.AvatarUrl" class="text-danger" />
-        </div>
+		<div class="form-floating mb-3" data-label="Avatar URL (optional)">
+			<InputText @bind-Value="Input.AvatarUrl" id="Input.AvatarUrl" class="form-control" autocomplete="photo" placeholder="https://..."/>
+			<ValidationMessage For="() => Input.AvatarUrl" class="text-danger"/>
+		</div>
 
-        <div class="mb-3">
-            <label class="form-label" for="Input.AvatarFile">Upload avatar image (optional)</label>
-            <input type="file" id="Input.AvatarFile" name="Input.AvatarFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" />
-        </div>
-        
-        <div class="auth-action-row">
-            <button type="submit" class="btn btn-primary btn-lg">
-                <span><i class="fa-thin fa-rocket"></i></span> Create Account
-            </button>
-        </div>
-    </EditForm>
+		<div class="mb-3">
+			<label class="form-label" for="Input.AvatarFile">Upload avatar image (optional)</label>
+			<input type="file" id="Input.AvatarFile" name="Input.AvatarFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp"/>
+		</div>
 
-    <p class="auth-footer">
-        Already have an account? <a href="/Account/Login">Sign in</a>
-    </p>
+		<div class="auth-action-row">
+			<button type="submit" class="btn btn-primary btn-lg">
+				<span>
+					<i class="fa-thin fa-rocket"></i>
+				</span> Create Account
+			</button>
+		</div>
+	</EditForm>
+
+	<p class="auth-footer">
+		Already have an account? <a href="/Account/Login">Sign in</a>
+	</p>
 </AccountShell>
 
 @code {
-    private IEnumerable<IdentityError>? identityErrors;
+	private IEnumerable<IdentityError>? identityErrors;
 
-    private const long MaxAvatarUploadBytes = 5 * 1024 * 1024;
+	private const long MaxAvatarUploadBytes = 5 * 1024 * 1024;
 
-    [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = default!;
+	[SupplyParameterFromForm] private InputModel Input { get; set; } = null!;
 
-    [SupplyParameterFromQuery]
-    private string? ReturnUrl { get; set; }
+	[SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
-    private string RegistrationDestination => string.IsNullOrWhiteSpace(ReturnUrl) ? "/lobby" : ReturnUrl;
+	private string RegistrationDestination => string.IsNullOrWhiteSpace(ReturnUrl) ? "/lobby" : ReturnUrl;
 
-    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
+	private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
 
-    protected override void OnInitialized()
-    {
-        Input ??= new();
-    }
+	protected override void OnInitialized()
+	{
+		Input ??= new InputModel();
+	}
 
-    public async Task RegisterUser(EditContext editContext)
-    {
-        identityErrors = null;
+	public async Task RegisterUser(EditContext editContext)
+	{
+		identityErrors = null;
 
-        var avatarUrl = string.IsNullOrWhiteSpace(Input.AvatarUrl) ? null : Input.AvatarUrl.Trim();
+		var avatarUrl = string.IsNullOrWhiteSpace(Input.AvatarUrl) ? null : Input.AvatarUrl.Trim();
 
-        if (!string.IsNullOrWhiteSpace(avatarUrl) && Input.AvatarFile is not null)
-        {
-            identityErrors =
-            [
-                new IdentityError
-                {
-                    Description = "Please provide either an avatar URL or an uploaded avatar image, not both."
-                }
-            ];
+		if (!string.IsNullOrWhiteSpace(avatarUrl) && Input.AvatarFile is not null)
+		{
+			identityErrors =
+			[
+				new IdentityError
+				{
+					Description = "Please provide either an avatar URL or an uploaded avatar image, not both."
+				}
+			];
 
-            return;
-        }
+			return;
+		}
 
-        if (Input.AvatarFile is not null)
-        {
-            if (Input.AvatarFile.Length > MaxAvatarUploadBytes)
-            {
-                identityErrors =
-                [
-                    new IdentityError
-                    {
-                        Description = "Avatar upload exceeded the maximum allowed size."
-                    }
-                ];
+		if (Input.AvatarFile is not null)
+		{
+			if (Input.AvatarFile.Length > MaxAvatarUploadBytes)
+			{
+				identityErrors =
+				[
+					new IdentityError
+					{
+						Description = "Avatar upload exceeded the maximum allowed size."
+					}
+				];
 
-                return;
-            }
+				return;
+			}
 
-            try
-            {
-                await using var fileStream = Input.AvatarFile.OpenReadStream();
-                var file = new StreamPart(fileStream, Input.AvatarFile.FileName, Input.AvatarFile.ContentType);
-                var uploadResponse = await ProfileApi.UploadAvatarAsync(file, CancellationToken.None);
+			try
+			{
+				await using var fileStream = Input.AvatarFile.OpenReadStream();
+				var file = new StreamPart(fileStream, Input.AvatarFile.FileName, Input.AvatarFile.ContentType);
+				var uploadResponse = await ProfileApi.UploadAvatarAsync(file, CancellationToken.None);
 
-                if (!uploadResponse.IsSuccessStatusCode || uploadResponse.Content is null)
-                {
-                    identityErrors =
-                    [
-                        new IdentityError
-                        {
-                            Description = "Unable to upload avatar image. Please try a different file."
-                        }
-                    ];
+				if (!uploadResponse.IsSuccessStatusCode || uploadResponse.Content is null)
+				{
+					identityErrors =
+					[
+						new IdentityError
+						{
+							Description = "Unable to upload avatar image. Please try a different file."
+						}
+					];
 
-                    return;
-                }
+					return;
+				}
 
-                avatarUrl = ResolveUploadedAvatarUrl(uploadResponse.Content.AvatarUrl);
-            }
-            catch (ApiException)
-            {
-                identityErrors =
-                [
-                    new IdentityError
-                    {
-                        Description = "Avatar upload failed. Please try again."
-                    }
-                ];
+				avatarUrl = ResolveUploadedAvatarUrl(uploadResponse.Content.AvatarUrl);
+			}
+			catch (ApiException)
+			{
+				identityErrors =
+				[
+					new IdentityError
+					{
+						Description = "Avatar upload failed. Please try again."
+					}
+				];
 
-                return;
-            }
-        }
+				return;
+			}
+		}
 
-        var user = CreateUser();
+		var user = CreateUser();
 
-        user.FirstName = Input.FirstName.Trim();
-        user.LastName = Input.LastName.Trim();
-        user.AvatarUrl = avatarUrl;
+		user.FirstName = Input.FirstName.Trim();
+		user.LastName = Input.LastName.Trim();
+		user.AvatarUrl = avatarUrl;
 
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-        var emailStore = GetEmailStore();
-        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-        var result = await UserManager.CreateAsync(user, Input.Password);
+		await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+		var emailStore = GetEmailStore();
+		await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+		var result = await UserManager.CreateAsync(user, Input.Password);
 
-        if (!result.Succeeded)
-        {
-            identityErrors = result.Errors;
-            return;
-        }
+		if (!result.Succeeded)
+		{
+			identityErrors = result.Errors;
+			return;
+		}
 
-        Logger.LogInformation("User created a new account with password.");
+		Logger.LogInformation("User created a new account with password.");
 
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            var userId = await UserManager.GetUserIdAsync(user);
-            var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-            var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-                NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-                new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+		if (UserManager.Options.SignIn.RequireConfirmedAccount)
+		{
+			var userId = await UserManager.GetUserIdAsync(user);
+			var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+			code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+			var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+				NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+				new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
 
-            await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
+			await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
 
-            RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
-                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
-        }
-        else
-        {
-            await SignInManager.SignInAsync(user, isPersistent: false);
-            RedirectManager.RedirectTo(RegistrationDestination);
-        }
-    }
+			RedirectManager.RedirectTo(
+				"Account/RegisterConfirmation",
+				new Dictionary<string, object?> { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
+		}
+		else
+		{
+			await SignInManager.SignInAsync(user, isPersistent: false);
+			RedirectManager.RedirectTo(RegistrationDestination);
+		}
+	}
 
-    private ApplicationUser CreateUser()
-    {
-        try
-        {
-            return Activator.CreateInstance<ApplicationUser>();
-        }
-        catch
-        {
-            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
-                $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor.");
-        }
-    }
+	private ApplicationUser CreateUser()
+	{
+		try
+		{
+			return Activator.CreateInstance<ApplicationUser>();
+		}
+		catch
+		{
+			throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
+			                                    $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor.");
+		}
+	}
 
-    private IUserEmailStore<ApplicationUser> GetEmailStore()
-    {
-        if (!UserManager.SupportsUserEmail)
-        {
-            throw new NotSupportedException("The default UI requires a user store with email support.");
-        }
-        return (IUserEmailStore<ApplicationUser>)UserStore;
-    }
+	private IUserEmailStore<ApplicationUser> GetEmailStore()
+	{
+		if (!UserManager.SupportsUserEmail)
+		{
+			throw new NotSupportedException("The default UI requires a user store with email support.");
+		}
 
-    private string ResolveUploadedAvatarUrl(string avatarUrl)
-    {
-        if (!Uri.TryCreate(avatarUrl, UriKind.Absolute, out var avatarUri))
-        {
-            return avatarUrl;
-        }
+		return (IUserEmailStore<ApplicationUser>)UserStore;
+	}
 
-        var isLocalHost = avatarUri.IsLoopback || string.Equals(avatarUri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
-        if (!isLocalHost)
-        {
-            return avatarUrl;
-        }
+	private string ResolveUploadedAvatarUrl(string avatarUrl)
+	{
+		if (!Uri.TryCreate(avatarUrl, UriKind.Absolute, out var avatarUri))
+		{
+			return avatarUrl;
+		}
 
-        var currentUri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
-        if (!string.Equals(currentUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return avatarUrl;
-        }
+		var isLocalHost = avatarUri.IsLoopback || string.Equals(avatarUri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
+		if (!isLocalHost)
+		{
+			return avatarUrl;
+		}
 
-        var rewrittenAvatarUri = new UriBuilder(avatarUri)
-        {
-            Scheme = currentUri.Scheme,
-            Host = currentUri.Host,
-            Port = currentUri.IsDefaultPort ? -1 : currentUri.Port
-        };
+		var currentUri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+		if (!string.Equals(currentUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+		{
+			return avatarUrl;
+		}
 
-        return rewrittenAvatarUri.Uri.ToString();
-    }
+		var rewrittenAvatarUri = new UriBuilder(avatarUri)
+		{
+			Scheme = currentUri.Scheme,
+			Host = currentUri.Host,
+			Port = currentUri.IsDefaultPort ? -1 : currentUri.Port
+		};
 
-    private sealed class InputModel
-    {
-        [Required]
-        [StringLength(100)]
-        [Display(Name = "First name")]
-        public string FirstName { get; set; } = "";
+		return rewrittenAvatarUri.Uri.ToString();
+	}
 
-        [Required]
-        [StringLength(100)]
-        [Display(Name = "Last name")]
-        public string LastName { get; set; } = "";
+	private sealed class InputModel
+	{
+		[Required]
+		[StringLength(100)]
+		[Display(Name = "First name")]
+		public string FirstName { get; set; } = "";
 
-        [OptionalUrl]
-        [StringLength(512)]
-        [Display(Name = "Avatar URL")]
-        public string? AvatarUrl { get; set; }
+		[Required]
+		[StringLength(100)]
+		[Display(Name = "Last name")]
+		public string LastName { get; set; } = "";
 
-        [Display(Name = "Avatar image")]
-        public IFormFile? AvatarFile { get; set; }
+		[OptionalUrl]
+		[StringLength(512)]
+		[Display(Name = "Avatar URL")]
+		public string? AvatarUrl { get; set; }
 
-        [Required]
-        [EmailAddress]
-        [Display(Name = "Email")]
-        public string Email { get; set; } = "";
+		[Display(Name = "Avatar image")] public IFormFile? AvatarFile { get; set; }
 
-        [Required]
-        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
-        [DataType(DataType.Password)]
-        [Display(Name = "Password")]
-        public string Password { get; set; } = "";
+		[Required]
+		[EmailAddress]
+		[Display(Name = "Email")]
+		public string Email { get; set; } = "";
 
-        [DataType(DataType.Password)]
-        [Display(Name = "Confirm password")]
-        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
-        public string ConfirmPassword { get; set; } = "";
-    }
+		[Required]
+		[StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+		[DataType(DataType.Password)]
+		[Display(Name = "Password")]
+		public string Password { get; set; } = "";
+
+		[DataType(DataType.Password)]
+		[Display(Name = "Confirm password")]
+		[Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+		public string ConfirmPassword { get; set; } = "";
+	}
+
 }

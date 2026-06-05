@@ -4,439 +4,439 @@ using CardGames.Poker.Api.Games;
 namespace CardGames.IntegrationTests.Features.Commands;
 
 /// <summary>
-/// Integration tests for <see cref="CreateGameCommandHandler"/>.
-/// Tests game creation scenarios including validation, player setup, and pot initialization.
+///     Integration tests for <see cref="CreateGameCommandHandler" />.
+///     Tests game creation scenarios including validation, player setup, and pot initialization.
 /// </summary>
 public class CreateGameCommandHandlerTests : IntegrationTestBase
 {
-    [Theory]
-    [InlineData(PokerGameMetadataRegistry.FiveCardDrawCode)]
-    [InlineData(PokerGameMetadataRegistry.SevenCardStudCode)]
-    [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode)]
-    [InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode)]
-    [InlineData(PokerGameMetadataRegistry.HoldEmCode)]
-    [InlineData(PokerGameMetadataRegistry.OmahaCode)]
-    [InlineData(PokerGameMetadataRegistry.NebraskaCode)]
-    [InlineData(PokerGameMetadataRegistry.SouthDakotaCode)]
-    [InlineData(PokerGameMetadataRegistry.GoodBadUglyCode)]
-    [InlineData(PokerGameMetadataRegistry.IrishHoldEmCode)]
-    public async Task Handle_ValidRequest_CreatesGame(string gameCode)
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            gameCode,
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo>
-            {
-                new("Player1", 1000),
-                new("Player2", 1000)
-            });
+	[Theory]
+	[InlineData(PokerGameMetadataRegistry.FiveCardDrawCode)]
+	[InlineData(PokerGameMetadataRegistry.SevenCardStudCode)]
+	[InlineData(PokerGameMetadataRegistry.KingsAndLowsCode)]
+	[InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode)]
+	[InlineData(PokerGameMetadataRegistry.HoldEmCode)]
+	[InlineData(PokerGameMetadataRegistry.OmahaCode)]
+	[InlineData(PokerGameMetadataRegistry.NebraskaCode)]
+	[InlineData(PokerGameMetadataRegistry.SouthDakotaCode)]
+	[InlineData(PokerGameMetadataRegistry.GoodBadUglyCode)]
+	[InlineData(PokerGameMetadataRegistry.IrishHoldEmCode)]
+	public async Task Handle_ValidRequest_CreatesGame(string gameCode)
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			gameCode,
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo>
+			{
+				new("Player1", 1000),
+				new("Player2", 1000)
+			});
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        result.IsT0.Should().BeTrue("Expected successful creation");
-        var success = result.AsT0;
-        success.GameId.Should().Be(gameId);
-        success.GameTypeCode.Should().Be(gameCode);
-        success.PlayerCount.Should().Be(2);
+		// Assert
+		result.IsT0.Should().BeTrue("Expected successful creation");
+		var success = result.AsT0;
+		success.GameId.Should().Be(gameId);
+		success.GameTypeCode.Should().Be(gameCode);
+		success.PlayerCount.Should().Be(2);
 
-        // Verify game in database
-        var game = await DbContext.Games
-            .Include(g => g.GameType)
-            .FirstOrDefaultAsync(g => g.Id == gameId);
-        game.Should().NotBeNull();
-        game!.Name.Should().Be("Test Game");
-        game.Ante.Should().Be(10);
-        game.MinBet.Should().Be(20);
-        game.Status.Should().Be(GameStatus.WaitingForPlayers);
-        game.CurrentPhase.Should().Be(nameof(Phases.WaitingToStart));
-    }
+		// Verify game in database
+		var game = await DbContext.Games
+			.Include(g => g.GameType)
+			.FirstOrDefaultAsync(g => g.Id == gameId);
+		game.Should().NotBeNull();
+		game!.Name.Should().Be("Test Game");
+		game.Ante.Should().Be(10);
+		game.MinBet.Should().Be(20);
+		game.Status.Should().Be(GameStatus.WaitingForPlayers);
+		game.CurrentPhase.Should().Be(nameof(Phases.WaitingToStart));
+	}
 
-    [Theory]
-    [InlineData(PokerGameMetadataRegistry.HoldEmCode, 5, 10)]
-    [InlineData(PokerGameMetadataRegistry.OmahaCode, 10, 20)]
-    [InlineData(PokerGameMetadataRegistry.NebraskaCode, 10, 20)]
-    [InlineData(PokerGameMetadataRegistry.SouthDakotaCode, 10, 20)]
-    [InlineData(PokerGameMetadataRegistry.IrishHoldEmCode, 5, 10)]
-    public async Task Handle_BlindBasedGame_WithBlindValues_PersistsBlinds(
-        string gameCode,
-        int smallBlind,
-        int bigBlind)
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            gameCode,
-            "Blind Table",
-            0,
-            10,
-            new List<PlayerInfo>
-            {
-                new("Player1", 1000),
-                new("Player2", 1000)
-            },
-            SmallBlind: smallBlind,
-            BigBlind: bigBlind);
+	[Theory]
+	[InlineData(PokerGameMetadataRegistry.HoldEmCode, 5, 10)]
+	[InlineData(PokerGameMetadataRegistry.OmahaCode, 10, 20)]
+	[InlineData(PokerGameMetadataRegistry.NebraskaCode, 10, 20)]
+	[InlineData(PokerGameMetadataRegistry.SouthDakotaCode, 10, 20)]
+	[InlineData(PokerGameMetadataRegistry.IrishHoldEmCode, 5, 10)]
+	public async Task Handle_BlindBasedGame_WithBlindValues_PersistsBlinds(
+		string gameCode,
+		int smallBlind,
+		int bigBlind)
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			gameCode,
+			"Blind Table",
+			0,
+			10,
+			new List<PlayerInfo>
+			{
+				new("Player1", 1000),
+				new("Player2", 1000)
+			},
+			SmallBlind: smallBlind,
+			BigBlind: bigBlind);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        result.IsT0.Should().BeTrue("Expected successful creation for blind-based game");
+		// Assert
+		result.IsT0.Should().BeTrue("Expected successful creation for blind-based game");
 
-        var game = await DbContext.Games
-            .Include(g => g.GameType)
-            .FirstAsync(g => g.Id == gameId);
+		var game = await DbContext.Games
+			.Include(g => g.GameType)
+			.FirstAsync(g => g.Id == gameId);
 
-        game.GameType!.Code.Should().Be(gameCode);
-        game.SmallBlind.Should().Be(smallBlind);
-        game.BigBlind.Should().Be(bigBlind);
-    }
+		game.GameType!.Code.Should().Be(gameCode);
+		game.SmallBlind.Should().Be(smallBlind);
+		game.BigBlind.Should().Be(bigBlind);
+	}
 
-    [Fact]
-    public async Task Handle_WithMaxBuyIn_PersistsMaxBuyIn()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Capped Table",
-            10,
-            20,
-            new List<PlayerInfo>
-            {
-                new("Player1", 1000),
-                new("Player2", 1000)
-            },
-            MaxBuyIn: 250);
+	[Fact]
+	public async Task Handle_WithMaxBuyIn_PersistsMaxBuyIn()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Capped Table",
+			10,
+			20,
+			new List<PlayerInfo>
+			{
+				new("Player1", 1000),
+				new("Player2", 1000)
+			},
+			MaxBuyIn: 250);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        result.IsT0.Should().BeTrue();
+		// Assert
+		result.IsT0.Should().BeTrue();
 
-        var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
-        game.MaxBuyIn.Should().Be(250);
-    }
+		var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+		game.MaxBuyIn.Should().Be(250);
+	}
 
-    [Fact]
-    public async Task Handle_WithMaxBuyInBelowMinimum_ReturnsConflict()
-    {
-        // Arrange
-        var command = new CreateGameCommand(
-            Guid.NewGuid(),
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Invalid Capped Table",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000) },
-            MaxBuyIn: 5);
+	[Fact]
+	public async Task Handle_WithMaxBuyInBelowMinimum_ReturnsConflict()
+	{
+		// Arrange
+		var command = new CreateGameCommand(
+			Guid.NewGuid(),
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Invalid Capped Table",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000) },
+			MaxBuyIn: 5);
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        result.IsT1.Should().BeTrue();
-        result.AsT1.Reason.Should().Contain("Max buy-in must be at least 20");
-    }
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Reason.Should().Contain("Max buy-in must be at least 20");
+	}
 
-    [Fact]
-    public async Task Handle_EmptyGameId_ReturnsConflict()
-    {
-        // Arrange
-        var command = new CreateGameCommand(
-            Guid.Empty,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000) });
+	[Fact]
+	public async Task Handle_EmptyGameId_ReturnsConflict()
+	{
+		// Arrange
+		var command = new CreateGameCommand(
+			Guid.Empty,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000) });
 
-        // Act
-        var result = await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        result.IsT1.Should().BeTrue("Expected conflict result");
-        result.AsT1.Reason.Should().Contain("non-empty GUID");
-    }
+		// Assert
+		result.IsT1.Should().BeTrue("Expected conflict result");
+		result.AsT1.Reason.Should().Contain("non-empty GUID");
+	}
 
-    [Fact]
-    public async Task Handle_DuplicateGameId_ReturnsConflict()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command1 = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "First Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000) });
-        
-        await Mediator.Send(command1);
+	[Fact]
+	public async Task Handle_DuplicateGameId_ReturnsConflict()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command1 = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"First Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000) });
 
-        var command2 = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Second Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player2", 1000) });
+		await Mediator.Send(command1);
 
-        // Act
-        var result = await Mediator.Send(command2);
+		var command2 = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Second Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player2", 1000) });
 
-        // Assert
-        result.IsT1.Should().BeTrue("Expected conflict result");
-        result.AsT1.Reason.Should().Contain("already exists");
-    }
+		// Act
+		var result = await Mediator.Send(command2);
 
-    [Fact]
-    public async Task Handle_UnknownGameCode_ReturnsConflict()
-    {
-        // Arrange
-        var command = new CreateGameCommand(
-            Guid.NewGuid(),
-            "UNKNOWNGAME",
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000) });
+		// Assert
+		result.IsT1.Should().BeTrue("Expected conflict result");
+		result.AsT1.Reason.Should().Contain("already exists");
+	}
 
-        // Act
-        var result = await Mediator.Send(command);
+	[Fact]
+	public async Task Handle_UnknownGameCode_ReturnsConflict()
+	{
+		// Arrange
+		var command = new CreateGameCommand(
+			Guid.NewGuid(),
+			"UNKNOWNGAME",
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000) });
 
-        // Assert
-        result.IsT1.Should().BeTrue("Expected conflict result");
-        result.AsT1.Reason.Should().Contain("Unknown game code");
-    }
+		// Act
+		var result = await Mediator.Send(command);
 
-    [Fact]
-    public async Task Handle_CreatesPlayersWithCorrectChipStacks()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo>
-            {
-                new("Player1", 500),
-                new("Player2", 750),
-                new("Player3", 1000)
-            });
+		// Assert
+		result.IsT1.Should().BeTrue("Expected conflict result");
+		result.AsT1.Reason.Should().Contain("Unknown game code");
+	}
 
-        // Act
-        await Mediator.Send(command);
+	[Fact]
+	public async Task Handle_CreatesPlayersWithCorrectChipStacks()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo>
+			{
+				new("Player1", 500),
+				new("Player2", 750),
+				new("Player3", 1000)
+			});
 
-        // Assert
-        var gamePlayers = await DbContext.GamePlayers
-            .Where(gp => gp.GameId == gameId)
-            .OrderBy(gp => gp.SeatPosition)
-            .ToListAsync();
+		// Act
+		await Mediator.Send(command);
 
-        gamePlayers.Should().HaveCount(3);
-        gamePlayers[0].ChipStack.Should().Be(500);
-        gamePlayers[0].SeatPosition.Should().Be(0);
-        gamePlayers[1].ChipStack.Should().Be(750);
-        gamePlayers[1].SeatPosition.Should().Be(1);
-        gamePlayers[2].ChipStack.Should().Be(1000);
-        gamePlayers[2].SeatPosition.Should().Be(2);
-    }
+		// Assert
+		var gamePlayers = await DbContext.GamePlayers
+			.Where(gp => gp.GameId == gameId)
+			.OrderBy(gp => gp.SeatPosition)
+			.ToListAsync();
 
-    [Fact]
-    public async Task Handle_CreatesInitialPot()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
+		gamePlayers.Should().HaveCount(3);
+		gamePlayers[0].ChipStack.Should().Be(500);
+		gamePlayers[0].SeatPosition.Should().Be(0);
+		gamePlayers[1].ChipStack.Should().Be(750);
+		gamePlayers[1].SeatPosition.Should().Be(1);
+		gamePlayers[2].ChipStack.Should().Be(1000);
+		gamePlayers[2].SeatPosition.Should().Be(2);
+	}
 
-        // Act
-        await Mediator.Send(command);
+	[Fact]
+	public async Task Handle_CreatesInitialPot()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
 
-        // Assert
-        var pots = await DbContext.Pots
-            .Where(p => p.GameId == gameId)
-            .ToListAsync();
+		// Act
+		await Mediator.Send(command);
 
-        pots.Should().HaveCount(1);
-        pots[0].PotType.Should().Be(PotType.Main);
-        pots[0].Amount.Should().Be(0);
-        pots[0].HandNumber.Should().Be(1);
-        pots[0].IsAwarded.Should().BeFalse();
-    }
+		// Assert
+		var pots = await DbContext.Pots
+			.Where(p => p.GameId == gameId)
+			.ToListAsync();
 
-    [Fact]
-    public async Task Handle_ReusesExistingPlayer()
-    {
-        // Arrange
-        var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "ExistingPlayer");
-        
-        var command = new CreateGameCommand(
-            Guid.NewGuid(),
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("ExistingPlayer", 1000) });
+		pots.Should().HaveCount(1);
+		pots[0].PotType.Should().Be(PotType.Main);
+		pots[0].Amount.Should().Be(0);
+		pots[0].HandNumber.Should().Be(1);
+		pots[0].IsAwarded.Should().BeFalse();
+	}
 
-        // Act
-        await Mediator.Send(command);
+	[Fact]
+	public async Task Handle_ReusesExistingPlayer()
+	{
+		// Arrange
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "ExistingPlayer");
 
-        // Assert - Should reuse existing player, not create duplicate
-        var players = await DbContext.Players
-            .Where(p => p.Name == "ExistingPlayer")
-            .ToListAsync();
-        
-        players.Should().HaveCount(1);
-        players[0].Id.Should().Be(player.Id);
-    }
+		var command = new CreateGameCommand(
+			Guid.NewGuid(),
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("ExistingPlayer", 1000) });
 
-    [Fact]
-    public async Task Handle_CreatesGameType_WhenNotExists()
-    {
-        // Arrange
-        // Clear the game types from seed data to test creation
-        var existingTypes = await DbContext.GameTypes.ToListAsync();
-        DbContext.GameTypes.RemoveRange(existingTypes);
-        await DbContext.SaveChangesAsync();
+		// Act
+		await Mediator.Send(command);
 
-        var command = new CreateGameCommand(
-            Guid.NewGuid(),
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
+		// Assert - Should reuse existing player, not create duplicate
+		var players = await DbContext.Players
+			.Where(p => p.Name == "ExistingPlayer")
+			.ToListAsync();
 
-        // Act
-        var result = await Mediator.Send(command);
+		players.Should().HaveCount(1);
+		players[0].Id.Should().Be(player.Id);
+	}
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        
-        var gameType = await DbContext.GameTypes
-            .FirstOrDefaultAsync(gt => gt.Code == PokerGameMetadataRegistry.FiveCardDrawCode);
-        gameType.Should().NotBeNull();
-        gameType!.Name.Should().Be("Five Card Draw");
-    }
+	[Fact]
+	public async Task Handle_CreatesGameType_WhenNotExists()
+	{
+		// Arrange
+		// Clear the game types from seed data to test creation
+		var existingTypes = await DbContext.GameTypes.ToListAsync();
+		DbContext.GameTypes.RemoveRange(existingTypes);
+		await DbContext.SaveChangesAsync();
 
-    [Fact]
-    public async Task Handle_SetsCorrectPlayerStatus()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
+		var command = new CreateGameCommand(
+			Guid.NewGuid(),
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
 
-        // Act
-        await Mediator.Send(command);
+		// Act
+		var result = await Mediator.Send(command);
 
-        // Assert
-        var gamePlayers = await DbContext.GamePlayers
-            .Where(gp => gp.GameId == gameId)
-            .ToListAsync();
+		// Assert
+		result.IsT0.Should().BeTrue();
 
-        gamePlayers.Should().AllSatisfy(gp =>
-        {
-            gp.Status.Should().Be(GamePlayerStatus.Active);
-            gp.HasFolded.Should().BeFalse();
-            gp.IsAllIn.Should().BeFalse();
-            gp.IsSittingOut.Should().BeFalse();
-            gp.IsConnected.Should().BeTrue();
-        });
-    }
+		var gameType = await DbContext.GameTypes
+			.FirstOrDefaultAsync(gt => gt.Code == PokerGameMetadataRegistry.FiveCardDrawCode);
+		gameType.Should().NotBeNull();
+		gameType!.Name.Should().Be("Five Card Draw");
+	}
 
-    [Fact]
-    public async Task Handle_SetsGameDealerPositionToZero()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
+	[Fact]
+	public async Task Handle_SetsCorrectPlayerStatus()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
 
-        // Act
-        await Mediator.Send(command);
+		// Act
+		await Mediator.Send(command);
 
-        // Assert
-        var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
-        game.DealerPosition.Should().Be(0);
-        game.CurrentPlayerIndex.Should().Be(-1);
-        game.CurrentDrawPlayerIndex.Should().Be(-1);
-    }
+		// Assert
+		var gamePlayers = await DbContext.GamePlayers
+			.Where(gp => gp.GameId == gameId)
+			.ToListAsync();
 
-    [Fact]
-    public async Task Handle_NullGameName_CreatesGameWithDefaultName()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            null,
-            10,
-            20,
-            new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
+		gamePlayers.Should().AllSatisfy(gp =>
+		{
+			gp.Status.Should().Be(GamePlayerStatus.Active);
+			gp.HasFolded.Should().BeFalse();
+			gp.IsAllIn.Should().BeFalse();
+			gp.IsSittingOut.Should().BeFalse();
+			gp.IsConnected.Should().BeTrue();
+		});
+	}
 
-        // Act
-        var result = await Mediator.Send(command);
+	[Fact]
+	public async Task Handle_SetsGameDealerPositionToZero()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
 
-        // Assert
-        result.IsT0.Should().BeTrue();
-        var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
-        game.Name.Should().BeNull();
-    }
+		// Act
+		await Mediator.Send(command);
 
-    [Theory]
-    [InlineData(10, 10)]
-    [InlineData(20, 10)]
-    [InlineData(5, 1)]
-    public async Task Handle_BigBlindNotGreaterThanSmallBlind_ReturnsConflict(int smallBlind, int bigBlind)
-    {
-        // Arrange
-        var command = new CreateGameCommand(
-            Guid.NewGuid(),
-            PokerGameMetadataRegistry.HoldEmCode,
-            "Invalid Blinds Table",
-            0,
-            10,
-            new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) },
-            SmallBlind: smallBlind,
-            BigBlind: bigBlind);
+		// Assert
+		var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+		game.DealerPosition.Should().Be(0);
+		game.CurrentPlayerIndex.Should().Be(-1);
+		game.CurrentDrawPlayerIndex.Should().Be(-1);
+	}
 
-        // Act
-        var result = await Mediator.Send(command);
+	[Fact]
+	public async Task Handle_NullGameName_CreatesGameWithDefaultName()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			null,
+			10,
+			20,
+			new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) });
 
-        // Assert
-        result.IsT1.Should().BeTrue("Expected conflict when big blind is not greater than small blind");
-        result.AsT1.Reason.Should().Contain("Big blind must be greater than small blind");
-    }
+		// Act
+		var result = await Mediator.Send(command);
+
+		// Assert
+		result.IsT0.Should().BeTrue();
+		var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+		game.Name.Should().BeNull();
+	}
+
+	[Theory]
+	[InlineData(10, 10)]
+	[InlineData(20, 10)]
+	[InlineData(5, 1)]
+	public async Task Handle_BigBlindNotGreaterThanSmallBlind_ReturnsConflict(int smallBlind, int bigBlind)
+	{
+		// Arrange
+		var command = new CreateGameCommand(
+			Guid.NewGuid(),
+			PokerGameMetadataRegistry.HoldEmCode,
+			"Invalid Blinds Table",
+			0,
+			10,
+			new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) },
+			SmallBlind: smallBlind,
+			BigBlind: bigBlind);
+
+		// Act
+		var result = await Mediator.Send(command);
+
+		// Assert
+		result.IsT1.Should().BeTrue("Expected conflict when big blind is not greater than small blind");
+		result.AsT1.Reason.Should().Contain("Big blind must be greater than small blind");
+	}
 }

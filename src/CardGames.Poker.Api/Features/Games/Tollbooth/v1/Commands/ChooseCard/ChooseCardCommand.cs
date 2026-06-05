@@ -12,18 +12,18 @@ public record ChooseCardCommand(
 public record ChooseCardRequest
 {
 	/// <summary>
-	/// The Tollbooth choice: Furthest (free), Nearest (1× ante), or Deck (2× ante).
+	///     The Tollbooth choice: Furthest (free), Nearest (1× ante), or Deck (2× ante).
 	/// </summary>
 	public TollboothChoice Choice { get; init; }
 
 	/// <summary>
-	/// Optional: explicit seat index override (for testing / admin).
+	///     Optional: explicit seat index override (for testing / admin).
 	/// </summary>
 	public int? PlayerSeatIndex { get; init; }
 }
 
 /// <summary>
-/// The three Tollbooth card choices available to each player.
+///     The three Tollbooth card choices available to each player.
 /// </summary>
 public enum TollboothChoice
 {

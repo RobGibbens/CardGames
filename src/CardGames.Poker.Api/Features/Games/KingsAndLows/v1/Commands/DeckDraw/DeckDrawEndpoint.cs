@@ -9,7 +9,8 @@ public static class DeckDrawEndpoint
 	public static RouteGroupBuilder MapDeckDraw(this RouteGroupBuilder group)
 	{
 		group.MapPost("/{gameId:guid}/deck-draw",
-				async (Guid gameId, DeckDrawRequest request, IMediator mediator, IGameStateBroadcaster broadcaster, CancellationToken cancellationToken) =>
+				async (Guid gameId, DeckDrawRequest request, IMediator mediator, IGameStateBroadcaster broadcaster,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new DeckDrawCommand(gameId, request.PlayerId, request.DiscardIndices);
 					var result = await mediator.Send(command, cancellationToken);
@@ -32,7 +33,7 @@ public static class DeckDrawEndpoint
 			.WithName($"KingsAndLows{nameof(MapDeckDraw).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapDeckDraw).TrimPrefix("Map"))
 			.WithDescription("Process the deck's draw in player-vs-deck scenario.")
-			.Produces<DeckDrawSuccessful>(StatusCodes.Status200OK)
+			.Produces<DeckDrawSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

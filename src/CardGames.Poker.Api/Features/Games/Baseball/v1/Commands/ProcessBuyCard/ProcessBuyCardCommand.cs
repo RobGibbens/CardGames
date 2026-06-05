@@ -5,7 +5,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBuyCard;
 
 /// <summary>
-/// Command to process a buy-card decision in Baseball poker.
+///     Command to process a buy-card decision in Baseball poker.
 /// </summary>
 public record ProcessBuyCardCommand(
 	Guid GameId,

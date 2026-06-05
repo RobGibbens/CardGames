@@ -1,7 +1,6 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Poker.Api.Data;
@@ -168,12 +167,14 @@ public class ProcessDrawCommandHandlerTests
 
 		for (var cardIndex = 0; cardIndex < currentPlayerCardCount; cardIndex++)
 		{
-			context.GameCards.Add(CreatePlayerCard(game, firstGamePlayer, cardIndex, firstPlayerSymbols[cardIndex], now));
+			context.GameCards.Add(
+				CreatePlayerCard(game, firstGamePlayer, cardIndex, firstPlayerSymbols[cardIndex], now));
 		}
 
 		for (var cardIndex = 0; cardIndex < 5; cardIndex++)
 		{
-			context.GameCards.Add(CreatePlayerCard(game, secondGamePlayer, cardIndex, (CardSymbol)(cardIndex + 8), now));
+			context.GameCards.Add(CreatePlayerCard(game, secondGamePlayer, cardIndex, (CardSymbol)(cardIndex + 8),
+				now));
 		}
 
 		for (var cardIndex = 0; cardIndex < deckCardCount; cardIndex++)

@@ -3,6 +3,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
@@ -20,6 +21,8 @@ using EntityLeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 using EntityLeagueSeasonEventStatus = CardGames.Poker.Api.Data.Entities.LeagueSeasonEventStatus;
 using EntityLeagueSeasonStatus = CardGames.Poker.Api.Data.Entities.LeagueSeasonStatus;
 using LaunchCreateGameCommand = CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand;
+using LeagueEventSourceType =
+	CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LeagueEventSourceType;
 
 namespace CardGames.Poker.Tests.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession;
 
@@ -29,9 +32,11 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 	public async Task Handle_WhenUserIsUnauthenticated_ReturnsUnauthorized()
 	{
 		await using var context = CreateContext();
-		var sut = CreateSut(context, currentUserService: CreateCurrentUserService(isAuthenticated: false, userId: null));
+		var sut = CreateSut(context,
+			currentUserService: CreateCurrentUserService(isAuthenticated: false, userId: null));
 
-		var result = await sut.Handle(CreateSeasonCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()), CancellationToken.None);
+		var result = await sut.Handle(CreateSeasonCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(LaunchLeagueEventSessionErrorCode.Unauthorized);
@@ -64,7 +69,8 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(CreateSeasonCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()), CancellationToken.None);
+		var result = await sut.Handle(CreateSeasonCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(LaunchLeagueEventSessionErrorCode.LeagueNotFound);
@@ -77,7 +83,8 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		var leagueId = await SeedLeagueAsync(context);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(CreateSeasonCommand(leagueId, Guid.NewGuid(), Guid.NewGuid()), CancellationToken.None);
+		var result = await sut.Handle(CreateSeasonCommand(leagueId, Guid.NewGuid(), Guid.NewGuid()),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(LaunchLeagueEventSessionErrorCode.Forbidden);
@@ -159,7 +166,8 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		await using var context = CreateContext();
 		var leagueId = await SeedLeagueAsync(context);
 		var seasonId = await SeedSeasonAsync(context, leagueId);
-		var seasonEventId = await SeedSeasonEventAsync(context, leagueId, seasonId, gameTypeCode: "NOPE", tournamentBuyIn: 500);
+		var seasonEventId =
+			await SeedSeasonEventAsync(context, leagueId, seasonId, gameTypeCode: "NOPE", tournamentBuyIn: 500);
 		await SeedManagerMembershipAsync(context, leagueId, "manager-user");
 		var sut = CreateSut(context);
 
@@ -176,7 +184,8 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		await using var context = CreateContext();
 		var leagueId = await SeedLeagueAsync(context);
 		var seasonId = await SeedSeasonAsync(context, leagueId);
-		var seasonEventId = await SeedSeasonEventAsync(context, leagueId, seasonId, tournamentBuyIn: 500, launchedGameId: Guid.NewGuid());
+		var seasonEventId = await SeedSeasonEventAsync(context, leagueId, seasonId, tournamentBuyIn: 500,
+			launchedGameId: Guid.NewGuid());
 		await SeedManagerMembershipAsync(context, leagueId, "manager-user");
 		var sut = CreateSut(context);
 
@@ -246,7 +255,7 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		persistedEvent.LaunchedAtUtc.Should().NotBeNull();
 
 		await leagueBroadcaster.Received(1).BroadcastEventSessionLaunchedAsync(
-			Arg.Is<CardGames.Contracts.SignalR.LeagueEventSessionLaunchedDto>(dto =>
+			Arg.Is<LeagueEventSessionLaunchedDto>(dto =>
 				dto.LeagueId == leagueId &&
 				dto.EventId == seasonEventId &&
 				dto.SeasonId == seasonId &&
@@ -263,7 +272,8 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		var shouldConfigureDefaultMediatorResponse = mediator is null;
 		mediator ??= Substitute.For<IMediator>();
 		leagueBroadcaster ??= Substitute.For<ILeagueBroadcaster>();
-		currentUserService ??= CreateCurrentUserService(isAuthenticated: true, userId: "manager-user", userName: "Manager User");
+		currentUserService ??=
+			CreateCurrentUserService(isAuthenticated: true, userId: "manager-user", userName: "Manager User");
 
 		if (shouldConfigureDefaultMediatorResponse)
 		{
@@ -294,7 +304,8 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		return new CardsDbContext(options);
 	}
 
-	private static ICurrentUserService CreateCurrentUserService(bool isAuthenticated, string? userId, string? userName = null)
+	private static ICurrentUserService CreateCurrentUserService(bool isAuthenticated, string? userId,
+		string? userName = null)
 	{
 		var currentUserService = Substitute.For<ICurrentUserService>();
 		currentUserService.IsAuthenticated.Returns(isAuthenticated);
@@ -329,7 +340,8 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		};
 	}
 
-	private static async Task<Guid> SeedLeagueAsync(CardsDbContext context, string createdByUserId = "owner-user", string name = "Test League")
+	private static async Task<Guid> SeedLeagueAsync(CardsDbContext context, string createdByUserId = "owner-user",
+		string name = "Test League")
 	{
 		var league = new League
 		{

@@ -4,17 +4,18 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
 
 /// <summary>
-/// Endpoint for processing draw actions in a Five Card Draw game.
+///     Endpoint for processing draw actions in a Five Card Draw game.
 /// </summary>
 public static class ProcessDrawEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for processing draw actions.
+	///     Maps the POST endpoint for processing draw actions.
 	/// </summary>
 	public static RouteGroupBuilder MapProcessDraw(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/draw",
-				async (Guid gameId, ProcessDrawRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, ProcessDrawRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new ProcessDrawCommand(gameId, request.DiscardIndices);
 					var result = await mediator.Send(command, cancellationToken);

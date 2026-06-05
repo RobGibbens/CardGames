@@ -6,11 +6,12 @@ using CardGames.Poker.Betting;
 using CardGames.Poker.Games.Baseball;
 using CardGames.Poker.Games.GameFlow;
 using Microsoft.EntityFrameworkCore;
+using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.GameFlow;
 
 /// <summary>
-/// Game flow handler for Baseball poker.
+///     Game flow handler for Baseball poker.
 /// </summary>
 public sealed class BaseballFlowHandler : BaseGameFlowHandler
 {
@@ -18,10 +19,13 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 	public override string GameTypeCode => "BASEBALL";
 
 	/// <inheritdoc />
-	public override GameRules GetGameRules() => new BaseballGame().GetGameRules();
+	public override IReadOnlyList<string> SpecialPhases => [nameof(Phases.BuyCardOffer)];
 
 	/// <inheritdoc />
-	public override IReadOnlyList<string> SpecialPhases => [nameof(Phases.BuyCardOffer)];
+	public override GameRules GetGameRules()
+	{
+		return new BaseballGame().GetGameRules();
+	}
 
 	/// <inheritdoc />
 	public override DealingConfiguration GetDealingConfiguration()
@@ -107,8 +111,8 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 	{
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id &&
-						 gc.HandNumber == game.CurrentHandNumber &&
-						 gc.Location == CardLocation.Deck)
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -198,7 +202,9 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		{
 			var pendingDefaultBuyCardPrice = game.MinBet ?? 0;
 			var pendingBuyCardState = BaseballGameSettings.GetState(game, pendingDefaultBuyCardPrice);
-			var pendingResolvedBuyCardPrice = pendingBuyCardState.BuyCardPrice > 0 ? pendingBuyCardState.BuyCardPrice : pendingDefaultBuyCardPrice;
+			var pendingResolvedBuyCardPrice = pendingBuyCardState.BuyCardPrice > 0
+				? pendingBuyCardState.BuyCardPrice
+				: pendingDefaultBuyCardPrice;
 
 			BaseballGameSettings.SaveState(game, pendingBuyCardState with
 			{
@@ -224,7 +230,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 
 		var bringInPlayer = FindBringInPlayer(playerUpCards);
 		var bringInSeatPosition = bringInPlayer?.SeatPosition ??
-			playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
+		                          playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
 
 		var bringIn = game.BringIn ?? 0;
 		var currentBet = 0;
@@ -238,8 +244,8 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 
 			var pot = await context.Pots
 				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-										  p.HandNumber == game.CurrentHandNumber &&
-										  p.PotType == PotType.Main,
+				                          p.HandNumber == game.CurrentHandNumber &&
+				                          p.PotType == PotType.Main,
 					cancellationToken);
 			if (pot is not null)
 			{
@@ -248,7 +254,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		}
 
 		var minBet = game.SmallBet ?? game.MinBet ?? 0;
-		var bettingRound = new Data.Entities.BettingRound
+		var bettingRound = new BettingRound
 		{
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber,
@@ -267,7 +273,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 			StartedAt = now
 		};
 
-		context.Set<Data.Entities.BettingRound>().Add(bettingRound);
+		context.Set<BettingRound>().Add(bettingRound);
 
 		var defaultBuyCardPrice = game.MinBet ?? 0;
 		var buyCardState = BaseballGameSettings.GetState(game, defaultBuyCardPrice);
@@ -294,7 +300,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 	public override async Task PerformAutoActionAsync(AutoActionContext context)
 	{
 		if (string.Equals(context.CurrentPhase, nameof(Phases.BuyCardOffer), StringComparison.OrdinalIgnoreCase) &&
-			context.PlayerSeatIndex >= 0)
+		    context.PlayerSeatIndex >= 0)
 		{
 			var player = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
 			if (player is null)
@@ -346,30 +352,36 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
 
-	private static int GetCardValue(CardSymbol symbol) => symbol switch
+	private static int GetCardValue(CardSymbol symbol)
 	{
-		CardSymbol.Deuce => 2,
-		CardSymbol.Three => 3,
-		CardSymbol.Four => 4,
-		CardSymbol.Five => 5,
-		CardSymbol.Six => 6,
-		CardSymbol.Seven => 7,
-		CardSymbol.Eight => 8,
-		CardSymbol.Nine => 9,
-		CardSymbol.Ten => 10,
-		CardSymbol.Jack => 11,
-		CardSymbol.Queen => 12,
-		CardSymbol.King => 13,
-		CardSymbol.Ace => 14,
-		_ => 0
-	};
+		return symbol switch
+		{
+			CardSymbol.Deuce => 2,
+			CardSymbol.Three => 3,
+			CardSymbol.Four => 4,
+			CardSymbol.Five => 5,
+			CardSymbol.Six => 6,
+			CardSymbol.Seven => 7,
+			CardSymbol.Eight => 8,
+			CardSymbol.Nine => 9,
+			CardSymbol.Ten => 10,
+			CardSymbol.Jack => 11,
+			CardSymbol.Queen => 12,
+			CardSymbol.King => 13,
+			CardSymbol.Ace => 14,
+			_ => 0
+		};
+	}
 
-	private static int GetSuitRank(CardSuit suit) => suit switch
+	private static int GetSuitRank(CardSuit suit)
 	{
-		CardSuit.Clubs => 0,
-		CardSuit.Diamonds => 1,
-		CardSuit.Hearts => 2,
-		CardSuit.Spades => 3,
-		_ => 0
-	};
+		return suit switch
+		{
+			CardSuit.Clubs => 0,
+			CardSuit.Diamonds => 1,
+			CardSuit.Hearts => 2,
+			CardSuit.Spades => 3,
+			_ => 0
+		};
+	}
 }

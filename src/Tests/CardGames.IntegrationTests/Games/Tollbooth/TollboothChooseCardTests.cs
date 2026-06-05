@@ -1,6 +1,8 @@
+using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.Tollbooth;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction;
+using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.IntegrationTests.Games.Tollbooth;
 
@@ -183,10 +185,12 @@ public class TollboothChooseCardTests : IntegrationTestBase
 
 		var activeBettingRounds = await freshDb.BettingRounds
 			.Where(br => br.GameId == game.Id &&
-						 br.HandNumber == game.CurrentHandNumber &&
-						 !br.IsComplete)
+			             br.HandNumber == game.CurrentHandNumber &&
+			             !br.IsComplete)
 			.ToListAsync();
-		activeBettingRounds.Should().BeEmpty("the final Tollbooth offer should not create a dead seventh-street betting round when nobody can bet");
+		activeBettingRounds.Should()
+			.BeEmpty(
+				"the final Tollbooth offer should not create a dead seventh-street betting round when nobody can bet");
 	}
 
 	[Fact]
@@ -210,8 +214,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 
 		var staleBettingAction = await Mediator.Send(new ProcessBettingActionCommand(
 			game.Id,
-			CardGames.Poker.Api.Data.Entities.BettingActionType.Check,
-			0));
+			BettingActionType.Check));
 
 		staleBettingAction.IsT0.Should().BeTrue();
 		staleBettingAction.AsT0.CurrentPhase.Should().Be(nameof(Phases.Showdown));
@@ -224,8 +227,8 @@ public class TollboothChooseCardTests : IntegrationTestBase
 
 		var activeBettingRounds = await freshDb.BettingRounds
 			.Where(br => br.GameId == game.Id &&
-						 br.HandNumber == game.CurrentHandNumber &&
-						 !br.IsComplete)
+			             br.HandNumber == game.CurrentHandNumber &&
+			             !br.IsComplete)
 			.ToListAsync();
 		activeBettingRounds.Should().BeEmpty();
 	}
@@ -240,9 +243,9 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		// Count community cards before
 		var communityBefore = await DbContext.GameCards
 			.CountAsync(gc => gc.GameId == game.Id &&
-							  gc.HandNumber == game.CurrentHandNumber &&
-							  gc.Location == CardLocation.Community &&
-							  gc.GamePlayerId == null);
+			                  gc.HandNumber == game.CurrentHandNumber &&
+			                  gc.Location == CardLocation.Community &&
+			                  gc.GamePlayerId == null);
 		communityBefore.Should().Be(2, "two display cards should be placed");
 
 		await Mediator.Send(new ChooseCardCommand(
@@ -252,9 +255,9 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		var freshDb = GetFreshDbContext();
 		var communityAfter = await freshDb.GameCards
 			.CountAsync(gc => gc.GameId == game.Id &&
-							  gc.HandNumber == game.CurrentHandNumber &&
-							  gc.Location == CardLocation.Community &&
-							  gc.GamePlayerId == null);
+			                  gc.HandNumber == game.CurrentHandNumber &&
+			                  gc.Location == CardLocation.Community &&
+			                  gc.GamePlayerId == null);
 		communityAfter.Should().Be(2, "display card removed should be replenished from deck");
 	}
 
@@ -271,9 +274,9 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		var freshDb = GetFreshDbContext();
 		var communityAfter = await freshDb.GameCards
 			.CountAsync(gc => gc.GameId == game.Id &&
-							  gc.HandNumber == game.CurrentHandNumber &&
-							  gc.Location == CardLocation.Community &&
-							  gc.GamePlayerId == null);
+			                  gc.HandNumber == game.CurrentHandNumber &&
+			                  gc.Location == CardLocation.Community &&
+			                  gc.GamePlayerId == null);
 		communityAfter.Should().Be(2, "display cards should remain unchanged when drawing from deck");
 	}
 
@@ -319,23 +322,21 @@ public class TollboothChooseCardTests : IntegrationTestBase
 
 		var bettingRound = await freshDb1.BettingRounds
 			.Where(br => br.GameId == game.Id &&
-						 br.HandNumber == game.CurrentHandNumber &&
-						 !br.IsComplete &&
-						 br.Street == nameof(Phases.SeventhStreet))
+			             br.HandNumber == game.CurrentHandNumber &&
+			             !br.IsComplete &&
+			             br.Street == nameof(Phases.SeventhStreet))
 			.FirstOrDefaultAsync();
 		bettingRound.Should().NotBeNull("a SeventhStreet betting round should have been created");
 
 		// Complete the SeventhStreet betting round: first player checks, second player checks
 		var firstBet = await Mediator.Send(new ProcessBettingActionCommand(
 			game.Id,
-			CardGames.Poker.Api.Data.Entities.BettingActionType.Check,
-			0));
+			BettingActionType.Check));
 		firstBet.IsT0.Should().BeTrue("first player check should succeed");
 
 		var secondBet = await Mediator.Send(new ProcessBettingActionCommand(
 			game.Id,
-			CardGames.Poker.Api.Data.Entities.BettingActionType.Check,
-			0));
+			BettingActionType.Check));
 		secondBet.IsT0.Should().BeTrue("second player check should succeed");
 		secondBet.AsT0.RoundComplete.Should().BeTrue("both players checked so round is complete");
 		secondBet.AsT0.CurrentPhase.Should().Be(nameof(Phases.Showdown),
@@ -359,20 +360,22 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		var players = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
 		// --- Cycle 1: TollboothOffer (previousStreet=ThirdStreet) → FourthStreet ---
-		var r1a = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, players[0].SeatPosition));
+		var r1a = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest,
+			players[0].SeatPosition));
 		r1a.IsT0.Should().BeTrue("cycle 1: first player choose should succeed");
 		r1a.AsT0.OfferRoundComplete.Should().BeFalse();
 
-		var r1b = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, players[1].SeatPosition));
+		var r1b = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest,
+			players[1].SeatPosition));
 		r1b.IsT0.Should().BeTrue("cycle 1: second player choose should succeed");
 		r1b.AsT0.OfferRoundComplete.Should().BeTrue();
 		r1b.AsT0.CurrentPhase.Should().Be(nameof(Phases.FourthStreet));
 
 		// FourthStreet betting: check/check
-		var b1a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, CardGames.Poker.Api.Data.Entities.BettingActionType.Check, 0));
+		var b1a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 		b1a.IsT0.Should().BeTrue("cycle 1: first player check should succeed");
 
-		var b1b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, CardGames.Poker.Api.Data.Entities.BettingActionType.Check, 0));
+		var b1b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 		b1b.IsT0.Should().BeTrue("cycle 1: second player check should succeed");
 		b1b.AsT0.RoundComplete.Should().BeTrue();
 		b1b.AsT0.CurrentPhase.Should().Be(nameof(Phases.TollboothOffer),
@@ -388,57 +391,63 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		}
 
 		// --- Cycle 2: TollboothOffer (previousStreet=FourthStreet) → FifthStreet ---
-		var r2a = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, players[0].SeatPosition));
+		var r2a = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest,
+			players[0].SeatPosition));
 		r2a.IsT0.Should().BeTrue("cycle 2: first player choose should succeed");
 
-		var r2b = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, players[1].SeatPosition));
+		var r2b = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest,
+			players[1].SeatPosition));
 		r2b.IsT0.Should().BeTrue("cycle 2: second player choose should succeed");
 		r2b.AsT0.OfferRoundComplete.Should().BeTrue();
 		r2b.AsT0.CurrentPhase.Should().Be(nameof(Phases.FifthStreet));
 
 		// FifthStreet betting: check/check
-		var b2a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, CardGames.Poker.Api.Data.Entities.BettingActionType.Check, 0));
+		var b2a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 		b2a.IsT0.Should().BeTrue("cycle 2: first player check should succeed");
 
-		var b2b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, CardGames.Poker.Api.Data.Entities.BettingActionType.Check, 0));
+		var b2b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 		b2b.IsT0.Should().BeTrue("cycle 2: second player check should succeed");
 		b2b.AsT0.RoundComplete.Should().BeTrue();
 		b2b.AsT0.CurrentPhase.Should().Be(nameof(Phases.TollboothOffer),
 			"after FifthStreet betting, Tollbooth should redirect to TollboothOffer for 6th street cards");
 
 		// --- Cycle 3: TollboothOffer (previousStreet=FifthStreet) → SixthStreet ---
-		var r3a = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, players[0].SeatPosition));
+		var r3a = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest,
+			players[0].SeatPosition));
 		r3a.IsT0.Should().BeTrue("cycle 3: first player choose should succeed");
 
-		var r3b = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, players[1].SeatPosition));
+		var r3b = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest,
+			players[1].SeatPosition));
 		r3b.IsT0.Should().BeTrue("cycle 3: second player choose should succeed");
 		r3b.AsT0.OfferRoundComplete.Should().BeTrue();
 		r3b.AsT0.CurrentPhase.Should().Be(nameof(Phases.SixthStreet));
 
 		// SixthStreet betting: check/check
-		var b3a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, CardGames.Poker.Api.Data.Entities.BettingActionType.Check, 0));
+		var b3a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 		b3a.IsT0.Should().BeTrue("cycle 3: first player check should succeed");
 
-		var b3b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, CardGames.Poker.Api.Data.Entities.BettingActionType.Check, 0));
+		var b3b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 		b3b.IsT0.Should().BeTrue("cycle 3: second player check should succeed");
 		b3b.AsT0.RoundComplete.Should().BeTrue();
 		b3b.AsT0.CurrentPhase.Should().Be(nameof(Phases.TollboothOffer),
 			"after SixthStreet betting, Tollbooth should redirect to TollboothOffer for 7th street cards");
 
 		// --- Cycle 4: TollboothOffer (previousStreet=SixthStreet) → SeventhStreet → Showdown ---
-		var r4a = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, players[0].SeatPosition));
+		var r4a = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest,
+			players[0].SeatPosition));
 		r4a.IsT0.Should().BeTrue("cycle 4: first player choose should succeed");
 
-		var r4b = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, players[1].SeatPosition));
+		var r4b = await Mediator.Send(new ChooseCardCommand(game.Id, TollboothChoice.Furthest,
+			players[1].SeatPosition));
 		r4b.IsT0.Should().BeTrue("cycle 4: second player choose should succeed");
 		r4b.AsT0.OfferRoundComplete.Should().BeTrue();
 		r4b.AsT0.CurrentPhase.Should().Be(nameof(Phases.SeventhStreet));
 
 		// SeventhStreet betting: check/check
-		var b4a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, CardGames.Poker.Api.Data.Entities.BettingActionType.Check, 0));
+		var b4a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 		b4a.IsT0.Should().BeTrue("cycle 4: first player check should succeed");
 
-		var b4b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, CardGames.Poker.Api.Data.Entities.BettingActionType.Check, 0));
+		var b4b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
 		b4b.IsT0.Should().BeTrue("cycle 4: second player check should succeed");
 		b4b.AsT0.RoundComplete.Should().BeTrue();
 		b4b.AsT0.CurrentPhase.Should().Be(nameof(Phases.Showdown),
@@ -455,17 +464,17 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		{
 			var cardCount = await freshDb.GameCards
 				.CountAsync(gc => gc.GamePlayerId == player.Id &&
-								  gc.HandNumber == game.CurrentHandNumber &&
-								  !gc.IsDiscarded &&
-								  gc.Location != CardLocation.Deck);
+				                  gc.HandNumber == game.CurrentHandNumber &&
+				                  !gc.IsDiscarded &&
+				                  gc.Location != CardLocation.Deck);
 			cardCount.Should().Be(7, $"player at seat {player.SeatPosition} should have 7 cards after all streets");
 		}
 
 		// Verify no active (incomplete) betting rounds remain
 		var activeBettingRounds = await freshDb.BettingRounds
 			.Where(br => br.GameId == game.Id &&
-						 br.HandNumber == game.CurrentHandNumber &&
-						 !br.IsComplete)
+			             br.HandNumber == game.CurrentHandNumber &&
+			             !br.IsComplete)
 			.ToListAsync();
 		activeBettingRounds.Should().BeEmpty("all betting rounds should be complete");
 	}
@@ -505,10 +514,11 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		{
 			var cardCount = await freshDb.GameCards
 				.CountAsync(gc => gc.GamePlayerId == player.Id &&
-								  gc.HandNumber == game.CurrentHandNumber &&
-								  !gc.IsDiscarded &&
-								  gc.Location != CardLocation.Deck);
-			cardCount.Should().Be(7, $"player at seat {player.SeatPosition} should have all 7 cards after all-in runout");
+				                  gc.HandNumber == game.CurrentHandNumber &&
+				                  !gc.IsDiscarded &&
+				                  gc.Location != CardLocation.Deck);
+			cardCount.Should().Be(7,
+				$"player at seat {player.SeatPosition} should have all 7 cards after all-in runout");
 		}
 
 		// 7th street card should be a hole card
@@ -516,9 +526,9 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		{
 			var seventhStreetCard = await freshDb.GameCards
 				.FirstOrDefaultAsync(gc => gc.GamePlayerId == player.Id &&
-										   gc.HandNumber == game.CurrentHandNumber &&
-										   gc.DealtAtPhase == nameof(Phases.SeventhStreet) &&
-										   gc.Location != CardLocation.Deck);
+				                           gc.HandNumber == game.CurrentHandNumber &&
+				                           gc.DealtAtPhase == nameof(Phases.SeventhStreet) &&
+				                           gc.Location != CardLocation.Deck);
 			seventhStreetCard.Should().NotBeNull();
 			seventhStreetCard!.Location.Should().Be(CardLocation.Hole, "7th street cards should be hole cards");
 			seventhStreetCard.IsVisible.Should().BeFalse("7th street cards should be face down");
@@ -527,15 +537,15 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		// No active betting rounds should remain
 		var activeBettingRounds = await freshDb.BettingRounds
 			.Where(br => br.GameId == game.Id &&
-						 br.HandNumber == game.CurrentHandNumber &&
-						 !br.IsComplete)
+			             br.HandNumber == game.CurrentHandNumber &&
+			             !br.IsComplete)
 			.ToListAsync();
 		activeBettingRounds.Should().BeEmpty("all-in runout should skip betting rounds");
 	}
 
 	/// <summary>
-	/// Sets up a Tollbooth game in TollboothOffer phase with 2 display community cards,
-	/// cards dealt to all players (3 each: 2 hole + 1 board), and deck cards remaining.
+	///     Sets up a Tollbooth game in TollboothOffer phase with 2 display community cards,
+	///     cards dealt to all players (3 each: 2 hole + 1 board), and deck cards remaining.
 	/// </summary>
 	private async Task<GameSetup> CreateTollboothGameInOfferPhaseAsync(
 		int playerCount = 3,
@@ -662,7 +672,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		}
 
 		// Create the main pot
-		DbContext.Add(new CardGames.Poker.Api.Data.Entities.Pot
+		DbContext.Add(new Pot
 		{
 			Id = Guid.CreateVersion7(),
 			GameId = game.Id,
@@ -686,8 +696,10 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		return new GameSetup(loadedGame, setup.Players, setup.GamePlayers);
 	}
 
-	private static CardSymbol GetNextSymbol(CardSymbol current) =>
-		current == CardSymbol.Ace ? CardSymbol.Deuce : current + 1;
+	private static CardSymbol GetNextSymbol(CardSymbol current)
+	{
+		return current == CardSymbol.Ace ? CardSymbol.Deuce : current + 1;
+	}
 
 	private async Task EnsureTollboothGameTypeAsync()
 	{

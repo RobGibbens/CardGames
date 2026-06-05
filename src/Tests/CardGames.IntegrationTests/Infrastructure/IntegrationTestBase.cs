@@ -1,68 +1,59 @@
-using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.GameFlow;
-using CardGames.Poker.Betting;
-using CardGames.Poker.Api.Services;
-using CardGames.Poker.Api.Infrastructure;
-using CardGames.Poker.Evaluation;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
+using CardGames.Poker.Evaluation;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace CardGames.IntegrationTests.Infrastructure;
 
 /// <summary>
-/// Base class for integration tests that require database access and DI services.
-/// Uses an in-memory database for fast, isolated testing of handlers and game flows.
+///     Base class for integration tests that require database access and DI services.
+///     Uses an in-memory database for fast, isolated testing of handlers and game flows.
 /// </summary>
 public abstract class IntegrationTestBase : IAsyncLifetime
 {
-    protected IServiceProvider ServiceProvider { get; private set; } = null!;
-    protected IServiceScope Scope { get; private set; } = null!;
-    protected CardsDbContext DbContext => Scope.ServiceProvider.GetRequiredService<CardsDbContext>();
-    protected IMediator Mediator => Scope.ServiceProvider.GetRequiredService<IMediator>();
-    protected IGameFlowHandlerFactory FlowHandlerFactory => Scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
-    
-    private readonly string _databaseName = $"TestDb_{Guid.NewGuid():N}";
-    private readonly InMemoryDatabaseRoot _databaseRoot = new();
+	private readonly string _databaseName = $"TestDb_{Guid.NewGuid():N}";
+	private readonly InMemoryDatabaseRoot _databaseRoot = new();
+	protected IServiceProvider ServiceProvider { get; private set; } = null!;
+	protected IServiceScope Scope { get; private set; } = null!;
+	protected CardsDbContext DbContext => Scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+	protected IMediator Mediator => Scope.ServiceProvider.GetRequiredService<IMediator>();
 
-    public virtual async Task InitializeAsync()
-    {
-        var services = new ServiceCollection();
+	protected IGameFlowHandlerFactory FlowHandlerFactory =>
+		Scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
 
-        // Add logging
-        services.AddLogging(builder => builder.AddDebug().SetMinimumLevel(LogLevel.Debug));
+	public virtual async Task InitializeAsync()
+	{
+		var services = new ServiceCollection();
 
-        // Add in-memory database
-        services.AddDbContext<CardsDbContext>(options =>
-            options.UseInMemoryDatabase(_databaseName, _databaseRoot));
+		// Add logging
+		services.AddLogging(builder => builder.AddDebug().SetMinimumLevel(LogLevel.Debug));
 
-        // Add MediatR with handler registrations from the API project
-        services.AddMediatR(cfg =>
-        {
-            cfg.RegisterServicesFromAssembly(typeof(CardsDbContext).Assembly);
-        });
+		// Add in-memory database
+		services.AddDbContext<CardsDbContext>(options =>
+			options.UseInMemoryDatabase(_databaseName, _databaseRoot));
 
-        // Add game flow handler factory
-        services.AddSingleton<IGameFlowHandlerFactory, GameFlowHandlerFactory>();
-        services.AddSingleton<IHandEvaluatorFactory, HandEvaluatorFactory>();
+		// Add MediatR with handler registrations from the API project
+		services.AddMediatR(cfg => { cfg.RegisterServicesFromAssembly(typeof(CardsDbContext).Assembly); });
 
-        // Register HybridCache for tests
+		// Add game flow handler factory
+		services.AddSingleton<IGameFlowHandlerFactory, GameFlowHandlerFactory>();
+		services.AddSingleton<IHandEvaluatorFactory, HandEvaluatorFactory>();
+
+		// Register HybridCache for tests
 #pragma warning disable EXTEXP0018
-        services.AddHybridCache();
+		services.AddHybridCache();
 #pragma warning restore EXTEXP0018
-        services.AddOptions();
+		services.AddOptions();
 
-        // Add services
-        services.AddSingleton<IActionTimerService, FakeActionTimerService>();
-        services.AddSingleton<IGameStateBroadcaster, FakeGameStateBroadcaster>();
-        services.AddSingleton<IGameJoinRequestBroadcaster, FakeGameJoinRequestBroadcaster>();
-        services.AddSingleton<FakeLeagueBroadcaster>();
-        services.AddSingleton<ILeagueBroadcaster>(sp => sp.GetRequiredService<FakeLeagueBroadcaster>());
-        services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
+		// Add services
+		services.AddSingleton<IActionTimerService, FakeActionTimerService>();
+		services.AddSingleton<IGameStateBroadcaster, FakeGameStateBroadcaster>();
+		services.AddSingleton<IGameJoinRequestBroadcaster, FakeGameJoinRequestBroadcaster>();
+		services.AddSingleton<FakeLeagueBroadcaster>();
+		services.AddSingleton<ILeagueBroadcaster>(sp => sp.GetRequiredService<FakeLeagueBroadcaster>());
+		services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
 		services.AddSingleton<IHandSettlementService, FakeHandSettlementService>();
 		services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
 		services.AddScoped<ITableStateBuilder, TableStateBuilder>();
@@ -71,93 +62,98 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 		ConfigureServices(services);
 
 		ServiceProvider = services.BuildServiceProvider();
-        Scope = ServiceProvider.CreateScope();
+		Scope = ServiceProvider.CreateScope();
 
-        // Ensure database is created and seed base data
-        await DbContext.Database.EnsureCreatedAsync();
-        await SeedBaseDataAsync();
-    }
+		// Ensure database is created and seed base data
+		await DbContext.Database.EnsureCreatedAsync();
+		await SeedBaseDataAsync();
+	}
 
-    public virtual async Task DisposeAsync()
-    {
-        await DbContext.Database.EnsureDeletedAsync();
-        Scope.Dispose();
-        if (ServiceProvider is IAsyncDisposable asyncDisposable)
-        {
-            await asyncDisposable.DisposeAsync();
-        }
-        else if (ServiceProvider is IDisposable disposable)
-        {
-            disposable.Dispose();
-        }
-    }
+	public virtual async Task DisposeAsync()
+	{
+		await DbContext.Database.EnsureDeletedAsync();
+		Scope.Dispose();
+		if (ServiceProvider is IAsyncDisposable asyncDisposable)
+		{
+			await asyncDisposable.DisposeAsync();
+		}
+		else if (ServiceProvider is IDisposable disposable)
+		{
+			disposable.Dispose();
+		}
+	}
 
-    /// <summary>
-    /// Override to replace or add service registrations before the provider is built.
-    /// </summary>
-    protected virtual void ConfigureServices(IServiceCollection services) { }
+	/// <summary>
+	///     Override to replace or add service registrations before the provider is built.
+	/// </summary>
+	protected virtual void ConfigureServices(IServiceCollection services)
+	{
+	}
 
-    /// <summary>
-    /// Seeds base data required for tests (game types, etc.)
-    /// </summary>
-    protected virtual async Task SeedBaseDataAsync()
-    {
-        // Seed game types
-        var gameTypes = new List<GameType>
-        {
-            CreateGameType("FIVECARDDRAW", "Five Card Draw", 2, 8, 5, 0, 0, 5),
-            CreateGameType("SEVENCARDSTUD", "Seven Card Stud", 2, 8, 2, 1, 0, 7),
-            CreateGameType("RAZZ", "Razz", 2, 8, 2, 1, 0, 7),
-            CreateGameType("KINGSANDLOWS", "Kings and Lows", 2, 8, 5, 0, 0, 5),
-            CreateGameType("TWOSJACKSMANWITHTHEAXE", "Twos, Jacks, and Man with the Axe", 2, 8, 5, 0, 0, 5),
-            CreateGameType("HOLDEM", "Texas Hold'em", 2, 10, 2, 0, 5, 7),
-            CreateGameType("BOBBARKER", "Bob Barker", 2, 10, 5, 0, 6, 11),
-            CreateGameType("HOLDTHEBASEBALL", "Hold the Baseball", 2, 10, 2, 0, 5, 7),
-            CreateGameType("OMAHA", "Omaha", 2, 10, 4, 0, 5, 9),
-            CreateGameType("NEBRASKA", "Nebraska", 2, 10, 5, 0, 5, 10),
-            CreateGameType("SOUTHDAKOTA", "South Dakota", 2, 10, 5, 0, 4, 9),
-            CreateGameType("IRISHHOLDEM", "Irish Hold 'Em", 2, 10, 4, 0, 5, 9),
-            CreateGameType("FOLLOWTHEQUEEN", "Follow the Queen", 2, 8, 2, 1, 0, 7),
-            CreateGameType("BASEBALL", "Baseball", 2, 8, 2, 1, 0, 7),
-            CreateGameType("GOODBADUGLY", "The Good, the Bad, and the Ugly", 2, 7, 2, 1, 0, 7),
-            CreateGameType("SCREWYOURNEIGHBOR", "Screw Your Neighbor", 3, 10, 1, 0, 0, 1),
-            CreateGameType("KLONDIKE", "Klondike", 2, 10, 2, 0, 6, 2)
-        };
+	/// <summary>
+	///     Seeds base data required for tests (game types, etc.)
+	/// </summary>
+	protected virtual async Task SeedBaseDataAsync()
+	{
+		// Seed game types
+		var gameTypes = new List<GameType>
+		{
+			CreateGameType("FIVECARDDRAW", "Five Card Draw", 2, 8, 5, 0, 0, 5),
+			CreateGameType("SEVENCARDSTUD", "Seven Card Stud", 2, 8, 2, 1, 0, 7),
+			CreateGameType("RAZZ", "Razz", 2, 8, 2, 1, 0, 7),
+			CreateGameType("KINGSANDLOWS", "Kings and Lows", 2, 8, 5, 0, 0, 5),
+			CreateGameType("TWOSJACKSMANWITHTHEAXE", "Twos, Jacks, and Man with the Axe", 2, 8, 5, 0, 0, 5),
+			CreateGameType("HOLDEM", "Texas Hold'em", 2, 10, 2, 0, 5, 7),
+			CreateGameType("BOBBARKER", "Bob Barker", 2, 10, 5, 0, 6, 11),
+			CreateGameType("HOLDTHEBASEBALL", "Hold the Baseball", 2, 10, 2, 0, 5, 7),
+			CreateGameType("OMAHA", "Omaha", 2, 10, 4, 0, 5, 9),
+			CreateGameType("NEBRASKA", "Nebraska", 2, 10, 5, 0, 5, 10),
+			CreateGameType("SOUTHDAKOTA", "South Dakota", 2, 10, 5, 0, 4, 9),
+			CreateGameType("IRISHHOLDEM", "Irish Hold 'Em", 2, 10, 4, 0, 5, 9),
+			CreateGameType("FOLLOWTHEQUEEN", "Follow the Queen", 2, 8, 2, 1, 0, 7),
+			CreateGameType("BASEBALL", "Baseball", 2, 8, 2, 1, 0, 7),
+			CreateGameType("GOODBADUGLY", "The Good, the Bad, and the Ugly", 2, 7, 2, 1, 0, 7),
+			CreateGameType("SCREWYOURNEIGHBOR", "Screw Your Neighbor", 3, 10, 1, 0, 0, 1),
+			CreateGameType("KLONDIKE", "Klondike", 2, 10, 2, 0, 6, 2)
+		};
 
-        await DbContext.GameTypes.AddRangeAsync(gameTypes);
-        await DbContext.SaveChangesAsync();
-    }
+		await DbContext.GameTypes.AddRangeAsync(gameTypes);
+		await DbContext.SaveChangesAsync();
+	}
 
-    private static GameType CreateGameType(
-        string code, string name, int minPlayers, int maxPlayers,
-        int holeCards, int boardCards, int communityCards, int maxPlayerCards)
-    {
-        return new GameType
-        {
-            Id = Guid.CreateVersion7(),
-            Code = code,
-            Name = name,
-            MinPlayers = minPlayers,
-            MaxPlayers = maxPlayers,
-            InitialHoleCards = holeCards,
-            InitialBoardCards = boardCards,
-            MaxCommunityCards = communityCards,
-            MaxPlayerCards = maxPlayerCards,
-            BettingStructure = BettingStructure.Ante
-        };
-    }
+	private static GameType CreateGameType(
+		string code, string name, int minPlayers, int maxPlayers,
+		int holeCards, int boardCards, int communityCards, int maxPlayerCards)
+	{
+		return new GameType
+		{
+			Id = Guid.CreateVersion7(),
+			Code = code,
+			Name = name,
+			MinPlayers = minPlayers,
+			MaxPlayers = maxPlayers,
+			InitialHoleCards = holeCards,
+			InitialBoardCards = boardCards,
+			MaxCommunityCards = communityCards,
+			MaxPlayerCards = maxPlayerCards,
+			BettingStructure = BettingStructure.Ante
+		};
+	}
 
-    /// <summary>
-    /// Creates a new scope for a fresh DbContext instance (for testing concurrent operations).
-    /// </summary>
-    protected IServiceScope CreateNewScope() => ServiceProvider.CreateScope();
+	/// <summary>
+	///     Creates a new scope for a fresh DbContext instance (for testing concurrent operations).
+	/// </summary>
+	protected IServiceScope CreateNewScope()
+	{
+		return ServiceProvider.CreateScope();
+	}
 
-    /// <summary>
-    /// Gets a fresh DbContext from a new scope.
-    /// </summary>
-    protected CardsDbContext GetFreshDbContext()
-    {
-        var scope = CreateNewScope();
-        return scope.ServiceProvider.GetRequiredService<CardsDbContext>();
-    }
+	/// <summary>
+	///     Gets a fresh DbContext from a new scope.
+	/// </summary>
+	protected CardsDbContext GetFreshDbContext()
+	{
+		var scope = CreateNewScope();
+		return scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+	}
 }

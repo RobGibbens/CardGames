@@ -6,13 +6,18 @@ namespace CardGames.Poker.Api.Infrastructure.Events;
 
 public class ServiceBusPublisher : IServiceBusPublisher, IAsyncDisposable
 {
-	private readonly ServiceBusClient _client;
 	private readonly ServiceBusAdministrationClient _adminClient;
+	private readonly ServiceBusClient _client;
 
 	public ServiceBusPublisher(string connectionString)
 	{
 		_client = new ServiceBusClient(connectionString);
 		_adminClient = new ServiceBusAdministrationClient(connectionString);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		await _client.DisposeAsync();
 	}
 
 	public async Task PublishMessageAsync<T>(T message, string queueName)
@@ -46,10 +51,5 @@ public class ServiceBusPublisher : IServiceBusPublisher, IAsyncDisposable
 		{
 			await _adminClient.CreateQueueAsync(queueName);
 		}
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		await _client.DisposeAsync();
 	}
 }

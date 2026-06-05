@@ -1,11 +1,11 @@
-using CardGames.IntegrationTests.Infrastructure;
+using System.Globalization;
+using CardGames.Contracts.SignalR;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent;
 using CardGames.Poker.Api.Infrastructure;
-using System.Globalization;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -19,7 +19,7 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-season-event-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Season Event League"
 		}));
@@ -27,7 +27,7 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		createLeague.IsT0.Should().BeTrue();
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonRequest
+		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CreateLeagueSeasonRequest
 		{
 			Name = "Summer 2026"
 		}));
@@ -35,10 +35,11 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		createSeason.IsT0.Should().BeTrue();
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7);
 
-		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = scheduledAtUtc
-		}));
+		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = scheduledAtUtc
+			}));
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.SeasonId.Should().Be(createSeason.AsT0.SeasonId);
@@ -47,9 +48,9 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
 		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
 		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(result.AsT0.EventId);
-		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.Season);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(LeagueEventSourceType.Season);
 		fakeLeagueBroadcaster.EventChangedNotifications[0].SeasonId.Should().Be(createSeason.AsT0.SeasonId);
-		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(CardGames.Contracts.SignalR.LeagueEventChangeKind.Created);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(LeagueEventChangeKind.Created);
 	}
 
 	[Fact]
@@ -59,7 +60,7 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-season-event-tournament-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Season Tournament League"
 		}));
@@ -67,7 +68,7 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		createLeague.IsT0.Should().BeTrue();
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonRequest
+		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CreateLeagueSeasonRequest
 		{
 			Name = "Autumn 2026"
 		}));
@@ -75,11 +76,12 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		createSeason.IsT0.Should().BeTrue();
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7);
 
-		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = scheduledAtUtc,
-			TournamentBuyIn = 1800
-		}));
+		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = scheduledAtUtc,
+				TournamentBuyIn = 1800
+			}));
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.Name.Should().Be(FormatExpectedSeasonEventName(scheduledAtUtc));
@@ -115,10 +117,11 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		createSeason.IsT0.Should().BeTrue();
 
-		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
-		}));
+		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
+			}));
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(CreateLeagueSeasonEventErrorCode.InvalidRequest);

@@ -13,7 +13,7 @@ public static class LeaveLeagueEndpoint
 					var result = await mediator.Send(new LeaveLeagueCommand(leagueId), cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							LeaveLeagueErrorCode.Unauthorized => Results.Unauthorized(),
@@ -24,7 +24,7 @@ public static class LeaveLeagueEndpoint
 			.WithName("LeaveLeague")
 			.WithSummary("Leave league")
 			.WithDescription("Leaves the league for the current user. If not active member, returns no-op success.")
-			.Produces<LeaveLeagueResponse>(StatusCodes.Status200OK)
+			.Produces<LeaveLeagueResponse>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.ProducesProblem(StatusCodes.Status409Conflict)
 			.RequireAuthorization();

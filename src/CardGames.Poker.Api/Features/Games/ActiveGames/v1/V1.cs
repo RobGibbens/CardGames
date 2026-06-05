@@ -10,7 +10,7 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/active")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name])
+			.WithTags(Feature.Name)
 			.AddFluentValidationAutoValidation();
 
 		mapGroup.MapGetActiveGames();

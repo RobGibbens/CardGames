@@ -1,15 +1,15 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
-using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
-using CardGames.Contracts.SignalR;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using CreateGameCommand = CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand;
+using LeagueOneOffEventType = CardGames.Poker.Api.Data.Entities.LeagueOneOffEventType;
+using PlayerInfo = CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.PlayerInfo;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession;
 
@@ -18,23 +18,28 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 	ICurrentUserService currentUserService,
 	IMediator mediator,
 	ILeagueBroadcaster leagueBroadcaster)
-	: IRequestHandler<LaunchLeagueEventSessionCommand, OneOf<LaunchLeagueEventSessionResponse, LaunchLeagueEventSessionError>>
+	: IRequestHandler<LaunchLeagueEventSessionCommand,
+		OneOf<LaunchLeagueEventSessionResponse, LaunchLeagueEventSessionError>>
 {
-	public async Task<OneOf<LaunchLeagueEventSessionResponse, LaunchLeagueEventSessionError>> Handle(LaunchLeagueEventSessionCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<LaunchLeagueEventSessionResponse, LaunchLeagueEventSessionError>> Handle(
+		LaunchLeagueEventSessionCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.Unauthorized, "User is not authenticated.");
+			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.GameCode))
 		{
-			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, "Game code is required.");
+			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest,
+				"Game code is required.");
 		}
 
 		if (request.Request.HostStartingChips <= 0)
 		{
-			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, "Host starting chips must be greater than 0.");
+			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest,
+				"Host starting chips must be greater than 0.");
 		}
 
 		var leagueExists = await context.Leagues
@@ -43,7 +48,8 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 
 		if (!leagueExists)
 		{
-			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.LeagueNotFound, "League not found.");
+			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.LeagueNotFound,
+				"League not found.");
 		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
@@ -54,7 +60,8 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.Forbidden, "Only league managers or admins can launch league event sessions.");
+			return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.Forbidden,
+				"Only league managers or admins can launch league event sessions.");
 		}
 
 		var now = DateTimeOffset.UtcNow;
@@ -64,14 +71,15 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 			? currentUserService.UserId!
 			: currentUserService.UserName;
 		var gameName = string.IsNullOrWhiteSpace(request.Request.GameName)
-			? $"League Event {request.EventId:N}" 
+			? $"League Event {request.EventId:N}"
 			: request.Request.GameName.Trim();
 
 		if (request.SourceType == LeagueEventSourceType.Season)
 		{
 			if (!request.SeasonId.HasValue)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, "Season id is required for season events.");
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest,
+					"Season id is required for season events.");
 			}
 
 			var seasonEvent = await context.LeagueSeasonEvents
@@ -79,31 +87,37 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 
 			if (seasonEvent is null)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.EventNotFound, "Season event not found.");
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.EventNotFound,
+					"Season event not found.");
 			}
 
 			if (seasonEvent.LeagueId != request.LeagueId || seasonEvent.LeagueSeasonId != request.SeasonId.Value)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.MismatchedLeagueOrSeason, "Season event does not belong to the supplied league/season.");
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.MismatchedLeagueOrSeason,
+					"Season event does not belong to the supplied league/season.");
 			}
 
 			if (seasonEvent.LaunchedGameId.HasValue)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.AlreadyLaunched, "This season event has already launched a table.");
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.AlreadyLaunched,
+					"This season event has already launched a table.");
 			}
 
 			if (!seasonEvent.TournamentBuyIn.HasValue)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, "Season events must define a tournament buy-in before launch.");
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest,
+					"Season events must define a tournament buy-in before launch.");
 			}
 
 			var gameCode = !string.IsNullOrWhiteSpace(seasonEvent.GameTypeCode)
 				? seasonEvent.GameTypeCode
 				: request.Request.GameCode;
 
-			if (!LeagueEventGameSettings.TryResolve(gameCode, out normalizedGameCode, out var rules, out var gameTypeError))
+			if (!LeagueEventGameSettings.TryResolve(gameCode, out normalizedGameCode, out var rules,
+				    out var gameTypeError))
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, gameTypeError!);
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest,
+					gameTypeError!);
 			}
 
 			var ante = seasonEvent.Ante ?? request.Request.Ante;
@@ -118,13 +132,13 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 			}
 
 			var createResult = await mediator.Send(
-				new Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand(
+				new CreateGameCommand(
 					gameId,
 					normalizedGameCode,
 					gameName,
 					LeagueEventGameSettings.NormalizeAnte(rules!, ante),
 					LeagueEventGameSettings.NormalizeMinBet(rules!, minBet, bigBlind),
-					[new Features.Games.Common.v1.Commands.CreateGame.PlayerInfo(hostName, seasonEvent.TournamentBuyIn.Value)],
+					[new PlayerInfo(hostName, seasonEvent.TournamentBuyIn.Value)],
 					SmallBlind: LeagueEventGameSettings.NormalizeSmallBlind(rules!, minBet, smallBlind, bigBlind),
 					BigBlind: LeagueEventGameSettings.NormalizeBigBlind(rules!, minBet, bigBlind),
 					TournamentBuyIn: seasonEvent.TournamentBuyIn),
@@ -132,7 +146,8 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 
 			if (createResult.IsT1)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.CreateGameConflict, createResult.AsT1.Reason);
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.CreateGameConflict,
+					createResult.AsT1.Reason);
 			}
 
 			seasonEvent.LaunchedGameId = gameId;
@@ -157,17 +172,20 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 
 			if (oneOffEvent is null)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.EventNotFound, "One-off event not found.");
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.EventNotFound,
+					"One-off event not found.");
 			}
 
 			if (oneOffEvent.LeagueId != request.LeagueId)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.MismatchedLeagueOrSeason, "One-off event does not belong to the supplied league.");
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.MismatchedLeagueOrSeason,
+					"One-off event does not belong to the supplied league.");
 			}
 
 			if (oneOffEvent.LaunchedGameId.HasValue)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.AlreadyLaunched, "This one-off event has already launched a table.");
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.AlreadyLaunched,
+					"This one-off event has already launched a table.");
 			}
 
 			var hostStartingChips = request.Request.HostStartingChips;
@@ -176,15 +194,19 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 				? oneOffEvent.GameTypeCode
 				: request.Request.GameCode;
 
-			if (!LeagueEventGameSettings.TryResolve(gameCode, out normalizedGameCode, out var rules, out var gameTypeError))
+			if (!LeagueEventGameSettings.TryResolve(gameCode, out normalizedGameCode, out var rules,
+				    out var gameTypeError))
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, gameTypeError!);
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest,
+					gameTypeError!);
 			}
-			if (oneOffEvent.EventType == Data.Entities.LeagueOneOffEventType.Tournament)
+
+			if (oneOffEvent.EventType == LeagueOneOffEventType.Tournament)
 			{
 				if (!oneOffEvent.TournamentBuyIn.HasValue)
 				{
-					return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, "Tournament events must define a tournament buy-in before launch.");
+					return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest,
+						"Tournament events must define a tournament buy-in before launch.");
 				}
 
 				hostStartingChips = oneOffEvent.TournamentBuyIn.Value;
@@ -203,13 +225,13 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 			}
 
 			var createResult = await mediator.Send(
-				new Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand(
+				new CreateGameCommand(
 					gameId,
 					normalizedGameCode,
 					gameName,
 					LeagueEventGameSettings.NormalizeAnte(rules!, ante),
 					LeagueEventGameSettings.NormalizeMinBet(rules!, minBet, bigBlind),
-					[new Features.Games.Common.v1.Commands.CreateGame.PlayerInfo(hostName, hostStartingChips)],
+					[new PlayerInfo(hostName, hostStartingChips)],
 					SmallBlind: LeagueEventGameSettings.NormalizeSmallBlind(rules!, minBet, smallBlind, bigBlind),
 					BigBlind: LeagueEventGameSettings.NormalizeBigBlind(rules!, minBet, bigBlind),
 					TournamentBuyIn: tournamentBuyIn),
@@ -217,7 +239,8 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 
 			if (createResult.IsT1)
 			{
-				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.CreateGameConflict, createResult.AsT1.Reason);
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.CreateGameConflict,
+					createResult.AsT1.Reason);
 			}
 
 			oneOffEvent.LaunchedGameId = gameId;

@@ -1,117 +1,123 @@
-﻿using CardGames.Core.French.Cards;
-using CardGames.Core.French.Cards.Extensions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CardGames.Core.French.Cards;
+using CardGames.Core.French.Cards.Extensions;
 
 namespace CardGames.Poker.Hands.HandTypes;
 
 public static class HandTypeDetermination
 {
-    /// <summary>
-    /// The values that form a wheel straight (A-2-3-4-5).
-    /// </summary>
-    public static readonly int[] WheelValues = { 14, 5, 4, 3, 2 };
+	/// <summary>
+	///     The values that form a wheel straight (A-2-3-4-5).
+	/// </summary>
+	public static readonly int[] WheelValues = [14, 5, 4, 3, 2];
 
-    public static HandType DetermineHandType(IReadOnlyCollection<Card> cards)
-    {
-        if (cards.Count < 5)
-        {
-            return DeterminePartialHandType(cards);
-        }
+	public static HandType DetermineHandType(IReadOnlyCollection<Card> cards)
+	{
+		if (cards.Count < 5)
+		{
+			return DeterminePartialHandType(cards);
+		}
 
-        var numberOfDistinctValues = cards.DistinctValues().Count;
-        
-        if (numberOfDistinctValues == 1)
-        {
-            return HandType.FiveOfAKind;
-        }
+		var numberOfDistinctValues = cards.DistinctValues().Count;
 
-        return numberOfDistinctValues == 5
-            ? HandTypeOfDistinctValueHand(cards)
-            : HandTypeOfDuplicateValueHand(cards, numberOfDistinctValues);
-    }
+		if (numberOfDistinctValues == 1)
+		{
+			return HandType.FiveOfAKind;
+		}
 
-    /// <summary>
-    /// Checks if the given card values form a wheel straight (A-2-3-4-5).
-    /// </summary>
-    public static bool IsWheelStraight(IReadOnlyCollection<int> values)
-        => values.Count == 5 && WheelValues.All(v => values.Contains(v));
+		return numberOfDistinctValues == 5
+			? HandTypeOfDistinctValueHand(cards)
+			: HandTypeOfDuplicateValueHand(cards, numberOfDistinctValues);
+	}
 
-    private static HandType DeterminePartialHandType(IReadOnlyCollection<Card> cards)
-    {
-        if (cards.Count == 0)
-        {
-            return HandType.Incomplete;
-        }
+	/// <summary>
+	///     Checks if the given card values form a wheel straight (A-2-3-4-5).
+	/// </summary>
+	public static bool IsWheelStraight(IReadOnlyCollection<int> values)
+	{
+		return values.Count == 5 && WheelValues.All(v => values.Contains(v));
+	}
 
-        var groups = cards.GroupBy(c => c.Value).ToList();
-        var maxGroupSize = groups.Max(g => g.Count());
+	private static HandType DeterminePartialHandType(IReadOnlyCollection<Card> cards)
+	{
+		if (cards.Count == 0)
+		{
+			return HandType.Incomplete;
+		}
 
-        if (maxGroupSize == 4)
-        {
-            return HandType.Quads;
-        }
+		var groups = cards.GroupBy(c => c.Value).ToList();
+		var maxGroupSize = groups.Max(g => g.Count());
 
-        if (maxGroupSize == 3)
-        {
-            return HandType.Trips;
-        }
+		if (maxGroupSize == 4)
+		{
+			return HandType.Quads;
+		}
 
-        if (maxGroupSize == 2)
-        {
-            var pairCount = groups.Count(g => g.Count() == 2);
-            return pairCount >= 2 ? HandType.TwoPair : HandType.OnePair;
-        }
+		if (maxGroupSize == 3)
+		{
+			return HandType.Trips;
+		}
 
-        return HandType.HighCard;
-    }
+		if (maxGroupSize == 2)
+		{
+			var pairCount = groups.Count(g => g.Count() == 2);
+			return pairCount >= 2 ? HandType.TwoPair : HandType.OnePair;
+		}
 
-    private  static HandType HandTypeOfDuplicateValueHand(IReadOnlyCollection<Card> cards, int numberOfDistinctValues)
-         => numberOfDistinctValues switch
-         {
-             4 => HandType.OnePair,
-             3 => cards.ValueOfBiggestTrips() > 1
-                     ? HandType.Trips
-                     : HandType.TwoPair,
-             2 => cards.Count(card => card.Value != cards.ValueOfBiggestTrips()) == 2
-                     ? HandType.FullHouse
-                     : HandType.Quads,
-             _ => throw new ArgumentException()
-         };
+		return HandType.HighCard;
+	}
 
-    private static HandType HandTypeOfDistinctValueHand(IReadOnlyCollection<Card> cards)
-    {
-        var isStraight = IsStraight(cards);
-        var isFlush = IsFlush(cards);
+	private static HandType HandTypeOfDuplicateValueHand(IReadOnlyCollection<Card> cards, int numberOfDistinctValues)
+	{
+		return numberOfDistinctValues switch
+		{
+			4 => HandType.OnePair,
+			3 => cards.ValueOfBiggestTrips() > 1
+				? HandType.Trips
+				: HandType.TwoPair,
+			2 => cards.Count(card => card.Value != cards.ValueOfBiggestTrips()) == 2
+				? HandType.FullHouse
+				: HandType.Quads,
+			_ => throw new ArgumentException()
+		};
+	}
 
-        return isStraight && isFlush
-            ? HandType.StraightFlush
-            : isStraight
-                ? HandType.Straight
-                : isFlush
-                    ? HandType.Flush
-                    : HandType.HighCard;
-    }
+	private static HandType HandTypeOfDistinctValueHand(IReadOnlyCollection<Card> cards)
+	{
+		var isStraight = IsStraight(cards);
+		var isFlush = IsFlush(cards);
 
-    private static bool IsFlush(IReadOnlyCollection<Card> cards) 
-        => cards.DistinctSuits().Count == 1;
+		return isStraight && isFlush
+			? HandType.StraightFlush
+			: isStraight
+				? HandType.Straight
+				: isFlush
+					? HandType.Flush
+					: HandType.HighCard;
+	}
 
-    private static bool IsStraight(IReadOnlyCollection<Card> cards)
-    {
-        var values = cards.DistinctDescendingValues();
-        if (values.Count != 5)
-        {
-            return false;
-        }
+	private static bool IsFlush(IReadOnlyCollection<Card> cards)
+	{
+		return cards.DistinctSuits().Count == 1;
+	}
 
-        // Check for regular straight (e.g., 5-6-7-8-9)
-        if (values.Max() - values.Min() == 4)
-        {
-            return true;
-        }
+	private static bool IsStraight(IReadOnlyCollection<Card> cards)
+	{
+		var values = cards.DistinctDescendingValues();
+		if (values.Count != 5)
+		{
+			return false;
+		}
 
-        // Check for wheel straight (A-2-3-4-5) where Ace (value 14) acts as low
-        return IsWheelStraight(values);
-    }
+		// Check for regular straight (e.g., 5-6-7-8-9)
+		if (values.Max() - values.Min() == 4)
+		{
+			return true;
+		}
+
+		// Check for wheel straight (A-2-3-4-5) where Ace (value 14) acts as low
+		return IsWheelStraight(values);
+	}
 }

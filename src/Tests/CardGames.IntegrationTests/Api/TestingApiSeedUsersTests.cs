@@ -1,14 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using CardGames.IntegrationTests.Infrastructure;
-using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Features.Testing;
 using CardGames.Poker.Api.Features.Testing.v1.Commands.SeedUsers;
-using CardGames.Poker.Api.Features.Profile.v1.Cashier;
-using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace CardGames.IntegrationTests.Api;
@@ -30,7 +25,7 @@ public class TestingApiSeedUsersTests(ApiWebApplicationFactory factory) : ApiInt
 			.Value
 			.Users;
 		var userManager = verificationScope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-		var dbContext = verificationScope.ServiceProvider.GetRequiredService<CardGames.Poker.Api.Data.CardsDbContext>();
+		var dbContext = verificationScope.ServiceProvider.GetRequiredService<CardsDbContext>();
 
 		firstPayload!.ConfiguredCount.Should().Be(configuredUsers.Count);
 		firstPayload.CreatedCount.Should().Be(configuredUsers.Count);

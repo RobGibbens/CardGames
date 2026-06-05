@@ -1,6 +1,5 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Features.Leagues.v1.Queries;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +12,8 @@ public sealed class GetLeagueMembersQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetLeagueMembersQuery, OneOf<IReadOnlyList<LeagueMemberDto>, GetLeagueMembersError>>
 {
-	public async Task<OneOf<IReadOnlyList<LeagueMemberDto>, GetLeagueMembersError>> Handle(GetLeagueMembersQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<IReadOnlyList<LeagueMemberDto>, GetLeagueMembersError>> Handle(
+		GetLeagueMembersQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -22,11 +22,13 @@ public sealed class GetLeagueMembersQueryHandler(
 
 		var isActiveMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive, cancellationToken);
+			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive,
+				cancellationToken);
 
 		if (!isActiveMember)
 		{
-			return new GetLeagueMembersError(GetLeagueMembersErrorCode.Forbidden, "Only active members can view league members.");
+			return new GetLeagueMembersError(GetLeagueMembersErrorCode.Forbidden,
+				"Only active members can view league members.");
 		}
 
 		var members = await context.LeagueMembersCurrent
@@ -36,11 +38,11 @@ public sealed class GetLeagueMembersQueryHandler(
 			.ThenBy(x => x.UserId)
 			.Select(x => new
 			{
-				UserId = x.UserId,
-				Role = x.Role,
-				IsActive = x.IsActive,
-				JoinedAtUtc = x.JoinedAtUtc,
-				LeftAtUtc = x.LeftAtUtc
+				x.UserId,
+				x.Role,
+				x.IsActive,
+				x.JoinedAtUtc,
+				x.LeftAtUtc
 			})
 			.ToListAsync(cancellationToken);
 
@@ -53,8 +55,9 @@ public sealed class GetLeagueMembersQueryHandler(
 			.Select(x => new LeagueMemberDto
 			{
 				UserId = x.UserId,
-				UserDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, x.UserId),
-				Role = (Contracts.LeagueRole)x.Role,
+				UserDisplayName =
+					LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, x.UserId),
+				Role = (LeagueRole)x.Role,
 				IsActive = x.IsActive,
 				JoinedAtUtc = x.JoinedAtUtc,
 				LeftAtUtc = x.LeftAtUtc

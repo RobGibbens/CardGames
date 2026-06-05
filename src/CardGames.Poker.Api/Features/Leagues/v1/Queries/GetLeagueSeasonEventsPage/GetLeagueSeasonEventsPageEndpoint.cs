@@ -23,10 +23,13 @@ public static class GetLeagueSeasonEventsPageEndpoint
 
 					if (!pageNumber.HasValue && skip.HasValue)
 					{
-						resolvedPageNumber = Math.Max(1, (skip.Value / resolvedPageSize) + 1);
+						resolvedPageNumber = Math.Max(1, skip.Value / resolvedPageSize + 1);
 					}
 
-					var result = await mediator.Send(new GetLeagueSeasonEventsPageQuery(leagueId, seasonId, resolvedPageSize, resolvedPageNumber), cancellationToken);
+					var result =
+						await mediator.Send(
+							new GetLeagueSeasonEventsPageQuery(leagueId, seasonId, resolvedPageSize,
+								resolvedPageNumber), cancellationToken);
 
 					return result.Match(
 						success => Results.Ok(success),
@@ -41,7 +44,7 @@ public static class GetLeagueSeasonEventsPageEndpoint
 			.WithName("GetLeagueSeasonEventsPage")
 			.WithSummary("Get league season events page")
 			.WithDescription("Returns a paged list of season-linked events for an active member of the league.")
-			.Produces<LeagueSeasonEventsPageDto>(StatusCodes.Status200OK)
+			.Produces<LeagueSeasonEventsPageDto>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.Produces(StatusCodes.Status404NotFound)

@@ -8,57 +8,72 @@ namespace CardGames.Core.French.Decks;
 
 public abstract class FrenchDeck : IDeck<Card>
 {
-    private List<Card> _cardsOut = [];
+	private readonly List<Card> _cardsOut = [];
 
-    private Card this[int index]
-         => CardsLeftInternal()
-            .ToArray()[index];
-    
-    private IEnumerable<Card> CardsLeftInternal() 
-        => Cards.Except(_cardsOut);
+	private Card this[int index]
+		=> CardsLeftInternal()
+			.ToArray()[index];
 
-    public int NumberOfCardsLeft()
-        => Cards.Count - _cardsOut.Count;
+	protected abstract IReadOnlyCollection<Card> Cards { get; }
 
-    protected abstract IReadOnlyCollection<Card> Cards { get; }
-    
-    public IReadOnlyCollection<Card> CardsLeft()
-        => CardsLeftInternal()
-            .ToList();
+	public int NumberOfCardsLeft()
+	{
+		return Cards.Count - _cardsOut.Count;
+	}
 
-    public IReadOnlyCollection<Card> CardsLeftOfValue(int value)
-        => CardsLeftWith(card => card.Value == value);
+	public Card GetSpecific(Card card)
+	{
+		if (!Cards.Contains(card))
+		{
+			throw new ArgumentException($"The card {card} is not part of the deck at all!");
+		}
 
-    public IReadOnlyCollection<Card> CardsLeftOfSuit(Suit suit)
-        => CardsLeftWith(card => card.Suit == suit);
+		if (_cardsOut.Contains(card))
+		{
+			throw new ArgumentException($"The card {card} has already been dealt!");
+		}
 
-    public IReadOnlyCollection<Card> CardsLeftWith(Func<Card, bool> predicate)
-        => CardsLeftInternal()
-            .Where(predicate)
-            .ToList();
+		_cardsOut.Add(card);
+		return card;
+	}
 
-    public Card GetSpecific(Card card)
-    {   
-        if (!Cards.Contains(card))
-        {
-            throw new ArgumentException($"The card {card} is not part of the deck at all!");
-        }
+	public Card GetFromRemaining(int index)
+	{
+		var card = this[index];
+		_cardsOut.Add(card);
+		return card;
+	}
 
-        if (_cardsOut.Contains(card))
-        {
-            throw new ArgumentException($"The card {card} has already been dealt!");
-        }
-        _cardsOut.Add(card);
-        return card;
-    }
+	public void Reset()
+	{
+		_cardsOut.Clear();
+	}
 
-    public Card GetFromRemaining(int index)
-    {
-        var card = this[index];
-        _cardsOut.Add(card);
-        return card;
-    }
+	private IEnumerable<Card> CardsLeftInternal()
+	{
+		return Cards.Except(_cardsOut);
+	}
 
-    public void Reset()
-        => _cardsOut.Clear();
+	public IReadOnlyCollection<Card> CardsLeft()
+	{
+		return CardsLeftInternal()
+			.ToList();
+	}
+
+	public IReadOnlyCollection<Card> CardsLeftOfValue(int value)
+	{
+		return CardsLeftWith(card => card.Value == value);
+	}
+
+	public IReadOnlyCollection<Card> CardsLeftOfSuit(Suit suit)
+	{
+		return CardsLeftWith(card => card.Suit == suit);
+	}
+
+	public IReadOnlyCollection<Card> CardsLeftWith(Func<Card, bool> predicate)
+	{
+		return CardsLeftInternal()
+			.Where(predicate)
+			.ToList();
+	}
 }

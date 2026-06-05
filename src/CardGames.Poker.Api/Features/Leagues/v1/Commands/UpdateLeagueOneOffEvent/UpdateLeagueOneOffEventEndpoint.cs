@@ -8,9 +8,11 @@ public static class UpdateLeagueOneOffEventEndpoint
 	public static RouteGroupBuilder MapUpdateLeagueOneOffEvent(this RouteGroupBuilder group)
 	{
 		group.MapPut("{leagueId:guid}/events/one-off/{eventId:guid}",
-				async (Guid leagueId, Guid eventId, UpdateLeagueOneOffEventRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, Guid eventId, UpdateLeagueOneOffEventRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, eventId, request), cancellationToken);
+					var result = await mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, eventId, request),
+						cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),
@@ -20,7 +22,8 @@ public static class UpdateLeagueOneOffEventEndpoint
 							UpdateLeagueOneOffEventErrorCode.Forbidden => Results.Forbid(),
 							UpdateLeagueOneOffEventErrorCode.LeagueNotFound => Results.NotFound(new { error.Message }),
 							UpdateLeagueOneOffEventErrorCode.EventNotFound => Results.NotFound(new { error.Message }),
-							UpdateLeagueOneOffEventErrorCode.InvalidRequest => Results.BadRequest(new { error.Message }),
+							UpdateLeagueOneOffEventErrorCode.InvalidRequest =>
+								Results.BadRequest(new { error.Message }),
 							UpdateLeagueOneOffEventErrorCode.Conflict => Results.Conflict(new { error.Message }),
 							_ => Results.Problem(error.Message)
 						});

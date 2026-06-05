@@ -4,7 +4,10 @@ using OneOf;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest;
 
-public sealed record DenyLeagueJoinRequestCommand(Guid LeagueId, Guid JoinRequestId, ModerateLeagueJoinRequestRequest Request)
+public sealed record DenyLeagueJoinRequestCommand(
+	Guid LeagueId,
+	Guid JoinRequestId,
+	ModerateLeagueJoinRequestRequest Request)
 	: IRequest<OneOf<Unit, DenyLeagueJoinRequestError>>;
 
 public enum DenyLeagueJoinRequestErrorCode

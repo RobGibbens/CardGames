@@ -355,7 +355,9 @@ public sealed class LeagueSeasonEventResultConfiguration : IEntityTypeConfigurat
 	}
 }
 
-public sealed class LeagueSeasonEventResultCorrectionAuditConfiguration : IEntityTypeConfiguration<LeagueSeasonEventResultCorrectionAudit>
+public sealed class
+	LeagueSeasonEventResultCorrectionAuditConfiguration : IEntityTypeConfiguration<
+	LeagueSeasonEventResultCorrectionAudit>
 {
 	public void Configure(EntityTypeBuilder<LeagueSeasonEventResultCorrectionAudit> builder)
 	{

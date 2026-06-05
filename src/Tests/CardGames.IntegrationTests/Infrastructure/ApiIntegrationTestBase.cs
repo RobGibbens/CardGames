@@ -1,8 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CardGames.Poker.Api.Data;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace CardGames.IntegrationTests.Infrastructure;
 
@@ -12,52 +10,54 @@ namespace CardGames.IntegrationTests.Infrastructure;
 // I should create a new factory per test or per class.
 public abstract class ApiIntegrationTestBase : IClassFixture<ApiWebApplicationFactory>, IAsyncLifetime
 {
-    protected readonly ApiWebApplicationFactory Factory;
-    protected HttpClient Client;
-    protected IServiceScope Scope;
-    protected CardsDbContext DbContext;
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
+	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+	{
+		Converters = { new JsonStringEnumConverter() }
+	};
 
-    protected ApiIntegrationTestBase(ApiWebApplicationFactory factory)
-    {
-        // We need a fresh factory for fresh DB? 
-        // Providing Factory via IClassFixture shares it across tests in the class.
-        // But the factory has a fixed DB name in constructor.
-        // So tests in the same class share the DB. 
-        // This is fine for read tests, but for write tests we might want isolation.
-        // Given complexity, let's share for now and clean up if needed, or rely on distinct data.
-        Factory = factory;
-        Client = factory.CreateClient();
-    }
+	protected readonly ApiWebApplicationFactory Factory;
+	protected HttpClient Client;
+	protected CardsDbContext DbContext;
+	protected IServiceScope Scope;
 
-    public virtual async Task InitializeAsync()
-    {
-        Scope = Factory.Services.CreateScope();
-        DbContext = Scope.ServiceProvider.GetRequiredService<CardsDbContext>();
-        await DbContext.Database.EnsureCreatedAsync();
-    }
+	protected ApiIntegrationTestBase(ApiWebApplicationFactory factory)
+	{
+		// We need a fresh factory for fresh DB? 
+		// Providing Factory via IClassFixture shares it across tests in the class.
+		// But the factory has a fixed DB name in constructor.
+		// So tests in the same class share the DB. 
+		// This is fine for read tests, but for write tests we might want isolation.
+		// Given complexity, let's share for now and clean up if needed, or rely on distinct data.
+		Factory = factory;
+		Client = factory.CreateClient();
+	}
 
-    public virtual async Task DisposeAsync()
-    {
-        if (DbContext != null)
-        {
-            await DbContext.Database.EnsureDeletedAsync();
-            await DbContext.DisposeAsync();
-        }
-        Scope?.Dispose();
-    }
+	public virtual async Task InitializeAsync()
+	{
+		Scope = Factory.Services.CreateScope();
+		DbContext = Scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		await DbContext.Database.EnsureCreatedAsync();
+	}
 
-    // Helper methods
-    protected async Task<T?> GetAsync<T>(string url)
-    {
-        return await Client.GetFromJsonAsync<T>(url, JsonOptions);
-    }
+	public virtual async Task DisposeAsync()
+	{
+		if (DbContext != null)
+		{
+			await DbContext.Database.EnsureDeletedAsync();
+			await DbContext.DisposeAsync();
+		}
 
-    protected async Task<HttpResponseMessage> PostAsync<T>(string url, T content)
-    {
-        return await Client.PostAsJsonAsync(url, content, JsonOptions);
-    }
+		Scope?.Dispose();
+	}
+
+	// Helper methods
+	protected async Task<T?> GetAsync<T>(string url)
+	{
+		return await Client.GetFromJsonAsync<T>(url, JsonOptions);
+	}
+
+	protected async Task<HttpResponseMessage> PostAsync<T>(string url, T content)
+	{
+		return await Client.PostAsJsonAsync(url, content, JsonOptions);
+	}
 }

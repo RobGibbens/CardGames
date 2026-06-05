@@ -9,7 +9,8 @@ public static class RemoveLeagueMemberEndpoint
 		group.MapPost("{leagueId:guid}/members/{memberUserId}/remove",
 				async (Guid leagueId, string memberUserId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new RemoveLeagueMemberCommand(leagueId, memberUserId), cancellationToken);
+					var result = await mediator.Send(new RemoveLeagueMemberCommand(leagueId, memberUserId),
+						cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),

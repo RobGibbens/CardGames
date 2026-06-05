@@ -9,39 +9,19 @@ using CardGames.Poker.Hands.WildCards;
 namespace CardGames.Poker.Hands.StudHands;
 
 /// <summary>
-/// Pair Pressure hand: a seven card stud variant where face-up paired ranks become wild,
-/// and only the two most recent paired ranks remain active.
+///     Pair Pressure hand: a seven card stud variant where face-up paired ranks become wild,
+///     and only the two most recent paired ranks remain active.
 /// </summary>
 public class PairPressureHand : StudHand
 {
-	private readonly PairPressureWildCardRules _wildCardRules;
 	private readonly IReadOnlyCollection<Card> _faceUpCardsInOrder;
-	private IReadOnlyCollection<Card> _wildCards;
-	private HandType _evaluatedType;
-	private long _evaluatedStrength;
-	private IReadOnlyCollection<Card> _evaluatedBestCards;
+	private readonly PairPressureWildCardRules _wildCardRules;
 	private IReadOnlyCollection<Card> _bestHandSourceCards;
 	private bool _evaluated;
-
-	public IReadOnlyCollection<Card> WildCards => _wildCards ??= DetermineWildCards();
-
-	public IReadOnlyCollection<Card> EvaluatedBestCards
-	{
-		get
-		{
-			EvaluateIfNeeded();
-			return _evaluatedBestCards;
-		}
-	}
-
-	public IReadOnlyCollection<Card> BestHandSourceCards
-	{
-		get
-		{
-			EvaluateIfNeeded();
-			return _bestHandSourceCards;
-		}
-	}
+	private IReadOnlyCollection<Card> _evaluatedBestCards;
+	private long _evaluatedStrength;
+	private HandType _evaluatedType;
+	private IReadOnlyCollection<Card> _wildCards;
 
 	public PairPressureHand(
 		IReadOnlyCollection<Card> holeCards,
@@ -64,8 +44,30 @@ public class PairPressureHand : StudHand
 		_faceUpCardsInOrder = faceUpCardsInOrder;
 	}
 
+	public IReadOnlyCollection<Card> WildCards => _wildCards ??= DetermineWildCards();
+
+	public IReadOnlyCollection<Card> EvaluatedBestCards
+	{
+		get
+		{
+			EvaluateIfNeeded();
+			return _evaluatedBestCards;
+		}
+	}
+
+	public IReadOnlyCollection<Card> BestHandSourceCards
+	{
+		get
+		{
+			EvaluateIfNeeded();
+			return _bestHandSourceCards;
+		}
+	}
+
 	private IReadOnlyCollection<Card> DetermineWildCards()
-		=> _wildCardRules.DetermineWildCards(Cards, _faceUpCardsInOrder);
+	{
+		return _wildCardRules.DetermineWildCards(Cards, _faceUpCardsInOrder);
+	}
 
 	protected override long CalculateStrength()
 	{

@@ -25,7 +25,8 @@ public class AceChoiceCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(Guid.NewGuid(), Guid.NewGuid(), AceIsHigh: true), CancellationToken.None);
+		var result = await sut.Handle(new AceChoiceCommand(Guid.NewGuid(), Guid.NewGuid(), AceIsHigh: true),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(AceChoiceErrorCode.GameNotFound);
@@ -56,7 +57,8 @@ public class AceChoiceCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(game.Id, Guid.NewGuid(), AceIsHigh: true), CancellationToken.None);
+		var result = await sut.Handle(new AceChoiceCommand(game.Id, Guid.NewGuid(), AceIsHigh: true),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(AceChoiceErrorCode.PlayerNotFound);
@@ -107,7 +109,8 @@ public class AceChoiceCommandHandlerTests
 			.SingleAsync();
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, AceIsHigh: false), CancellationToken.None);
+		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, AceIsHigh: false),
+			CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.AceIsHigh.Should().BeFalse();

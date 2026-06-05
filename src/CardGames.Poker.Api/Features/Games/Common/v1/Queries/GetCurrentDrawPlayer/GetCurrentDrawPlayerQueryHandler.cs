@@ -6,12 +6,13 @@ using Microsoft.Extensions.Caching.Hybrid;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentDrawPlayer;
 
 /// <summary>
-/// Handler for retrieving the current player who must act during the draw phase.
+///     Handler for retrieving the current player who must act during the draw phase.
 /// </summary>
 public class GetCurrentDrawPlayerQueryHandler(CardsDbContext context, HybridCache hybridCache)
 	: IRequestHandler<GetCurrentDrawPlayerQuery, GetCurrentDrawPlayerResponse?>
 {
-	public async Task<GetCurrentDrawPlayerResponse?> Handle(GetCurrentDrawPlayerQuery request, CancellationToken cancellationToken)
+	public async Task<GetCurrentDrawPlayerResponse?> Handle(GetCurrentDrawPlayerQuery request,
+		CancellationToken cancellationToken)
 	{
 		return await hybridCache.GetOrCreateAsync(
 			$"{Feature.Version}-{request.CacheKey}",

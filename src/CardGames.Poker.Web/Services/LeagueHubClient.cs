@@ -1,56 +1,31 @@
-using CardGames.Contracts.SignalR;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.SignalR.Client;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using System.Web;
+using CardGames.Contracts.SignalR;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace CardGames.Poker.Web.Services;
 
 /// <summary>
-/// Scoped service for managing SignalR hub connections to league management updates.
-/// Each Blazor circuit gets its own instance.
+///     Scoped service for managing SignalR hub connections to league management updates.
+///     Each Blazor circuit gets its own instance.
 /// </summary>
 public sealed class LeagueHubClient : IAsyncDisposable
 {
-	private readonly IConfiguration _configuration;
 	private readonly AuthenticationStateProvider _authStateProvider;
+	private readonly IConfiguration _configuration;
+	private readonly HashSet<Guid> _joinedManagedLeagueIds = [];
+	private readonly HashSet<Guid> _joinedViewedLeagueIds = [];
 	private readonly ILogger<LeagueHubClient> _logger;
 
 	private HubConnection? _hubConnection;
 	private HashSet<Guid> _managedLeagueIds = [];
-	private HashSet<Guid> _viewedLeagueIds = [];
-	private HashSet<Guid> _joinedManagedLeagueIds = [];
-	private HashSet<Guid> _joinedViewedLeagueIds = [];
 	private int _subscriptionResyncScheduled;
+	private HashSet<Guid> _viewedLeagueIds = [];
 
 	/// <summary>
-	/// Fired when a league join request is submitted.
-	/// </summary>
-	public event Func<LeagueJoinRequestSubmittedDto, Task>? OnLeagueJoinRequestSubmitted;
-
-	/// <summary>
-	/// Fired when a league join request is updated.
-	/// </summary>
-	public event Func<LeagueJoinRequestUpdatedDto, Task>? OnLeagueJoinRequestUpdated;
-
-	/// <summary>
-	/// Fired when a league event changes.
-	/// </summary>
-	public event Func<LeagueEventChangedDto, Task>? OnLeagueEventChanged;
-
-	/// <summary>
-	/// Fired when a league event launches a game session.
-	/// </summary>
-	public event Func<LeagueEventSessionLaunchedDto, Task>? OnLeagueEventSessionLaunched;
-
-	/// <summary>
-	/// Gets whether the client is connected.
-	/// </summary>
-	public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="LeagueHubClient"/> class.
+	///     Initializes a new instance of the <see cref="LeagueHubClient" /> class.
 	/// </summary>
 	public LeagueHubClient(
 		IConfiguration configuration,
@@ -63,7 +38,48 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Connects to the leagues hub.
+	///     Gets whether the client is connected.
+	/// </summary>
+	public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+
+	/// <inheritdoc />
+	public async ValueTask DisposeAsync()
+	{
+		if (_hubConnection is null)
+		{
+			return;
+		}
+
+		_hubConnection.Reconnected -= OnReconnected;
+		_hubConnection.Closed -= OnClosed;
+
+		await DisconnectAsync();
+		await _hubConnection.DisposeAsync();
+		_hubConnection = null;
+	}
+
+	/// <summary>
+	///     Fired when a league join request is submitted.
+	/// </summary>
+	public event Func<LeagueJoinRequestSubmittedDto, Task>? OnLeagueJoinRequestSubmitted;
+
+	/// <summary>
+	///     Fired when a league join request is updated.
+	/// </summary>
+	public event Func<LeagueJoinRequestUpdatedDto, Task>? OnLeagueJoinRequestUpdated;
+
+	/// <summary>
+	///     Fired when a league event changes.
+	/// </summary>
+	public event Func<LeagueEventChangedDto, Task>? OnLeagueEventChanged;
+
+	/// <summary>
+	///     Fired when a league event launches a game session.
+	/// </summary>
+	public event Func<LeagueEventSessionLaunchedDto, Task>? OnLeagueEventSessionLaunched;
+
+	/// <summary>
+	///     Connects to the leagues hub.
 	/// </summary>
 	public async Task ConnectAsync(CancellationToken cancellationToken = default)
 	{
@@ -74,7 +90,8 @@ public sealed class LeagueHubClient : IAsyncDisposable
 				return;
 			}
 
-			if (_hubConnection.State == HubConnectionState.Connecting || _hubConnection.State == HubConnectionState.Reconnecting)
+			if (_hubConnection.State == HubConnectionState.Connecting ||
+			    _hubConnection.State == HubConnectionState.Reconnecting)
 			{
 				return;
 			}
@@ -93,6 +110,7 @@ public sealed class LeagueHubClient : IAsyncDisposable
 					{
 						options.Headers["X-User-Id"] = userInfo.Value.UserId;
 					}
+
 					if (!string.IsNullOrEmpty(userInfo.Value.UserName))
 					{
 						options.Headers["X-User-Name"] = userInfo.Value.UserName;
@@ -117,10 +135,12 @@ public sealed class LeagueHubClient : IAsyncDisposable
 		_hubConnection.Reconnected += OnReconnected;
 		_hubConnection.Closed += OnClosed;
 
-		_hubConnection.On<LeagueJoinRequestSubmittedDto>("LeagueJoinRequestSubmitted", HandleLeagueJoinRequestSubmittedAsync);
+		_hubConnection.On<LeagueJoinRequestSubmittedDto>("LeagueJoinRequestSubmitted",
+			HandleLeagueJoinRequestSubmittedAsync);
 		_hubConnection.On<LeagueJoinRequestUpdatedDto>("LeagueJoinRequestUpdated", HandleLeagueJoinRequestUpdatedAsync);
 		_hubConnection.On<LeagueEventChangedDto>("LeagueEventChanged", HandleLeagueEventChangedAsync);
-		_hubConnection.On<LeagueEventSessionLaunchedDto>("LeagueEventSessionLaunched", HandleLeagueEventSessionLaunchedAsync);
+		_hubConnection.On<LeagueEventSessionLaunchedDto>("LeagueEventSessionLaunched",
+			HandleLeagueEventSessionLaunchedAsync);
 
 		await _hubConnection.StartAsync(cancellationToken);
 		_joinedViewedLeagueIds.Clear();
@@ -132,7 +152,7 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Sets the leagues that should receive management updates.
+	///     Sets the leagues that should receive management updates.
 	/// </summary>
 	public async Task SetManagedLeaguesAsync(IEnumerable<Guid> leagueIds, CancellationToken cancellationToken = default)
 	{
@@ -149,7 +169,7 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Sets the leagues that should receive viewer event updates.
+	///     Sets the leagues that should receive viewer event updates.
 	/// </summary>
 	public async Task SetViewedLeaguesAsync(IEnumerable<Guid> leagueIds, CancellationToken cancellationToken = default)
 	{
@@ -166,7 +186,7 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	}
 
 	/// <summary>
-	/// Disconnects from the leagues hub.
+	///     Disconnects from the leagues hub.
 	/// </summary>
 	public async Task DisconnectAsync(CancellationToken cancellationToken = default)
 	{
@@ -393,7 +413,7 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	private bool HasPendingSubscriptionChanges()
 	{
 		return !_joinedViewedLeagueIds.SetEquals(_viewedLeagueIds)
-			|| !_joinedManagedLeagueIds.SetEquals(_managedLeagueIds);
+		       || !_joinedManagedLeagueIds.SetEquals(_managedLeagueIds);
 	}
 
 	private async Task JoinViewedLeagueAsync(Guid leagueId, CancellationToken cancellationToken)
@@ -505,8 +525,8 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	private string GetHubUrl((string? UserId, string? UserName)? userInfo)
 	{
 		var baseUrl = _configuration["Services:Api:Https:0"]
-			?? _configuration["Services:Api:Http:0"]
-			?? "https://localhost:7001";
+		              ?? _configuration["Services:Api:Http:0"]
+		              ?? "https://localhost:7001";
 
 		var url = $"{baseUrl}/hubs/leagues";
 
@@ -517,10 +537,12 @@ public sealed class LeagueHubClient : IAsyncDisposable
 			{
 				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
 			}
+
 			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
 			{
 				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
 			}
+
 			url = $"{url}?{string.Join("&", queryParams)}";
 		}
 
@@ -540,12 +562,12 @@ public sealed class LeagueHubClient : IAsyncDisposable
 			}
 
 			var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
-						 ?? user.FindFirstValue("sub");
+			             ?? user.FindFirstValue("sub");
 
 			var userName = user.FindFirstValue(ClaimTypes.Email)
-						   ?? user.FindFirstValue("email")
-						   ?? user.FindFirstValue("preferred_username")
-						   ?? user.Identity?.Name;
+			               ?? user.FindFirstValue("email")
+			               ?? user.FindFirstValue("preferred_username")
+			               ?? user.Identity?.Name;
 
 			return (userId, userName);
 		}
@@ -554,21 +576,5 @@ public sealed class LeagueHubClient : IAsyncDisposable
 			_logger.LogWarning(ex, "Failed to get user info for SignalR");
 			return null;
 		}
-	}
-
-	/// <inheritdoc />
-	public async ValueTask DisposeAsync()
-	{
-		if (_hubConnection is null)
-		{
-			return;
-		}
-
-		_hubConnection.Reconnected -= OnReconnected;
-		_hubConnection.Closed -= OnClosed;
-
-		await DisconnectAsync();
-		await _hubConnection.DisposeAsync();
-		_hubConnection = null;
 	}
 }

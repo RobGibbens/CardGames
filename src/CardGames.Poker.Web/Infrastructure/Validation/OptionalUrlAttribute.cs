@@ -1,9 +1,8 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace CardGames.Poker.Web.Infrastructure.Validation;
 
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter)]
 public sealed class OptionalUrlAttribute : ValidationAttribute
 {
 	public OptionalUrlAttribute()
@@ -34,7 +33,7 @@ public sealed class OptionalUrlAttribute : ValidationAttribute
 		}
 
 		return uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
-			|| uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-			|| uri.Scheme.Equals(Uri.UriSchemeFtp, StringComparison.OrdinalIgnoreCase);
+		       || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+		       || uri.Scheme.Equals(Uri.UriSchemeFtp, StringComparison.OrdinalIgnoreCase);
 	}
 }

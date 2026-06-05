@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 
 /// <summary>
-/// Endpoint for dealing hands to all players in a Follow the Queen game.
+///     Endpoint for dealing hands to all players in a Follow the Queen game.
 /// </summary>
 public static class DealHandsEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for dealing hands.
+	///     Maps the POST endpoint for dealing hands.
 	/// </summary>
 	public static RouteGroupBuilder MapDealHands(this RouteGroupBuilder group)
 	{
@@ -37,7 +37,7 @@ public static class DealHandsEndpoint
 			                 "Fourth-Sixth Street: deals 1 board card (face-up) to each player. " +
 			                 "Seventh Street: deals 1 hole card (face-down) to each player. " +
 			                 "After dealing, the game transitions to the appropriate betting phase.")
-			.Produces<DealHandsSuccessful>(StatusCodes.Status200OK)
+			.Produces<DealHandsSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict)
 			.ProducesProblem(StatusCodes.Status422UnprocessableEntity);

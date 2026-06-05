@@ -1,6 +1,5 @@
 #nullable enable
 
-using System;
 using System.Reflection;
 using CardGames.Poker.Web.Components.Shared;
 using FluentAssertions;
@@ -17,7 +16,8 @@ public class DealerChoiceModalTests
 			"IsBlindBasedGame",
 			BindingFlags.Static | BindingFlags.NonPublic);
 
-		method.Should().NotBeNull("DealerChoiceModal should classify blind-based variants for Dealer's Choice submissions");
+		method.Should()
+			.NotBeNull("DealerChoiceModal should classify blind-based variants for Dealer's Choice submissions");
 
 		var result = method!.Invoke(null, ["BOBBARKER"]);
 

@@ -1,65 +1,72 @@
-﻿using CardGames.Core.French.Cards;
-using CardGames.Core.French.Cards.Extensions;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using CardGames.Core.French.Cards;
+using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Hands.HandTypes;
 using CardGames.Poker.Hands.Strength;
-using System.Linq;
 
 namespace CardGames.Poker.Hands;
 
 public abstract class HandBase : IComparable<HandBase>
 {
-    public IReadOnlyCollection<Card> Cards { get; }
+	protected HandBase(IReadOnlyCollection<Card> cards)
+	{
+		Cards = cards;
+	}
 
-    private long _strength;
-    public long Strength => _strength != default
-        ? _strength
-        : _strength = CalculateStrength();
+	public IReadOnlyCollection<Card> Cards { get; }
 
-    private HandType _type;
-    public HandType Type => _type != HandType.Incomplete
-        ? _type
-        : _type = DetermineType();
+	public long Strength => field != 0
+		? field
+		: field = CalculateStrength();
+
+	public HandType Type => field != HandType.Incomplete
+		? field
+		: field = DetermineType();
 
 
-    protected abstract HandTypeStrengthRanking Ranking { get; }
-    protected abstract IEnumerable<IReadOnlyCollection<Card>> PossibleHands();
+	protected abstract HandTypeStrengthRanking Ranking { get; }
 
-    public HandBase(IReadOnlyCollection<Card> cards)
-    {
-        Cards = cards;
-    }
+	public int CompareTo(HandBase other)
+	{
+		return Strength.CompareTo(other.Strength);
+	}
 
-    protected virtual long CalculateStrength()
-    {
-        var handsAndTypes = PossibleHands()
-            .Select(hand => new { hand, type = HandTypeDetermination.DetermineHandType(hand) });
-        
-        return handsAndTypes
-            .Where(pair => pair.type == Type)
-            .Select(pair => pair.hand)
-            .Select(hand => HandStrength.Calculate(hand, Type, Ranking))
-            .Max();
-    }
+	protected abstract IEnumerable<IReadOnlyCollection<Card>> PossibleHands();
 
-    protected virtual HandType DetermineType()
-    {
-        var handsAndTypes = PossibleHands()
-            .Select(hand => new { hand, type = HandTypeDetermination.DetermineHandType(hand) });
-        
-        return HandStrength.GetEffectiveType(handsAndTypes.Select(pair => pair.type), Ranking);
-    }
+	protected virtual long CalculateStrength()
+	{
+		var handsAndTypes = PossibleHands()
+			.Select(hand => new { hand, type = HandTypeDetermination.DetermineHandType(hand) });
 
-    public static bool operator >(HandBase thisHand, HandBase otherHand)
-        => thisHand.CompareTo(otherHand) > 0;
+		return handsAndTypes
+			.Where(pair => pair.type == Type)
+			.Select(pair => pair.hand)
+			.Select(hand => HandStrength.Calculate(hand, Type, Ranking))
+			.Max();
+	}
 
-    public static bool operator <(HandBase thisHand, HandBase otherHand)
-        => thisHand.CompareTo(otherHand) < 0;
+	protected virtual HandType DetermineType()
+	{
+		var handsAndTypes = PossibleHands()
+			.Select(hand => new { hand, type = HandTypeDetermination.DetermineHandType(hand) });
 
-    public int CompareTo(HandBase other)
-        => Strength.CompareTo(other.Strength);
+		return HandStrength.GetEffectiveType(handsAndTypes.Select(pair => pair.type), Ranking);
+	}
 
-    public override string ToString()
-        => Cards.ToStringRepresentation();
+	public static bool operator >(HandBase thisHand, HandBase otherHand)
+	{
+		return thisHand.CompareTo(otherHand) > 0;
+	}
+
+	public static bool operator <(HandBase thisHand, HandBase otherHand)
+	{
+		return thisHand.CompareTo(otherHand) < 0;
+	}
+
+	public override string ToString()
+	{
+		return Cards.ToStringRepresentation();
+	}
 }

@@ -1,5 +1,4 @@
 using CardGames.Poker.Api.Contracts;
-using CardGames.Poker.Api.Features.Leagues.v1;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest;
@@ -9,9 +8,11 @@ public static class DenyLeagueJoinRequestEndpoint
 	public static RouteGroupBuilder MapDenyLeagueJoinRequest(this RouteGroupBuilder group)
 	{
 		group.MapPost("{leagueId:guid}/join-requests/{joinRequestId:guid}/deny",
-				async (Guid leagueId, Guid joinRequestId, ModerateLeagueJoinRequestRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, Guid joinRequestId, ModerateLeagueJoinRequestRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new DenyLeagueJoinRequestCommand(leagueId, joinRequestId, request), cancellationToken);
+					var result = await mediator.Send(new DenyLeagueJoinRequestCommand(leagueId, joinRequestId, request),
+						cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),
@@ -19,7 +20,8 @@ public static class DenyLeagueJoinRequestEndpoint
 						{
 							DenyLeagueJoinRequestErrorCode.Unauthorized => Results.Unauthorized(),
 							DenyLeagueJoinRequestErrorCode.Forbidden => Results.Forbid(),
-							DenyLeagueJoinRequestErrorCode.JoinRequestNotFound => Results.NotFound(new { error.Message }),
+							DenyLeagueJoinRequestErrorCode.JoinRequestNotFound => Results.NotFound(
+								new { error.Message }),
 							DenyLeagueJoinRequestErrorCode.InvalidState => Results.BadRequest(new { error.Message }),
 							_ => Results.Problem(error.Message)
 						});

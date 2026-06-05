@@ -7,15 +7,15 @@ internal static class LeagueEventGameSettings
 {
 	private static (int? SmallBlind, int? BigBlind) ResolveBlindLevels(int? minBet, int? smallBlind, int? bigBlind)
 	{
-		int? resolvedBigBlind = bigBlind.HasValue && bigBlind.Value > 0
+		int? resolvedBigBlind = bigBlind is > 0
 			? bigBlind.Value
-			: minBet.HasValue && minBet.Value > 0
+			: minBet is > 0
 				? minBet.Value
 				: null;
 
-		int? resolvedSmallBlind = smallBlind.HasValue && smallBlind.Value > 0
+		int? resolvedSmallBlind = smallBlind is > 0
 			? smallBlind.Value
-			: resolvedBigBlind.HasValue && resolvedBigBlind.Value > 1
+			: resolvedBigBlind is > 1
 				? Math.Max(1, resolvedBigBlind.Value / 2)
 				: null;
 

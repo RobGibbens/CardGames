@@ -1,322 +1,313 @@
 @namespace CardGames.Poker.Web.Components.Shared
-
 @using CardGames.Contracts.SignalR
 @using CardGames.Poker.Api.Contracts
-@using Microsoft.JSInterop
-@using static CardGames.Poker.Web.Components.Pages.TablePlay
+@using static Pages.TablePlay
 
 @inject IJSRuntime JSRuntime
 
 <div @ref="_panelRef" class="action-panel @(IsSubmitting ? "submitting" : "")">
-    <div @ref="_handleRef" class="drag-handle" title="Drag to move">
-        <i class="fa-thin fa-grip-dots"></i>
-    </div>
-    @if (!string.IsNullOrWhiteSpace(HandDescription))
-    {
-        <div class="hand-eval-text">@HandDescription</div>
-        <div class="action-panel-hand-separator" aria-hidden="true"></div>
-    }
+	<div @ref="_handleRef" class="drag-handle" title="Drag to move">
+		<i class="fa-thin fa-grip-dots"></i>
+	</div>
+	@if (!string.IsNullOrWhiteSpace(HandDescription))
+	{
+		<div class="hand-eval-text">@HandDescription</div>
+		<div class="action-panel-hand-separator" aria-hidden="true"></div>
+	}
 
-    <!-- Action buttons -->
-    <div class="action-buttons">
-        @if (LegalActions.Contains(BettingActionType.Fold))
-        {
-            <button class="action-btn fold-btn" @onclick="() => SubmitAction(BettingActionType.Fold)" disabled="@IsSubmitting">
-                <i class="action-icon fa-thin fa-circle-down"></i>
-                <span class="action-label">Fold</span>
-            </button>
-        }
+	<!-- Action buttons -->
+	<div class="action-buttons">
+		@if (LegalActions.Contains(BettingActionType.Fold))
+		{
+			<button class="action-btn fold-btn" @onclick="() => SubmitAction(BettingActionType.Fold)" disabled="@IsSubmitting">
+				<i class="action-icon fa-thin fa-circle-down"></i>
+				<span class="action-label">Fold</span>
+			</button>
+		}
 
-        @if (LegalActions.Contains(BettingActionType.Check))
-        {
-            <button class="action-btn check-btn" @onclick="() => SubmitAction(BettingActionType.Check)" disabled="@IsSubmitting">
-                <i class="action-icon fa-thin fa-circle-check"></i>
-                <span class="action-label">Check</span>
-            </button>
-        }
+		@if (LegalActions.Contains(BettingActionType.Check))
+		{
+			<button class="action-btn check-btn" @onclick="() => SubmitAction(BettingActionType.Check)" disabled="@IsSubmitting">
+				<i class="action-icon fa-thin fa-circle-check"></i>
+				<span class="action-label">Check</span>
+			</button>
+		}
 
-        @if (LegalActions.Contains(BettingActionType.Call))
-        {
-            <button class="action-btn call-btn" @onclick="() => SubmitAction(BettingActionType.Call)" disabled="@IsSubmitting">
-                <i class="action-icon fa-thin fa-circle-phone"></i>
-                <span class="action-label">Call @CurrentBetToCall</span>
-            </button>
-        }
+		@if (LegalActions.Contains(BettingActionType.Call))
+		{
+			<button class="action-btn call-btn" @onclick="() => SubmitAction(BettingActionType.Call)" disabled="@IsSubmitting">
+				<i class="action-icon fa-thin fa-circle-phone"></i>
+				<span class="action-label">Call @CurrentBetToCall</span>
+			</button>
+		}
 
-        @if (LegalActions.Contains(BettingActionType.Bet))
-        {
-            <button class="action-btn bet-btn" @onclick="() => SubmitAction(BettingActionType.Bet, betAmount)" disabled="@IsSubmitting">
-                <i class="action-icon fa-thin fa-circle-dollar"></i>
-                <span class="action-label">Bet @betAmount</span>
-            </button>
-        }
+		@if (LegalActions.Contains(BettingActionType.Bet))
+		{
+			<button class="action-btn bet-btn" @onclick="() => SubmitAction(BettingActionType.Bet, betAmount)" disabled="@IsSubmitting">
+				<i class="action-icon fa-thin fa-circle-dollar"></i>
+				<span class="action-label">Bet @betAmount</span>
+			</button>
+		}
 
-        @if (LegalActions.Contains(BettingActionType.Raise))
-        {
-            <button class="action-btn raise-btn" @onclick="() => SubmitAction(BettingActionType.Raise, betAmount)" disabled="@IsSubmitting">
-                <i class="action-icon fa-thin fa-circle-plus"></i>
-                <span class="action-label">Raise @betAmount</span>
-            </button>
-        }
+		@if (LegalActions.Contains(BettingActionType.Raise))
+		{
+			<button class="action-btn raise-btn" @onclick="() => SubmitAction(BettingActionType.Raise, betAmount)" disabled="@IsSubmitting">
+				<i class="action-icon fa-thin fa-circle-plus"></i>
+				<span class="action-label">Raise @betAmount</span>
+			</button>
+		}
 
-        @if (LegalActions.Contains(BettingActionType.AllIn))
-        {
-            <button class="action-btn allin-btn" @onclick="() => SubmitAction(BettingActionType.AllIn)" disabled="@IsSubmitting">
-                <i class="action-icon fa-thin fa-circle-a"></i>
-                <span class="action-label">All In!</span>
-            </button>
-        }
-    </div>
+		@if (LegalActions.Contains(BettingActionType.AllIn))
+		{
+			<button class="action-btn allin-btn" @onclick="() => SubmitAction(BettingActionType.AllIn)" disabled="@IsSubmitting">
+				<i class="action-icon fa-thin fa-circle-a"></i>
+				<span class="action-label">All In!</span>
+			</button>
+		}
+	</div>
 
-    <!-- Bet sizing controls (shown when bet/raise is available) -->
-    @if (LegalActions.Contains(BettingActionType.Bet) || LegalActions.Contains(BettingActionType.Raise))
-    {
-        <div class="bet-controls">
-            <div class="bet-slider-container">
-                <input type="range" 
-                       class="bet-slider" 
-                       min="@GetEffectiveMinBet()" 
-                       max="@MaxBet" 
-                       step="@GetBetStep()"
-                       @bind="betAmount"
-                       @bind:event="oninput" />
-                <div class="bet-slider-labels">
-                    <span>@GetEffectiveMinBet()</span>
-                    <span>@MaxBet</span>
-                </div>
-            </div>
+	<!-- Bet sizing controls (shown when bet/raise is available) -->
+	@if (LegalActions.Contains(BettingActionType.Bet) || LegalActions.Contains(BettingActionType.Raise))
+	{
+		<div class="bet-controls">
+			<div class="bet-slider-container">
+				<input type="range"
+				       class="bet-slider"
+				       min="@GetEffectiveMinBet()"
+				       max="@MaxBet"
+				       step="@GetBetStep()"
+				       @bind="betAmount"
+				       @bind:event="oninput"/>
+				<div class="bet-slider-labels">
+					<span>@GetEffectiveMinBet()</span>
+					<span>@MaxBet</span>
+				</div>
+			</div>
 
-            <div class="bet-input-group">
-                <input type="number" 
-                       class="bet-input" 
-                       min="@GetEffectiveMinBet()" 
-                       max="@MaxBet"
-                       @bind="betAmount" />
-            </div>
+			<div class="bet-input-group">
+				<input type="number"
+				       class="bet-input"
+				       min="@GetEffectiveMinBet()"
+				       max="@MaxBet"
+				       @bind="betAmount"/>
+			</div>
 
-            <div class="bet-quick-buttons">
-                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetEffectiveMinBet())">Min</button>
-                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))">½ Pot</button>
-                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(1.0))">Pot</button>
-                <button class="quick-bet-btn" @onclick="() => SetBetAmount(MaxBet)">Max</button>
-            </div>
-        </div>
-    }
+			<div class="bet-quick-buttons">
+				<button class="quick-bet-btn" @onclick="() => SetBetAmount(GetEffectiveMinBet())">Min</button>
+				<button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))">½ Pot</button>
+				<button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(1.0))">Pot</button>
+				<button class="quick-bet-btn" @onclick="() => SetBetAmount(MaxBet)">Max</button>
+			</div>
+		</div>
+	}
 
-    @if (IsSubmitting)
-    {
-        <div class="action-submitting">
-            <span class="loading-spinner-small"></span>
-            Submitting...
-        </div>
-    }
+	@if (IsSubmitting)
+	{
+		<div class="action-submitting">
+			<span class="loading-spinner-small"></span>
+			Submitting...
+		</div>
+	}
 
-    <!-- Turn timer -->
-    <div class="turn-timer action-panel-timer">
-        <div class="timer-bar">
-            <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
-        </div>
-        <span class="timer-text">@GetSecondsRemaining() s</span>
-    </div>
+	<!-- Turn timer -->
+	<div class="turn-timer action-panel-timer">
+		<div class="timer-bar">
+			<div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+		</div>
+		<span class="timer-text">@GetSecondsRemaining() s</span>
+	</div>
 </div>
 
 @code {
-    private const int DefaultTimerDurationSeconds = 60;
-    private const string PanelStorageKey = "cardGames.panelPosition.actionPanel";
-    private string? _autoActionTimerKey;
-    private bool _isAutoActionInFlight;
+	private const int DefaultTimerDurationSeconds = 60;
+	private const string PanelStorageKey = "cardGames.panelPosition.actionPanel";
+	private string? _autoActionTimerKey;
+	private bool _isAutoActionInFlight;
 
-    private ElementReference _panelRef;
-    private ElementReference _handleRef;
-    private bool _dragInitialized;
+	private ElementReference _panelRef;
+	private ElementReference _handleRef;
+	private bool _dragInitialized;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!_dragInitialized)
-        {
-            _dragInitialized = true;
-            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, PanelStorageKey);
-        }
-    }
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!_dragInitialized)
+		{
+			_dragInitialized = true;
+			await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, PanelStorageKey);
+		}
+	}
 
-    [Parameter]
-    public List<BettingActionType> LegalActions { get; set; } = [];
+	[Parameter] public List<BettingActionType> LegalActions { get; set; } = [];
 
-    [Parameter]
-    public int MinBet { get; set; } = 10;
+	[Parameter] public int MinBet { get; set; } = 10;
 
-    [Parameter]
-    public int MaxBet { get; set; } = 1000;
+	[Parameter] public int MaxBet { get; set; } = 1000;
 
-    [Parameter]
-    public int CurrentBetToCall { get; set; }
+	[Parameter] public int CurrentBetToCall { get; set; }
 
-    [Parameter]
-    public int PlayerChips { get; set; }
+	[Parameter] public int PlayerChips { get; set; }
 
-    /// <summary>
-    /// The minimum raise amount (pre-calculated by the server as CurrentBet + LastRaiseAmount).
-    /// </summary>
-    [Parameter]
-    public int MinRaise { get; set; }
+	/// <summary>
+	///     The minimum raise amount (pre-calculated by the server as CurrentBet + LastRaiseAmount).
+	/// </summary>
+	[Parameter]
+	public int MinRaise { get; set; }
 
-    [Parameter]
-    public EventCallback<PlayerActionRequest> OnAction { get; set; }
+	[Parameter] public EventCallback<PlayerActionRequest> OnAction { get; set; }
 
-    [Parameter]
-    public bool IsSubmitting { get; set; }
+	[Parameter] public bool IsSubmitting { get; set; }
 
-    /// <summary>
-    /// The action timer state from SignalR.
-    /// </summary>
-    [Parameter]
-    public ActionTimerStateDto? ActionTimer { get; set; }
+	/// <summary>
+	///     The action timer state from SignalR.
+	/// </summary>
+	[Parameter]
+	public ActionTimerStateDto? ActionTimer { get; set; }
 
-    [Parameter]
-    public string? HandDescription { get; set; }
+	[Parameter] public string? HandDescription { get; set; }
 
-    /// <summary>
-    /// The total pot from SignalR game state, used for pot-size betting buttons.
-    /// </summary>
-    [Parameter]
-    public int TotalPot { get; set; }
+	/// <summary>
+	///     The total pot from SignalR game state, used for pot-size betting buttons.
+	/// </summary>
+	[Parameter]
+	public int TotalPot { get; set; }
 
-    private int betAmount;
+	private int betAmount;
 
-    protected override async Task OnParametersSetAsync()
-    {
-        var effectiveMin = GetEffectiveMinBet();
+	protected override async Task OnParametersSetAsync()
+	{
+		var effectiveMin = GetEffectiveMinBet();
 
-        // Initialize bet amount to minimum if not set or below the effective minimum
-        if (betAmount < effectiveMin)
-        {
-            betAmount = effectiveMin;
-        }
-        else if (betAmount > MaxBet)
-        {
-            betAmount = MaxBet;
-        }
+		// Initialize bet amount to minimum if not set or below the effective minimum
+		if (betAmount < effectiveMin)
+		{
+			betAmount = effectiveMin;
+		}
+		else if (betAmount > MaxBet)
+		{
+			betAmount = MaxBet;
+		}
 
-        await TrySubmitTimeoutDefaultActionAsync();
-    }
+		await TrySubmitTimeoutDefaultActionAsync();
+	}
 
-    private int GetSecondsRemaining()
-    {
-        return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
-    }
+	private int GetSecondsRemaining()
+	{
+		return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
+	}
 
-    private int GetTimerDuration()
-    {
-        return ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
-    }
+	private int GetTimerDuration()
+	{
+		return ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
+	}
 
-    private double GetTimerPercentage()
-    {
-        var duration = GetTimerDuration();
-        if (duration <= 0) return 100;
-        return (GetSecondsRemaining() / (double)duration) * 100;
-    }
+	private double GetTimerPercentage()
+	{
+		var duration = GetTimerDuration();
+		if (duration <= 0) return 100;
+		return GetSecondsRemaining() / (double)duration * 100;
+	}
 
-    private async Task SubmitAction(BettingActionType action, int? amount = null)
-    {
-        if (IsSubmitting)
-            return;
+	private async Task SubmitAction(BettingActionType action, int? amount = null)
+	{
+		if (IsSubmitting)
+			return;
 
-        await OnAction.InvokeAsync(new PlayerActionRequest(action, amount));
-    }
+		await OnAction.InvokeAsync(new PlayerActionRequest(action, amount));
+	}
 
-    private async Task TrySubmitTimeoutDefaultActionAsync()
-    {
-        if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
-        {
-            _autoActionTimerKey = null;
-            return;
-        }
+	private async Task TrySubmitTimeoutDefaultActionAsync()
+	{
+		if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
+		{
+			_autoActionTimerKey = null;
+			return;
+		}
 
-        if (IsSubmitting || _isAutoActionInFlight)
-        {
-            return;
-        }
+		if (IsSubmitting || _isAutoActionInFlight)
+		{
+			return;
+		}
 
-        if (!TryGetTimeoutDefaultAction(out var timeoutAction))
-        {
-            return;
-        }
+		if (!TryGetTimeoutDefaultAction(out var timeoutAction))
+		{
+			return;
+		}
 
-        var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
-        if (_autoActionTimerKey == timerKey)
-        {
-            return;
-        }
+		var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
+		if (_autoActionTimerKey == timerKey)
+		{
+			return;
+		}
 
-        _autoActionTimerKey = timerKey;
-        _isAutoActionInFlight = true;
+		_autoActionTimerKey = timerKey;
+		_isAutoActionInFlight = true;
 
-        try
-        {
-            await SubmitAction(timeoutAction);
-        }
-        finally
-        {
-            _isAutoActionInFlight = false;
-        }
-    }
+		try
+		{
+			await SubmitAction(timeoutAction);
+		}
+		finally
+		{
+			_isAutoActionInFlight = false;
+		}
+	}
 
-    private bool TryGetTimeoutDefaultAction(out BettingActionType action)
-    {
-        if (LegalActions.Contains(BettingActionType.Check))
-        {
-            action = BettingActionType.Check;
-            return true;
-        }
+	private bool TryGetTimeoutDefaultAction(out BettingActionType action)
+	{
+		if (LegalActions.Contains(BettingActionType.Check))
+		{
+			action = BettingActionType.Check;
+			return true;
+		}
 
-        if (LegalActions.Contains(BettingActionType.Fold))
-        {
-            action = BettingActionType.Fold;
-            return true;
-        }
+		if (LegalActions.Contains(BettingActionType.Fold))
+		{
+			action = BettingActionType.Fold;
+			return true;
+		}
 
-        action = default;
-        return false;
-    }
+		action = default;
+		return false;
+	}
 
-    private void SetBetAmount(int amount)
-    {
-        betAmount = Math.Clamp(amount, GetEffectiveMinBet(), MaxBet);
-    }
+	private void SetBetAmount(int amount)
+	{
+		betAmount = Math.Clamp(amount, GetEffectiveMinBet(), MaxBet);
+	}
 
-    /// <summary>
-    /// Gets the effective minimum bet/raise amount.
-    /// For raises, uses the server-provided MinRaise value.
-    /// For bets, the minimum is MinBet.
-    /// </summary>
-    private int GetEffectiveMinBet()
-    {
-        if (LegalActions.Contains(BettingActionType.Raise))
-        {
-            // Use the server-provided minimum raise amount
-            return Math.Max(MinRaise, MinBet);
-        }
+	/// <summary>
+	///     Gets the effective minimum bet/raise amount.
+	///     For raises, uses the server-provided MinRaise value.
+	///     For bets, the minimum is MinBet.
+	/// </summary>
+	private int GetEffectiveMinBet()
+	{
+		if (LegalActions.Contains(BettingActionType.Raise))
+		{
+			// Use the server-provided minimum raise amount
+			return Math.Max(MinRaise, MinBet);
+		}
 
-        return MinBet;
-    }
+		return MinBet;
+	}
 
-    private int GetBetStep()
-    {
-        // Step size based on bet range
-        var range = MaxBet - MinBet;
-        if (range < 100) return 1;
-        if (range < 500) return 5;
-        if (range < 1000) return 10;
-        if (range < 5000) return 25;
-        return 50;
-    }
+	private int GetBetStep()
+	{
+		// Step size based on bet range
+		var range = MaxBet - MinBet;
+		if (range < 100) return 1;
+		if (range < 500) return 5;
+		if (range < 1000) return 10;
+		if (range < 5000) return 25;
+		return 50;
+	}
 
-    private int GetPotBet(double multiplier)
-    {
-        // Use actual pot total from game state when available, fall back to approximation
-        var basePot = TotalPot > 0 ? TotalPot : CurrentBetToCall * 2;
-        var potBet = (int)(basePot * multiplier);
-        return Math.Clamp(potBet, GetEffectiveMinBet(), MaxBet);
-    }
+	private int GetPotBet(double multiplier)
+	{
+		// Use actual pot total from game state when available, fall back to approximation
+		var basePot = TotalPot > 0 ? TotalPot : CurrentBetToCall * 2;
+		var potBet = (int)(basePot * multiplier);
+		return Math.Clamp(potBet, GetEffectiveMinBet(), MaxBet);
+	}
+
 }

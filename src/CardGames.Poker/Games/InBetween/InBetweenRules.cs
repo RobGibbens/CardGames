@@ -11,7 +11,8 @@ public static class InBetweenRules
 		{
 			GameTypeCode = "INBETWEEN",
 			GameTypeName = "In-Between",
-			Description = "Two boundary cards are dealt face-up. Players bet on whether the next card's rank falls strictly between the two boundaries. Match a boundary and you POST (pay double). Ace can be declared high or low. Game ends when the pot is empty.",
+			Description =
+				"Two boundary cards are dealt face-up. Players bet on whether the next card's rank falls strictly between the two boundaries. Match a boundary and you POST (pay double). Ace can be declared high or low. Game ends when the pot is empty.",
 			MinPlayers = 2,
 			MaxPlayers = 20,
 			Phases =
@@ -31,7 +32,8 @@ public static class InBetweenRules
 				new GamePhaseDescriptor
 				{
 					PhaseId = "InBetweenTurn", Name = "In-Between Turn",
-					Description = "Active player is dealt two boundary cards and decides to bet or pass. If the first card is an Ace, the player must declare it high or low before the second boundary is dealt.",
+					Description =
+						"Active player is dealt two boundary cards and decides to bet or pass. If the first card is an Ace, the player must declare it high or low before the second boundary is dealt.",
 					Category = "Decision", RequiresPlayerAction = true
 				},
 				new GamePhaseDescriptor

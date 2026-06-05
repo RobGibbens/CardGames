@@ -1,9 +1,9 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
-using CardGames.Contracts.SignalR;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -17,11 +17,13 @@ public sealed class DenyLeagueJoinRequestCommandHandler(
 	ILogger<DenyLeagueJoinRequestCommandHandler> logger)
 	: IRequestHandler<DenyLeagueJoinRequestCommand, OneOf<Unit, DenyLeagueJoinRequestError>>
 {
-	public async Task<OneOf<Unit, DenyLeagueJoinRequestError>> Handle(DenyLeagueJoinRequestCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, DenyLeagueJoinRequestError>> Handle(DenyLeagueJoinRequestCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.Unauthorized, "User is not authenticated.");
+			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
@@ -32,15 +34,18 @@ public sealed class DenyLeagueJoinRequestCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.Forbidden, "Only league managers or admins can deny join requests.");
+			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.Forbidden,
+				"Only league managers or admins can deny join requests.");
 		}
 
 		var joinRequest = await context.LeagueJoinRequests
-			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.Id == request.JoinRequestId, cancellationToken);
+			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.Id == request.JoinRequestId,
+				cancellationToken);
 
 		if (joinRequest is null)
 		{
-			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.JoinRequestNotFound, "Join request not found.");
+			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.JoinRequestNotFound,
+				"Join request not found.");
 		}
 
 		var now = DateTimeOffset.UtcNow;
@@ -71,17 +76,20 @@ public sealed class DenyLeagueJoinRequestCommandHandler(
 					joinRequest.Id);
 			}
 
-			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.InvalidState, "Join request has expired.");
+			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.InvalidState,
+				"Join request has expired.");
 		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Approved)
 		{
-			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.InvalidState, "Join request has already been approved.");
+			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.InvalidState,
+				"Join request has already been approved.");
 		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Expired)
 		{
-			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.InvalidState, "Join request has expired.");
+			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.InvalidState,
+				"Join request has expired.");
 		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Denied)

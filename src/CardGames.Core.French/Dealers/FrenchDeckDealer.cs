@@ -8,58 +8,66 @@ namespace CardGames.Core.French.Dealers;
 
 public class FrenchDeckDealer : Dealer<Card>
 {
-    private FrenchDeck SpecificDeck => Deck as FrenchDeck;
+	public FrenchDeckDealer(FrenchDeck deck)
+		: base(deck)
+	{
+	}
 
-    public FrenchDeckDealer(FrenchDeck deck) 
-        : base(deck)
-    {
-    }
+	public FrenchDeckDealer(FrenchDeck deck, IRandomNumberGenerator numberGenerator)
+		: base(deck, numberGenerator)
+	{
+	}
 
-    public FrenchDeckDealer(FrenchDeck deck, IRandomNumberGenerator numberGenerator) 
-        : base(deck, numberGenerator)
-    {
-    }
+	private FrenchDeck SpecificDeck => Deck as FrenchDeck;
 
-    public static FrenchDeckDealer WithShortDeck() 
-        => new(new ShortFrenchDeck());
-    
-    public static FrenchDeckDealer WithFullDeck() 
-        => new(new FullFrenchDeck());
+	public static FrenchDeckDealer WithShortDeck()
+	{
+		return new FrenchDeckDealer(new ShortFrenchDeck());
+	}
 
-    public bool TryDealCardOfValue(int value, out Card card)
-    {
-        var availableCards = SpecificDeck
-            .CardsLeftOfValue(value)
-            .ToArray();
+	public static FrenchDeckDealer WithFullDeck()
+	{
+		return new FrenchDeckDealer(new FullFrenchDeck());
+	}
 
-        return TryDealCardFrom(availableCards, out card);
-    }
-    
-    public bool TryDealCardOfSymbol(Symbol symbol, out Card card)
-        => TryDealCardOfValue((int)symbol, out card);
-    
-    public bool TryDealCardOfSuit(Suit suit, out Card card)
-    {
-        var availableCards = SpecificDeck
-            .CardsLeftOfSuit(suit)
-            .ToArray();
-        
-        return TryDealCardFrom(availableCards, out card);
-    }
+	public bool TryDealCardOfValue(int value, out Card card)
+	{
+		var availableCards = SpecificDeck
+			.CardsLeftOfValue(value)
+			.ToArray();
 
-    public Card DealSpecific(Card card)
-        => Deck.GetSpecific(card);
-    
-    private bool TryDealCardFrom(Card[] cards, out Card card)
-    {
-        if (!cards.Any())
-        {
-            card = null;
-            return false;
-        }
+		return TryDealCardFrom(availableCards, out card);
+	}
 
-        card = cards[NumberGenerator.Next(cards.Length)];
-        _ = Deck.GetSpecific(card);
-        return true;
-    }
+	public bool TryDealCardOfSymbol(Symbol symbol, out Card card)
+	{
+		return TryDealCardOfValue((int)symbol, out card);
+	}
+
+	public bool TryDealCardOfSuit(Suit suit, out Card card)
+	{
+		var availableCards = SpecificDeck
+			.CardsLeftOfSuit(suit)
+			.ToArray();
+
+		return TryDealCardFrom(availableCards, out card);
+	}
+
+	public Card DealSpecific(Card card)
+	{
+		return Deck.GetSpecific(card);
+	}
+
+	private bool TryDealCardFrom(Card[] cards, out Card? card)
+	{
+		if (!cards.Any())
+		{
+			card = null;
+			return false;
+		}
+
+		card = cards[NumberGenerator.Next(cards.Length)];
+		_ = Deck.GetSpecific(card);
+		return true;
+	}
 }

@@ -6,20 +6,20 @@ using CardGames.Poker.Betting;
 namespace CardGames.Poker.Games.KingsAndLows;
 
 /// <summary>
-/// Represents a player in a Kings and Lows game with their cards and state.
+///     Represents a player in a Kings and Lows game with their cards and state.
 /// </summary>
 public class KingsAndLowsGamePlayer
 {
+	public KingsAndLowsGamePlayer(PokerPlayer player)
+	{
+		Player = player;
+	}
+
 	public PokerPlayer Player { get; }
 	public List<Card> Hand { get; private set; } = [];
 	public DropOrStayDecision Decision { get; private set; } = DropOrStayDecision.Undecided;
 	public bool HasDropped => Decision == DropOrStayDecision.Drop;
 	public bool HasStayed => Decision == DropOrStayDecision.Stay;
-
-	public KingsAndLowsGamePlayer(PokerPlayer player)
-	{
-		Player = player;
-	}
 
 	public void SetHand(IEnumerable<Card> cards)
 	{

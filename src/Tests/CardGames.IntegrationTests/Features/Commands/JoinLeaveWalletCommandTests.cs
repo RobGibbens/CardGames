@@ -1,8 +1,7 @@
 using CardGames.IntegrationTests.Infrastructure.Fakes;
-using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
+using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Infrastructure;
 
 namespace CardGames.IntegrationTests.Features.Commands;
@@ -81,7 +80,8 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		account.Balance.Should().Be(50);
 
 		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
-		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries
+			.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
 	}
 
 	[Fact]
@@ -115,7 +115,8 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		account.Balance.Should().Be(500);
 
 		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
-		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries
+			.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
 	}
 
 	[Fact]
@@ -154,7 +155,8 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
 		game.TournamentBuyIn = 250;
 
-		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Tournament Mismatch", "tournament.mismatch@test.com");
+		var player =
+			await DatabaseSeeder.CreatePlayerAsync(DbContext, "Tournament Mismatch", "tournament.mismatch@test.com");
 
 		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
 		{
@@ -231,7 +233,8 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		result.AsT1.Code.Should().Be(JoinGameErrorCode.LateJoinNotAllowed);
 
 		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
-		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries
+			.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
 	}
 
 	[Fact]
@@ -292,7 +295,8 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		account.Balance.Should().Be(0);
 
 		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
-		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries
+			.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
 	}
 
 	[Fact]
@@ -314,7 +318,8 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		account.Balance.Should().Be(CashierAccountInitializer.StartingChipAmount);
 
 		var registrationLedgerEntry = await DbContext.PlayerChipLedgerEntries
-			.Where(x => x.PlayerId == player.Id && x.ReferenceType == CashierAccountInitializer.RegistrationReferenceType)
+			.Where(x => x.PlayerId == player.Id &&
+			            x.ReferenceType == CashierAccountInitializer.RegistrationReferenceType)
 			.SingleAsync();
 
 		registrationLedgerEntry.Type.Should().Be(PlayerChipLedgerEntryType.Add);
@@ -336,7 +341,8 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	public async Task LeaveGame_BetweenHands_WritesAuditOnlyCashOutLedger()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", numberOfPlayers: 2, startingChips: 400);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", numberOfPlayers: 2,
+			startingChips: 400);
 		var player = setup.Players[0];
 		var gamePlayer = setup.GamePlayers[0];
 

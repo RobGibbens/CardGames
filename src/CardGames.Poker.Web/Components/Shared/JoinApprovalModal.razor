@@ -1,5 +1,4 @@
 @using CardGames.Contracts.SignalR
-
 @if (PendingRequests.Count > 0)
 {
 	<div class="confirm-dialog-overlay join-approval-overlay">
@@ -24,26 +23,26 @@
 								<p class="confirm-dialog-message mb-2">Requested buy-in: <strong>@request.RequestedBuyIn.ToString("N0")</strong></p>
 								<label class="form-label mb-1" for="@GetInputId(request.JoinRequestId)">Approved buy-in</label>
 								<input id="@GetInputId(request.JoinRequestId)"
-									class="form-control join-buy-in-input"
-									type="number"
-									min="1"
-									max="@request.RequestedBuyIn"
-									step="1"
-									value="@GetApprovedBuyIn(request.JoinRequestId, request.RequestedBuyIn)"
-									@oninput="eventArgs => OnApprovedBuyInInput(request.JoinRequestId, request.RequestedBuyIn, eventArgs)"
-									disabled="@(BusyJoinRequestId == request.JoinRequestId)" />
+								       class="form-control join-buy-in-input"
+								       type="number"
+								       min="1"
+								       max="@request.RequestedBuyIn"
+								       step="1"
+								       value="@GetApprovedBuyIn(request.JoinRequestId, request.RequestedBuyIn)"
+								       @oninput="eventArgs => OnApprovedBuyInInput(request.JoinRequestId, request.RequestedBuyIn, eventArgs)"
+								       disabled="@(BusyJoinRequestId == request.JoinRequestId)"/>
 							</div>
 							<div class="join-approval-item-actions">
 								<button class="btn btn-secondary confirm-dialog-btn"
-									type="button"
-									@onclick="() => ResolveAsync(request, false)"
-									disabled="@(BusyJoinRequestId == request.JoinRequestId)">
+								        type="button"
+								        @onclick="() => ResolveAsync(request, false)"
+								        disabled="@(BusyJoinRequestId == request.JoinRequestId)">
 									Deny
 								</button>
 								<button class="btn btn-primary confirm-dialog-btn"
-									type="button"
-									@onclick="() => ResolveAsync(request, true)"
-									disabled="@(BusyJoinRequestId == request.JoinRequestId)">
+								        type="button"
+								        @onclick="() => ResolveAsync(request, true)"
+								        disabled="@(BusyJoinRequestId == request.JoinRequestId)">
 									@if (BusyJoinRequestId == request.JoinRequestId)
 									{
 										<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -60,17 +59,13 @@
 }
 
 @code {
-	[Parameter]
-	public IReadOnlyList<GameJoinRequestReceivedDto> PendingRequests { get; set; } = [];
+	[Parameter] public IReadOnlyList<GameJoinRequestReceivedDto> PendingRequests { get; set; } = [];
 
-	[Parameter]
-	public Guid? BusyJoinRequestId { get; set; }
+	[Parameter] public Guid? BusyJoinRequestId { get; set; }
 
-	[Parameter]
-	public string? ErrorMessage { get; set; }
+	[Parameter] public string? ErrorMessage { get; set; }
 
-	[Parameter]
-	public EventCallback<JoinApprovalAction> OnResolveRequested { get; set; }
+	[Parameter] public EventCallback<JoinApprovalAction> OnResolveRequested { get; set; }
 
 	private readonly Dictionary<Guid, int> _approvedBuyIns = [];
 
@@ -93,9 +88,7 @@
 
 	private int GetApprovedBuyIn(Guid joinRequestId, int requestedBuyIn)
 	{
-		return _approvedBuyIns.TryGetValue(joinRequestId, out var value)
-			? value
-			: requestedBuyIn;
+		return _approvedBuyIns.GetValueOrDefault(joinRequestId, requestedBuyIn);
 	}
 
 	private void OnApprovedBuyInInput(Guid joinRequestId, int requestedBuyIn, ChangeEventArgs eventArgs)
@@ -115,5 +108,9 @@
 		await OnResolveRequested.InvokeAsync(new JoinApprovalAction(request.GameId, request.JoinRequestId, approved, approvedBuyIn));
 	}
 
-	private static string GetInputId(Guid joinRequestId) => $"join-approval-{joinRequestId:N}";
+	private static string GetInputId(Guid joinRequestId)
+	{
+		return $"join-approval-{joinRequestId:N}";
+	}
+
 }

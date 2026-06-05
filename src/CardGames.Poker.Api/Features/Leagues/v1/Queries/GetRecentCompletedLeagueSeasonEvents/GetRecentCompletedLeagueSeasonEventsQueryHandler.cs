@@ -1,32 +1,37 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueSeasonEventStatus = CardGames.Poker.Api.Data.Entities.LeagueSeasonEventStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetRecentCompletedLeagueSeasonEvents;
 
 public sealed class GetRecentCompletedLeagueSeasonEventsQueryHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService)
-	: IRequestHandler<GetRecentCompletedLeagueSeasonEventsQuery, OneOf<IReadOnlyList<LeagueSeasonEventDto>, GetRecentCompletedLeagueSeasonEventsError>>
+	: IRequestHandler<GetRecentCompletedLeagueSeasonEventsQuery,
+		OneOf<IReadOnlyList<LeagueSeasonEventDto>, GetRecentCompletedLeagueSeasonEventsError>>
 {
-	public async Task<OneOf<IReadOnlyList<LeagueSeasonEventDto>, GetRecentCompletedLeagueSeasonEventsError>> Handle(GetRecentCompletedLeagueSeasonEventsQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<IReadOnlyList<LeagueSeasonEventDto>, GetRecentCompletedLeagueSeasonEventsError>> Handle(
+		GetRecentCompletedLeagueSeasonEventsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new GetRecentCompletedLeagueSeasonEventsError(GetRecentCompletedLeagueSeasonEventsErrorCode.Unauthorized, "User is not authenticated.");
+			return new GetRecentCompletedLeagueSeasonEventsError(
+				GetRecentCompletedLeagueSeasonEventsErrorCode.Unauthorized, "User is not authenticated.");
 		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive, cancellationToken);
+			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive,
+				cancellationToken);
 
 		if (!isMember)
 		{
-			return new GetRecentCompletedLeagueSeasonEventsError(GetRecentCompletedLeagueSeasonEventsErrorCode.Forbidden, "Only active members can view season events.");
+			return new GetRecentCompletedLeagueSeasonEventsError(
+				GetRecentCompletedLeagueSeasonEventsErrorCode.Forbidden, "Only active members can view season events.");
 		}
 
 		var seasonExists = await context.LeagueSeasons
@@ -35,13 +40,15 @@ public sealed class GetRecentCompletedLeagueSeasonEventsQueryHandler(
 
 		if (!seasonExists)
 		{
-			return new GetRecentCompletedLeagueSeasonEventsError(GetRecentCompletedLeagueSeasonEventsErrorCode.SeasonNotFound, "Season not found in league.");
+			return new GetRecentCompletedLeagueSeasonEventsError(
+				GetRecentCompletedLeagueSeasonEventsErrorCode.SeasonNotFound, "Season not found in league.");
 		}
 
 		var take = Math.Clamp(request.Take, 1, 20);
 		var events = await context.LeagueSeasonEvents
 			.AsNoTracking()
-			.Where(x => x.LeagueId == request.LeagueId && x.LeagueSeasonId == request.SeasonId && x.Status == Data.Entities.LeagueSeasonEventStatus.Completed)
+			.Where(x => x.LeagueId == request.LeagueId && x.LeagueSeasonId == request.SeasonId &&
+			            x.Status == LeagueSeasonEventStatus.Completed)
 			.OrderByDescending(x => x.ScheduledAtUtc ?? x.CreatedAtUtc)
 			.ThenByDescending(x => x.CreatedAtUtc)
 			.Take(take)

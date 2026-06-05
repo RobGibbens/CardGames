@@ -1,11 +1,10 @@
-using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Services;
 
 namespace CardGames.IntegrationTests.GameFlow;
 
 /// <summary>
-/// Integration tests for <see cref="ScrewYourNeighborFlowHandler"/>.
-/// Tests phase transitions, dealing configuration, and game properties.
+///     Integration tests for <see cref="ScrewYourNeighborFlowHandler" />.
+///     Tests phase transitions, dealing configuration, and game properties.
 /// </summary>
 public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 {

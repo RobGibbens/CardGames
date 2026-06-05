@@ -12,23 +12,26 @@ public sealed class GetLeagueSeasonEventsPageQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetLeagueSeasonEventsPageQuery, OneOf<LeagueSeasonEventsPageDto, GetLeagueSeasonEventsPageError>>
 {
-	public async Task<OneOf<LeagueSeasonEventsPageDto, GetLeagueSeasonEventsPageError>> Handle(GetLeagueSeasonEventsPageQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<LeagueSeasonEventsPageDto, GetLeagueSeasonEventsPageError>> Handle(
+		GetLeagueSeasonEventsPageQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.Unauthorized, "User is not authenticated.");
+			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
 			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive,
+			               x.UserId == currentUserService.UserId &&
+			               x.IsActive,
 				cancellationToken);
 
 		if (!isMember)
 		{
-			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.Forbidden, "Only active members can view season events.");
+			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.Forbidden,
+				"Only active members can view season events.");
 		}
 
 		var seasonExists = await context.LeagueSeasons
@@ -37,7 +40,8 @@ public sealed class GetLeagueSeasonEventsPageQueryHandler(
 
 		if (!seasonExists)
 		{
-			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.SeasonNotFound, "Season not found in league.");
+			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.SeasonNotFound,
+				"Season not found in league.");
 		}
 
 		var pageSize = Math.Clamp(request.PageSize, 1, 100);
@@ -69,7 +73,7 @@ public sealed class GetLeagueSeasonEventsPageQueryHandler(
 				Name = x.Name,
 				SequenceNumber = x.SequenceNumber,
 				ScheduledAtUtc = x.ScheduledAtUtc,
-				Status = (Contracts.LeagueSeasonEventStatus)x.Status,
+				Status = (LeagueSeasonEventStatus)x.Status,
 				Notes = x.Notes,
 				CreatedByUserId = x.CreatedByUserId,
 				CreatedAtUtc = x.CreatedAtUtc,

@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.CollectAntes;
 
 /// <summary>
-/// Endpoint for collecting antes from all players in a Follow the Queen game.
+///     Endpoint for collecting antes from all players in a Follow the Queen game.
 /// </summary>
 public static class CollectAntesEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for collecting antes.
+	///     Maps the POST endpoint for collecting antes.
 	/// </summary>
 	public static RouteGroupBuilder MapCollectAntes(this RouteGroupBuilder group)
 	{
@@ -34,7 +34,7 @@ public static class CollectAntesEndpoint
 			.WithDescription("Collects the mandatory ante bet from all active players. " +
 			                 "Each player contributes the ante amount to the pot (or goes all-in if they have less than the ante). " +
 			                 "After calling this endpoint, the game transitions to the ThirdStreet phase.")
-			.Produces<CollectAntesSuccessful>(StatusCodes.Status200OK)
+			.Produces<CollectAntesSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);
 

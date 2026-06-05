@@ -8,13 +8,14 @@ public static class DropOrStayEndpoint
 	public static RouteGroupBuilder MapDropOrStay(this RouteGroupBuilder group)
 	{
 		group.MapPost("/{gameId:guid}/drop-or-stay",
-				async (Guid gameId, DropOrStayRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, DropOrStayRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new DropOrStayCommand(gameId, request.PlayerId, request.Decision);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => Results.Problem(
 							title: "Drop or stay error",
 							detail: error.Message,
@@ -26,7 +27,7 @@ public static class DropOrStayEndpoint
 			.WithName($"KingsAndLows{nameof(MapDropOrStay).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapDropOrStay).TrimPrefix("Map"))
 			.WithDescription("Record a player's drop or stay decision in Kings and Lows.")
-			.Produces<DropOrStaySuccessful>(StatusCodes.Status200OK)
+			.Produces<DropOrStaySuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -35,6 +36,6 @@ public static class DropOrStayEndpoint
 }
 
 /// <summary>
-/// Request body for drop or stay decision.
+///     Request body for drop or stay decision.
 /// </summary>
 public record DropOrStayRequest(Guid PlayerId, string Decision);

@@ -10,7 +10,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHand;
 
 /// <summary>
-/// Handles the <see cref="StartHandCommand"/> to start a new hand in a Hold the Baseball game.
+///     Handles the <see cref="StartHandCommand" /> to start a new hand in a Hold the Baseball game.
 /// </summary>
 public class StartHandCommandHandler(
 	CardsDbContext context,
@@ -60,9 +60,7 @@ public class StartHandCommandHandler(
 		AutoSitOutPlayersWithNoChips(game);
 
 		var eligiblePlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-			             !gp.IsSittingOut &&
-			             gp.ChipStack > 0)
+			.Where(gp => gp is { Status: GamePlayerStatus.Active, IsSittingOut: false, ChipStack: > 0 })
 			.DistinctBy(gp => gp.Id)
 			.ToList();
 
@@ -70,7 +68,8 @@ public class StartHandCommandHandler(
 		{
 			return new StartHandError
 			{
-				Message = "Not enough eligible players to start a new hand. At least 2 players with chips are required.",
+				Message =
+					"Not enough eligible players to start a new hand. At least 2 players with chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
 		}
@@ -192,7 +191,8 @@ public class StartHandCommandHandler(
 		}
 	}
 
-	private async Task CompleteOpenBettingRoundsAsync(Game game, DateTimeOffset now, CancellationToken cancellationToken)
+	private async Task CompleteOpenBettingRoundsAsync(Game game, DateTimeOffset now,
+		CancellationToken cancellationToken)
 	{
 		var incompleteBettingRounds = await context.BettingRounds
 			.Where(br => br.GameId == game.Id && !br.IsComplete)

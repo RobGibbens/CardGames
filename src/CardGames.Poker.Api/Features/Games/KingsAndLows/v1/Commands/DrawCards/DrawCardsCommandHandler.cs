@@ -1,9 +1,9 @@
+using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
-using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Hands.DrawHands;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +13,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 
 /// <summary>
-/// Handles the <see cref="DrawCardsCommand"/> to process a player's draw action in Kings and Lows.
+///     Handles the <see cref="DrawCardsCommand" /> to process a player's draw action in Kings and Lows.
 /// </summary>
 public class DrawCardsCommandHandler(CardsDbContext context)
 	: IRequestHandler<DrawCardsCommand, OneOf<DrawCardsSuccessful, DrawCardsError>>
@@ -29,7 +29,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players and cards
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -48,7 +48,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			return new DrawCardsError
 			{
 				Message = $"Cannot draw cards. Game is in '{game.CurrentPhase}' phase, " +
-						  $"but must be in '{nameof(Phases.DrawPhase)}' phase.",
+				          $"but must be in '{nameof(Phases.DrawPhase)}' phase.",
 				Code = DrawCardsErrorCode.InvalidPhase
 			};
 		}
@@ -67,7 +67,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 
 		// 4. Verify it's this player's turn to draw
 		if (game.CurrentDrawPlayerIndex < 0 ||
-			gamePlayer.SeatPosition != game.CurrentDrawPlayerIndex)
+		    gamePlayer.SeatPosition != game.CurrentDrawPlayerIndex)
 		{
 			return new DrawCardsError
 			{
@@ -134,6 +134,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				playerCards.RemoveAt(index);
 			}
 		}
+
 		// Reverse to maintain original order
 		discardedCardInfos.Reverse();
 
@@ -148,7 +149,8 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		{
 			return new DrawCardsError
 			{
-				Message = $"Not enough cards remaining in the deck. Need {discardIndices.Count} but only {deckCards.Count} available.",
+				Message =
+					$"Not enough cards remaining in the deck. Need {discardIndices.Count} but only {deckCards.Count} available.",
 				Code = DrawCardsErrorCode.InsufficientCards
 			};
 		}
@@ -182,7 +184,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 
 		// 11. Find next player who needs to draw (staying players who haven't drawn)
 		var stayingPlayers = gamePlayersList
-			.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay && !gp.HasDrawnThisRound)
+			.Where(gp => gp.DropOrStayDecision == DropOrStayDecision.Stay && !gp.HasDrawnThisRound)
 			.ToList();
 
 		bool drawPhaseComplete = stayingPlayers.Count == 0;
@@ -193,7 +195,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		if (drawPhaseComplete)
 		{
 			// All staying players have drawn - determine next phase
-			var totalStaying = gamePlayersList.Count(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay);
+			var totalStaying = gamePlayersList.Count(gp => gp.DropOrStayDecision == DropOrStayDecision.Stay);
 
 			if (totalStaying == 1)
 			{
@@ -238,7 +240,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			while (searched < gamePlayersList.Count)
 			{
 				var player = gamePlayersList[nextIndexInList];
-				if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay && !player.HasDrawnThisRound)
+				if (player.DropOrStayDecision == DropOrStayDecision.Stay && !player.HasDrawnThisRound)
 				{
 					game.CurrentDrawPlayerIndex = player.SeatPosition;
 					game.CurrentPlayerIndex = player.SeatPosition;
@@ -246,6 +248,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 					nextPlayerName = player.Player?.Name;
 					break;
 				}
+
 				nextIndexInList = (nextIndexInList + 1) % gamePlayersList.Count;
 				searched++;
 			}
@@ -255,9 +258,9 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		string? newHandDescription = null;
 		if (playerCards.Count == 5)
 		{
-			var coreCards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
-				(CardGames.Core.French.Cards.Suit)(int)c.Suit,
-				(CardGames.Core.French.Cards.Symbol)(int)c.Symbol
+			var coreCards = playerCards.Select(c => new Card(
+				(Suit)(int)c.Suit,
+				(Symbol)(int)c.Symbol
 			)).ToList();
 			var newHand = new KingsAndLowsDrawHand(coreCards);
 			newHandDescription = HandDescriptionFormatter.GetHandDescription(newHand);
@@ -286,7 +289,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Performs showdown, determines winner/losers, distributes pot, and transitions to PotMatching phase.
+	///     Performs showdown, determines winner/losers, distributes pot, and transitions to PotMatching phase.
 	/// </summary>
 	private static async Task PerformShowdownAndSetupPotMatching(
 		Game game,
@@ -296,7 +299,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		CancellationToken cancellationToken)
 	{
 		// Get all cards for staying players
-		var stayingPlayers = gamePlayersList.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay).ToList();
+		var stayingPlayers = gamePlayersList.Where(gp => gp.DropOrStayDecision == DropOrStayDecision.Stay).ToList();
 
 		// Load main pot for current hand
 		var mainPot = await context.Pots
@@ -326,12 +329,12 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			if (playerCards.Count == 5)
 			{
 				// Convert to domain Card objects for evaluation
-				var cards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
-					(CardGames.Core.French.Cards.Suit)(int)c.Suit,
-					(CardGames.Core.French.Cards.Symbol)(int)c.Symbol
+				var cards = playerCards.Select(c => new Card(
+					(Suit)(int)c.Suit,
+					(Symbol)(int)c.Symbol
 				)).ToList();
 
-				var hand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(cards);
+				var hand = new KingsAndLowsDrawHand(cards);
 				playerHandEvaluations.Add((player, hand.Strength));
 			}
 		}
@@ -363,6 +366,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				payout++;
 				remainder--;
 			}
+
 			winner.ChipStack += payout;
 		}
 
@@ -388,7 +392,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			{
 				GameId = game.Id,
 				HandNumber = game.CurrentHandNumber + 1,
-				PotType = Data.Entities.PotType.Main,
+				PotType = PotType.Main,
 				PotOrder = 0,
 				Amount = totalMatched,
 				IsAwarded = false,
@@ -405,7 +409,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Formats a card symbol and suit into a display string.
+	///     Formats a card symbol and suit into a display string.
 	/// </summary>
 	private static string FormatCard(CardSymbol symbol, CardSuit suit)
 	{
@@ -429,10 +433,6 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 
 		var suitStr = suit switch
 		{
-			CardSuit.Hearts => "?",
-			CardSuit.Diamonds => "?",
-			CardSuit.Spades => "?",
-			CardSuit.Clubs => "?",
 			_ => "?"
 		};
 
@@ -440,7 +440,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise).
+	///     Moves the dealer button to the next occupied seat position (clockwise).
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
@@ -473,7 +473,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Deals a 5-card hand for the deck in player vs deck scenario. Uses cards from the persisted shuffled deck.
+	///     Deals a 5-card hand for the deck in player vs deck scenario. Uses cards from the persisted shuffled deck.
 	/// </summary>
 	private static async Task DealDeckHandAsync(
 		Game game,
@@ -486,10 +486,10 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		// that have been assigned to players during the draw phase
 		var deckCards = await dbContext.GameCards
 			.Where(gc => gc.GameId == game.Id &&
-						 gc.HandNumber == game.CurrentHandNumber &&
-						 gc.Location == CardLocation.Deck &&
-						 gc.GamePlayerId == null &&
-						 !gc.IsDiscarded)
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Deck &&
+			             gc.GamePlayerId == null &&
+			             !gc.IsDiscarded)
 			.OrderBy(gc => gc.DealOrder)
 			.Take(5)
 			.ToListAsync(cancellationToken);

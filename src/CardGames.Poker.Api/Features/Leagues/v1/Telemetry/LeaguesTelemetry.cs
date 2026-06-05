@@ -4,8 +4,8 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 
 public sealed class LeaguesTelemetry
 {
-	private readonly Counter<long> _funnelAttempts;
 	private readonly Histogram<double> _endpointLatencyMs;
+	private readonly Counter<long> _funnelAttempts;
 
 	public LeaguesTelemetry(IMeterFactory meterFactory)
 	{
@@ -16,11 +16,13 @@ public sealed class LeaguesTelemetry
 
 	public void RecordFunnelAttempt(string step, string outcome)
 	{
-		_funnelAttempts.Add(1, new("step", step), new("outcome", outcome));
+		_funnelAttempts.Add(1, new KeyValuePair<string, object?>("step", step),
+			new KeyValuePair<string, object?>("outcome", outcome));
 	}
 
 	public void RecordEndpointLatency(string endpoint, int statusCode, double latencyMs)
 	{
-		_endpointLatencyMs.Record(latencyMs, new("endpoint", endpoint), new("status_code", statusCode));
+		_endpointLatencyMs.Record(latencyMs, new KeyValuePair<string, object?>("endpoint", endpoint),
+			new KeyValuePair<string, object?>("status_code", statusCode));
 	}
 }

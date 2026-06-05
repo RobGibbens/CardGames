@@ -14,7 +14,7 @@ public static class PerformShowdownEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							PerformShowdownErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
@@ -26,7 +26,7 @@ public static class PerformShowdownEndpoint
 			.WithName($"Baseball{nameof(MapPerformShowdown).TrimPrefix("Map")}")
 			.WithSummary("Perform Showdown")
 			.WithDescription("Performs the showdown phase to evaluate hands and award pots.")
-			.Produces<PerformShowdownSuccessful>(StatusCodes.Status200OK)
+			.Produces<PerformShowdownSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);
 

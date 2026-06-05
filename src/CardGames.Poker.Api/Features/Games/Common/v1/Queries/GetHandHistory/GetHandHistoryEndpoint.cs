@@ -5,29 +5,31 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 
 /// <summary>
-/// Endpoint for retrieving hand history.
+///     Endpoint for retrieving hand history.
 /// </summary>
 public static class GetHandHistoryEndpoint
 {
-    /// <summary>
-    /// Maps the GetHandHistory endpoint.
-    /// </summary>
-    public static RouteGroupBuilder MapGetHandHistory(this RouteGroupBuilder group)
-    {
-        group.MapGet("{gameId:guid}/history",
-                async (Guid gameId, IMediator mediator, int take = 25, int skip = 0, CancellationToken cancellationToken = default) =>
-                {
-                    var query = new GetHandHistoryQuery(gameId, take, skip);
-                    var response = await mediator.Send(query, cancellationToken);
-                    return Results.Ok(response);
-                })
-            .WithName($"{nameof(MapGetHandHistory).TrimPrefix("Map")}")
-            .WithSummary("Get hand history for a game")
-            .WithDescription("Retrieves the hand history for a specific game with all player results, ordered newest-first.")
-            .MapToApiVersion(1.0)
-            .Produces<HandHistoryListDto>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+	/// <summary>
+	///     Maps the GetHandHistory endpoint.
+	/// </summary>
+	public static RouteGroupBuilder MapGetHandHistory(this RouteGroupBuilder group)
+	{
+		group.MapGet("{gameId:guid}/history",
+				async (Guid gameId, IMediator mediator, int take = 25, int skip = 0,
+					CancellationToken cancellationToken = default) =>
+				{
+					var query = new GetHandHistoryQuery(gameId, take, skip);
+					var response = await mediator.Send(query, cancellationToken);
+					return Results.Ok(response);
+				})
+			.WithName($"{nameof(MapGetHandHistory).TrimPrefix("Map")}")
+			.WithSummary("Get hand history for a game")
+			.WithDescription(
+				"Retrieves the hand history for a specific game with all player results, ordered newest-first.")
+			.MapToApiVersion(1.0)
+			.Produces<HandHistoryListDto>()
+			.ProducesProblem(StatusCodes.Status404NotFound);
 
-        return group;
-    }
+		return group;
+	}
 }

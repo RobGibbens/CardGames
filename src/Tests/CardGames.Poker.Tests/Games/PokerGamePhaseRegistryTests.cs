@@ -1,7 +1,6 @@
+using System;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
-using CardGames.Poker.Games.HoldEm;
 using FluentAssertions;
 using Xunit;
 
@@ -32,8 +31,7 @@ public sealed class PokerGamePhaseRegistryTests
 	[Fact]
 	public void TryResolve_WhenPhaseInvalidForGame_ReturnsFalse()
 	{
-		var result = PokerGamePhaseRegistry.
-			TryResolve("HOLDEM", "NotARealPhase", out var phase);
+		var result = PokerGamePhaseRegistry.TryResolve("HOLDEM", "NotARealPhase", out var phase);
 
 		result.Should().BeFalse();
 		phase.Should().BeNull();
@@ -45,7 +43,7 @@ public sealed class PokerGamePhaseRegistryTests
 		var result = PokerGamePhaseRegistry.TryResolve(
 			"HOLDEM",
 			"Flop",
-			out System.DayOfWeek _);
+			out DayOfWeek _);
 
 		result.Should().BeFalse();
 	}

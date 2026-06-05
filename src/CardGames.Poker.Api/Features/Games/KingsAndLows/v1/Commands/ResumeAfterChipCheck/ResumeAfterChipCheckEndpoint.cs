@@ -8,7 +8,8 @@ public static class ResumeAfterChipCheckEndpoint
 	public static RouteGroupBuilder MapResumeAfterChipCheck(this RouteGroupBuilder group)
 	{
 		group.MapPost("/{gameId:guid}/resume-chip-check",
-				async (Guid gameId, ResumeAfterChipCheckRequest? request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, ResumeAfterChipCheckRequest? request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new ResumeAfterChipCheckCommand(gameId, request?.ForceResume ?? false);
 					var result = await mediator.Send(command, cancellationToken);
@@ -25,8 +26,9 @@ public static class ResumeAfterChipCheckEndpoint
 				})
 			.WithName($"KingsAndLows{nameof(MapResumeAfterChipCheck).TrimPrefix("Map")}")
 			.WithSummary("Resume game after chip check pause")
-			.WithDescription("Resume the game after the chip check pause. Players who still cannot cover the pot will auto-drop.")
-			.Produces<ResumeAfterChipCheckSuccessful>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Resume the game after the chip check pause. Players who still cannot cover the pot will auto-drop.")
+			.Produces<ResumeAfterChipCheckSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -35,7 +37,7 @@ public static class ResumeAfterChipCheckEndpoint
 }
 
 /// <summary>
-/// Request body for resume after chip check.
+///     Request body for resume after chip check.
 /// </summary>
 /// <param name="ForceResume">If true, resume immediately even if some players are short (they will auto-drop).</param>
 public record ResumeAfterChipCheckRequest(bool ForceResume = false);

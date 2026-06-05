@@ -79,7 +79,8 @@ public class DeckDrawCommandHandlerTests
 		var playerId = await context.GamePlayers.Select(gp => gp.PlayerId).FirstAsync();
 		var sut = new DeckDrawCommandHandler(context);
 
-		var result = await sut.Handle(new DeckDrawCommand(game.Id, playerId, [0, 1, 2, 3, 4, 0]), CancellationToken.None);
+		var result = await sut.Handle(new DeckDrawCommand(game.Id, playerId, [0, 1, 2, 3, 4, 0]),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(DeckDrawErrorCode.TooManyDiscards);
@@ -99,7 +100,8 @@ public class DeckDrawCommandHandlerTests
 		return new CardsDbContext(options);
 	}
 
-	private static async Task<Game> SeedGameAsync(CardsDbContext context, string currentPhase = nameof(Phases.PlayerVsDeck))
+	private static async Task<Game> SeedGameAsync(CardsDbContext context,
+		string currentPhase = nameof(Phases.PlayerVsDeck))
 	{
 		var now = DateTimeOffset.UtcNow;
 		var game = new Game

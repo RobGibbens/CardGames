@@ -16,10 +16,10 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/five-card-draw")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name])
+			.WithTags(Feature.Name)
 			.AddFluentValidationAutoValidation();
 
-	mapGroup
+		mapGroup
 			.MapStartHand()
 			.MapCollectAntes()
 			.MapDealHands()

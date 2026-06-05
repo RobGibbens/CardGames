@@ -1,79 +1,79 @@
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 
 /// <summary>
-/// Error response for a failed join game operation.
+///     Error response for a failed join game operation.
 /// </summary>
 /// <param name="Code">The error code.</param>
 /// <param name="Message">A human-readable error message.</param>
 public record JoinGameError(JoinGameErrorCode Code, string Message);
 
 /// <summary>
-/// Error codes for join game failures.
+///     Error codes for join game failures.
 /// </summary>
 public enum JoinGameErrorCode
 {
-    /// <summary>
-    /// The specified game was not found.
-    /// </summary>
-    GameNotFound,
-
-    /// <summary>
-    /// The specified seat is already occupied.
-    /// </summary>
-    SeatOccupied,
-
-    /// <summary>
-    /// The player is already seated at another position in this game.
-    /// </summary>
-    AlreadySeated,
-
-    /// <summary>
-    /// The game has reached its maximum number of players.
-    /// </summary>
-    MaxPlayersReached,
-
-    /// <summary>
-    /// The specified seat index is invalid.
-    /// </summary>
-    InvalidSeatIndex,
-
-    /// <summary>
-    /// The requested starting chips amount is invalid.
-    /// </summary>
-    InvalidStartingChips,
-
-    /// <summary>
-    /// The game has ended and is no longer accepting players.
-    /// </summary>
-    GameEnded,
-
-    /// <summary>
-    /// The player's chip account has a zero balance.
-    /// </summary>
-    ZeroAccountBalance,
-
-    /// <summary>
-    /// The player does not have enough account chips for the requested buy-in.
-    /// </summary>
-    InsufficientAccountChips,
-
-    /// <summary>
-    /// The requested buy-in exceeds the table's configured maximum buy-in.
-    /// </summary>
-    BuyInExceedsTableMaximum,
+	/// <summary>
+	///     The specified game was not found.
+	/// </summary>
+	GameNotFound,
 
 	/// <summary>
-	/// The game is restricted to active members of the associated league.
+	///     The specified seat is already occupied.
 	/// </summary>
-    LeagueMembershipRequired,
+	SeatOccupied,
 
-    /// <summary>
-    /// The game variant does not allow players to join after the game has started.
-    /// </summary>
-    LateJoinNotAllowed,
+	/// <summary>
+	///     The player is already seated at another position in this game.
+	/// </summary>
+	AlreadySeated,
 
-    /// <summary>
-    /// The player already has a pending approval request for this table.
-    /// </summary>
-    JoinApprovalPending
+	/// <summary>
+	///     The game has reached its maximum number of players.
+	/// </summary>
+	MaxPlayersReached,
+
+	/// <summary>
+	///     The specified seat index is invalid.
+	/// </summary>
+	InvalidSeatIndex,
+
+	/// <summary>
+	///     The requested starting chips amount is invalid.
+	/// </summary>
+	InvalidStartingChips,
+
+	/// <summary>
+	///     The game has ended and is no longer accepting players.
+	/// </summary>
+	GameEnded,
+
+	/// <summary>
+	///     The player's chip account has a zero balance.
+	/// </summary>
+	ZeroAccountBalance,
+
+	/// <summary>
+	///     The player does not have enough account chips for the requested buy-in.
+	/// </summary>
+	InsufficientAccountChips,
+
+	/// <summary>
+	///     The requested buy-in exceeds the table's configured maximum buy-in.
+	/// </summary>
+	BuyInExceedsTableMaximum,
+
+	/// <summary>
+	///     The game is restricted to active members of the associated league.
+	/// </summary>
+	LeagueMembershipRequired,
+
+	/// <summary>
+	///     The game variant does not allow players to join after the game has started.
+	/// </summary>
+	LateJoinNotAllowed,
+
+	/// <summary>
+	///     The player already has a pending approval request for this table.
+	/// </summary>
+	JoinApprovalPending
 }

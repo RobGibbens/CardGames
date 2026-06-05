@@ -4,7 +4,7 @@ using CardGames.Poker.Api.Models;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentDrawPlayer;
 
 /// <summary>
-/// Response containing the current draw player's state within a specific game during the draw phase.
+///     Response containing the current draw player's state within a specific game during the draw phase.
 /// </summary>
 public record GetCurrentDrawPlayerResponse(
 	Guid Id,

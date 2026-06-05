@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
@@ -17,21 +18,25 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<CorrectLeagueSeasonEventResultsCommand, OneOf<Unit, CorrectLeagueSeasonEventResultsError>>
 {
-	public async Task<OneOf<Unit, CorrectLeagueSeasonEventResultsError>> Handle(CorrectLeagueSeasonEventResultsCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, CorrectLeagueSeasonEventResultsError>> Handle(
+		CorrectLeagueSeasonEventResultsCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.Unauthorized, "User is not authenticated.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.Reason))
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.InvalidRequest, "Correction reason is required.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.InvalidRequest,
+				"Correction reason is required.");
 		}
 
 		if (request.Request.Results is null || request.Request.Results.Count == 0)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.InvalidRequest, "At least one corrected result is required.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.InvalidRequest,
+				"At least one corrected result is required.");
 		}
 
 		var actorCanManageLeague = await context.LeagueMembersCurrent
@@ -42,7 +47,8 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 
 		if (!actorCanManageLeague)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.Forbidden, "Only league managers or admins can correct results.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.Forbidden,
+				"Only league managers or admins can correct results.");
 		}
 
 		var leagueExists = await context.Leagues
@@ -51,7 +57,8 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 
 		if (!leagueExists)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.LeagueNotFound, "League not found.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.LeagueNotFound,
+				"League not found.");
 		}
 
 		var season = await context.LeagueSeasons
@@ -60,12 +67,15 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 
 		if (season is null)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.SeasonNotFound, "Season not found.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.SeasonNotFound,
+				"Season not found.");
 		}
 
 		if (season.LeagueId != request.LeagueId)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.MismatchedLeagueOrSeason, "Season does not belong to the requested league.");
+			return new CorrectLeagueSeasonEventResultsError(
+				CorrectLeagueSeasonEventResultsErrorCode.MismatchedLeagueOrSeason,
+				"Season does not belong to the requested league.");
 		}
 
 		var seasonEvent = await context.LeagueSeasonEvents
@@ -73,12 +83,15 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 
 		if (seasonEvent is null)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.EventNotFound, "Season event not found.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.EventNotFound,
+				"Season event not found.");
 		}
 
 		if (seasonEvent.LeagueId != request.LeagueId || seasonEvent.LeagueSeasonId != request.SeasonId)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.MismatchedLeagueOrSeason, "Season event does not belong to the requested league season.");
+			return new CorrectLeagueSeasonEventResultsError(
+				CorrectLeagueSeasonEventResultsErrorCode.MismatchedLeagueOrSeason,
+				"Season event does not belong to the requested league season.");
 		}
 
 		var duplicateMemberIds = request.Request.Results
@@ -89,12 +102,15 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 
 		if (duplicateMemberIds.Count > 0)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.InvalidRequest, "Each member can appear only once in event results.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.InvalidRequest,
+				"Each member can appear only once in event results.");
 		}
 
-		if (request.Request.Results.Any(x => string.IsNullOrWhiteSpace(x.MemberUserId) || x.Placement <= 0 || x.Points < 0))
+		if (request.Request.Results.Any(x =>
+			    string.IsNullOrWhiteSpace(x.MemberUserId) || x.Placement <= 0 || x.Points < 0))
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.InvalidRequest, "Result entries must include a member id, positive placement, and non-negative points.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.InvalidRequest,
+				"Result entries must include a member id, positive placement, and non-negative points.");
 		}
 
 		var memberIds = request.Request.Results
@@ -103,13 +119,15 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 
 		var activeMemberIds = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.Where(x => x.LeagueId == request.LeagueId && x.IsActive && ((IEnumerable<string>)memberIds).Contains(x.UserId))
+			.Where(x => x.LeagueId == request.LeagueId && x.IsActive &&
+			            ((IEnumerable<string>)memberIds).Contains(x.UserId))
 			.Select(x => x.UserId)
 			.ToListAsync(cancellationToken);
 
 		if (activeMemberIds.Count != memberIds.Length)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.MemberNotFound, "All result entries must reference active league members.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.MemberNotFound,
+				"All result entries must reference active league members.");
 		}
 
 		var existingResults = await context.LeagueSeasonEventResults
@@ -118,7 +136,8 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 
 		if (existingResults.Count == 0)
 		{
-			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.ResultsNotIngested, "Cannot correct results before initial ingestion.");
+			return new CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode.ResultsNotIngested,
+				"Cannot correct results before initial ingestion.");
 		}
 
 		var existingNormalized = existingResults
@@ -198,15 +217,16 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 			.Distinct(StringComparer.Ordinal)
 			.ToArray();
 
-		await LeagueSeasonEventStandingsRecalculator.RebuildForMembersAsync(context, request.LeagueId, affectedMemberIds, cancellationToken);
+		await LeagueSeasonEventStandingsRecalculator.RebuildForMembersAsync(context, request.LeagueId,
+			affectedMemberIds, cancellationToken);
 		await context.SaveChangesAsync(cancellationToken);
-		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 		{
 			LeagueId = request.LeagueId,
 			EventId = request.EventId,
-			SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.Season,
+			SourceType = LeagueEventSourceType.Season,
 			SeasonId = request.SeasonId,
-			ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.ResultsRecorded,
+			ChangeKind = LeagueEventChangeKind.ResultsRecorded,
 			ChangedAtUtc = now
 		}, cancellationToken);
 

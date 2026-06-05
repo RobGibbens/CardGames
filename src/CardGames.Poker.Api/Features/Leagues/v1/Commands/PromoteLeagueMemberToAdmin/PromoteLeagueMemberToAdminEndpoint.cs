@@ -9,7 +9,8 @@ public static class PromoteLeagueMemberToAdminEndpoint
 		group.MapPost("{leagueId:guid}/members/{memberUserId}/promote-admin",
 				async (Guid leagueId, string memberUserId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new PromoteLeagueMemberToAdminCommand(leagueId, memberUserId), cancellationToken);
+					var result = await mediator.Send(new PromoteLeagueMemberToAdminCommand(leagueId, memberUserId),
+						cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),
@@ -17,7 +18,8 @@ public static class PromoteLeagueMemberToAdminEndpoint
 						{
 							PromoteLeagueMemberToAdminErrorCode.Unauthorized => Results.Unauthorized(),
 							PromoteLeagueMemberToAdminErrorCode.Forbidden => Results.Forbid(),
-							PromoteLeagueMemberToAdminErrorCode.MemberNotFound => Results.NotFound(new { error.Message }),
+							PromoteLeagueMemberToAdminErrorCode.MemberNotFound => Results.NotFound(
+								new { error.Message }),
 							_ => Results.Problem(error.Message)
 						});
 				})

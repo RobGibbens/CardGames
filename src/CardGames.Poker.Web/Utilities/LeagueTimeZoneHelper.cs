@@ -16,7 +16,8 @@ public static class LeagueTimeZoneHelper
 		return scheduledAtUtc > DateTimeOffset.UtcNow;
 	}
 
-	public static bool TryConvertLocalToUtc(DateTime? date, string? timeText, string? timeZoneId, out DateTimeOffset utcValue, out string? errorMessage)
+	public static bool TryConvertLocalToUtc(DateTime? date, string? timeText, string? timeZoneId,
+		out DateTimeOffset utcValue, out string? errorMessage)
 	{
 		utcValue = default;
 		errorMessage = null;
@@ -96,10 +97,12 @@ public static class LeagueTimeZoneHelper
 		}
 
 		var localValue = ConvertUtcToLocal(utcValue.Value, timeZoneId);
-		return localValue?.ToString("g", CultureInfo.CurrentCulture) ?? utcValue.Value.ToString("g", CultureInfo.CurrentCulture);
+		return localValue?.ToString("g", CultureInfo.CurrentCulture) ??
+		       utcValue.Value.ToString("g", CultureInfo.CurrentCulture);
 	}
 
-	public static (DateTime Date, string TimeText) GetDefaultLocalScheduledDateTime(string? timeZoneId, DateTimeOffset? utcNow = null)
+	public static (DateTime Date, string TimeText) GetDefaultLocalScheduledDateTime(string? timeZoneId,
+		DateTimeOffset? utcNow = null)
 	{
 		var scheduledAtUtc = (utcNow ?? DateTimeOffset.UtcNow).AddMinutes(30);
 		var localValue = ConvertUtcToLocal(scheduledAtUtc, timeZoneId) ?? scheduledAtUtc;
@@ -124,8 +127,9 @@ public static class LeagueTimeZoneHelper
 
 	private static bool TryParseTimeText(string? timeText, out TimeOnly localTime)
 	{
-		return TimeOnly.TryParseExact(timeText, ["HH:mm", "HH:mm:ss"], CultureInfo.InvariantCulture, DateTimeStyles.None, out localTime)
-			|| TimeOnly.TryParse(timeText, CultureInfo.CurrentCulture, out localTime);
+		return TimeOnly.TryParseExact(timeText, ["HH:mm", "HH:mm:ss"], CultureInfo.InvariantCulture,
+			       DateTimeStyles.None, out localTime)
+		       || TimeOnly.TryParse(timeText, CultureInfo.CurrentCulture, out localTime);
 	}
 
 	private static bool TryResolveTimeZone(string? timeZoneId, out TimeZoneInfo timeZone)
@@ -142,13 +146,13 @@ public static class LeagueTimeZoneHelper
 		}
 
 		if (TimeZoneInfo.TryConvertIanaIdToWindowsId(timeZoneId, out var windowsId)
-			&& TryFindSystemTimeZone(windowsId, out timeZone))
+		    && TryFindSystemTimeZone(windowsId, out timeZone))
 		{
 			return true;
 		}
 
 		if (TimeZoneInfo.TryConvertWindowsIdToIanaId(timeZoneId, out var ianaId)
-			&& TryFindSystemTimeZone(ianaId, out timeZone))
+		    && TryFindSystemTimeZone(ianaId, out timeZone))
 		{
 			return true;
 		}

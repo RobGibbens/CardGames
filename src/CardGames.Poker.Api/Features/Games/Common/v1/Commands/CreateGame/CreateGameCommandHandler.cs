@@ -1,6 +1,5 @@
 ﻿using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Betting;
@@ -16,7 +15,8 @@ public class CreateGameCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
-	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command, CancellationToken cancellationToken)
+	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command,
+		CancellationToken cancellationToken)
 	{
 		if (command.GameId == Guid.Empty)
 		{
@@ -72,9 +72,11 @@ public class CreateGameCommandHandler(
 		}
 
 		var now = DateTimeOffset.UtcNow;
-		var allowedDealerChoiceGameCodes = DealersChoiceGameSettings.NormalizeGameCodes(command.AllowedDealerChoiceGameCodes);
+		var allowedDealerChoiceGameCodes =
+			DealersChoiceGameSettings.NormalizeGameCodes(command.AllowedDealerChoiceGameCodes);
 
-		if (command.IsDealersChoice && command.AllowedDealerChoiceGameCodes is not null && allowedDealerChoiceGameCodes.Count == 0)
+		if (command is { IsDealersChoice: true, AllowedDealerChoiceGameCodes: not null } &&
+		    allowedDealerChoiceGameCodes.Count == 0)
 		{
 			return new CreateGameConflict
 			{
@@ -281,7 +283,8 @@ public class CreateGameCommandHandler(
 			return 1;
 		}
 
-		if (string.Equals(command.GameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase))
+		if (string.Equals(command.GameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			    StringComparison.OrdinalIgnoreCase))
 		{
 			return Math.Max(1, command.Ante * 3);
 		}

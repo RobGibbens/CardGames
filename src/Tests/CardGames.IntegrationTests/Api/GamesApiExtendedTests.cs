@@ -1,349 +1,356 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CardGames.IntegrationTests.Infrastructure;
-using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
-using CardGames.Poker.Api.Features.Games.AvailablePokerGames.v1.Queries.GetAvailablePokerGames;
-using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ChooseDealerGame;
-using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Games;
-using CardGames.Poker.Betting;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using CreateGameCommand = CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand;
+using GetAvailablePokerGamesResponse =
+	CardGames.Poker.Api.Features.Games.AvailablePokerGames.v1.Queries.GetAvailablePokerGames.
+	GetAvailablePokerGamesResponse;
+using GetGameRulesResponse = CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules.GetGameRulesResponse;
+using LeagueOneOffEventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType;
+using LeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
+using PlayerInfo = CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.PlayerInfo;
 
 namespace CardGames.IntegrationTests.Api;
 
 /// <summary>
-/// Extended API integration tests for game query and action endpoints.
+///     Extended API integration tests for game query and action endpoints.
 /// </summary>
 public class GamesApiExtendedTests : ApiIntegrationTestBase
 {
-    private static readonly JsonSerializerOptions ActiveGamesJsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
+	private static readonly JsonSerializerOptions ActiveGamesJsonOptions = new(JsonSerializerDefaults.Web)
+	{
+		Converters = { new JsonStringEnumConverter() }
+	};
 
-    public GamesApiExtendedTests(ApiWebApplicationFactory factory) : base(factory)
-    {
-    }
+	public GamesApiExtendedTests(ApiWebApplicationFactory factory) : base(factory)
+	{
+	}
 
-    #region GetGameRules Endpoint
+	#region Health Check and Info Endpoints
 
-    [Fact]
-    public async Task GetGameRules_ExistingGame_ReturnsRules()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Rules Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
-        
-        await PostAsync("api/v1/games", command);
+	[Fact]
+	public async Task HealthCheck_ReturnsHealthy()
+	{
+		// Act
+		var response = await Client.GetAsync("health");
 
-        // Act
-        var result = await GetAsync<GetGameRulesResponse>($"api/v1/games/{gameId}/rules");
+		// Assert
+		response.StatusCode.Should().Be(HttpStatusCode.OK);
+	}
 
-        // Assert
-        result.Should().NotBeNull();
-        result!.Phases.Should().NotBeEmpty();
-    }
+	#endregion
 
-    [Fact]
-    public async Task GetGameRules_NonExistentGame_ReturnsNotFound()
-    {
-        // Act
-        var response = await Client.GetAsync($"api/v1/games/{Guid.NewGuid()}/rules");
+	#region Content Negotiation
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
+	[Fact]
+	public async Task GetGames_AcceptsJsonContent()
+	{
+		// Act
+		var request = new HttpRequestMessage(HttpMethod.Get, "api/v1/games");
+		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+		var response = await Client.SendAsync(request);
 
-    #endregion
+		// Assert
+		response.StatusCode.Should().Be(HttpStatusCode.OK);
+		response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
+	}
 
-    #region Game Type Specific Endpoints
+	#endregion
 
-    [Fact]
-    public async Task FiveCardDraw_CollectAntes_ReturnsOk()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Ante Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
-        
-        await PostAsync("api/v1/games", command);
-        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands", null);
+	private void SetUser(string userId)
+	{
+		Client.DefaultRequestHeaders.Remove(TestAuthHandler.UserHeader);
+		Client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, userId);
+	}
 
-        // Act
-        var response = await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/antes", null);
+	#region GetGameRules Endpoint
 
-        // Assert
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
-    }
+	[Fact]
+	public async Task GetGameRules_ExistingGame_ReturnsRules()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Rules Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
 
-    [Fact]
-    public async Task FiveCardDraw_DealHands_AfterAntes_ReturnsOk()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Deal Test Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
-        
-        await PostAsync("api/v1/games", command);
-        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands", null);
-        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/antes", null);
+		await PostAsync("api/v1/games", command);
 
-        // Act
-        var response = await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/deal", null);
+		// Act
+		var result = await GetAsync<GetGameRulesResponse>($"api/v1/games/{gameId}/rules");
 
-        // Assert
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
-    }
+		// Assert
+		result.Should().NotBeNull();
+		result!.Phases.Should().NotBeEmpty();
+	}
 
-    #endregion
+	[Fact]
+	public async Task GetGameRules_NonExistentGame_ReturnsNotFound()
+	{
+		// Act
+		var response = await Client.GetAsync($"api/v1/games/{Guid.NewGuid()}/rules");
 
-    #region Available Poker Games Endpoint
+		// Assert
+		response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+	}
 
-    [Fact]
-    public async Task GetAvailablePokerGames_ReturnsListOfGameTypes()
-    {
-        // Act
-        var response = await Client.GetAsync("api/v1/games/available");
+	#endregion
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var games = await response.Content.ReadFromJsonAsync<List<GetAvailablePokerGamesResponse>>();
-        games.Should().NotBeNull();
-        games.Should().NotBeEmpty();
+	#region Game Type Specific Endpoints
 
-        var gameCodes = games!.Select(g => g.Code).ToList();
-        gameCodes.Should().Contain(PokerGameMetadataRegistry.HoldEmCode);
-        gameCodes.Should().Contain(PokerGameMetadataRegistry.OmahaCode);
-        gameCodes.Should().Contain(PokerGameMetadataRegistry.NebraskaCode);
-        gameCodes.Should().Contain(PokerGameMetadataRegistry.SouthDakotaCode);
-    }
+	[Fact]
+	public async Task FiveCardDraw_CollectAntes_ReturnsOk()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Ante Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
 
-    [Fact]
-    public async Task GetAvailablePokerGames_WithVariantOmaha_ReturnsOnlyOmaha()
-    {
-        // Act
-        var response = await Client.GetAsync("api/v1/games/available?variant=Omaha");
+		await PostAsync("api/v1/games", command);
+		await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands", null);
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+		// Act
+		var response = await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/antes", null);
 
-        var games = await response.Content.ReadFromJsonAsync<List<GetAvailablePokerGamesResponse>>();
-        games.Should().NotBeNull();
-        games.Should().ContainSingle();
+		// Assert
+		response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
+	}
 
-        var omaha = games![0];
-        omaha.Code.Should().Be(PokerGameMetadataRegistry.OmahaCode);
-        omaha.Name.Should().Be("Omaha");
-        omaha.MinimumNumberOfPlayers.Should().Be(2);
-        omaha.MaximumNumberOfPlayers.Should().Be(10);
-    }
+	[Fact]
+	public async Task FiveCardDraw_DealHands_AfterAntes_ReturnsOk()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Deal Test Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
 
-    #endregion
+		await PostAsync("api/v1/games", command);
+		await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands", null);
+		await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/antes", null);
 
-    #region Active Games Endpoint
+		// Act
+		var response = await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/deal", null);
 
-    [Fact]
-    public async Task GetActiveGames_ReturnsListOfGames()
-    {
-        // Arrange - Create and start a game
-        var gameId = Guid.NewGuid();
-        var command = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Active Game Test",
-            10,
-            20,
-            new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
-        
-        await PostAsync("api/v1/games", command);
+		// Assert
+		response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
+	}
 
-        // Act
-        var response = await Client.GetAsync("api/v1/games/active");
+	#endregion
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
+	#region Available Poker Games Endpoint
 
-    [Fact]
-    public async Task GetActiveGames_LeagueGames_AreVisibleOnlyToMembers_AndIncludeScopeLabel()
-    {
-        var publicGameId = Guid.NewGuid();
-        await PostAsync("api/v1/games", new CreateGameCommand(
-            publicGameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "Public Lobby Table",
-            10,
-            20,
-            [new PlayerInfo("P1", 1000), new PlayerInfo("P2", 1000)]));
+	[Fact]
+	public async Task GetAvailablePokerGames_ReturnsListOfGameTypes()
+	{
+		// Act
+		var response = await Client.GetAsync("api/v1/games/available");
 
-        SetUser("league-lobby-owner");
-        var createLeagueResponse = await PostAsync("/api/v1/leagues", new CardGames.Poker.Api.Contracts.CreateLeagueRequest
-        {
-            Name = "Lobby Members League"
-        });
-        createLeagueResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var league = await createLeagueResponse.Content.ReadFromJsonAsync<CardGames.Poker.Api.Contracts.CreateLeagueResponse>(ActiveGamesJsonOptions);
-        league.Should().NotBeNull();
+		// Assert
+		response.StatusCode.Should().Be(HttpStatusCode.OK);
+		var games = await response.Content.ReadFromJsonAsync<List<GetAvailablePokerGamesResponse>>();
+		games.Should().NotBeNull();
+		games.Should().NotBeEmpty();
 
-        var createEventResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/events/one-off", new CardGames.Poker.Api.Contracts.CreateLeagueOneOffEventRequest
-        {
-            Name = "League Lobby Table",
-            ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(1),
-            EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.CashGame,
-            GameTypeCode = PokerGameMetadataRegistry.FiveCardDrawCode,
-            Ante = 10,
-            MinBet = 20
-        });
-        createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var leagueEvent = await createEventResponse.Content.ReadFromJsonAsync<CardGames.Poker.Api.Contracts.CreateLeagueOneOffEventResponse>(ActiveGamesJsonOptions);
-        leagueEvent.Should().NotBeNull();
+		var gameCodes = games!.Select(g => g.Code).ToList();
+		gameCodes.Should().Contain(PokerGameMetadataRegistry.HoldEmCode);
+		gameCodes.Should().Contain(PokerGameMetadataRegistry.OmahaCode);
+		gameCodes.Should().Contain(PokerGameMetadataRegistry.NebraskaCode);
+		gameCodes.Should().Contain(PokerGameMetadataRegistry.SouthDakotaCode);
+	}
 
-        var launchResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/events/one-off/{leagueEvent!.EventId}/launch", new CardGames.Poker.Api.Contracts.LaunchLeagueEventSessionRequest
-        {
-            GameCode = PokerGameMetadataRegistry.FiveCardDrawCode,
-            HostStartingChips = 1000
-        });
-        launchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var launched = await launchResponse.Content.ReadFromJsonAsync<CardGames.Poker.Api.Contracts.LaunchLeagueEventSessionResponse>(ActiveGamesJsonOptions);
-        launched.Should().NotBeNull();
+	[Fact]
+	public async Task GetAvailablePokerGames_WithVariantOmaha_ReturnsOnlyOmaha()
+	{
+		// Act
+		var response = await Client.GetAsync("api/v1/games/available?variant=Omaha");
 
-        DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
-        {
-            LeagueId = league.LeagueId,
-            UserId = "league-lobby-member",
-            Role = CardGames.Poker.Api.Data.Entities.LeagueRole.Member,
-            IsActive = true,
-            JoinedAtUtc = DateTimeOffset.UtcNow,
-            UpdatedAtUtc = DateTimeOffset.UtcNow
-        });
-        await DbContext.SaveChangesAsync();
+		// Assert
+		response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        SetUser("league-lobby-outsider");
-        var outsiderGames = await Client.GetFromJsonAsync<List<CardGames.Poker.Api.Contracts.GetActiveGamesResponse>>("api/v1/games/active", ActiveGamesJsonOptions);
-        outsiderGames.Should().NotBeNull();
-        outsiderGames!.Should().Contain(x => x.Id == publicGameId);
-        outsiderGames.Should().NotContain(x => x.Id == launched!.GameId);
-        outsiderGames.Single(x => x.Id == publicGameId).TableScopeLabel.Should().Be("Public");
+		var games = await response.Content.ReadFromJsonAsync<List<GetAvailablePokerGamesResponse>>();
+		games.Should().NotBeNull();
+		games.Should().ContainSingle();
 
-        SetUser("league-lobby-member");
-        var memberGames = await Client.GetFromJsonAsync<List<CardGames.Poker.Api.Contracts.GetActiveGamesResponse>>("api/v1/games/active", ActiveGamesJsonOptions);
-        memberGames.Should().NotBeNull();
-        memberGames!.Should().Contain(x => x.Id == publicGameId);
-        memberGames.Should().Contain(x => x.Id == launched!.GameId);
-        memberGames.Single(x => x.Id == launched.GameId).TableScopeLabel.Should().Be("League");
-    }
+		var omaha = games![0];
+		omaha.Code.Should().Be(PokerGameMetadataRegistry.OmahaCode);
+		omaha.Name.Should().Be("Omaha");
+		omaha.MinimumNumberOfPlayers.Should().Be(2);
+		omaha.MaximumNumberOfPlayers.Should().Be(10);
+	}
 
-    #endregion
+	#endregion
 
-    #region Health Check and Info Endpoints
+	#region Active Games Endpoint
 
-    [Fact]
-    public async Task HealthCheck_ReturnsHealthy()
-    {
-        // Act
-        var response = await Client.GetAsync("health");
+	[Fact]
+	public async Task GetActiveGames_ReturnsListOfGames()
+	{
+		// Arrange - Create and start a game
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Active Game Test",
+			10,
+			20,
+			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
+		await PostAsync("api/v1/games", command);
 
-    #endregion
+		// Act
+		var response = await Client.GetAsync("api/v1/games/active");
 
-    #region Error Handling
+		// Assert
+		response.StatusCode.Should().Be(HttpStatusCode.OK);
+	}
 
-    [Fact]
-    public async Task CreateGame_InvalidGameCode_ReturnsConflict()
-    {
-        // Arrange
-        var command = new CreateGameCommand(
-            Guid.NewGuid(),
-            "INVALID_GAME_CODE",
-            "Invalid Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("P1", 1000) });
+	[Fact]
+	public async Task GetActiveGames_LeagueGames_AreVisibleOnlyToMembers_AndIncludeScopeLabel()
+	{
+		var publicGameId = Guid.NewGuid();
+		await PostAsync("api/v1/games", new CreateGameCommand(
+			publicGameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"Public Lobby Table",
+			10,
+			20,
+			[new PlayerInfo("P1", 1000), new PlayerInfo("P2", 1000)]));
 
-        // Act
-        var response = await PostAsync("api/v1/games", command);
+		SetUser("league-lobby-owner");
+		var createLeagueResponse = await PostAsync("/api/v1/leagues", new CreateLeagueRequest
+		{
+			Name = "Lobby Members League"
+		});
+		createLeagueResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(ActiveGamesJsonOptions);
+		league.Should().NotBeNull();
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-    }
+		var createEventResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/events/one-off",
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = "League Lobby Table",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(1),
+				EventType = LeagueOneOffEventType.CashGame,
+				GameTypeCode = PokerGameMetadataRegistry.FiveCardDrawCode,
+				Ante = 10,
+				MinBet = 20
+			});
+		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var leagueEvent =
+			await createEventResponse.Content
+				.ReadFromJsonAsync<CreateLeagueOneOffEventResponse>(ActiveGamesJsonOptions);
+		leagueEvent.Should().NotBeNull();
 
-    [Fact]
-    public async Task CreateGame_DuplicateGameId_ReturnsConflict()
-    {
-        // Arrange
-        var gameId = Guid.NewGuid();
-        var command1 = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.FiveCardDrawCode,
-            "First Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
+		var launchResponse = await PostAsync(
+			$"/api/v1/leagues/{league.LeagueId}/events/one-off/{leagueEvent!.EventId}/launch",
+			new LaunchLeagueEventSessionRequest
+			{
+				GameCode = PokerGameMetadataRegistry.FiveCardDrawCode,
+				HostStartingChips = 1000
+			});
+		launchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+		var launched =
+			await launchResponse.Content.ReadFromJsonAsync<LaunchLeagueEventSessionResponse>(ActiveGamesJsonOptions);
+		launched.Should().NotBeNull();
 
-        var command2 = new CreateGameCommand(
-            gameId,
-            PokerGameMetadataRegistry.SevenCardStudCode,
-            "Second Game",
-            10,
-            20,
-            new List<PlayerInfo> { new("P3", 1000), new("P4", 1000) });
+		DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
+		{
+			LeagueId = league.LeagueId,
+			UserId = "league-lobby-member",
+			Role = LeagueRole.Member,
+			IsActive = true,
+			JoinedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
 
-        await PostAsync("api/v1/games", command1);
+		SetUser("league-lobby-outsider");
+		var outsiderGames =
+			await Client.GetFromJsonAsync<List<GetActiveGamesResponse>>("api/v1/games/active", ActiveGamesJsonOptions);
+		outsiderGames.Should().NotBeNull();
+		outsiderGames!.Should().Contain(x => x.Id == publicGameId);
+		outsiderGames.Should().NotContain(x => x.Id == launched!.GameId);
+		outsiderGames.Single(x => x.Id == publicGameId).TableScopeLabel.Should().Be("Public");
 
-        // Act
-        var response = await PostAsync("api/v1/games", command2);
+		SetUser("league-lobby-member");
+		var memberGames =
+			await Client.GetFromJsonAsync<List<GetActiveGamesResponse>>("api/v1/games/active", ActiveGamesJsonOptions);
+		memberGames.Should().NotBeNull();
+		memberGames!.Should().Contain(x => x.Id == publicGameId);
+		memberGames.Should().Contain(x => x.Id == launched!.GameId);
+		memberGames.Single(x => x.Id == launched.GameId).TableScopeLabel.Should().Be("League");
+	}
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-    }
+	#endregion
 
-    #endregion
+	#region Error Handling
 
-    #region Content Negotiation
+	[Fact]
+	public async Task CreateGame_InvalidGameCode_ReturnsConflict()
+	{
+		// Arrange
+		var command = new CreateGameCommand(
+			Guid.NewGuid(),
+			"INVALID_GAME_CODE",
+			"Invalid Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("P1", 1000) });
 
-    [Fact]
-    public async Task GetGames_AcceptsJsonContent()
-    {
-        // Act
-        var request = new HttpRequestMessage(HttpMethod.Get, "api/v1/games");
-        request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-        var response = await Client.SendAsync(request);
+		// Act
+		var response = await PostAsync("api/v1/games", command);
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
-    }
+		// Assert
+		response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+	}
 
-    #endregion
+	[Fact]
+	public async Task CreateGame_DuplicateGameId_ReturnsConflict()
+	{
+		// Arrange
+		var gameId = Guid.NewGuid();
+		var command1 = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.FiveCardDrawCode,
+			"First Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
 
-    private void SetUser(string userId)
-    {
-        Client.DefaultRequestHeaders.Remove(TestAuthHandler.UserHeader);
-        Client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, userId);
-    }
+		var command2 = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.SevenCardStudCode,
+			"Second Game",
+			10,
+			20,
+			new List<PlayerInfo> { new("P3", 1000), new("P4", 1000) });
 
+		await PostAsync("api/v1/games", command1);
+
+		// Act
+		var response = await PostAsync("api/v1/games", command2);
+
+		// Assert
+		response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+	}
+
+	#endregion
 }

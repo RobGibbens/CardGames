@@ -1,53 +1,55 @@
 using System.Text.Json;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
-using CardGames.Contracts.SignalR;
 using Microsoft.EntityFrameworkCore;
+using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
-/// Background service that monitors games for continuous play and automatically starts new hands after the results
-/// display period expires.
+///     Background service that monitors games for continuous play and automatically starts new hands after the results
+///     display period expires.
 /// </summary>
 public sealed class ContinuousPlayBackgroundService : BackgroundService
 {
 	/// <summary>
-	/// Duration in seconds for the results display period before starting the next hand.
+	///     Duration in seconds for the results display period before starting the next hand.
 	/// </summary>
 	public const int ResultsDisplayDurationSeconds = 15;
 
 	/// <summary>
-	/// Duration in seconds for the draw complete display period before transitioning to showdown. This gives all players
-	/// time to see their new cards.
+	///     Duration in seconds for the draw complete display period before transitioning to showdown. This gives all players
+	///     time to see their new cards.
 	/// </summary>
 	public const int DrawCompleteDisplayDurationSeconds = 5;
 
 	/// <summary>
-	/// Duration in seconds for the Klondike reveal display period before transitioning to showdown. This gives all players
-	/// time to see the revealed wild card.
+	///     Duration in seconds for the Klondike reveal display period before transitioning to showdown. This gives all players
+	///     time to see the revealed wild card.
 	/// </summary>
 	public const int KlondikeRevealDisplayDurationSeconds = 20;
 
 	/// <summary>
-	/// Duration in seconds for the In-Between card reveal display period before advancing to the next player. This gives
-	/// all players time to see the revealed third card.
+	///     Duration in seconds for the In-Between card reveal display period before advancing to the next player. This gives
+	///     all players time to see the revealed third card.
 	/// </summary>
 	public const int InBetweenRevealDisplayDurationSeconds = 5;
+
 	public const int CashRebuyGraceDurationSeconds = 20;
 	public const int CashRebuyGameOverDisplayDurationSeconds = 15;
+	private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(1);
+	private readonly ILogger<ContinuousPlayBackgroundService> _logger;
 
 	private readonly IServiceScopeFactory _scopeFactory;
-	private readonly ILogger<ContinuousPlayBackgroundService> _logger;
-	private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(1);
 
 	/// <summary>
-	/// Initializes a new instance of the <see cref="ContinuousPlayBackgroundService"/> class.
+	///     Initializes a new instance of the <see cref="ContinuousPlayBackgroundService" /> class.
 	/// </summary>
 	public ContinuousPlayBackgroundService(
 		IServiceScopeFactory scopeFactory,
@@ -112,11 +114,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Also include Dealer's Choice games in WaitingToStart (after dealer chose the game type).
 		var gamesReadyForNextHand = await context.Games
 			.Where(g => (g.CurrentPhase == nameof(Phases.Complete)
-						 || g.CurrentPhase == nameof(Phases.WaitingForPlayers)
-						 || (g.CurrentPhase == nameof(Phases.WaitingToStart) && g.IsDealersChoice)) &&
-						g.NextHandStartsAt != null &&
-						g.NextHandStartsAt <= now &&
-						(g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
+			             || g.CurrentPhase == nameof(Phases.WaitingForPlayers)
+			             || (g.CurrentPhase == nameof(Phases.WaitingToStart) && g.IsDealersChoice)) &&
+			            g.NextHandStartsAt != null &&
+			            g.NextHandStartsAt <= now &&
+			            (g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
 			.Include(g => g.GamePlayers)
 			.Include(g => g.GameType)
 			.ToListAsync(cancellationToken);
@@ -125,7 +127,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			try
 			{
-				await StartNextHandAsync(scope, context, broadcaster, playerChipWalletService, actionTimerService, game, now, cancellationToken);
+				await StartNextHandAsync(scope, context, broadcaster, playerChipWalletService, actionTimerService, game,
+					now, cancellationToken);
 			}
 			catch (Exception ex)
 			{
@@ -135,7 +138,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	/// <summary>
-	/// Checks for games where all players have left after the game started, and marks them as complete.
+	///     Checks for games where all players have left after the game started, and marks them as complete.
 	/// </summary>
 	private async Task ProcessAbandonedGamesAsync(
 		CardsDbContext context,
@@ -147,33 +150,33 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Find in-progress games (not waiting phases)
 		var inProgressPhases = new[]
 		{
-					nameof(Phases.CollectingAntes),
-					nameof(Phases.Dealing),
-					nameof(Phases.FirstBettingRound),
-					nameof(Phases.DrawPhase),
-					nameof(Phases.SecondBettingRound),
-					nameof(Phases.Showdown),
-					nameof(Phases.Complete),
-					nameof(Phases.WaitingForDealerChoice),
-					// Hold'Em / Omaha community-card phases
-					"CollectingBlinds",
-					"PreFlop",
-					"Flop",
-					"Turn",
-					"River",
-					// Seven Card Stud street phases
-					"ThirdStreet",
-					"FourthStreet",
-					"FifthStreet",
-					"SixthStreet",
-					"SeventhStreet",
-					// Klondike reveal phase
-					"KlondikeReveal"
-				};
+			nameof(Phases.CollectingAntes),
+			nameof(Phases.Dealing),
+			nameof(Phases.FirstBettingRound),
+			nameof(Phases.DrawPhase),
+			nameof(Phases.SecondBettingRound),
+			nameof(Phases.Showdown),
+			nameof(Phases.Complete),
+			nameof(Phases.WaitingForDealerChoice),
+			// Hold'Em / Omaha community-card phases
+			"CollectingBlinds",
+			"PreFlop",
+			"Flop",
+			"Turn",
+			"River",
+			// Seven Card Stud street phases
+			"ThirdStreet",
+			"FourthStreet",
+			"FifthStreet",
+			"SixthStreet",
+			"SeventhStreet",
+			// Klondike reveal phase
+			"KlondikeReveal"
+		};
 
 		var activeGames = await context.Games
 			.Where(g => ((IEnumerable<string>)inProgressPhases).Contains(g.CurrentPhase) &&
-						(g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
+			            (g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
 			.Include(g => g.GamePlayers)
 			.ToListAsync(cancellationToken);
 
@@ -182,7 +185,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			// Check if all players have left (no active, connected players remaining)
 			var activePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active &&
-							 gp.LeftAtHandNumber == -1)
+				             gp.LeftAtHandNumber == -1)
 				.ToList();
 
 			if (activePlayers.Count == 0)
@@ -209,14 +212,15 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				{
 					await leagueCompletionSync.SyncLeagueEventCompletionAsync(game.Id, cancellationToken);
 				}
+
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 			}
 		}
 	}
 
 	/// <summary>
-	/// Processes Kings and Lows games in DrawComplete phase that are ready to transition to Showdown. This allows players
-	/// to see their new cards for a few seconds before showdown begins.
+	///     Processes Kings and Lows games in DrawComplete phase that are ready to transition to Showdown. This allows players
+	///     to see their new cards for a few seconds before showdown begins.
 	/// </summary>
 	private async Task ProcessDrawCompleteGamesAsync(
 		CardsDbContext context,
@@ -230,11 +234,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Find games in DrawComplete phase where the display period has expired
 		var gamesReadyForShowdown = await context.Games
 			.Where(g => g.CurrentPhase == nameof(Phases.DrawComplete) &&
-						g.DrawCompletedAt != null &&
-						g.DrawCompletedAt <= drawCompleteDeadline &&
-						g.Status == GameStatus.InProgress)
+			            g.DrawCompletedAt != null &&
+			            g.DrawCompletedAt <= drawCompleteDeadline &&
+			            g.Status == GameStatus.InProgress)
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards)
 			.Include(g => g.GameType)
 			.ToListAsync(cancellationToken);
@@ -305,8 +309,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 						// Log whether a next-hand pot was created (for multi-hand continuation, e.g. K&L pot matching)
 						var nextHandPot = context.ChangeTracker.Entries<Pot>()
 							.FirstOrDefault(e => e.Entity.GameId == game.Id &&
-												 e.Entity.HandNumber == game.CurrentHandNumber + 1 &&
-												 e.Entity.PotType == PotType.Main);
+							                     e.Entity.HandNumber == game.CurrentHandNumber + 1 &&
+							                     e.Entity.PotType == PotType.Main);
 						_logger.LogInformation(
 							"[SHOWDOWN] Game {GameId}: Inline showdown succeeded. NextHandPot={HasPot} (Amount={Amount}), Winners={Winners}, Losers={Losers}",
 							game.Id,
@@ -328,7 +332,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				await context.SaveChangesAsync(cancellationToken);
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 			}
-			catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+			catch (DbUpdateConcurrencyException ex)
 			{
 				// Concurrency conflict — another handler (e.g., the API PerformShowdown endpoint)
 				// modified the game simultaneously. Reload and check if the work is already done.
@@ -364,9 +368,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	/// <summary>
-	/// Processes Klondike games in KlondikeReveal phase that are ready to transition to Showdown. The Klondike wild card
-	/// was revealed when entering this phase; after the display period expires, the game transitions to Showdown so all
-	/// players see the overlay simultaneously.
+	///     Processes Klondike games in KlondikeReveal phase that are ready to transition to Showdown. The Klondike wild card
+	///     was revealed when entering this phase; after the display period expires, the game transitions to Showdown so all
+	///     players see the overlay simultaneously.
 	/// </summary>
 	private async Task ProcessKlondikeRevealGamesAsync(
 		CardsDbContext context,
@@ -378,9 +382,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		var gamesReadyForShowdown = await context.Games
 			.Where(g => g.CurrentPhase == nameof(Phases.KlondikeReveal) &&
-						g.DrawCompletedAt != null &&
-						g.DrawCompletedAt <= klondikeRevealDeadline &&
-						g.Status == GameStatus.InProgress)
+			            g.DrawCompletedAt != null &&
+			            g.DrawCompletedAt <= klondikeRevealDeadline &&
+			            g.Status == GameStatus.InProgress)
 			.Include(g => g.GamePlayers)
 			.Include(g => g.GameType)
 			.ToListAsync(cancellationToken);
@@ -407,9 +411,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	/// <summary>
-	/// Processes In-Between games where the card-reveal display period has expired. After a player bets, the third card is
-	/// shown for <see cref="InBetweenRevealDisplayDurationSeconds"/> seconds before discarding community cards and
-	/// advancing to the next player.
+	///     Processes In-Between games where the card-reveal display period has expired. After a player bets, the third card is
+	///     shown for <see cref="InBetweenRevealDisplayDurationSeconds" /> seconds before discarding community cards and
+	///     advancing to the next player.
 	/// </summary>
 	private async Task ProcessInBetweenResolutionGamesAsync(
 		CardsDbContext context,
@@ -422,11 +426,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		var gamesReady = await context.Games
 			.Where(g => g.CurrentPhase == nameof(Phases.InBetweenTurn) &&
-						g.DrawCompletedAt != null &&
-						g.DrawCompletedAt <= revealDeadline &&
-						g.Status == GameStatus.InProgress)
+			            g.DrawCompletedAt != null &&
+			            g.DrawCompletedAt <= revealDeadline &&
+			            g.Status == GameStatus.InProgress)
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards)
 			.Include(g => g.Pots)
 			.ToListAsync(cancellationToken);
@@ -454,9 +458,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise). Prefers active non-sitting-out players to
-	/// avoid placing the dealer on someone who isn't participating (which would break Player vs Deck decision-maker
-	/// logic).
+	///     Moves the dealer button to the next occupied seat position (clockwise). Prefers active non-sitting-out players to
+	///     avoid placing the dealer on someone who isn't participating (which would break Player vs Deck decision-maker
+	///     logic).
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
@@ -490,11 +494,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	/// <summary>
-	/// Advances the Dealer's Choice dealer position to the next active seat (clockwise). This is separate from the in-game
-	/// dealer rotation (MoveDealer) because multi-hand games like Kings and Lows rotate the in-game dealer internally
-	/// while the DC turn stays fixed. When <see cref="Game.OriginalDealersChoiceDealerPosition"/> is set, advance from
-	/// that position (the player who originally chose the variant) so the deal rotates correctly even after a multi-hand
-	/// variant like Kings and Lows rotated the DC dealer internally.
+	///     Advances the Dealer's Choice dealer position to the next active seat (clockwise). This is separate from the in-game
+	///     dealer rotation (MoveDealer) because multi-hand games like Kings and Lows rotate the in-game dealer internally
+	///     while the DC turn stays fixed. When <see cref="Game.OriginalDealersChoiceDealerPosition" /> is set, advance from
+	///     that position (the player who originally chose the variant) so the deal rotates correctly even after a multi-hand
+	///     variant like Kings and Lows rotated the DC dealer internally.
 	/// </summary>
 	private static void AdvanceDealersChoiceDealer(Game game)
 	{
@@ -512,8 +516,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Advance from the original picker's seat when a multi-hand variant ends,
 		// otherwise advance from the current DC dealer seat.
 		var advanceFrom = game.OriginalDealersChoiceDealerPosition
-						  ?? game.DealersChoiceDealerPosition
-						  ?? 0;
+		                  ?? game.DealersChoiceDealerPosition
+		                  ?? 0;
 
 		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > advanceFrom).ToList();
 
@@ -606,10 +610,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// 2. Apply pending chips to player stacks (validate cashier balance first)
 		var playersWithPendingChips = game.GamePlayers
-				.Where(gp =>
-						gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
-						gp.PendingChipsToAdd > 0)
-				.ToList();
+			.Where(gp =>
+				gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
+				gp.PendingChipsToAdd > 0)
+			.ToList();
 
 		foreach (var player in playersWithPendingChips)
 		{
@@ -651,16 +655,16 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var isTournamentGame = game.TournamentBuyIn.HasValue;
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 gp.ChipStack >= ante &&
-						 gp.LeftAtHandNumber == -1)
+			             !gp.IsSittingOut &&
+			             gp.ChipStack >= ante &&
+			             gp.LeftAtHandNumber == -1)
 			.ToList();
 
 		var tournamentBustedPlayers = isTournamentGame
 			? game.GamePlayers
 				.Where(gp => gp.Status != GamePlayerStatus.Left &&
-							 gp.LeftAtHandNumber == -1 &&
-							 gp.ChipStack <= 0)
+				             gp.LeftAtHandNumber == -1 &&
+				             gp.ChipStack <= 0)
 				.ToList()
 			: new List<GamePlayer>();
 
@@ -672,11 +676,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Auto-sit-out players with insufficient chips (including 0 chips)
 		var insufficientChipPlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 (isTournamentGame
-							 ? ante > 0 && gp.ChipStack > 0 && gp.ChipStack < ante
-							 : gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)) &&
-						 gp.LeftAtHandNumber == -1)
+			             !gp.IsSittingOut &&
+			             (isTournamentGame
+				             ? ante > 0 && gp.ChipStack > 0 && gp.ChipStack < ante
+				             : gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)) &&
+			             gp.LeftAtHandNumber == -1)
 			.ToList();
 
 		foreach (var player in insufficientChipPlayers)
@@ -698,19 +702,19 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			eligiblePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active &&
-							 !gp.IsSittingOut &&
-							 gp.ChipStack >= ante &&
-							 gp.LeftAtHandNumber == -1)
+				             !gp.IsSittingOut &&
+				             gp.ChipStack >= ante &&
+				             gp.LeftAtHandNumber == -1)
 				.ToList();
 		}
 
 		if (await TryCompleteTournamentWhenOneFundedPlayerRemainsAsync(
-			context,
-			broadcaster,
-			leagueCompletionSync,
-			game,
-			now,
-			cancellationToken))
+			    context,
+			    broadcaster,
+			    leagueCompletionSync,
+			    game,
+			    now,
+			    cancellationToken))
 		{
 			return;
 		}
@@ -745,17 +749,19 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 							// Timer expired - apply shortage action
 							foreach (var shortPlayer in playersNeedingChips)
 							{
-								if (chipCheckConfig.ShortageAction == GameFlow.ChipShortageAction.AutoDrop)
+								if (chipCheckConfig.ShortageAction == ChipShortageAction.AutoDrop)
 								{
 									shortPlayer.AutoDropOnDropOrStay = true;
 								}
-								else if (chipCheckConfig.ShortageAction == GameFlow.ChipShortageAction.SitOut)
+								else if (chipCheckConfig.ShortageAction == ChipShortageAction.SitOut)
 								{
 									shortPlayer.IsSittingOut = true;
 								}
+
 								_logger.LogInformation(
 									"[CHIP-CHECK-BG] Chip check pause expired: Player {PlayerName} at seat {Seat} action applied (chips: {ChipStack}, pot: {PotAmount})",
-									shortPlayer.Player?.Name ?? "Unknown", shortPlayer.SeatPosition, shortPlayer.ChipStack, currentPotAmount);
+									shortPlayer.Player?.Name ?? "Unknown", shortPlayer.SeatPosition,
+									shortPlayer.ChipStack, currentPotAmount);
 							}
 
 							// Clear pause state and continue with hand
@@ -793,7 +799,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 						game.RebuyGraceEndsAt = null;
 						game.UpdatedAt = now;
 
-						var shortPlayerNames = string.Join(", ", playersNeedingChips.Select(p => $"{p.Player?.Name ?? "Unknown"}({p.ChipStack})"));
+						var shortPlayerNames = string.Join(", ",
+							playersNeedingChips.Select(p => $"{p.Player?.Name ?? "Unknown"}({p.ChipStack})"));
 						_logger.LogWarning(
 							"[CHIP-CHECK-BG] Game {GameId}: Pausing for chip check. {PlayerCount} player(s) cannot cover pot of {PotAmount}. Players: {PlayerNames}",
 							game.Id, playersNeedingChips.Count, currentPotAmount, shortPlayerNames);
@@ -813,7 +820,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					game.RebuyGraceStartedAt = null;
 					game.RebuyGraceEndsAt = null;
 					game.UpdatedAt = now;
-					_logger.LogInformation("[CHIP-CHECK-BG] Game {GameId}: All players now have sufficient chips, resuming", game.Id);
+					_logger.LogInformation(
+						"[CHIP-CHECK-BG] Game {GameId}: All players now have sufficient chips, resuming", game.Id);
 				}
 			}
 		}
@@ -849,37 +857,37 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		if (await TryTransitionTerminalDealersChoiceScrewYourNeighborAsync(
-			context,
-			broadcaster,
-			game,
-			flowHandler,
-			eligiblePlayers.Count,
-			now,
-			cancellationToken))
+			    context,
+			    broadcaster,
+			    game,
+			    flowHandler,
+			    eligiblePlayers.Count,
+			    now,
+			    cancellationToken))
 		{
 			return;
 		}
 
 		if (await TryTransitionTerminalDealersChoiceInBetweenAsync(
-			context,
-			broadcaster,
-			game,
-			now,
-			cancellationToken))
+			    context,
+			    broadcaster,
+			    game,
+			    now,
+			    cancellationToken))
 		{
 			return;
 		}
 
 		if (await TryHandleCashGameRebuyGraceAsync(
-			context,
-			broadcaster,
-			leagueCompletionSync,
-			actionTimerService,
-			game,
-			eligiblePlayers,
-			ante,
-			now,
-			cancellationToken))
+			    context,
+			    broadcaster,
+			    leagueCompletionSync,
+			    actionTimerService,
+			    game,
+			    eligiblePlayers,
+			    ante,
+			    now,
+			    cancellationToken))
 		{
 			return;
 		}
@@ -891,8 +899,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			// when a variant finishes with insufficient eligible players. The next dealer can
 			// pick a different game type once more players join or add chips.
 			if (game.IsDealersChoice &&
-				game.CurrentPhase != nameof(Phases.WaitingToStart) &&
-				!string.IsNullOrWhiteSpace(game.CurrentHandGameTypeCode))
+			    game.CurrentPhase != nameof(Phases.WaitingToStart) &&
+			    !string.IsNullOrWhiteSpace(game.CurrentHandGameTypeCode))
 			{
 				_logger.LogInformation(
 					"[DC-FALLBACK] Game {GameId}: Fewer than 2 eligible players after variant {GameType}, " +
@@ -955,7 +963,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// SYN in DC stores pre-SYN chip snapshots in VariantState; preserve across multi-hand rounds.
 		var preserveVariantState = game.IsDealersChoice &&
-			string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
+		                           string.Equals(flowHandler.GameTypeCode,
+			                           PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			                           StringComparison.OrdinalIgnoreCase);
 
 		// Reset player states for new hand
 		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
@@ -982,7 +992,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			cancellationToken);
 
 		// Mark any incomplete betting rounds from the previous hand as complete
-		var incompleteBettingRounds = await context.Set<Data.Entities.BettingRound>()
+		var incompleteBettingRounds = await context.Set<BettingRound>()
 			.Where(br => br.GameId == game.Id && !br.IsComplete)
 			.ToListAsync(cancellationToken);
 
@@ -1016,9 +1026,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Check if a main pot already exists for the next hand (e.g., from pot matching in Kings and Lows)
 		var existingPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-									  p.HandNumber == game.CurrentHandNumber + 1 &&
-									  p.PotType == PotType.Main,
-								 cancellationToken);
+			                          p.HandNumber == game.CurrentHandNumber + 1 &&
+			                          p.PotType == PotType.Main,
+				cancellationToken);
 
 		if (existingPot is null)
 		{
@@ -1063,11 +1073,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			{
 				var currentHandHadFundedPot = await context.Pots
 					.AnyAsync(p => p.GameId == game.Id &&
-								   p.HandNumber == game.CurrentHandNumber &&
-								   p.PotType == PotType.Main &&
-								   p.IsAwarded &&
-								   p.Amount > 0,
-							   cancellationToken);
+					               p.HandNumber == game.CurrentHandNumber &&
+					               p.PotType == PotType.Main &&
+					               p.IsAwarded &&
+					               p.Amount > 0,
+						cancellationToken);
 
 				if (!currentHandHadFundedPot)
 				{
@@ -1142,15 +1152,16 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Other multi-hand variants (for example Screw Your Neighbor) should not be auto-anted here.
 		var shouldCollectAntes = !flowHandler.SkipsAnteCollection;
 		if (!shouldCollectAntes &&
-			flowHandler.IsMultiHandVariant &&
-			string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
-			ante > 0)
+		    flowHandler.IsMultiHandVariant &&
+		    string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode,
+			    StringComparison.OrdinalIgnoreCase) &&
+		    ante > 0)
 		{
 			var handPot = await context.Pots
 				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-										  p.HandNumber == game.CurrentHandNumber &&
-										  p.PotType == PotType.Main,
-									 cancellationToken);
+				                          p.HandNumber == game.CurrentHandNumber &&
+				                          p.PotType == PotType.Main,
+					cancellationToken);
 
 			if (handPot is not null && handPot.Amount == 0)
 			{
@@ -1203,8 +1214,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		var bustedPlayers = game.GamePlayers
 			.Where(gp => gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
-						 gp.LeftAtHandNumber == -1 &&
-						 gp.ChipStack <= 0)
+			             gp.LeftAtHandNumber == -1 &&
+			             gp.ChipStack <= 0)
 			.ToList();
 
 		if (game.IsPausedForRebuyGrace && game.RebuyGraceEndsAt.HasValue)
@@ -1359,9 +1370,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			.FirstOrDefaultAsync(g => g.Id == gameId, CancellationToken.None);
 
 		if (game is null ||
-			!game.IsPausedForRebuyGrace ||
-			!game.RebuyGraceEndsAt.HasValue ||
-			now < game.RebuyGraceEndsAt.Value)
+		    !game.IsPausedForRebuyGrace ||
+		    !game.RebuyGraceEndsAt.HasValue ||
+		    now < game.RebuyGraceEndsAt.Value)
 		{
 			return;
 		}
@@ -1369,9 +1380,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var ante = game.Ante ?? 0;
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 gp.LeftAtHandNumber == -1 &&
-						 (ante == 0 || gp.ChipStack >= ante))
+			             !gp.IsSittingOut &&
+			             gp.LeftAtHandNumber == -1 &&
+			             (ante == 0 || gp.ChipStack >= ante))
 			.ToList();
 
 		if (eligiblePlayers.Count >= 2)
@@ -1445,16 +1456,17 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private static void SetBustedPlayersToObserve(IEnumerable<GamePlayer> gamePlayers)
 	{
 		foreach (var gamePlayer in gamePlayers.Where(gp =>
-				 gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
-				 gp.LeftAtHandNumber == -1 &&
-				 gp.ChipStack <= 0))
+			         gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
+			         gp.LeftAtHandNumber == -1 &&
+			         gp.ChipStack <= 0))
 		{
 			gamePlayer.IsSittingOut = true;
 			gamePlayer.Status = GamePlayerStatus.SittingOut;
 		}
 	}
 
-	private static void MarkTournamentBustedPlayersAsObservers(IEnumerable<GamePlayer> gamePlayers, DateTimeOffset eliminatedAt)
+	private static void MarkTournamentBustedPlayersAsObservers(IEnumerable<GamePlayer> gamePlayers,
+		DateTimeOffset eliminatedAt)
 	{
 		foreach (var gamePlayer in gamePlayers)
 		{
@@ -1482,8 +1494,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		var playersWithChips = game.GamePlayers
 			.Where(gp => gp.Status != GamePlayerStatus.Left &&
-						 gp.LeftAtHandNumber == -1 &&
-						 gp.ChipStack > 0)
+			             gp.LeftAtHandNumber == -1 &&
+			             gp.ChipStack > 0)
 			.ToList();
 
 		if (playersWithChips.Count > 1)
@@ -1548,20 +1560,21 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		CancellationToken cancellationToken)
 	{
 		if (!game.IsDealersChoice ||
-			game.CurrentPhase == nameof(Phases.WaitingToStart) ||
-			eligiblePlayerCount >= 2 ||
-			!string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) ||
-			!flowHandler.IsMultiHandVariant)
+		    game.CurrentPhase == nameof(Phases.WaitingToStart) ||
+		    eligiblePlayerCount >= 2 ||
+		    !string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			    StringComparison.OrdinalIgnoreCase) ||
+		    !flowHandler.IsMultiHandVariant)
 		{
 			return false;
 		}
 
 		var nextHandPotExists = await context.Pots
 			.AnyAsync(p => p.GameId == game.Id &&
-						   p.HandNumber == game.CurrentHandNumber + 1 &&
-						   p.PotType == PotType.Main &&
-						   p.Amount > 0,
-					   cancellationToken);
+			               p.HandNumber == game.CurrentHandNumber + 1 &&
+			               p.PotType == PotType.Main &&
+			               p.Amount > 0,
+				cancellationToken);
 
 		if (nextHandPotExists)
 		{
@@ -1570,11 +1583,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		var currentHandHadFundedPot = await context.Pots
 			.AnyAsync(p => p.GameId == game.Id &&
-						   p.HandNumber == game.CurrentHandNumber &&
-						   p.PotType == PotType.Main &&
-						   p.IsAwarded &&
-						   p.Amount > 0,
-					   cancellationToken);
+			               p.HandNumber == game.CurrentHandNumber &&
+			               p.PotType == PotType.Main &&
+			               p.IsAwarded &&
+			               p.Amount > 0,
+				cancellationToken);
 
 		if (!currentHandHadFundedPot)
 		{
@@ -1600,8 +1613,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		CancellationToken cancellationToken)
 	{
 		if (!game.IsDealersChoice ||
-			!string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.InBetweenCode, StringComparison.OrdinalIgnoreCase) ||
-			game.CurrentPhase != nameof(Phases.Complete))
+		    !string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.InBetweenCode,
+			    StringComparison.OrdinalIgnoreCase) ||
+		    game.CurrentPhase != nameof(Phases.Complete))
 		{
 			return false;
 		}
@@ -1650,8 +1664,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	/// <summary>
-	/// Restores pre-SYN Dealer's Choice chip stacks from VariantState after a SYN variant ends. Each player's DC chips are
-	/// adjusted by their net SYN result (win or loss).
+	///     Restores pre-SYN Dealer's Choice chip stacks from VariantState after a SYN variant ends. Each player's DC chips are
+	///     adjusted by their net SYN result (win or loss).
 	/// </summary>
 	private static void RestoreDcChipsAfterSyn(Game game)
 	{
@@ -1695,8 +1709,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		Game game,
 		CancellationToken cancellationToken)
 	{
-		if (!string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) ||
-			game.CurrentHandNumber <= 1)
+		if (!string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			    StringComparison.OrdinalIgnoreCase) ||
+		    game.CurrentHandNumber <= 1)
 		{
 			return false;
 		}
@@ -1723,9 +1738,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		var pot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-									  p.HandNumber == game.CurrentHandNumber &&
-									  p.PotType == PotType.Main,
-							 cancellationToken);
+			                          p.HandNumber == game.CurrentHandNumber &&
+			                          p.PotType == PotType.Main,
+				cancellationToken);
 
 		foreach (var player in eligiblePlayers)
 		{
@@ -1761,7 +1776,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	/// <summary>
-	/// Finds the first active player after the dealer position who can act.
+	///     Finds the first active player after the dealer position who can act.
 	/// </summary>
 	private static int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
 	{
@@ -1782,6 +1797,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalSeats;
 		}
 

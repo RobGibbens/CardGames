@@ -1,7 +1,6 @@
 #nullable enable
 
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Poker.Api.Data;
@@ -23,7 +22,8 @@ public class FoldDuringDrawCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
 
-		var result = await sut.Handle(new FoldDuringDrawCommand(Guid.NewGuid(), PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new FoldDuringDrawCommand(Guid.NewGuid(), PlayerSeatIndex: 0),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Message.Should().Contain("was not found");
@@ -91,7 +91,8 @@ public class FoldDuringDrawCommandHandlerTests
 	public async Task Handle_WhenRemainingPlayersAlreadyDrew_AdvancesToDrawComplete()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, secondPlayerHasDrawn: true, includeThirdPlayer: true, thirdPlayerHasDrawn: true);
+		var game = await SeedGameAsync(context, secondPlayerHasDrawn: true, includeThirdPlayer: true,
+			thirdPlayerHasDrawn: true);
 		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
 
 		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, PlayerSeatIndex: 0), CancellationToken.None);
@@ -145,8 +146,10 @@ public class FoldDuringDrawCommandHandlerTests
 		var secondPlayer = CreatePlayer("Bob", now);
 		var thirdPlayer = includeThirdPlayer ? CreatePlayer("Carol", now) : null;
 
-		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, seatPosition: 0, firstPlayerFolded, hasDrawnThisRound: false, now);
-		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, seatPosition: 1, secondPlayerFolded, secondPlayerHasDrawn, now);
+		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, seatPosition: 0, firstPlayerFolded,
+			hasDrawnThisRound: false, now);
+		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, seatPosition: 1, secondPlayerFolded,
+			secondPlayerHasDrawn, now);
 		var thirdGamePlayer = includeThirdPlayer && thirdPlayer is not null
 			? CreateGamePlayer(game, thirdPlayer, seatPosition: 2, thirdPlayerFolded, thirdPlayerHasDrawn, now)
 			: null;

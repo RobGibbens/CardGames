@@ -4,11 +4,12 @@ namespace CardGames.IntegrationTests.Infrastructure.Fakes;
 
 public class FakeHandHistoryRecorder : IHandHistoryRecorder
 {
-    public List<RecordHandHistoryParameters> RecordedHands { get; } = new();
+	public List<RecordHandHistoryParameters> RecordedHands { get; } = [];
 
-    public Task<bool> RecordHandHistoryAsync(RecordHandHistoryParameters parameters, CancellationToken cancellationToken = default)
-    {
-        RecordedHands.Add(parameters);
-        return Task.FromResult(true);
-    }
+	public Task<bool> RecordHandHistoryAsync(RecordHandHistoryParameters parameters,
+		CancellationToken cancellationToken = default)
+	{
+		RecordedHands.Add(parameters);
+		return Task.FromResult(true);
+	}
 }

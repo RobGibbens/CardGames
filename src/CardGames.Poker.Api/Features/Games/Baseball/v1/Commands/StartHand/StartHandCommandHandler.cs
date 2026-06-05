@@ -1,7 +1,6 @@
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.Baseball;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -49,8 +48,8 @@ public class StartHandCommandHandler(
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
-						  $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
-						  $"or '{nameof(Phases.Complete)}' phase.",
+				          $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
+				          $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
 		}
@@ -67,9 +66,8 @@ public class StartHandCommandHandler(
 
 		var ante = game.Ante ?? 0;
 		var playersWithInsufficientChips = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 (gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)))
+			.Where(gp => gp is { Status: GamePlayerStatus.Active, IsSittingOut: false } &&
+			             (gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)))
 			.ToList();
 
 		foreach (var player in playersWithInsufficientChips)
@@ -79,15 +77,16 @@ public class StartHandCommandHandler(
 
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 (ante == 0 || gp.ChipStack >= ante))
+			             !gp.IsSittingOut &&
+			             (ante == 0 || gp.ChipStack >= ante))
 			.ToList();
 
 		if (eligiblePlayers.Count < 2)
 		{
 			return new StartHandError
 			{
-				Message = "Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
+				Message =
+					"Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
 		}
@@ -187,30 +186,36 @@ public class StartHandCommandHandler(
 		};
 	}
 
-	private static CardSuit MapSuit(Suit suit) => suit switch
+	private static CardSuit MapSuit(Suit suit)
 	{
-		Suit.Hearts => CardSuit.Hearts,
-		Suit.Diamonds => CardSuit.Diamonds,
-		Suit.Spades => CardSuit.Spades,
-		Suit.Clubs => CardSuit.Clubs,
-		_ => throw new ArgumentOutOfRangeException(nameof(suit))
-	};
+		return suit switch
+		{
+			Suit.Hearts => CardSuit.Hearts,
+			Suit.Diamonds => CardSuit.Diamonds,
+			Suit.Spades => CardSuit.Spades,
+			Suit.Clubs => CardSuit.Clubs,
+			_ => throw new ArgumentOutOfRangeException(nameof(suit))
+		};
+	}
 
-	private static CardSymbol MapSymbol(Symbol symbol) => symbol switch
+	private static CardSymbol MapSymbol(Symbol symbol)
 	{
-		Symbol.Deuce => CardSymbol.Deuce,
-		Symbol.Three => CardSymbol.Three,
-		Symbol.Four => CardSymbol.Four,
-		Symbol.Five => CardSymbol.Five,
-		Symbol.Six => CardSymbol.Six,
-		Symbol.Seven => CardSymbol.Seven,
-		Symbol.Eight => CardSymbol.Eight,
-		Symbol.Nine => CardSymbol.Nine,
-		Symbol.Ten => CardSymbol.Ten,
-		Symbol.Jack => CardSymbol.Jack,
-		Symbol.Queen => CardSymbol.Queen,
-		Symbol.King => CardSymbol.King,
-		Symbol.Ace => CardSymbol.Ace,
-		_ => throw new ArgumentOutOfRangeException(nameof(symbol))
-	};
+		return symbol switch
+		{
+			Symbol.Deuce => CardSymbol.Deuce,
+			Symbol.Three => CardSymbol.Three,
+			Symbol.Four => CardSymbol.Four,
+			Symbol.Five => CardSymbol.Five,
+			Symbol.Six => CardSymbol.Six,
+			Symbol.Seven => CardSymbol.Seven,
+			Symbol.Eight => CardSymbol.Eight,
+			Symbol.Nine => CardSymbol.Nine,
+			Symbol.Ten => CardSymbol.Ten,
+			Symbol.Jack => CardSymbol.Jack,
+			Symbol.Queen => CardSymbol.Queen,
+			Symbol.King => CardSymbol.King,
+			Symbol.Ace => CardSymbol.Ace,
+			_ => throw new ArgumentOutOfRangeException(nameof(symbol))
+		};
+	}
 }

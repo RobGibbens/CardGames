@@ -24,4 +24,6 @@ public enum CorrectLeagueSeasonEventResultsErrorCode
 	MemberNotFound
 }
 
-public sealed record CorrectLeagueSeasonEventResultsError(CorrectLeagueSeasonEventResultsErrorCode Code, string Message);
+public sealed record CorrectLeagueSeasonEventResultsError(
+	CorrectLeagueSeasonEventResultsErrorCode Code,
+	string Message);

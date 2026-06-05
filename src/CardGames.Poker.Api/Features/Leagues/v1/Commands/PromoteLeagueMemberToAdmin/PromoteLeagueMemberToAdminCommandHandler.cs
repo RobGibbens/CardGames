@@ -13,11 +13,13 @@ public sealed class PromoteLeagueMemberToAdminCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<PromoteLeagueMemberToAdminCommand, OneOf<Unit, PromoteLeagueMemberToAdminError>>
 {
-	public async Task<OneOf<Unit, PromoteLeagueMemberToAdminError>> Handle(PromoteLeagueMemberToAdminCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, PromoteLeagueMemberToAdminError>> Handle(PromoteLeagueMemberToAdminCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Unauthorized, "User is not authenticated.");
+			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var actorCanManageLeague = await context.LeagueMembersCurrent
@@ -28,15 +30,18 @@ public sealed class PromoteLeagueMemberToAdminCommandHandler(
 
 		if (!actorCanManageLeague)
 		{
-			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Forbidden, "Only league managers or admins can promote members.");
+			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Forbidden,
+				"Only league managers or admins can promote members.");
 		}
 
 		var member = await context.LeagueMembersCurrent
-			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == request.MemberUserId && x.IsActive, cancellationToken);
+			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == request.MemberUserId && x.IsActive,
+				cancellationToken);
 
 		if (member is null)
 		{
-			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.MemberNotFound, "Target member was not found in the league.");
+			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.MemberNotFound,
+				"Target member was not found in the league.");
 		}
 
 		if (member.Role == LeagueRole.Member)

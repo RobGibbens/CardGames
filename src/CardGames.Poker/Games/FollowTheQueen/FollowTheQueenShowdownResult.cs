@@ -5,7 +5,7 @@ using CardGames.Poker.Hands.StudHands;
 namespace CardGames.Poker.Games.FollowTheQueen;
 
 /// <summary>
-/// Result of a Follow the Queen showdown.
+///     Result of a Follow the Queen showdown.
 /// </summary>
 public class FollowTheQueenShowdownResult
 {

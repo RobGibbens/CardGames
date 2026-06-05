@@ -1,113 +1,112 @@
+@using CardGames.Poker.Api.Contracts
 @namespace CardGames.Poker.Web.Components.Shared
 
-@using CardGames.Poker.Api.Contracts
-
 <div class="table-card @GetStatusClass()">
-    <div class="variant-card">
-        @if (CanDelete)
-        {
-            <button class="table-card-delete-btn" 
-                    @onclick="HandleDeleteClick"
-                    @onclick:stopPropagation="true"
-                    title="Delete table">
-                <i class="fa-regular fa-trash"></i>
-            </button>
-        }
-        <div class="variant-icon">
-            @if (!string.IsNullOrWhiteSpace(Table.GameTypeImageName))
-            {
-                <img class="variant-icon" src="/images/games/@Table.GameTypeImageName" alt="@Table.GameTypeName" />
-            }
-            else
-            {
-                <span class="variant-icon"><i class="fa-thin fa-question"></i></span>
-            }
-        </div>
-        <h3 class="variant-name">@Table.Name</h3>
-        <h4 class="variant-name">@FormatGameTypeName()</h4>
-        <p class="variant-description">@Table.GameTypeDescription</p>
-        @* <span class="variant-badge">@($"{game.MinimumNumberOfPlayers}-{game.MaximumNumberOfPlayers} players")</span> *@
-        
-        <div class="table-card-info">
-            <div class="info-item">
-                <i class="fa-solid @(Table.IsTournament ? "fa-trophy" : "fa-dollar-sign")"></i>
-                <span class="info-label">Type:</span>
-                <span class="info-value">@Table.TableTypeLabel</span>
-            </div>
-            <div class="info-item">
-                <i class="fa-solid @(Table.IsLeagueGame ? "fa-users" : "fa-globe")"></i>
-                <span class="info-label">Scope:</span>
-                <span class="info-value">@Table.TableScopeLabel</span>
-            </div>
-            <div class="info-item">
-                <i class="fa-regular fa-user"></i>
-                <span class="info-label">Host:</span>
-                <span class="info-value">@(string.IsNullOrWhiteSpace(Table.CreatedByName) ? "-" : Table.CreatedByName)</span>
-            </div>
-        </div>
+	<div class="variant-card">
+		@if (CanDelete)
+		{
+			<button class="table-card-delete-btn"
+			        @onclick="HandleDeleteClick"
+			        @onclick:stopPropagation="true"
+			        title="Delete table">
+				<i class="fa-regular fa-trash"></i>
+			</button>
+		}
+		<div class="variant-icon">
+			@if (!string.IsNullOrWhiteSpace(Table.GameTypeImageName))
+			{
+				<img class="variant-icon" src="/images/games/@Table.GameTypeImageName" alt="@Table.GameTypeName"/>
+			}
+			else
+			{
+				<span class="variant-icon">
+					<i class="fa-thin fa-question"></i>
+				</span>
+			}
+		</div>
+		<h3 class="variant-name">@Table.Name</h3>
+		<h4 class="variant-name">@FormatGameTypeName()</h4>
+		<p class="variant-description">@Table.GameTypeDescription</p>
+		@* <span class="variant-badge">@($"{game.MinimumNumberOfPlayers}-{game.MaximumNumberOfPlayers} players")</span> *@
 
-        <div class="table-card-status">
-            <span class="status-dot @GetStatusDotClass()"></span>
-            <span class="status-text">@GetStatusText()</span>
-        </div>
+		<div class="table-card-info">
+			<div class="info-item">
+				<i class="fa-solid @(Table.IsTournament ? "fa-trophy" : "fa-dollar-sign")"></i>
+				<span class="info-label">Type:</span>
+				<span class="info-value">@Table.TableTypeLabel</span>
+			</div>
+			<div class="info-item">
+				<i class="fa-solid @(Table.IsLeagueGame ? "fa-users" : "fa-globe")"></i>
+				<span class="info-label">Scope:</span>
+				<span class="info-value">@Table.TableScopeLabel</span>
+			</div>
+			<div class="info-item">
+				<i class="fa-regular fa-user"></i>
+				<span class="info-label">Host:</span>
+				<span class="info-value">@(string.IsNullOrWhiteSpace(Table.CreatedByName) ? "-" : Table.CreatedByName)</span>
+			</div>
+		</div>
 
-        <div class="table-card-actions">
-            <a href="/table/@Table.Id" class="btn btn-secondary table-action-btn">
-                <i class="fa-regular fa-magnifying-glass"></i> View Table
-            </a>
-        </div>
-    </div>
-    
- 
-    
+		<div class="table-card-status">
+			<span class="status-dot @GetStatusDotClass()"></span>
+			<span class="status-text">@GetStatusText()</span>
+		</div>
+
+		<div class="table-card-actions">
+			<a href="/table/@Table.Id" class="btn btn-secondary table-action-btn">
+				<i class="fa-regular fa-magnifying-glass"></i> View Table
+			</a>
+		</div>
+	</div>
+
+
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public required GetActiveGamesResponse Table { get; set; }
+	[Parameter, EditorRequired] public required GetActiveGamesResponse Table { get; set; }
 
-    [Parameter]
-    public string? CurrentUserId { get; set; }
+	[Parameter] public string? CurrentUserId { get; set; }
 
-    [Parameter]
-    public EventCallback<Guid> OnDelete { get; set; }
+	[Parameter] public EventCallback<Guid> OnDelete { get; set; }
 
-    private bool CanDelete => !string.IsNullOrEmpty(CurrentUserId) && 
-                              string.Equals(Table.CreatedById, CurrentUserId, StringComparison.OrdinalIgnoreCase);
+	private bool CanDelete => !string.IsNullOrEmpty(CurrentUserId) &&
+	                          string.Equals(Table.CreatedById, CurrentUserId, StringComparison.OrdinalIgnoreCase);
 
-    private async Task HandleDeleteClick()
-    {
-        if (OnDelete.HasDelegate)
-        {
-            await OnDelete.InvokeAsync(Table.Id);
-        }
-    }
+	private async Task HandleDeleteClick()
+	{
+		if (OnDelete.HasDelegate)
+		{
+			await OnDelete.InvokeAsync(Table.Id);
+		}
+	}
 
-    private string GetStatusClass()
-    {
-        return "";
-    }
+	private string GetStatusClass()
+	{
+		return "";
+	}
 
-    private string GetStatusDotClass()
-    {
-        return "";
-    }
+	private string GetStatusDotClass()
+	{
+		return "";
+	}
 
-    private string GetStatusText()
-    {
+	private string GetStatusText()
+	{
 		return string.IsNullOrWhiteSpace(Table.CurrentPhaseDescription)
 			? $"{Table.CurrentPhase}"
 			: $"{Table.CurrentPhaseDescription}";
-    }
+	}
 
-    private string? FormatGameTypeName()
-    {
-        var name = Table.GameTypeMetadataName ?? Table.GameTypeName;
-        if (Table.IsDealersChoice &&
-            !string.Equals(name, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
-        {
-            return $"Dealer's Choice ({name})";
-        }
-        return name;
-    }
+	private string? FormatGameTypeName()
+	{
+		var name = Table.GameTypeMetadataName ?? Table.GameTypeName;
+		if (Table.IsDealersChoice &&
+		    !string.Equals(name, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
+		{
+			return $"Dealer's Choice ({name})";
+		}
+
+		return name;
+	}
+
 }

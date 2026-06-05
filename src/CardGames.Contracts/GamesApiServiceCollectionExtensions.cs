@@ -1,22 +1,21 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
-using Refit;
 
 namespace CardGames.Poker.Api.Clients;
 
 /// <summary>
-/// Extension methods for registering the IGamesApi client.
+///     Extension methods for registering the IGamesApi client.
 /// </summary>
 public static class GamesApiServiceCollectionExtensions
 {
 	/// <summary>
-	/// Registers the IGamesApi Refit client with the service collection.
+	///     Registers the IGamesApi Refit client with the service collection.
 	/// </summary>
 	public static IServiceCollection AddGamesApiClient(
 		this IServiceCollection services,
 		Uri baseUrl,
-		Action<IHttpClientBuilder>? builder = default,
-		RefitSettings? settings = default)
+		Action<IHttpClientBuilder>? builder = null,
+		RefitSettings? settings = null)
 	{
 		var clientBuilder = services
 			.AddRefitClient<IGamesApi>(settings)

@@ -4,7 +4,7 @@ using CardGames.Poker.Betting;
 namespace CardGames.Poker.Games.KingsAndLows;
 
 /// <summary>
-/// Result of pot matching.
+///     Result of pot matching.
 /// </summary>
 public class PotMatchResult
 {

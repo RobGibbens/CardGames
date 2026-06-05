@@ -13,8 +13,8 @@ using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDiscard;
 
 /// <summary>
-/// Handles the <see cref="ProcessDiscardCommand"/> to process discard actions from players
-/// during the Irish Hold 'Em discard phase.
+///     Handles the <see cref="ProcessDiscardCommand" /> to process discard actions from players
+///     during the Irish Hold 'Em discard phase.
 /// </summary>
 public class ProcessDiscardCommandHandler(CardsDbContext context)
 	: IRequestHandler<ProcessDiscardCommand, OneOf<ProcessDiscardSuccessful, ProcessDiscardError>>
@@ -37,7 +37,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players and cards
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameType)
 			.Include(g => g.GameCards.Where(gc => gc.HandNumber == context.Games
 				.Where(g2 => g2.Id == command.GameId)
@@ -66,9 +66,12 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		}
 
 		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
-		var isPhilsMom = string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode, StringComparison.OrdinalIgnoreCase);
-		var isIrishHoldEm = string.Equals(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode, StringComparison.OrdinalIgnoreCase);
-		var isCrazyPineapple = string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode, StringComparison.OrdinalIgnoreCase);
+		var isPhilsMom = string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode,
+			StringComparison.OrdinalIgnoreCase);
+		var isIrishHoldEm = string.Equals(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode,
+			StringComparison.OrdinalIgnoreCase);
+		var isCrazyPineapple = string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode,
+			StringComparison.OrdinalIgnoreCase);
 		if (!isPhilsMom && !isIrishHoldEm && !isCrazyPineapple)
 		{
 			return new ProcessDiscardError
@@ -129,7 +132,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		{
 			return new ProcessDiscardError
 			{
-				Message = $"Must discard exactly {requiredDiscardCount} cards. Received {command.DiscardIndices.Count}.",
+				Message =
+					$"Must discard exactly {requiredDiscardCount} cards. Received {command.DiscardIndices.Count}.",
 				Code = ProcessDiscardErrorCode.InvalidDiscardCount
 			};
 		}
@@ -144,7 +148,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		{
 			return new ProcessDiscardError
 			{
-				Message = $"Player does not have enough cards. Expected {InitialHoleCardCount}, found {playerCards.Count}.",
+				Message =
+					$"Player does not have enough cards. Expected {InitialHoleCardCount}, found {playerCards.Count}.",
 				Code = ProcessDiscardErrorCode.InsufficientCards
 			};
 		}
@@ -153,7 +158,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		{
 			return new ProcessDiscardError
 			{
-				Message = $"Player does not have enough cards. Expected {CrazyPineappleInitialHoleCardCount}, found {playerCards.Count}.",
+				Message =
+					$"Player does not have enough cards. Expected {CrazyPineappleInitialHoleCardCount}, found {playerCards.Count}.",
 				Code = ProcessDiscardErrorCode.InsufficientCards
 			};
 		}
@@ -333,7 +339,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 
 		if (dealFlopCards)
 		{
-			await DealCommunityCardsAsync(game, nameof(Phases.Flop), cardCount: 3, firstDealOrder: 1, now, cancellationToken);
+			await DealCommunityCardsAsync(game, nameof(Phases.Flop), cardCount: 3, firstDealOrder: 1, now,
+				cancellationToken);
 		}
 
 		var nextRoundNumber = await context.BettingRounds
@@ -366,7 +373,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		game.CurrentDrawPlayerIndex = -1;
 	}
 
-	private async Task StartTurnPhaseAsync(Game game, List<GamePlayer> activePlayers, DateTimeOffset now, CancellationToken cancellationToken)
+	private async Task StartTurnPhaseAsync(Game game, List<GamePlayer> activePlayers, DateTimeOffset now,
+		CancellationToken cancellationToken)
 	{
 		// Reset draw state
 		foreach (var gamePlayer in activePlayers)
@@ -387,7 +395,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		}
 
 		// Deal the Turn community card (4th community card)
-		await DealCommunityCardsAsync(game, nameof(Phases.Turn), cardCount: 1, firstDealOrder: 4, now, cancellationToken);
+		await DealCommunityCardsAsync(game, nameof(Phases.Turn), cardCount: 1, firstDealOrder: 4, now,
+			cancellationToken);
 
 		var nextRoundNumber = await context.BettingRounds
 			.Where(br => br.GameId == game.Id && br.HandNumber == game.CurrentHandNumber)
@@ -422,7 +431,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Deals community cards for the specified phase from the top of the remaining deck.
+	///     Deals community cards for the specified phase from the top of the remaining deck.
 	/// </summary>
 	private async Task DealCommunityCardsAsync(
 		Game game,
@@ -439,8 +448,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id
-				&& gc.HandNumber == game.CurrentHandNumber
-				&& gc.Location == CardLocation.Deck)
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -457,8 +466,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Finds the first active player after the dealer who can bet.
-	/// Excludes folded and all-in players since they cannot participate in betting.
+	///     Finds the first active player after the dealer who can bet.
+	///     Excludes folded and all-in players since they cannot participate in betting.
 	/// </summary>
 	private static int FindFirstActivePlayerAfterDealerForBetting(Game game, List<GamePlayer> activePlayers)
 	{
@@ -472,6 +481,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 

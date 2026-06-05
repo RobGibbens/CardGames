@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CardGames.Poker.Api.Data.Configurations;
 
 /// <summary>
-/// Entity Framework Core configuration for the <see cref="GamePlayer"/> entity.
+///     Entity Framework Core configuration for the <see cref="GamePlayer" /> entity.
 /// </summary>
 public class GamePlayerConfiguration : IEntityTypeConfiguration<GamePlayer>
 {
@@ -56,24 +56,26 @@ public class GamePlayerConfiguration : IEntityTypeConfiguration<GamePlayer>
 			.OnDelete(DeleteBehavior.Restrict);
 
 		builder.HasMany(t => t.Cards)
-		.WithOne(c => c.GamePlayer)
-		.HasForeignKey(c => c.GamePlayerId)
-		.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> GameCards also cascades
+			.WithOne(c => c.GamePlayer)
+			.HasForeignKey(c => c.GamePlayerId)
+			.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> GameCards also cascades
 
 		builder.HasMany(t => t.PotContributions)
 			.WithOne(pc => pc.GamePlayer)
 			.HasForeignKey(pc => pc.GamePlayerId)
-			.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> Pots -> PotContributions also cascades
+			.OnDelete(DeleteBehavior
+				.NoAction); // Avoid cascade conflict: Game -> Pots -> PotContributions also cascades
 
 		builder.HasMany(t => t.BettingActions)
 			.WithOne(ba => ba.GamePlayer)
 			.HasForeignKey(ba => ba.GamePlayerId)
-			.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> BettingRounds -> BettingActions also cascades
+			.OnDelete(DeleteBehavior
+				.NoAction); // Avoid cascade conflict: Game -> BettingRounds -> BettingActions also cascades
 	}
 }
 
 /// <summary>
-/// Field constraints for the <see cref="GamePlayer"/> entity.
+///     Field constraints for the <see cref="GamePlayer" /> entity.
 /// </summary>
 public static class GamePlayerFields
 {

@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHand;
 
 /// <summary>
-/// Endpoint for starting a new hand in a Hold the Baseball game.
+///     Endpoint for starting a new hand in a Hold the Baseball game.
 /// </summary>
 public static class StartHandEndpoint
 {
@@ -17,7 +17,7 @@ public static class StartHandEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							StartHandErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
@@ -30,7 +30,7 @@ public static class StartHandEndpoint
 			.WithName($"HoldTheBaseball{nameof(MapStartHand).TrimPrefix("Map")}")
 			.WithSummary("Start Hand")
 			.WithDescription("Starts a new Hold the Baseball hand, posts blinds, and deals hole cards.")
-			.Produces<StartHandSuccessful>(StatusCodes.Status200OK)
+			.Produces<StartHandSuccessful>()
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);

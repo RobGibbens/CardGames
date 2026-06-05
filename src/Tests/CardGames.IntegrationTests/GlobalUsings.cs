@@ -1,4 +1,5 @@
 // Global using statements for the integration tests project
+
 global using CardGames.IntegrationTests.Infrastructure;
 global using CardGames.Poker.Api.Data;
 global using CardGames.Poker.Api.Data.Entities;

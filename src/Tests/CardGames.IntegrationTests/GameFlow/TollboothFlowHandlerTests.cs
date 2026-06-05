@@ -64,7 +64,11 @@ public class TollboothFlowHandlerTests : IntegrationTestBase
 		var handler = new TollboothFlowHandler();
 		var config = handler.GetDealingConfiguration();
 
-		var streets = new[] { nameof(Phases.FourthStreet), nameof(Phases.FifthStreet), nameof(Phases.SixthStreet), nameof(Phases.SeventhStreet) };
+		var streets = new[]
+		{
+			nameof(Phases.FourthStreet), nameof(Phases.FifthStreet), nameof(Phases.SixthStreet),
+			nameof(Phases.SeventhStreet)
+		};
 		foreach (var streetName in streets)
 		{
 			var round = config.DealingRounds!.First(r => r.PhaseName == streetName);
@@ -163,6 +167,7 @@ public class TollboothFlowHandlerTests : IntegrationTestBase
 		{
 			gp.HasFolded = true;
 		}
+
 		await DbContext.SaveChangesAsync();
 
 		handler.GetNextPhase(setup.Game, nameof(Phases.FourthStreet)).Should().Be(nameof(Phases.Showdown));

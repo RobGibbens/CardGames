@@ -5,7 +5,7 @@ using CardGames.Poker.Hands.CommunityCardHands;
 namespace CardGames.Poker.Games.HoldEm;
 
 /// <summary>
-/// Result of a Hold 'Em showdown.
+///     Result of a Hold 'Em showdown.
 /// </summary>
 public class HoldEmShowdownResult
 {

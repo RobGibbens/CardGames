@@ -23,14 +23,16 @@ public static class UpdateGamePreferencesEndpoint
 						error => error.Code switch
 						{
 							UpdateGamePreferencesErrorCode.Unauthorized => Results.Unauthorized(),
-							UpdateGamePreferencesErrorCode.InvalidPreferences => Results.BadRequest(new { error.Message }),
+							UpdateGamePreferencesErrorCode.InvalidPreferences => Results.BadRequest(new
+								{ error.Message }),
 							_ => Results.Problem(error.Message)
 						});
 				})
 			.WithName("UpdateGamePreferences")
 			.WithSummary("Update game preferences")
-			.WithDescription("Creates or updates default blind, ante, and minimum bet preferences for the authenticated player.")
-			.Produces<GamePreferencesDto>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Creates or updates default blind, ante, and minimum bet preferences for the authenticated player.")
+			.Produces<GamePreferencesDto>()
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.RequireAuthorization();
 

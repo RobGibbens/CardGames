@@ -13,7 +13,8 @@ public sealed class GetMyLeaguesQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetMyLeaguesQuery, OneOf<IReadOnlyList<LeagueSummaryDto>, GetMyLeaguesError>>
 {
-	public async Task<OneOf<IReadOnlyList<LeagueSummaryDto>, GetMyLeaguesError>> Handle(GetMyLeaguesQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<IReadOnlyList<LeagueSummaryDto>, GetMyLeaguesError>> Handle(GetMyLeaguesQuery request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -28,7 +29,7 @@ public sealed class GetMyLeaguesQueryHandler(
 				LeagueId = x.LeagueId,
 				Name = x.League.Name,
 				Description = x.League.Description,
-				Role = (CardGames.Poker.Api.Contracts.LeagueRole)LeagueGovernanceRules.ToCurrentUserProjectedRole(x.Role),
+				Role = (LeagueRole)LeagueGovernanceRules.ToCurrentUserProjectedRole(x.Role),
 				CreatedAtUtc = x.League.CreatedAtUtc
 			})
 			.OrderByDescending(x => x.CreatedAtUtc)

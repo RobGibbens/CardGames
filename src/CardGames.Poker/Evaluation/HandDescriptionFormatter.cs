@@ -4,7 +4,10 @@ using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Hands;
+using CardGames.Poker.Hands.CommunityCardHands;
+using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands.HandTypes;
+using CardGames.Poker.Hands.StudHands;
 
 namespace CardGames.Poker.Evaluation;
 
@@ -37,57 +40,57 @@ public static class HandDescriptionFormatter
 
 	private static List<Card> GetCardsForDescription(HandBase hand)
 	{
-		if (hand is Hands.DrawHands.TwosJacksManWithTheAxeDrawHand twosJacksHand)
+		if (hand is TwosJacksManWithTheAxeDrawHand twosJacksHand)
 		{
-			return twosJacksHand.EvaluatedBestCards.ToList();
+			return [.. twosJacksHand.EvaluatedBestCards];
 		}
 
-		if (hand is Hands.DrawHands.KingsAndLowsDrawHand kingsAndLowsHand)
+		if (hand is KingsAndLowsDrawHand kingsAndLowsHand)
 		{
-			return kingsAndLowsHand.EvaluatedBestCards.ToList();
+			return [.. kingsAndLowsHand.EvaluatedBestCards];
 		}
 
-		if (hand is Hands.StudHands.BaseballHand baseballHand)
+		if (hand is BaseballHand baseballHand)
 		{
 			return baseballHand.EvaluatedBestCards.ToList();
 		}
 
-		if (hand is Hands.StudHands.FollowTheQueenHand followTheQueenHand)
+		if (hand is FollowTheQueenHand followTheQueenHand)
 		{
 			return followTheQueenHand.EvaluatedBestCards.ToList();
 		}
 
-		if (hand is Hands.StudHands.PairPressureHand pairPressureHand)
+		if (hand is PairPressureHand pairPressureHand)
 		{
 			return pairPressureHand.EvaluatedBestCards.ToList();
 		}
 
-		if (hand is Hands.StudHands.GoodBadUglyHand gbuHand)
+		if (hand is GoodBadUglyHand gbuHand)
 		{
 			return gbuHand.EvaluatedBestCards.ToList();
 		}
 
-		if (hand is Hands.CommunityCardHands.HoldTheBaseballHand holdTheBaseballHand)
+		if (hand is HoldTheBaseballHand holdTheBaseballHand)
 		{
 			return holdTheBaseballHand.EvaluatedBestCards.ToList();
 		}
 
-		if (hand is Hands.CommunityCardHands.NebraskaHand nebraskaHand)
+		if (hand is NebraskaHand nebraskaHand)
 		{
 			return nebraskaHand.EvaluatedBestCards.ToList();
 		}
 
-		if (hand is Hands.CommunityCardHands.OmahaHand omahaHand)
+		if (hand is OmahaHand omahaHand)
 		{
 			return omahaHand.EvaluatedBestCards.ToList();
 		}
 
-		if (hand is Hands.CommunityCardHands.BobBarkerHand bobBarkerHand)
+		if (hand is BobBarkerHand bobBarkerHand)
 		{
 			return bobBarkerHand.EvaluatedBestCards.ToList();
 		}
 
-		if (hand is Hands.CommunityCardHands.KlondikeHand klondikeHand)
+		if (hand is KlondikeHand klondikeHand)
 		{
 			return klondikeHand.EvaluatedBestCards.ToList();
 		}

@@ -13,24 +13,28 @@ public sealed class UpdateGamePreferencesCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<UpdateGamePreferencesCommand, OneOf<GamePreferencesDto, UpdateGamePreferencesError>>
 {
-	public async Task<OneOf<GamePreferencesDto, UpdateGamePreferencesError>> Handle(UpdateGamePreferencesCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<GamePreferencesDto, UpdateGamePreferencesError>> Handle(
+		UpdateGamePreferencesCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.Unauthorized, "User is not authenticated.");
+			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		if (request.DefaultSmallBlind < 0
-			|| request.DefaultBigBlind < 0
-			|| request.DefaultAnte < 0
-			|| request.DefaultMinimumBet < 0)
+		    || request.DefaultBigBlind < 0
+		    || request.DefaultAnte < 0
+		    || request.DefaultMinimumBet < 0)
 		{
-			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.InvalidPreferences, "Preference values must be greater than or equal to 0.");
+			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.InvalidPreferences,
+				"Preference values must be greater than or equal to 0.");
 		}
 
 		if (request.DefaultBigBlind < request.DefaultSmallBlind)
 		{
-			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.InvalidPreferences, "Big blind must be greater than or equal to small blind.");
+			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.InvalidPreferences,
+				"Big blind must be greater than or equal to small blind.");
 		}
 
 		var userId = currentUserService.UserId;
@@ -46,7 +50,7 @@ public sealed class UpdateGamePreferencesCommandHandler(
 		{
 			var resolvedUserId = await ResolveLocalUserIdAsync(cancellationToken);
 			if (string.IsNullOrWhiteSpace(resolvedUserId)
-				|| string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
+			    || string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
 			{
 				throw;
 			}

@@ -1,5 +1,5 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite;
 using CardGames.Poker.Api.Infrastructure;
@@ -15,7 +15,7 @@ public class CreateLeagueInviteCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Invite League"
 		}));
@@ -23,7 +23,7 @@ public class CreateLeagueInviteCommandHandlerTests : IntegrationTestBase
 		createLeague.IsT0.Should().BeTrue();
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var inviteResult = await Mediator.Send(new CreateLeagueInviteCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueInviteRequest
+		var inviteResult = await Mediator.Send(new CreateLeagueInviteCommand(leagueId, new CreateLeagueInviteRequest
 		{
 			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
 		}));

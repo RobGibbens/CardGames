@@ -5,17 +5,21 @@ using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.PairPressure;
 using Microsoft.EntityFrameworkCore;
+using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.GameFlow;
 
 /// <summary>
-/// Game flow handler for Pair Pressure poker.
+///     Game flow handler for Pair Pressure poker.
 /// </summary>
 public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 {
 	public override string GameTypeCode => PokerGameMetadataRegistry.PairPressureCode;
 
-	public override GameRules GetGameRules() => PairPressureRules.CreateGameRules();
+	public override GameRules GetGameRules()
+	{
+		return PairPressureRules.CreateGameRules();
+	}
 
 	public override DealingConfiguration GetDealingConfiguration()
 	{
@@ -87,8 +91,8 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 	{
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id &&
-						 gc.HandNumber == game.CurrentHandNumber &&
-						 gc.Location == CardLocation.Deck)
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -179,9 +183,9 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 
 			var pot = await context.Pots
 				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-									  p.HandNumber == game.CurrentHandNumber &&
-									  p.PotType == PotType.Main,
-								 cancellationToken);
+				                          p.HandNumber == game.CurrentHandNumber &&
+				                          p.PotType == PotType.Main,
+					cancellationToken);
 			if (pot is not null)
 			{
 				pot.Amount += actualBringIn;
@@ -191,7 +195,7 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 		game.CurrentPhase = nameof(Phases.ThirdStreet);
 		game.CurrentPlayerIndex = bringInSeatPosition;
 
-		var bettingRound = new Data.Entities.BettingRound
+		var bettingRound = new BettingRound
 		{
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber,
@@ -248,30 +252,36 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
 
-	private static int GetCardValue(CardSymbol symbol) => symbol switch
+	private static int GetCardValue(CardSymbol symbol)
 	{
-		CardSymbol.Deuce => 2,
-		CardSymbol.Three => 3,
-		CardSymbol.Four => 4,
-		CardSymbol.Five => 5,
-		CardSymbol.Six => 6,
-		CardSymbol.Seven => 7,
-		CardSymbol.Eight => 8,
-		CardSymbol.Nine => 9,
-		CardSymbol.Ten => 10,
-		CardSymbol.Jack => 11,
-		CardSymbol.Queen => 12,
-		CardSymbol.King => 13,
-		CardSymbol.Ace => 14,
-		_ => 0
-	};
+		return symbol switch
+		{
+			CardSymbol.Deuce => 2,
+			CardSymbol.Three => 3,
+			CardSymbol.Four => 4,
+			CardSymbol.Five => 5,
+			CardSymbol.Six => 6,
+			CardSymbol.Seven => 7,
+			CardSymbol.Eight => 8,
+			CardSymbol.Nine => 9,
+			CardSymbol.Ten => 10,
+			CardSymbol.Jack => 11,
+			CardSymbol.Queen => 12,
+			CardSymbol.King => 13,
+			CardSymbol.Ace => 14,
+			_ => 0
+		};
+	}
 
-	private static int GetSuitRank(CardSuit suit) => suit switch
+	private static int GetSuitRank(CardSuit suit)
 	{
-		CardSuit.Clubs => 0,
-		CardSuit.Diamonds => 1,
-		CardSuit.Hearts => 2,
-		CardSuit.Spades => 3,
-		_ => 0
-	};
+		return suit switch
+		{
+			CardSuit.Clubs => 0,
+			CardSuit.Diamonds => 1,
+			CardSuit.Hearts => 2,
+			CardSuit.Spades => 3,
+			_ => 0
+		};
+	}
 }

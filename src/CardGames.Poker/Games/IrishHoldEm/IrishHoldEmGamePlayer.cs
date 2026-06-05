@@ -7,23 +7,23 @@ using CardGames.Poker.Betting;
 namespace CardGames.Poker.Games.IrishHoldEm;
 
 /// <summary>
-/// Represents a player in an Irish Hold 'Em game with their cards, betting state, and discard tracking.
+///     Represents a player in an Irish Hold 'Em game with their cards, betting state, and discard tracking.
 /// </summary>
 public class IrishHoldEmGamePlayer
 {
-	public PokerPlayer Player { get; }
-	public List<Card> HoleCards { get; private set; } = new List<Card>();
-	public bool HasDiscarded { get; private set; }
-
-	/// <summary>
-	/// Convenience property — delegates to Player.HasFolded.
-	/// </summary>
-	public bool HasFolded => Player.HasFolded;
-
 	public IrishHoldEmGamePlayer(PokerPlayer player)
 	{
 		Player = player;
 	}
+
+	public PokerPlayer Player { get; }
+	public List<Card> HoleCards { get; } = [];
+	public bool HasDiscarded { get; private set; }
+
+	/// <summary>
+	///     Convenience property — delegates to Player.HasFolded.
+	/// </summary>
+	public bool HasFolded => Player.HasFolded;
 
 	public void AddHoleCard(Card card)
 	{
@@ -31,7 +31,7 @@ public class IrishHoldEmGamePlayer
 	}
 
 	/// <summary>
-	/// Discards exactly 2 cards by index from the player's hole cards.
+	///     Discards exactly 2 cards by index from the player's hole cards.
 	/// </summary>
 	/// <param name="indices">Exactly 2 zero-based indices of cards to discard.</param>
 	/// <exception cref="InvalidOperationException">Thrown when player has already discarded.</exception>

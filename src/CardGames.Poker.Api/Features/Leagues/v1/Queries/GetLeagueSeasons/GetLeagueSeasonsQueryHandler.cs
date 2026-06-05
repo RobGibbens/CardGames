@@ -12,7 +12,8 @@ public sealed class GetLeagueSeasonsQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetLeagueSeasonsQuery, OneOf<IReadOnlyList<LeagueSeasonDto>, GetLeagueSeasonsError>>
 {
-	public async Task<OneOf<IReadOnlyList<LeagueSeasonDto>, GetLeagueSeasonsError>> Handle(GetLeagueSeasonsQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<IReadOnlyList<LeagueSeasonDto>, GetLeagueSeasonsError>> Handle(
+		GetLeagueSeasonsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -22,13 +23,14 @@ public sealed class GetLeagueSeasonsQueryHandler(
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
 			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive,
+			               x.UserId == currentUserService.UserId &&
+			               x.IsActive,
 				cancellationToken);
 
 		if (!isMember)
 		{
-			return new GetLeagueSeasonsError(GetLeagueSeasonsErrorCode.Forbidden, "Only active members can view seasons.");
+			return new GetLeagueSeasonsError(GetLeagueSeasonsErrorCode.Forbidden,
+				"Only active members can view seasons.");
 		}
 
 		var seasons = await context.LeagueSeasons
@@ -43,7 +45,7 @@ public sealed class GetLeagueSeasonsQueryHandler(
 				PlannedEventCount = x.PlannedEventCount,
 				StartsAtUtc = x.StartsAtUtc,
 				EndsAtUtc = x.EndsAtUtc,
-				Status = (Contracts.LeagueSeasonStatus)x.Status,
+				Status = (LeagueSeasonStatus)x.Status,
 				CreatedByUserId = x.CreatedByUserId,
 				CreatedAtUtc = x.CreatedAtUtc
 			})

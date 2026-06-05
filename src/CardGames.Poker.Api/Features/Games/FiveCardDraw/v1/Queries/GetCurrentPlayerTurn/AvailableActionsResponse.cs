@@ -1,7 +1,7 @@
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentPlayerTurn;
 
 /// <summary>
-/// Represents the available betting actions for the current player.
+///     Represents the available betting actions for the current player.
 /// </summary>
 public record AvailableActionsResponse(
 	bool CanCheck,

@@ -6,7 +6,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
 
 /// <summary>
-/// Command to add chips to a player's stack in a game.
+///     Command to add chips to a player's stack in a game.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="PlayerId">The player's unique identifier.</param>

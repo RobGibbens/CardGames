@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.LeaveLeague;
 
@@ -14,7 +15,8 @@ public sealed class LeaveLeagueCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<LeaveLeagueCommand, OneOf<LeaveLeagueResponse, LeaveLeagueError>>
 {
-	public async Task<OneOf<LeaveLeagueResponse, LeaveLeagueError>> Handle(LeaveLeagueCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<LeaveLeagueResponse, LeaveLeagueError>> Handle(LeaveLeagueCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -22,7 +24,8 @@ public sealed class LeaveLeagueCommandHandler(
 		}
 
 		var membership = await context.LeagueMembersCurrent
-			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId, cancellationToken);
+			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId,
+				cancellationToken);
 
 		if (membership is null || !membership.IsActive)
 		{
@@ -52,9 +55,10 @@ public sealed class LeaveLeagueCommandHandler(
 			}
 		}
 
-		if (membership.Role == Data.Entities.LeagueRole.Admin)
+		if (membership.Role == LeagueRole.Admin)
 		{
-			var hasAnotherAdmin = activeMembers.Any(x => x.UserId != currentUserService.UserId && x.Role == Data.Entities.LeagueRole.Admin);
+			var hasAnotherAdmin =
+				activeMembers.Any(x => x.UserId != currentUserService.UserId && x.Role == LeagueRole.Admin);
 			if (!hasAnotherAdmin)
 			{
 				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict, "League must retain at least one admin.");
@@ -69,7 +73,8 @@ public sealed class LeaveLeagueCommandHandler(
 
 			if (!hasAnotherGovernanceMember)
 			{
-				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict, "League must retain at least one manager or admin.");
+				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict,
+					"League must retain at least one manager or admin.");
 			}
 		}
 

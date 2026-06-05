@@ -3,12 +3,12 @@ using CardGames.Poker.Api.Data.Entities;
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
-/// Settles per-hand results to the cashier ledger after each showdown.
+///     Settles per-hand results to the cashier ledger after each showdown.
 /// </summary>
 public interface IHandSettlementService
 {
 	/// <summary>
-	/// Records per-player net results (win/loss) to the cashier ledger.
+	///     Records per-player net results (win/loss) to the cashier ledger.
 	/// </summary>
 	/// <param name="game">The game entity with GamePlayers loaded.</param>
 	/// <param name="payouts">Dictionary of player name → amount won from pots.</param>
@@ -17,8 +17,8 @@ public interface IHandSettlementService
 }
 
 /// <summary>
-/// Default implementation that iterates over active game players, calculates net delta,
-/// and calls <see cref="IPlayerChipWalletService.RecordHandSettlementAsync"/> for each.
+///     Default implementation that iterates over active game players, calculates net delta,
+///     and calls <see cref="IPlayerChipWalletService.RecordHandSettlementAsync" /> for each.
 /// </summary>
 public sealed class HandSettlementService(IPlayerChipWalletService walletService) : IHandSettlementService
 {

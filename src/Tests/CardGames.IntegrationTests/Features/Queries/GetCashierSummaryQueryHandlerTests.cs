@@ -1,6 +1,4 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierSummary;
 using CardGames.Poker.Api.Infrastructure;

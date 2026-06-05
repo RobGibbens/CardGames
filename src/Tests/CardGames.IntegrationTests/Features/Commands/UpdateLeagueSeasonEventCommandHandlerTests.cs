@@ -1,4 +1,5 @@
-using CardGames.IntegrationTests.Infrastructure;
+using System.Globalization;
+using CardGames.Contracts.SignalR;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
@@ -6,8 +7,6 @@ using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.UpdateLeagueSeasonEvent;
 using CardGames.Poker.Api.Infrastructure;
-using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -33,21 +32,23 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 			Name = "Summer 2026"
 		}));
 
-		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
-			Notes = "Original notes",
-			TournamentBuyIn = 1000
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
+				Notes = "Original notes",
+				TournamentBuyIn = 1000
+			}));
 
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(5);
 		fakeLeagueBroadcaster.EventChangedNotifications.Clear();
-		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = scheduledAtUtc,
-			Notes = "Updated notes",
-			TournamentBuyIn = 2200
-		}));
+		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = scheduledAtUtc,
+				Notes = "Updated notes",
+				TournamentBuyIn = 2200
+			}));
 
 		result.IsT0.Should().BeTrue();
 
@@ -63,9 +64,9 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
 		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
 		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(createEvent.AsT0.EventId);
-		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.Season);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(LeagueEventSourceType.Season);
 		fakeLeagueBroadcaster.EventChangedNotifications[0].SeasonId.Should().Be(createSeason.AsT0.SeasonId);
-		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(CardGames.Contracts.SignalR.LeagueEventChangeKind.Updated);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(LeagueEventChangeKind.Updated);
 	}
 
 	[Fact]
@@ -87,19 +88,21 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 			Name = "Spring 2027"
 		}));
 
-		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
+			}));
 
 		var seasonEvent = await DbContext.LeagueSeasonEvents.SingleAsync(x => x.Id == createEvent.AsT0.EventId);
 		seasonEvent.LaunchedGameId = Guid.CreateVersion7();
 		await DbContext.SaveChangesAsync();
 
-		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(5)
-		}));
+		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(5)
+			}));
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(UpdateLeagueSeasonEventErrorCode.Conflict);
@@ -124,15 +127,17 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 			Name = "Spring 2027"
 		}));
 
-		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
+			}));
 
-		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
-		}));
+		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
+			}));
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(UpdateLeagueSeasonEventErrorCode.InvalidRequest);

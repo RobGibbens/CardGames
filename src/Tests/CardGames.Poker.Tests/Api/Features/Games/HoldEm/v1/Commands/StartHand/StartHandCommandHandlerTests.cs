@@ -73,7 +73,8 @@ public class StartHandCommandHandlerTests
 		flowHandlerFactory.Received(1).GetHandler("HOLDEM");
 	}
 
-	private static StartHandCommandHandler CreateSut(CardsDbContext context, out IGameFlowHandlerFactory flowHandlerFactory)
+	private static StartHandCommandHandler CreateSut(CardsDbContext context,
+		out IGameFlowHandlerFactory flowHandlerFactory)
 	{
 		var flowHandler = Substitute.For<IGameFlowHandler>();
 		flowHandler.GetInitialPhase(Arg.Any<Game>()).Returns(nameof(Phases.CollectingBlinds));

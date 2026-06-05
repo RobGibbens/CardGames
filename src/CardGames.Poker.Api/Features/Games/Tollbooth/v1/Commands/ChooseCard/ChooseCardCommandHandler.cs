@@ -23,7 +23,7 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameType)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
@@ -51,7 +51,8 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		{
 			return new ChooseCardError
 			{
-				Message = $"Cannot choose a card during '{game.CurrentPhase}'. Card selection is only allowed in '{nameof(Phases.TollboothOffer)}'.",
+				Message =
+					$"Cannot choose a card during '{game.CurrentPhase}'. Card selection is only allowed in '{nameof(Phases.TollboothOffer)}'.",
 				Code = ChooseCardErrorCode.NotInTollboothPhase
 			};
 		}
@@ -117,7 +118,8 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		{
 			return new ChooseCardError
 			{
-				Message = $"Insufficient chips. The {command.Choice} option costs {cost} but player has {currentPlayer.ChipStack}.",
+				Message =
+					$"Insufficient chips. The {command.Choice} option costs {cost} but player has {currentPlayer.ChipStack}.",
 				Code = ChooseCardErrorCode.CannotAfford
 			};
 		}
@@ -125,8 +127,8 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		// Load cards for this hand
 		var gameCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id &&
-						 gc.HandNumber == game.CurrentHandNumber &&
-						 !gc.IsDiscarded)
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             !gc.IsDiscarded)
 			.ToListAsync(cancellationToken);
 
 		var communityCards = gameCards
@@ -154,6 +156,7 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 						Code = ChooseCardErrorCode.InvalidChoice
 					};
 				}
+
 				chosenCard = communityCards[^1]; // highest DealOrder = furthest from deck
 				replenishDisplay = true;
 				break;
@@ -167,6 +170,7 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 						Code = ChooseCardErrorCode.InvalidChoice
 					};
 				}
+
 				chosenCard = communityCards[0]; // lowest DealOrder = nearest to deck
 				replenishDisplay = true;
 				break;
@@ -180,6 +184,7 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 						Code = ChooseCardErrorCode.InvalidChoice
 					};
 				}
+
 				chosenCard = deckCards[0]; // top of deck
 				replenishDisplay = false;
 				break;
@@ -329,7 +334,9 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 
 							var card = remainingDeckCards[deckIdx++];
 							card.GamePlayerId = player.Id;
-							card.Location = street == nameof(Phases.SeventhStreet) ? CardLocation.Hole : CardLocation.Board;
+							card.Location = street == nameof(Phases.SeventhStreet)
+								? CardLocation.Hole
+								: CardLocation.Board;
 							card.DealOrder = existingCards + 1;
 							card.IsVisible = street != nameof(Phases.SeventhStreet);
 							card.DealtAt = now;
@@ -342,7 +349,8 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 					{
 						var existingSettings = string.IsNullOrEmpty(game.GameSettings)
 							? new Dictionary<string, object>()
-							: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ?? new Dictionary<string, object>();
+							: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ??
+							  new Dictionary<string, object>();
 
 						existingSettings["allInRunout"] = true;
 						existingSettings["runoutStreets"] = dealtStreets;
@@ -370,8 +378,8 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 				// Determine bet sizing
 				var isSmallBetStreet = nextStreet == nameof(Phases.FourthStreet);
 				var minBet = isSmallBetStreet
-					? (game.SmallBet ?? game.MinBet ?? 0)
-					: (game.BigBet ?? game.MinBet ?? 0);
+					? game.SmallBet ?? game.MinBet ?? 0
+					: game.BigBet ?? game.MinBet ?? 0;
 
 				var roundNumber = nextStreet switch
 				{
@@ -451,9 +459,9 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		{
 			var boardCards = context.GameCards
 				.Where(gc => gc.GamePlayerId == player.Id &&
-							 gc.HandNumber == handNumber &&
-							 gc.Location == CardLocation.Board &&
-							 gc.IsVisible && !gc.IsDiscarded)
+				             gc.HandNumber == handNumber &&
+				             gc.Location == CardLocation.Board &&
+				             gc.IsVisible && !gc.IsDiscarded)
 				.ToList();
 
 			var strength = EvaluateVisibleHand(boardCards);
@@ -505,22 +513,28 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		return strength;
 	}
 
-	private static int GetCardValue(CardSymbol symbol) => symbol switch
+	private static int GetCardValue(CardSymbol symbol)
 	{
-		CardSymbol.Deuce => 2, CardSymbol.Three => 3,
-		CardSymbol.Four => 4, CardSymbol.Five => 5,
-		CardSymbol.Six => 6, CardSymbol.Seven => 7,
-		CardSymbol.Eight => 8, CardSymbol.Nine => 9,
-		CardSymbol.Ten => 10, CardSymbol.Jack => 11,
-		CardSymbol.Queen => 12, CardSymbol.King => 13,
-		CardSymbol.Ace => 14, _ => 0
-	};
+		return symbol switch
+		{
+			CardSymbol.Deuce => 2, CardSymbol.Three => 3,
+			CardSymbol.Four => 4, CardSymbol.Five => 5,
+			CardSymbol.Six => 6, CardSymbol.Seven => 7,
+			CardSymbol.Eight => 8, CardSymbol.Nine => 9,
+			CardSymbol.Ten => 10, CardSymbol.Jack => 11,
+			CardSymbol.Queen => 12, CardSymbol.King => 13,
+			CardSymbol.Ace => 14, _ => 0
+		};
+	}
 
-	private static int GetSuitRank(CardSuit suit) => suit switch
+	private static int GetSuitRank(CardSuit suit)
 	{
-		CardSuit.Clubs => 0, CardSuit.Diamonds => 1,
-		CardSuit.Hearts => 2, CardSuit.Spades => 3, _ => 0
-	};
+		return suit switch
+		{
+			CardSuit.Clubs => 0, CardSuit.Diamonds => 1,
+			CardSuit.Hearts => 2, CardSuit.Spades => 3, _ => 0
+		};
+	}
 
 	private static int GetPlayerLeftOfDealer(List<GamePlayer> activePlayers, int dealerSeatPosition)
 	{

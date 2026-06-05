@@ -3,7 +3,6 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.MigrationService;
 using Microsoft.AspNetCore.Identity;
 
-
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults();

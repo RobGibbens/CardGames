@@ -35,8 +35,11 @@ public static partial class GetActiveGamesMapper
 
 	public static IQueryable<GetActiveGamesResponse> ProjectToResponse(this IQueryable<Game> query)
 	{
-		return query.Select(model => ToResponse(model));
+		return query.Select(model => model.ToResponse());
 	}
 
-	private static string MapRowVersion(byte[] rowVersion) => rowVersion.ToBase64String();
+	private static string MapRowVersion(byte[] rowVersion)
+	{
+		return rowVersion.ToBase64String();
+	}
 }

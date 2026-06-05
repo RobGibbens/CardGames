@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CardGames.Poker.Api.Data.Configurations;
 
 /// <summary>
-/// Entity Framework Core configuration for the <see cref="GameCard"/> entity.
+///     Entity Framework Core configuration for the <see cref="GameCard" /> entity.
 /// </summary>
 public class GameCardConfiguration : IEntityTypeConfiguration<GameCard>
 {
@@ -49,14 +49,14 @@ public class GameCardConfiguration : IEntityTypeConfiguration<GameCard>
 			.OnDelete(DeleteBehavior.Cascade);
 
 		builder.HasOne(t => t.GamePlayer)
-		.WithMany(gp => gp.Cards)
-		.HasForeignKey(t => t.GamePlayerId)
-		.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> GameCards also cascades
+			.WithMany(gp => gp.Cards)
+			.HasForeignKey(t => t.GamePlayerId)
+			.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> GameCards also cascades
 	}
 }
 
 /// <summary>
-/// Field constraints for the <see cref="GameCard"/> entity.
+///     Field constraints for the <see cref="GameCard" /> entity.
 /// </summary>
 public static class GameCardFields
 {

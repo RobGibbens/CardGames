@@ -20,7 +20,8 @@ public class TablePlayManualStartResyncTests
 			"ResolvePostStartResyncTarget",
 			BindingFlags.Static | BindingFlags.NonPublic);
 
-		method.Should().NotBeNull("TablePlay should decide how to recover the caller view after a successful manual start");
+		method.Should()
+			.NotBeNull("TablePlay should decide how to recover the caller view after a successful manual start");
 
 		var result = method!.Invoke(null, [wasConnected, isConnectedAfterReconnectAttempt]);
 

@@ -14,7 +14,7 @@ public static class StartHandEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							StartHandErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
@@ -26,9 +26,10 @@ public static class StartHandEndpoint
 				})
 			.WithName($"Baseball{nameof(MapStartHand).TrimPrefix("Map")}")
 			.WithSummary("Start Hand")
-			.WithDescription("Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. " +
-							 "After calling this endpoint, the game transitions to the CollectingAntes phase.")
-			.Produces<StartHandSuccessful>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. " +
+				"After calling this endpoint, the game transitions to the CollectingAntes phase.")
+			.Produces<StartHandSuccessful>()
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);

@@ -1,4 +1,3 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
@@ -7,8 +6,7 @@ using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession;
 using CardGames.Poker.Api.Infrastructure;
-using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
+using LeagueOneOffEventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -34,16 +32,17 @@ public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 			Name = "Spring 2026"
 		}));
 
-		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
-			GameTypeCode = "HOLDEM",
-			Ante = 0,
-			MinBet = 10,
-			SmallBlind = 5,
-			BigBlind = 10,
-			TournamentBuyIn = 250
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+				GameTypeCode = "HOLDEM",
+				Ante = 0,
+				MinBet = 10,
+				SmallBlind = 5,
+				BigBlind = 10,
+				TournamentBuyIn = 250
+			}));
 
 		var result = await Mediator.Send(new LaunchLeagueEventSessionCommand(
 			leagueId,
@@ -82,18 +81,19 @@ public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
-		{
-			Name = "Saturday Tournament",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
-			EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.Tournament,
-			GameTypeCode = "HOLDEM",
-			Ante = 0,
-			MinBet = 10,
-			SmallBlind = 5,
-			BigBlind = 10,
-			TournamentBuyIn = 300
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId,
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = "Saturday Tournament",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
+				EventType = LeagueOneOffEventType.Tournament,
+				GameTypeCode = "HOLDEM",
+				Ante = 0,
+				MinBet = 10,
+				SmallBlind = 5,
+				BigBlind = 10,
+				TournamentBuyIn = 300
+			}));
 
 		var result = await Mediator.Send(new LaunchLeagueEventSessionCommand(
 			leagueId,
@@ -139,15 +139,16 @@ public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 			Name = "Spring 2026"
 		}));
 
-		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
-		{
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
-			TournamentBuyIn = 250
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId,
+			new CreateLeagueSeasonEventRequest
+			{
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+				TournamentBuyIn = 250
+			}));
 
 		var result = await Mediator.Send(new LaunchLeagueEventSessionCommand(
 			leagueId,
-			CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LeagueEventSourceType.Season,
+			LeagueEventSourceType.Season,
 			createEvent.AsT0.EventId,
 			createSeason.AsT0.SeasonId,
 			new LaunchLeagueEventSessionRequest
@@ -165,7 +166,7 @@ public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 		var notification = fakeLeagueBroadcaster.SessionLaunchNotifications.Single();
 		notification.LeagueId.Should().Be(leagueId);
 		notification.EventId.Should().Be(createEvent.AsT0.EventId);
-		notification.SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.Season);
+		notification.SourceType.Should().Be(Contracts.SignalR.LeagueEventSourceType.Season);
 		notification.SeasonId.Should().Be(createSeason.AsT0.SeasonId);
 		notification.GameId.Should().Be(result.AsT0.GameId);
 	}
@@ -187,19 +188,20 @@ public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
-		{
-			Name = "Saturday Cash",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
-			EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.CashGame,
-			GameTypeCode = "FIVECARDDRAW",
-			Ante = 10,
-			MinBet = 20
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId,
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = "Saturday Cash",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
+				EventType = LeagueOneOffEventType.CashGame,
+				GameTypeCode = "FIVECARDDRAW",
+				Ante = 10,
+				MinBet = 20
+			}));
 
 		var result = await Mediator.Send(new LaunchLeagueEventSessionCommand(
 			leagueId,
-			CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LeagueEventSourceType.OneOff,
+			LeagueEventSourceType.OneOff,
 			createEvent.AsT0.EventId,
 			null,
 			new LaunchLeagueEventSessionRequest
@@ -217,7 +219,7 @@ public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 		var notification = fakeLeagueBroadcaster.SessionLaunchNotifications.Single();
 		notification.LeagueId.Should().Be(leagueId);
 		notification.EventId.Should().Be(createEvent.AsT0.EventId);
-		notification.SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff);
+		notification.SourceType.Should().Be(Contracts.SignalR.LeagueEventSourceType.OneOff);
 		notification.SeasonId.Should().BeNull();
 		notification.GameId.Should().Be(result.AsT0.GameId);
 	}

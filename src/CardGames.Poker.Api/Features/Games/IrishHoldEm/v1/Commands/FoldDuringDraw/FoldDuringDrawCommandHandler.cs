@@ -8,8 +8,8 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringDraw;
 
 /// <summary>
-/// Handles the <see cref="FoldDuringDrawCommand"/> to fold a player during the Irish Hold 'Em
-/// discard phase (typically when their turn timer expires).
+///     Handles the <see cref="FoldDuringDrawCommand" /> to fold a player during the Irish Hold 'Em
+///     discard phase (typically when their turn timer expires).
 /// </summary>
 public class FoldDuringDrawCommandHandler(
 	CardsDbContext context,
@@ -24,7 +24,7 @@ public class FoldDuringDrawCommandHandler(
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)

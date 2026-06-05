@@ -3,7 +3,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGamePlayers;
 
 /// <summary>
-/// Query to retrieve all players in a specific game.
+///     Query to retrieve all players in a specific game.
 /// </summary>
 public record GetGamePlayersQuery(Guid GameId) : IRequest<List<GetGamePlayersResponse>>
 {

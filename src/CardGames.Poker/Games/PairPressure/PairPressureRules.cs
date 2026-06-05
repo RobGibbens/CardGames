@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
 
 namespace CardGames.Poker.Games.PairPressure;
@@ -12,12 +11,13 @@ public static class PairPressureRules
 		{
 			GameTypeCode = "PAIRPRESSURE",
 			GameTypeName = "Pair Pressure",
-			Description = "A seven card stud poker variant where any rank that pairs face up becomes wild, with only the two most recent paired ranks remaining active.",
+			Description =
+				"A seven card stud poker variant where any rank that pairs face up becomes wild, with only the two most recent paired ranks remaining active.",
 			MinPlayers = 2,
 			MaxPlayers = 7,
 			Phases =
 			[
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "WaitingToStart",
 					Name = "Waiting to Start",
@@ -25,7 +25,7 @@ public static class PairPressureRules
 					Category = "Setup",
 					RequiresPlayerAction = false
 				},
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "CollectingAntes",
 					Name = "Collecting Antes",
@@ -33,7 +33,7 @@ public static class PairPressureRules
 					Category = "Setup",
 					RequiresPlayerAction = false
 				},
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "ThirdStreet",
 					Name = "Third Street",
@@ -42,7 +42,7 @@ public static class PairPressureRules
 					RequiresPlayerAction = true,
 					AvailableActions = ["Call", "Raise", "Fold", "AllIn"]
 				},
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "FourthStreet",
 					Name = "Fourth Street",
@@ -51,7 +51,7 @@ public static class PairPressureRules
 					RequiresPlayerAction = true,
 					AvailableActions = ["Check", "Bet", "Call", "Raise", "Fold", "AllIn"]
 				},
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "FifthStreet",
 					Name = "Fifth Street",
@@ -60,7 +60,7 @@ public static class PairPressureRules
 					RequiresPlayerAction = true,
 					AvailableActions = ["Check", "Bet", "Call", "Raise", "Fold", "AllIn"]
 				},
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "SixthStreet",
 					Name = "Sixth Street",
@@ -69,7 +69,7 @@ public static class PairPressureRules
 					RequiresPlayerAction = true,
 					AvailableActions = ["Check", "Bet", "Call", "Raise", "Fold", "AllIn"]
 				},
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "SeventhStreet",
 					Name = "Seventh Street (River)",
@@ -78,7 +78,7 @@ public static class PairPressureRules
 					RequiresPlayerAction = true,
 					AvailableActions = ["Check", "Bet", "Call", "Raise", "Fold", "AllIn"]
 				},
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "Showdown",
 					Name = "Showdown",
@@ -86,7 +86,7 @@ public static class PairPressureRules
 					Category = "Resolution",
 					RequiresPlayerAction = false
 				},
-				new()
+				new GamePhaseDescriptor
 				{
 					PhaseId = "Complete",
 					Name = "Complete",
@@ -103,12 +103,18 @@ public static class PairPressureRules
 				HasCommunityCards = false,
 				DealingRounds =
 				[
-					new() { CardCount = 2, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Players },
-					new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-					new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-					new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-					new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-					new() { CardCount = 1, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Players }
+					new DealingRound
+						{ CardCount = 2, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Players },
+					new DealingRound
+						{ CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
+					new DealingRound
+						{ CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
+					new DealingRound
+						{ CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
+					new DealingRound
+						{ CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
+					new DealingRound
+						{ CardCount = 1, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Players }
 				]
 			},
 			Betting = new BettingConfig
@@ -126,7 +132,8 @@ public static class PairPressureRules
 			},
 			SpecialRules = new Dictionary<string, object>
 			{
-				["WildCards"] = "Any face-up rank that pairs becomes wild; only the two most recent paired ranks remain active.",
+				["WildCards"] =
+					"Any face-up rank that pairs becomes wild; only the two most recent paired ranks remain active.",
 				["WildCardRule"] = "Two most recent paired face-up ranks",
 				["HasBringIn"] = true
 			}

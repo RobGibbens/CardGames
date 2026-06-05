@@ -1,5 +1,4 @@
 using System.Text.Json;
-using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
@@ -8,30 +7,52 @@ using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.ScrewYourNeighbor;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.GameFlow;
 
 /// <summary>
-/// Game flow handler for Screw Your Neighbor.
+///     Game flow handler for Screw Your Neighbor.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Screw Your Neighbor is a multi-hand elimination card game (not traditional poker):
-/// </para>
-/// <list type="number">
-///   <item><description>Each player starts with three stacks of chips (buy-in).</description></item>
-///   <item><description>Deal one card face-down to each active player.</description></item>
-///   <item><description>Starting left of dealer, each player decides: keep their card or trade with the player to their left.</description></item>
-///   <item><description>Kings are blockers — a player with a King cannot trade and cannot be traded with.</description></item>
-///   <item><description>The dealer can trade with the top card of the deck.</description></item>
-///   <item><description>After all decisions, cards are revealed. Player(s) with the lowest card lose one stack to the center pot.</description></item>
-///   <item><description>If the tie would eliminate all remaining players, no one pays and a new round is dealt.</description></item>
-///   <item><description>Play continues until one player remains with stacks — that player wins the pot.</description></item>
-/// </list>
-/// <para>
-/// Aces are always low. Kings are the highest card and act as blockers.
-/// </para>
+///     <para>
+///         Screw Your Neighbor is a multi-hand elimination card game (not traditional poker):
+///     </para>
+///     <list type="number">
+///         <item>
+///             <description>Each player starts with three stacks of chips (buy-in).</description>
+///         </item>
+///         <item>
+///             <description>Deal one card face-down to each active player.</description>
+///         </item>
+///         <item>
+///             <description>
+///                 Starting left of dealer, each player decides: keep their card or trade with the player to
+///                 their left.
+///             </description>
+///         </item>
+///         <item>
+///             <description>Kings are blockers — a player with a King cannot trade and cannot be traded with.</description>
+///         </item>
+///         <item>
+///             <description>The dealer can trade with the top card of the deck.</description>
+///         </item>
+///         <item>
+///             <description>
+///                 After all decisions, cards are revealed. Player(s) with the lowest card lose one stack to the
+///                 center pot.
+///             </description>
+///         </item>
+///         <item>
+///             <description>If the tie would eliminate all remaining players, no one pays and a new round is dealt.</description>
+///         </item>
+///         <item>
+///             <description>Play continues until one player remains with stacks — that player wins the pot.</description>
+///         </item>
+///     </list>
+///     <para>
+///         Aces are always low. Kings are the highest card and act as blockers.
+///     </para>
 /// </remarks>
 public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 {
@@ -39,10 +60,32 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 	public override string GameTypeCode => "SCREWYOURNEIGHBOR";
 
 	/// <inheritdoc />
-	public override GameRules GetGameRules() => ScrewYourNeighborRules.CreateGameRules();
+	public override bool SkipsAnteCollection => true;
 
 	/// <inheritdoc />
-	public override string GetInitialPhase(Game game) => nameof(Phases.Dealing);
+	public override IReadOnlyList<string> SpecialPhases =>
+		[nameof(Phases.KeepOrTrade), nameof(Phases.Reveal)];
+
+	/// <inheritdoc />
+	public override bool IsMultiHandVariant => true;
+
+	/// <inheritdoc />
+	public override bool RequiresChipCoverageCheck => false;
+
+	/// <inheritdoc />
+	public override bool SupportsInlineShowdown => true;
+
+	/// <inheritdoc />
+	public override GameRules GetGameRules()
+	{
+		return ScrewYourNeighborRules.CreateGameRules();
+	}
+
+	/// <inheritdoc />
+	public override string GetInitialPhase(Game game)
+	{
+		return nameof(Phases.Dealing);
+	}
 
 	/// <inheritdoc />
 	public override string? GetNextPhase(Game game, string currentPhase)
@@ -69,24 +112,10 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <inheritdoc />
-	public override bool SkipsAnteCollection => true;
-
-	/// <inheritdoc />
-	public override IReadOnlyList<string> SpecialPhases =>
-		[nameof(Phases.KeepOrTrade), nameof(Phases.Reveal)];
-
-	/// <inheritdoc />
-	public override bool IsMultiHandVariant => true;
-
-	/// <inheritdoc />
-	public override bool RequiresChipCoverageCheck => false;
-
-	/// <inheritdoc />
-	public override ChipCheckConfiguration GetChipCheckConfiguration() =>
-		ChipCheckConfiguration.Disabled;
-
-	/// <inheritdoc />
-	public override bool SupportsInlineShowdown => true;
+	public override ChipCheckConfiguration GetChipCheckConfiguration()
+	{
+		return ChipCheckConfiguration.Disabled;
+	}
 
 	/// <inheritdoc />
 	public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
@@ -403,7 +432,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		}
 
 		// Game continues: carry pot to next hand
-		var nextHandPot = new Data.Entities.Pot
+		var nextHandPot = new Pot
 		{
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber + 1,
@@ -517,7 +546,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 	#region Helpers
 
 	/// <summary>
-	/// Gets the SYN card value where Ace is low (1) and King is high (13).
+	///     Gets the SYN card value where Ace is low (1) and King is high (13).
 	/// </summary>
 	internal static int GetScrewYourNeighborCardValue(CardSymbol symbol)
 	{
@@ -525,9 +554,12 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Checks if a card symbol is a King (blocker).
+	///     Checks if a card symbol is a King (blocker).
 	/// </summary>
-	internal static bool IsKing(CardSymbol symbol) => symbol == CardSymbol.King;
+	internal static bool IsKing(CardSymbol symbol)
+	{
+		return symbol == CardSymbol.King;
+	}
 
 	private static string GetCardDisplayName(GameCard card)
 	{
@@ -594,7 +626,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	/// Moves the dealer button to the next active player clockwise.
+	///     Moves the dealer button to the next active player clockwise.
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{

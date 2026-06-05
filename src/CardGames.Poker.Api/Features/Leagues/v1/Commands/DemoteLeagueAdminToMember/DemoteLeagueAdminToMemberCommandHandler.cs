@@ -13,11 +13,13 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<DemoteLeagueAdminToMemberCommand, OneOf<Unit, DemoteLeagueAdminToMemberError>>
 {
-	public async Task<OneOf<Unit, DemoteLeagueAdminToMemberError>> Handle(DemoteLeagueAdminToMemberCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, DemoteLeagueAdminToMemberError>> Handle(DemoteLeagueAdminToMemberCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Unauthorized, "User is not authenticated.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var actorCanManageLeague = await context.LeagueMembersCurrent
@@ -28,20 +30,24 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 
 		if (!actorCanManageLeague)
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Forbidden, "Only league managers or admins can demote admins.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Forbidden,
+				"Only league managers or admins can demote admins.");
 		}
 
 		var member = await context.LeagueMembersCurrent
-			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == request.MemberUserId && x.IsActive, cancellationToken);
+			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == request.MemberUserId && x.IsActive,
+				cancellationToken);
 
 		if (member is null)
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.MemberNotFound, "Target member was not found in the league.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.MemberNotFound,
+				"Target member was not found in the league.");
 		}
 
 		if (member.Role != LeagueRole.Admin)
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.InvalidRequest, "Only active admins can be demoted with this operation.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.InvalidRequest,
+				"Only active admins can be demoted with this operation.");
 		}
 
 		var activeRolesExcludingTarget = await context.LeagueMembersCurrent
@@ -52,12 +58,14 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 
 		if (!activeRolesExcludingTarget.HasAtLeastOneAdmin())
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Conflict, "League must retain at least one admin.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Conflict,
+				"League must retain at least one admin.");
 		}
 
 		if (!activeRolesExcludingTarget.HasAtLeastOneGovernanceCapableMember())
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Conflict, "League must retain at least one manager or admin.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Conflict,
+				"League must retain at least one manager or admin.");
 		}
 
 		var now = DateTimeOffset.UtcNow;

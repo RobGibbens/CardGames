@@ -1,3 +1,4 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
@@ -11,7 +12,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 
 /// <summary>
-/// Handles the JoinGame command to add a player to a specific seat in a game.
+///     Handles the JoinGame command to add a player to a specific seat in a game.
 /// </summary>
 public sealed class JoinGameCommandHandler(
 	CardsDbContext context,
@@ -64,7 +65,7 @@ public sealed class JoinGameCommandHandler(
 		var game = await context.Games
 			.Include(g => g.GameType)
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -92,13 +93,13 @@ public sealed class JoinGameCommandHandler(
 		if (linkedLeagueId.HasValue)
 		{
 			var isActiveLeagueMember = !string.IsNullOrWhiteSpace(currentUserService.UserId) &&
-				await context.LeagueMembersCurrent
-					.AsNoTracking()
-					.AnyAsync(
-						x => x.LeagueId == linkedLeagueId.Value &&
-							x.UserId == currentUserService.UserId &&
-							x.IsActive,
-						cancellationToken);
+			                           await context.LeagueMembersCurrent
+				                           .AsNoTracking()
+				                           .AnyAsync(
+					                           x => x.LeagueId == linkedLeagueId.Value &&
+					                                x.UserId == currentUserService.UserId &&
+					                                x.IsActive,
+					                           cancellationToken);
 
 			if (!isActiveLeagueMember)
 			{
@@ -116,19 +117,20 @@ public sealed class JoinGameCommandHandler(
 				"This game has ended and is no longer accepting players.");
 		}
 
-		var lateJoinAllowed = !string.Equals(
-			game.GameType?.Code,
-			PokerGameMetadataRegistry.ScrewYourNeighborCode,
-			StringComparison.OrdinalIgnoreCase)
-			&& !string.Equals(
-			game.GameType?.Code,
-			PokerGameMetadataRegistry.InBetweenCode,
-			StringComparison.OrdinalIgnoreCase)
-			|| !game.StartedAt.HasValue;
+		var lateJoinAllowed = (!string.Equals(
+			                       game.GameType?.Code,
+			                       PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			                       StringComparison.OrdinalIgnoreCase)
+		                       && !string.Equals(
+			                       game.GameType?.Code,
+			                       PokerGameMetadataRegistry.InBetweenCode,
+			                       StringComparison.OrdinalIgnoreCase))
+		                      || !game.StartedAt.HasValue;
 
 		if (!lateJoinAllowed)
 		{
-			var gameName = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.InBetweenCode, StringComparison.OrdinalIgnoreCase)
+			var gameName = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.InBetweenCode,
+				StringComparison.OrdinalIgnoreCase)
 				? "In-Between"
 				: "Screw Your Neighbor";
 			return new JoinGameError(
@@ -153,7 +155,8 @@ public sealed class JoinGameCommandHandler(
 		// Check if player is already seated in this game
 		var existingGamePlayer = game.GamePlayers.FirstOrDefault(gp =>
 			gp.Player.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase) &&
-			(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut || gp.Status == GamePlayerStatus.Eliminated));
+			(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut ||
+			 gp.Status == GamePlayerStatus.Eliminated));
 
 		if (existingGamePlayer is not null)
 		{
@@ -180,7 +183,8 @@ public sealed class JoinGameCommandHandler(
 		// Check if the seat is already occupied
 		var seatOccupied = game.GamePlayers.Any(gp =>
 			gp.SeatPosition == command.SeatIndex &&
-			(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut || gp.Status == GamePlayerStatus.Eliminated));
+			(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut ||
+			 gp.Status == GamePlayerStatus.Eliminated));
 
 		if (seatOccupied)
 		{
@@ -192,7 +196,7 @@ public sealed class JoinGameCommandHandler(
 		// Determine if player can play the current hand
 		// They can only play if game is in WaitingToStart or WaitingForPlayers phase
 		var canPlayCurrentHand = game.CurrentPhase == nameof(Phases.WaitingToStart) ||
-								 game.Status == GameStatus.WaitingForPlayers;
+		                         game.Status == GameStatus.WaitingForPlayers;
 
 		var userEmail = currentUserService.UserEmail;
 
@@ -218,9 +222,9 @@ public sealed class JoinGameCommandHandler(
 			.AsNoTracking()
 			.AnyAsync(
 				x => x.GameId == game.Id
-					&& x.PlayerId == player.Id
-					&& x.Status == GameJoinRequestStatus.Pending
-					&& x.ExpiresAt > now,
+				     && x.PlayerId == player.Id
+				     && x.Status == GameJoinRequestStatus.Pending
+				     && x.ExpiresAt > now,
 				cancellationToken);
 
 		if (existingPendingRequest)
@@ -259,8 +263,8 @@ public sealed class JoinGameCommandHandler(
 		}
 
 		var requiresApproval = game.RequiresJoinApproval
-			&& !string.IsNullOrWhiteSpace(game.CreatedById)
-			&& !string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.Ordinal);
+		                       && !string.IsNullOrWhiteSpace(game.CreatedById)
+		                       && !string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.Ordinal);
 
 		if (requiresApproval)
 		{
@@ -296,14 +300,15 @@ public sealed class JoinGameCommandHandler(
 
 			if (!string.IsNullOrWhiteSpace(hostRoutingKey))
 			{
-				var resolvedHostRoutingKey = hostRoutingKey ?? throw new InvalidOperationException("Host routing key is required.");
+				var resolvedHostRoutingKey =
+					hostRoutingKey ?? throw new InvalidOperationException("Host routing key is required.");
 				var resolvedGameName = game.Name ?? game.GameType?.Name ?? "Table";
 				var resolvedHostName = game.CreatedByName ?? "Host";
 				var resolvedPlayerName = playerName ?? string.Empty;
 
 				await joinRequestBroadcaster.BroadcastJoinRequestReceivedAsync(
 					resolvedHostRoutingKey,
-					new CardGames.Contracts.SignalR.GameJoinRequestReceivedDto
+					new GameJoinRequestReceivedDto
 					{
 						GameId = game.Id,
 						JoinRequestId = joinRequest.Id,
@@ -374,17 +379,17 @@ public sealed class JoinGameCommandHandler(
 			playerName,
 			command.SeatIndex,
 			canPlayCurrentHand,
-					cancellationToken);
+			cancellationToken);
 
-				return new JoinGameSuccessful(
-					GameId: game.Id,
-					SeatIndex: command.SeatIndex,
-					PlayerId: player.Id,
-					PlayerName: playerName,
-					PlayerAvatarUrl: userProfile?.AvatarUrl ?? player.AvatarUrl,
-					PlayerFirstName: userProfile?.FirstName,
-					CanPlayCurrentHand: canPlayCurrentHand);
-			}
+		return new JoinGameSuccessful(
+			GameId: game.Id,
+			SeatIndex: command.SeatIndex,
+			PlayerId: player.Id,
+			PlayerName: playerName,
+			PlayerAvatarUrl: userProfile?.AvatarUrl ?? player.AvatarUrl,
+			PlayerFirstName: userProfile?.FirstName,
+			CanPlayCurrentHand: canPlayCurrentHand);
+	}
 
 	private async Task<OneOf<JoinGameSuccessful, JoinGameError, JoinGamePendingApproval>> HandleRejoinAsync(
 		Game game,
@@ -397,7 +402,8 @@ public sealed class JoinGameCommandHandler(
 		var occupiedSeats = game.GamePlayers
 			.Where(gp =>
 				gp.Id != previousGamePlayer.Id &&
-				(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut || gp.Status == GamePlayerStatus.Eliminated))
+				(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut ||
+				 gp.Status == GamePlayerStatus.Eliminated))
 			.Select(gp => gp.SeatPosition)
 			.ToHashSet();
 
@@ -415,7 +421,7 @@ public sealed class JoinGameCommandHandler(
 		}
 
 		var canPlayCurrentHand = game.CurrentPhase == nameof(Phases.WaitingToStart) ||
-								 game.Status == GameStatus.WaitingForPlayers;
+		                         game.Status == GameStatus.WaitingForPlayers;
 
 		var restoredChips = previousGamePlayer.ChipStack;
 		var now = DateTimeOffset.UtcNow;

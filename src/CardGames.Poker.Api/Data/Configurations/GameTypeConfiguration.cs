@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CardGames.Poker.Api.Data.Configurations;
 
 /// <summary>
-/// Entity Framework Core configuration for the <see cref="GameType"/> entity.
+///     Entity Framework Core configuration for the <see cref="GameType" /> entity.
 /// </summary>
 public class GameTypeConfiguration : IEntityTypeConfiguration<GameType>
 {
@@ -54,7 +54,7 @@ public class GameTypeConfiguration : IEntityTypeConfiguration<GameType>
 }
 
 /// <summary>
-/// Field constraints for the <see cref="GameType"/> entity.
+///     Field constraints for the <see cref="GameType" /> entity.
 /// </summary>
 public static class GameTypeFields
 {

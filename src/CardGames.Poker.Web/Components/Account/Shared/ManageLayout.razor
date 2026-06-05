@@ -1,28 +1,27 @@
 ﻿@inherits LayoutComponentBase
-@layout CardGames.Poker.Web.Components.Layout.MainLayout
-@using BlazorBlueprint.Primitives.Services
+@layout MainLayout
 
-<CardGames.Poker.Web.Components.Shared.SiteNavBar />
+<CardGames.Poker.Web.Components.Shared.SiteNavBar/>
 
 <section class="section account-manage-section" aria-labelledby="manage-title">
-    <div class="section-container">
-        <div class="section-header account-manage-header">
-            <span class="section-badge">Account</span>
-            <h1 id="manage-title" class="section-title">Manage your account</h1>
-            <p class="section-subtitle">Update your profile, security, and sign-in settings.</p>
-        </div>
+	<div class="section-container">
+		<div class="section-header account-manage-header">
+			<span class="section-badge">Account</span>
+			<h1 id="manage-title" class="section-title">Manage your account</h1>
+			<p class="section-subtitle">Update your profile, security, and sign-in settings.</p>
+		</div>
 
-        <div class="account-manage-grid">
-            <aside class="feature-card account-manage-nav-card">
-                <h2 class="feature-title">Settings</h2>
-                <p class="account-manage-nav-description">Choose a section to update your profile, security, and account preferences.</p>
-                <ManageNavMenu />
-            </aside>
+		<div class="account-manage-grid">
+			<aside class="feature-card account-manage-nav-card">
+				<h2 class="feature-title">Settings</h2>
+				<p class="account-manage-nav-description">Choose a section to update your profile, security, and account preferences.</p>
+				<ManageNavMenu/>
+			</aside>
 
-            <div class="feature-card account-manage-content-card">
-                @Body
-            </div>
-        </div>
-    </div>
+			<div class="feature-card account-manage-content-card">
+				@Body
+			</div>
+		</div>
+	</div>
 </section>
-<BlazorBlueprint.Primitives.Services.BbPortalHost />
+<BlazorBlueprint.Primitives.Services.BbPortalHost/>

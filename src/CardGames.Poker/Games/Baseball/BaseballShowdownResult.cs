@@ -5,7 +5,7 @@ using CardGames.Poker.Hands.StudHands;
 namespace CardGames.Poker.Games.Baseball;
 
 /// <summary>
-/// Result of a Baseball showdown.
+///     Result of a Baseball showdown.
 /// </summary>
 public class BaseballShowdownResult
 {

@@ -1,4 +1,3 @@
-using CardGames.Poker.Api.Extensions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +10,8 @@ public static class ToggleSitOutEndpoint
 	public static RouteGroupBuilder MapSitOut(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/sit-out",
-				async (Guid gameId, [FromBody] ToggleSitOutRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, [FromBody] ToggleSitOutRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new ToggleSitOutCommand(gameId, request.IsSittingOut);
 					var result = await mediator.Send(command, cancellationToken);

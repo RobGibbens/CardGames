@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
@@ -8,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 namespace CardGames.Poker.Api.Hubs;
 
 /// <summary>
-/// SignalR hub for real-time league management updates.
-/// Clients can join per-league management groups when authorized.
+///     SignalR hub for real-time league management updates.
+///     Clients can join per-league management groups when authorized.
 /// </summary>
 [Authorize(AuthenticationSchemes = HeaderAuthenticationHandler.SchemeName)]
 public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger) : Hub
@@ -19,17 +20,23 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	private const string JoinRequesterGroupPrefix = "league:join-requester:";
 
 	/// <summary>
-	/// Gets the group name used for management updates for a given league.
+	///     Gets the group name used for management updates for a given league.
 	/// </summary>
-	public static string GetManagedLeagueGroupName(Guid leagueId) => $"{ManagedLeagueGroupPrefix}{leagueId}";
+	public static string GetManagedLeagueGroupName(Guid leagueId)
+	{
+		return $"{ManagedLeagueGroupPrefix}{leagueId}";
+	}
 
 	/// <summary>
-	/// Gets the group name used for viewers of a given league.
+	///     Gets the group name used for viewers of a given league.
 	/// </summary>
-	public static string GetViewedLeagueGroupName(Guid leagueId) => $"{ViewedLeagueGroupPrefix}{leagueId}";
+	public static string GetViewedLeagueGroupName(Guid leagueId)
+	{
+		return $"{ViewedLeagueGroupPrefix}{leagueId}";
+	}
 
 	/// <summary>
-	/// Gets the group name used for league join-request updates for a requester.
+	///     Gets the group name used for league join-request updates for a requester.
 	/// </summary>
 	public static string GetJoinRequesterGroupName(string requesterUserId)
 	{
@@ -57,7 +64,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	}
 
 	/// <summary>
-	/// Joins the caller to league management updates for the provided league.
+	///     Joins the caller to league management updates for the provided league.
 	/// </summary>
 	public async Task JoinManagedLeague(Guid leagueId)
 	{
@@ -70,13 +77,15 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
 			.AnyAsync(x => x.LeagueId == leagueId
-				&& x.UserId == userId
-				&& x.IsActive
-				&& (x.Role == LeagueRole.Owner || x.Role == LeagueRole.Manager || x.Role == LeagueRole.Admin));
+			               && x.UserId == userId
+			               && x.IsActive
+			               && (x.Role == LeagueRole.Owner || x.Role == LeagueRole.Manager ||
+			                   x.Role == LeagueRole.Admin));
 
 		if (!canManageLeague)
 		{
-			logger.LogWarning("User {UserId} attempted to join unauthorized managed league group for {LeagueId}.", userId, leagueId);
+			logger.LogWarning("User {UserId} attempted to join unauthorized managed league group for {LeagueId}.",
+				userId, leagueId);
 			throw new HubException("Not authorized to manage this league.");
 		}
 
@@ -91,7 +100,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	}
 
 	/// <summary>
-	/// Joins the caller to general league event updates for the provided league.
+	///     Joins the caller to general league event updates for the provided league.
 	/// </summary>
 	public async Task JoinViewedLeague(Guid leagueId)
 	{
@@ -104,7 +113,8 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 		var canViewLeague = await CanViewLeagueAsync(leagueId, userId);
 		if (!canViewLeague)
 		{
-			logger.LogWarning("User {UserId} attempted to join unauthorized viewed league group for {LeagueId}.", userId, leagueId);
+			logger.LogWarning("User {UserId} attempted to join unauthorized viewed league group for {LeagueId}.",
+				userId, leagueId);
 			throw new HubException("Not authorized to view this league.");
 		}
 
@@ -119,7 +129,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	}
 
 	/// <summary>
-	/// Leaves league management updates for the provided league.
+	///     Leaves league management updates for the provided league.
 	/// </summary>
 	public async Task LeaveManagedLeague(Guid leagueId)
 	{
@@ -133,7 +143,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	}
 
 	/// <summary>
-	/// Leaves general league event updates for the provided league.
+	///     Leaves general league event updates for the provided league.
 	/// </summary>
 	public async Task LeaveViewedLeague(Guid leagueId)
 	{
@@ -164,8 +174,8 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 
 	private string? GetCurrentUserId()
 	{
-		return Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-			?? Context.User?.FindFirst("sub")?.Value
-			?? Context.UserIdentifier;
+		return Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+		       ?? Context.User?.FindFirst("sub")?.Value
+		       ?? Context.UserIdentifier;
 	}
 }

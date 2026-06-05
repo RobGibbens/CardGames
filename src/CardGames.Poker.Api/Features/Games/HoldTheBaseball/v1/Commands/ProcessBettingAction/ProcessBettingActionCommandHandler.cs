@@ -10,8 +10,8 @@ using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Handles the <see cref="ProcessBettingActionCommand"/> to process betting actions
-/// in a Hold the Baseball game. Identical flow to Hold 'Em.
+///     Handles the <see cref="ProcessBettingActionCommand" /> to process betting actions
+///     in a Hold the Baseball game. Identical flow to Hold 'Em.
 /// </summary>
 public class ProcessBettingActionCommandHandler(
 	CardsDbContext context,
@@ -28,7 +28,7 @@ public class ProcessBettingActionCommandHandler(
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameType)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
@@ -47,15 +47,15 @@ public class ProcessBettingActionCommandHandler(
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
-						  "Betting is only allowed during PreFlop, Flop, Turn, or River phases.",
+				          "Betting is only allowed during PreFlop, Flop, Turn, or River phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
 		}
 
 		var bettingRounds = await context.BettingRounds
 			.Where(br => br.GameId == game.Id &&
-						 br.HandNumber == game.CurrentHandNumber &&
-						 !br.IsComplete)
+			             br.HandNumber == game.CurrentHandNumber &&
+			             !br.IsComplete)
 			.Include(br => br.Actions)
 			.OrderByDescending(br => br.RoundNumber)
 			.ToListAsync(cancellationToken);
@@ -65,7 +65,8 @@ public class ProcessBettingActionCommandHandler(
 		{
 			return new ProcessBettingActionError
 			{
-				Message = $"No active betting round found for hand {game.CurrentHandNumber} in phase '{game.CurrentPhase}'.",
+				Message =
+					$"No active betting round found for hand {game.CurrentHandNumber} in phase '{game.CurrentPhase}'.",
 				Code = ProcessBettingActionErrorCode.NoBettingRound
 			};
 		}
@@ -243,7 +244,8 @@ public class ProcessBettingActionCommandHandler(
 
 	#region Validation
 
-	private static string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player, BettingRound bettingRound)
+	private static string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player,
+		BettingRound bettingRound)
 	{
 		return actionType switch
 		{
@@ -260,7 +262,7 @@ public class ProcessBettingActionCommandHandler(
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
 			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount
-										 && amount < player.ChipStack + player.CurrentBet =>
+			                             && amount < player.ChipStack + player.CurrentBet =>
 				$"Raise must be to at least {bettingRound.CurrentBet + bettingRound.LastRaiseAmount}",
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
 				"Cannot fold when you can check",
@@ -346,6 +348,7 @@ public class ProcessBettingActionCommandHandler(
 						bettingRound.LastAggressorIndex = player.SeatPosition;
 						bettingRound.RaiseCount++;
 					}
+
 					bettingRound.CurrentBet = newTotal;
 				}
 
@@ -357,6 +360,43 @@ public class ProcessBettingActionCommandHandler(
 		}
 
 		return (actualAmount, chipsMoved);
+	}
+
+	#endregion
+
+	#region Phase Advancement
+
+	private void AdvanceToNextPhase(Game game, List<GamePlayer> activePlayers)
+	{
+		var playersInHand = activePlayers.Count(gp => !gp.HasFolded);
+		if (playersInHand <= 1)
+		{
+			game.CurrentPhase = "Showdown";
+			game.CurrentPlayerIndex = -1;
+			return;
+		}
+
+		foreach (var gamePlayer in activePlayers)
+		{
+			gamePlayer.CurrentBet = 0;
+		}
+
+		switch (game.CurrentPhase)
+		{
+			case "PreFlop":
+				game.CurrentPhase = "Flop";
+				break;
+			case "Flop":
+				game.CurrentPhase = "Turn";
+				break;
+			case "Turn":
+				game.CurrentPhase = "River";
+				break;
+			case "River":
+				game.CurrentPhase = "Showdown";
+				game.CurrentPlayerIndex = -1;
+				break;
+		}
 	}
 
 	#endregion
@@ -375,6 +415,7 @@ public class ProcessBettingActionCommandHandler(
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -393,6 +434,7 @@ public class ProcessBettingActionCommandHandler(
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -437,43 +479,6 @@ public class ProcessBettingActionCommandHandler(
 
 	#endregion
 
-	#region Phase Advancement
-
-	private void AdvanceToNextPhase(Game game, List<GamePlayer> activePlayers)
-	{
-		var playersInHand = activePlayers.Count(gp => !gp.HasFolded);
-		if (playersInHand <= 1)
-		{
-			game.CurrentPhase = "Showdown";
-			game.CurrentPlayerIndex = -1;
-			return;
-		}
-
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
-
-		switch (game.CurrentPhase)
-		{
-			case "PreFlop":
-				game.CurrentPhase = "Flop";
-				break;
-			case "Flop":
-				game.CurrentPhase = "Turn";
-				break;
-			case "Turn":
-				game.CurrentPhase = "River";
-				break;
-			case "River":
-				game.CurrentPhase = "Showdown";
-				game.CurrentPlayerIndex = -1;
-				break;
-		}
-	}
-
-	#endregion
-
 	#region Community Card Dealing
 
 	private async Task DealCommunityCardsForPhaseAsync(
@@ -494,8 +499,8 @@ public class ProcessBettingActionCommandHandler(
 
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id
-				&& gc.HandNumber == game.CurrentHandNumber
-				&& gc.Location == CardLocation.Deck)
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -529,8 +534,8 @@ public class ProcessBettingActionCommandHandler(
 
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id
-				&& gc.HandNumber == game.CurrentHandNumber
-				&& gc.Location == CardLocation.Deck)
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
@@ -566,7 +571,8 @@ public class ProcessBettingActionCommandHandler(
 
 		var existingSettings = string.IsNullOrEmpty(game.GameSettings)
 			? new Dictionary<string, object>()
-			: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ?? new Dictionary<string, object>();
+			: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ??
+			  new Dictionary<string, object>();
 
 		existingSettings["allInRunout"] = true;
 		existingSettings["runoutStreets"] = dealtPhases;

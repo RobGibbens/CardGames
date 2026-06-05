@@ -6,19 +6,19 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ResolveJoinRequest;
-using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ToggleSitOut;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ToggleOddsVisibility;
+using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ToggleSitOut;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.UpdateTableSettings;
-using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentBettingRound;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentDrawPlayer;
-using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules;
-using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetTableSettings;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGamePlayers;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetPendingJoinRequestsForHost;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetRabbitHunt;
-using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentBettingRound;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetTableSettings;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1;
@@ -29,7 +29,7 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name])
+			.WithTags(Feature.Name)
 			.AddFluentValidationAutoValidation();
 
 		//Commands
@@ -43,7 +43,7 @@ public static class V1
 		mapGroup.MapSitOut();
 		mapGroup.MapToggleOddsVisibility();
 		mapGroup.MapUpdateTableSettings();
-		
+
 		//Queries
 		mapGroup.MapGetCurrentBettingRound();
 		mapGroup.MapGetCurrentDrawPlayer();

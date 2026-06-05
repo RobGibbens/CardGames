@@ -8,9 +8,9 @@ public sealed record UpdateFavoriteVariantsRequest : IValidatableObject
 
 	public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
 	{
-		for (var index = 0; index < FavoriteVariantCodes.Count; index++)
-		{
-			if (string.IsNullOrWhiteSpace(FavoriteVariantCodes[index]))
+		foreach (var favoriteVariantCode in FavoriteVariantCodes)
+		{	
+			if (string.IsNullOrWhiteSpace(favoriteVariantCode))
 			{
 				yield return new ValidationResult(
 					"Favorite variant codes cannot contain blank values.",

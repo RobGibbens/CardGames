@@ -1,14 +1,15 @@
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Extensions;
-using Riok.Mapperly.Abstractions;
 using CardGames.Poker.Api.Models;
+using Riok.Mapperly.Abstractions;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentDrawPlayer;
 
 [Mapper(RequiredMappingStrategy = RequiredMappingStrategy.Target)]
 public static partial class GetCurrentDrawPlayerMapper
 {
-	[MapProperty(nameof(GamePlayer.Player) + "." + nameof(Player.Name), nameof(GetCurrentDrawPlayerResponse.PlayerName))]
+	[MapProperty(nameof(GamePlayer.Player) + "." + nameof(Player.Name),
+		nameof(GetCurrentDrawPlayerResponse.PlayerName))]
 	[MapProperty(nameof(GamePlayer.Cards), nameof(GetCurrentDrawPlayerResponse.Hand))]
 	[MapperIgnoreSource(nameof(GamePlayer.Game))]
 	[MapperIgnoreSource(nameof(GamePlayer.Player))]
@@ -23,10 +24,14 @@ public static partial class GetCurrentDrawPlayerMapper
 	[MapperIgnoreSource(nameof(GamePlayer.BettingActions))]
 	public static partial GetCurrentDrawPlayerResponse ToResponse(this GamePlayer model);
 
-	private static string MapRowVersion(byte[] rowVersion) => rowVersion.ToBase64String();
+	private static string MapRowVersion(byte[] rowVersion)
+	{
+		return rowVersion.ToBase64String();
+	}
 
-	private static IReadOnlyList<DealtCard> MapCards(ICollection<GameCard> cards) =>
-		cards
+	private static IReadOnlyList<DealtCard> MapCards(ICollection<GameCard> cards)
+	{
+		return cards
 			.Where(c => !c.IsDiscarded)
 			.OrderBy(c => c.DealOrder)
 			.Select(c => new DealtCard
@@ -36,4 +41,5 @@ public static partial class GetCurrentDrawPlayerMapper
 				DealOrder = c.DealOrder
 			})
 			.ToList();
+	}
 }

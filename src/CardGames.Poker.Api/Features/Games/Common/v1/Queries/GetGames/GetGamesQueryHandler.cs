@@ -1,4 +1,4 @@
-﻿﻿using CardGames.Poker.Api.Data;
+﻿using CardGames.Poker.Api.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;

@@ -17,7 +17,7 @@ public static class GetGamesEndpoint
 			.WithSummary(nameof(MapGetGames).TrimPrefix("Map"))
 			.WithDescription("Retrieve a list of games.")
 			.MapToApiVersion(1.0)
-			.Produces<List<GetGamesResponse>>(StatusCodes.Status200OK)
+			.Produces<List<GetGamesResponse>>()
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
 		return group;

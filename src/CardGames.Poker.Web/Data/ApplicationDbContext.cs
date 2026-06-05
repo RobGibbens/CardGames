@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CardGames.Poker.Web.Data;
 
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<ApplicationUser>(options)
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+	: IdentityDbContext<ApplicationUser>(options)
 {
 }

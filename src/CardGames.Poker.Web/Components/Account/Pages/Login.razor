@@ -1,9 +1,8 @@
 ﻿@page "/Account/Login"
-
 @using System.ComponentModel.DataAnnotations
+@using CardGames.Poker.Web.Data
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Identity
-@using CardGames.Poker.Web.Data
 
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
@@ -14,144 +13,143 @@
 <PageTitle>Log in</PageTitle>
 
 <AccountShell Title="Welcome back" Subtitle="Prefer Google or Microsoft to join your tables quickly">
-    <StatusMessage Message="@errorMessage" />
+	<StatusMessage Message="@errorMessage"/>
 
-    <div class="auth-social">
-        <ExternalLoginPicker />
-    </div>
+	<div class="auth-social">
+		<ExternalLoginPicker/>
+	</div>
 
-    <div class="auth-divider">
-        <span>or use your local account instead</span>
-    </div>
+	<div class="auth-divider">
+		<span>or use your local account instead</span>
+	</div>
 
-    <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login" class="auth-form">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="text-danger" role="alert" />
-        <div class="form-floating mb-3" data-label="Email">
-            <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username webauthn" aria-required="true" placeholder="Email" />
-            <ValidationMessage For="() => Input.Email" class="text-danger" />
-        </div>
-        <div class="form-floating mb-3" data-label="Password">
-            <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-            <ValidationMessage For="() => Input.Password" class="text-danger" />
-        </div>
-        <div class="checkbox mb-3">
-            <label class="form-label">
-                <InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input" />
-                Remember me
-            </label>
-        </div>
-        <div class="auth-action-row">
-            <button type="submit" class="btn btn-primary btn-lg">Log in with email</button>
-        </div>
+	<EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login" class="auth-form">
+		<DataAnnotationsValidator/>
+		<ValidationSummary class="text-danger" role="alert"/>
+		<div class="form-floating mb-3" data-label="Email">
+			<InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username webauthn" aria-required="true" placeholder="Email"/>
+			<ValidationMessage For="() => Input.Email" class="text-danger"/>
+		</div>
+		<div class="form-floating mb-3" data-label="Password">
+			<InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password"/>
+			<ValidationMessage For="() => Input.Password" class="text-danger"/>
+		</div>
+		<div class="checkbox mb-3">
+			<label class="form-label">
+				<InputCheckbox @bind-Value="Input.RememberMe" class="darker-border-checkbox form-check-input"/>
+				Remember me
+			</label>
+		</div>
+		<div class="auth-action-row">
+			<button type="submit" class="btn btn-primary btn-lg">Log in with email</button>
+		</div>
 
-        <div class="auth-divider">
-            <span>or use a passkey</span>
-        </div>
+		<div class="auth-divider">
+			<span>or use a passkey</span>
+		</div>
 
-        <div class="auth-social">
-            <PasskeySubmit Operation="PasskeyOperation.Request" Name="Input.Passkey" EmailName="Input.Email" class="auth-social-btn">Log in with a passkey</PasskeySubmit>
-        </div>
-    </EditForm>
+		<div class="auth-social">
+			<PasskeySubmit Operation="PasskeyOperation.Request" Name="Input.Passkey" EmailName="Input.Email" class="auth-social-btn">Log in with a passkey</PasskeySubmit>
+		</div>
+	</EditForm>
 
-    <div class="auth-shell-footer">
-        <p class="auth-footer"><a href="/Account/ForgotPassword">Forgot your password?</a></p>
-        <p class="auth-footer">
-            New here?
-            <a href="@(NavigationManager.GetUriWithQueryParameters("/Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Create an account</a>
-        </p>
-        <p class="auth-footer"><a href="/Account/ResendEmailConfirmation">Resend email confirmation</a></p>
-    </div>
+	<div class="auth-shell-footer">
+		<p class="auth-footer">
+			<a href="/Account/ForgotPassword">Forgot your password?</a>
+		</p>
+		<p class="auth-footer">
+			New here?
+			<a href="@(NavigationManager.GetUriWithQueryParameters("/Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Create an account</a>
+		</p>
+		<p class="auth-footer">
+			<a href="/Account/ResendEmailConfirmation">Resend email confirmation</a>
+		</p>
+	</div>
 </AccountShell>
 
 @code {
-    private string? errorMessage;
-    private EditContext editContext = default!;
+	private string? errorMessage;
+	private EditContext editContext = null!;
 
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
+	[CascadingParameter] private HttpContext HttpContext { get; set; } = null!;
 
-    [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = default!;
+	[SupplyParameterFromForm] private InputModel Input { get; set; } = null!;
 
-    [SupplyParameterFromQuery]
-    private string? ReturnUrl { get; set; }
+	[SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
-    protected override async Task OnInitializedAsync()
-    {
-        Input ??= new();
+	protected override async Task OnInitializedAsync()
+	{
+		Input ??= new InputModel();
 
-        editContext = new EditContext(Input);
+		editContext = new EditContext(Input);
 
-        if (HttpMethods.IsGet(HttpContext.Request.Method))
-        {
-            // Clear the existing external cookie to ensure a clean login process
-            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
-        }
-    }
+		if (HttpMethods.IsGet(HttpContext.Request.Method))
+		{
+			// Clear the existing external cookie to ensure a clean login process
+			await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+		}
+	}
 
-    public async Task LoginUser()
-    {
-        if (!string.IsNullOrEmpty(Input.Passkey?.Error))
-        {
-            errorMessage = $"Error: {Input.Passkey.Error}";
-            return;
-        }
+	public async Task LoginUser()
+	{
+		if (!string.IsNullOrEmpty(Input.Passkey?.Error))
+		{
+			errorMessage = $"Error: {Input.Passkey.Error}";
+			return;
+		}
 
-        SignInResult result;
-        if (!string.IsNullOrEmpty(Input.Passkey?.CredentialJson))
-        {
-            // When performing passkey sign-in, don't perform form validation.
-            result = await SignInManager.PasskeySignInAsync(Input.Passkey.CredentialJson);
-        }
-        else
-        {
-            // If doing a password sign-in, validate the form.
-            if (!editContext.Validate())
-            {
-                return;
-            }
+		SignInResult result;
+		if (!string.IsNullOrEmpty(Input.Passkey?.CredentialJson))
+		{
+			// When performing passkey sign-in, don't perform form validation.
+			result = await SignInManager.PasskeySignInAsync(Input.Passkey.CredentialJson);
+		}
+		else
+		{
+			// If doing a password sign-in, validate the form.
+			if (!editContext.Validate())
+			{
+				return;
+			}
 
-            // This doesn't count login failures towards account lockout
-            // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-            result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-        }
+			// This doesn't count login failures towards account lockout
+			// To enable password failures to trigger account lockout, set lockoutOnFailure: true
+			result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+		}
 
-        if (result.Succeeded)
-        {
-            Logger.LogInformation("User logged in.");
-            RedirectManager.RedirectTo(ReturnUrl);
-        }
-        else if (result.RequiresTwoFactor)
-        {
-            RedirectManager.RedirectTo(
-                "Account/LoginWith2fa",
-                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
-        }
-        else if (result.IsLockedOut)
-        {
-            Logger.LogWarning("User account locked out.");
-            RedirectManager.RedirectTo("Account/Lockout");
-        }
-        else
-        {
-            errorMessage = "Error: Invalid login attempt.";
-        }
-    }
+		if (result.Succeeded)
+		{
+			Logger.LogInformation("User logged in.");
+			RedirectManager.RedirectTo(ReturnUrl);
+		}
+		else if (result.RequiresTwoFactor)
+		{
+			RedirectManager.RedirectTo(
+				"Account/LoginWith2fa",
+				new Dictionary<string, object?> { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+		}
+		else if (result.IsLockedOut)
+		{
+			Logger.LogWarning("User account locked out.");
+			RedirectManager.RedirectTo("Account/Lockout");
+		}
+		else
+		{
+			errorMessage = "Error: Invalid login attempt.";
+		}
+	}
 
-    private sealed class InputModel
-    {
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = "";
+	private sealed class InputModel
+	{
+		[Required] [EmailAddress] public string Email { get; set; } = "";
 
-        [Required]
-        [DataType(DataType.Password)]
-        public string Password { get; set; } = "";
+		[Required]
+		[DataType(DataType.Password)]
+		public string Password { get; set; } = "";
 
-        [Display(Name = "Remember me?")]
-        public bool RememberMe { get; set; }
+		[Display(Name = "Remember me?")] public bool RememberMe { get; set; }
 
-        public PasskeyInputModel? Passkey { get; set; }
-    }
+		public PasskeyInputModel? Passkey { get; set; }
+	}
+
 }

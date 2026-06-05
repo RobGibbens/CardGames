@@ -8,18 +8,22 @@ public static class CreateLeagueOneOffEventEndpoint
 	public static RouteGroupBuilder MapCreateLeagueOneOffEvent(this RouteGroupBuilder group)
 	{
 		group.MapPost("{leagueId:guid}/events/one-off",
-				async (Guid leagueId, CreateLeagueOneOffEventRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, CreateLeagueOneOffEventRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, request), cancellationToken);
+					var result = await mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, request),
+						cancellationToken);
 
 					return result.Match(
-						success => Results.Created($"/api/v1/leagues/{success.LeagueId}/events/one-off/{success.EventId}", success),
+						success => Results.Created(
+							$"/api/v1/leagues/{success.LeagueId}/events/one-off/{success.EventId}", success),
 						error => error.Code switch
 						{
 							CreateLeagueOneOffEventErrorCode.Unauthorized => Results.Unauthorized(),
 							CreateLeagueOneOffEventErrorCode.Forbidden => Results.Forbid(),
 							CreateLeagueOneOffEventErrorCode.LeagueNotFound => Results.NotFound(),
-							CreateLeagueOneOffEventErrorCode.InvalidRequest => Results.BadRequest(new { error.Message }),
+							CreateLeagueOneOffEventErrorCode.InvalidRequest =>
+								Results.BadRequest(new { error.Message }),
 							_ => Results.Problem(error.Message)
 						});
 				})

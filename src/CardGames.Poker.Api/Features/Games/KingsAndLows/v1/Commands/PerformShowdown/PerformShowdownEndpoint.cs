@@ -5,17 +5,18 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.PerformShowdown;
 
 /// <summary>
-/// Endpoint for performing the showdown in a Kings and Lows game.
+///     Endpoint for performing the showdown in a Kings and Lows game.
 /// </summary>
 public static class PerformShowdownEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for performing showdown.
+	///     Maps the POST endpoint for performing showdown.
 	/// </summary>
 	public static RouteGroupBuilder MapPerformShowdown(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/showdown",
-				async (Guid gameId, IMediator mediator, IGameStateBroadcaster broadcaster, CancellationToken cancellationToken) =>
+				async (Guid gameId, IMediator mediator, IGameStateBroadcaster broadcaster,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new PerformShowdownCommand(gameId);
 					var result = await mediator.Send(command, cancellationToken);
@@ -52,7 +53,7 @@ public static class PerformShowdownEndpoint
 				"- Payouts to each winning player\n" +
 				"- Evaluated hand information with wild card indexes\n" +
 				"- Winners and losers lists (losers must match the pot)")
-			.Produces<PerformShowdownSuccessful>(StatusCodes.Status200OK)
+			.Produces<PerformShowdownSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);
 

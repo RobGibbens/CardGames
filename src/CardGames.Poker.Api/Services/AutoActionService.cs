@@ -1,5 +1,4 @@
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -7,15 +6,15 @@ using Microsoft.EntityFrameworkCore;
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
-/// Performs automatic actions when a player's turn timer expires.
+///     Performs automatic actions when a player's turn timer expires.
 /// </summary>
 public sealed class AutoActionService : IAutoActionService
 {
-	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ILogger<AutoActionService> _logger;
+	private readonly IServiceScopeFactory _scopeFactory;
 
 	/// <summary>
-	/// Initializes a new instance of the <see cref="AutoActionService"/> class.
+	///     Initializes a new instance of the <see cref="AutoActionService" /> class.
 	/// </summary>
 	public AutoActionService(
 		IServiceScopeFactory scopeFactory,
@@ -26,7 +25,8 @@ public sealed class AutoActionService : IAutoActionService
 	}
 
 	/// <inheritdoc />
-	public async Task PerformAutoActionAsync(Guid gameId, int playerSeatIndex, CancellationToken cancellationToken = default)
+	public async Task PerformAutoActionAsync(Guid gameId, int playerSeatIndex,
+		CancellationToken cancellationToken = default)
 	{
 		_logger.LogInformation(
 			"Performing auto-action for game {GameId}, player seat {SeatIndex}",

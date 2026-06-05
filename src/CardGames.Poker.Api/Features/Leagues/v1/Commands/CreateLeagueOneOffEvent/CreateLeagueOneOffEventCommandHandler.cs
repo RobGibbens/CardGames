@@ -1,14 +1,15 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Leagues.v1.Commands;
-using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueOneOffEventStatus = CardGames.Poker.Api.Data.Entities.LeagueOneOffEventStatus;
+using LeagueOneOffEventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueOneOffEvent;
 
@@ -16,31 +17,38 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
 	ILeagueBroadcaster leagueBroadcaster)
-	: IRequestHandler<CreateLeagueOneOffEventCommand, OneOf<CreateLeagueOneOffEventResponse, CreateLeagueOneOffEventError>>
+	: IRequestHandler<CreateLeagueOneOffEventCommand,
+		OneOf<CreateLeagueOneOffEventResponse, CreateLeagueOneOffEventError>>
 {
-	public async Task<OneOf<CreateLeagueOneOffEventResponse, CreateLeagueOneOffEventError>> Handle(CreateLeagueOneOffEventCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<CreateLeagueOneOffEventResponse, CreateLeagueOneOffEventError>> Handle(
+		CreateLeagueOneOffEventCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.Unauthorized, "User is not authenticated.");
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.Name))
 		{
-			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, "One-off event name is required.");
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest,
+				"One-off event name is required.");
 		}
 
 		if (request.Request.ScheduledAtUtc == default)
 		{
-			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest,
+				"Scheduled date/time is required.");
 		}
 
-		if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var normalizedGameTypeCode, out var rules, out var gameTypeError))
+		if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var normalizedGameTypeCode,
+			    out var rules, out var gameTypeError))
 		{
 			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, gameTypeError!);
 		}
 
-		var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
+		var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet,
+			request.Request.SmallBlind, request.Request.BigBlind);
 		if (stakesError is not null)
 		{
 			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, stakesError);
@@ -48,13 +56,16 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 
 		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
 		{
-			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest,
+				LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
 		}
 
-		var tournamentBuyInError = ValidateOneOffTournamentBuyIn(request.Request.EventType, request.Request.TournamentBuyIn);
+		var tournamentBuyInError =
+			ValidateOneOffTournamentBuyIn(request.Request.EventType, request.Request.TournamentBuyIn);
 		if (tournamentBuyInError is not null)
 		{
-			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, tournamentBuyInError);
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest,
+				tournamentBuyInError);
 		}
 
 		var leagueExists = await context.Leagues
@@ -63,7 +74,8 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 
 		if (!leagueExists)
 		{
-			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.LeagueNotFound, "League not found.");
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.LeagueNotFound,
+				"League not found.");
 		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
@@ -74,7 +86,8 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.Forbidden, "Only league managers or admins can create one-off events.");
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.Forbidden,
+				"Only league managers or admins can create one-off events.");
 		}
 
 		var oneOffEvent = new LeagueOneOffEvent
@@ -84,13 +97,15 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			Name = request.Request.Name.Trim(),
 			ScheduledAtUtc = request.Request.ScheduledAtUtc,
 			EventType = (Data.Entities.LeagueOneOffEventType)request.Request.EventType,
-			Status = Data.Entities.LeagueOneOffEventStatus.Planned,
+			Status = LeagueOneOffEventStatus.Planned,
 			Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim(),
 			GameTypeCode = normalizedGameTypeCode,
 			Ante = LeagueEventGameSettings.NormalizeAnte(rules!, request.Request.Ante),
 			MinBet = LeagueEventGameSettings.NormalizeMinBet(rules!, request.Request.MinBet, request.Request.BigBlind),
-			SmallBlind = LeagueEventGameSettings.NormalizeSmallBlind(rules!, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind),
-			BigBlind = LeagueEventGameSettings.NormalizeBigBlind(rules!, request.Request.MinBet, request.Request.BigBlind),
+			SmallBlind = LeagueEventGameSettings.NormalizeSmallBlind(rules!, request.Request.MinBet,
+				request.Request.SmallBlind, request.Request.BigBlind),
+			BigBlind = LeagueEventGameSettings.NormalizeBigBlind(rules!, request.Request.MinBet,
+				request.Request.BigBlind),
 			TournamentBuyIn = request.Request.TournamentBuyIn,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow
@@ -98,13 +113,13 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 
 		context.LeagueOneOffEvents.Add(oneOffEvent);
 		await context.SaveChangesAsync(cancellationToken);
-		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 		{
 			LeagueId = oneOffEvent.LeagueId,
 			EventId = oneOffEvent.Id,
-			SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff,
+			SourceType = LeagueEventSourceType.OneOff,
 			SeasonId = null,
-			ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.Created,
+			ChangeKind = LeagueEventChangeKind.Created,
 			ChangedAtUtc = oneOffEvent.CreatedAtUtc
 		}, cancellationToken);
 
@@ -128,9 +143,9 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 		};
 	}
 
-	private static string? ValidateOneOffTournamentBuyIn(CardGames.Poker.Api.Contracts.LeagueOneOffEventType eventType, int? tournamentBuyIn)
+	private static string? ValidateOneOffTournamentBuyIn(LeagueOneOffEventType eventType, int? tournamentBuyIn)
 	{
-		if (eventType == CardGames.Poker.Api.Contracts.LeagueOneOffEventType.Tournament)
+		if (eventType == LeagueOneOffEventType.Tournament)
 		{
 			if (!tournamentBuyIn.HasValue)
 			{

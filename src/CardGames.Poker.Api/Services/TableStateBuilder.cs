@@ -1,52 +1,54 @@
-using System;
+using System.Globalization;
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 using CardGames.Contracts.SignalR;
 using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
-using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
+using CardGames.Poker.Api.Features.Games.Baseball;
 using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.Features.Profile;
-using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
-using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
-using CardGames.Poker.Api.Features.Games.Baseball;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
-using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Hands.DrawHands;
+using CardGames.Poker.Evaluation;
+using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.CommunityCardHands;
+using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands.HandTypes;
 using CardGames.Poker.Hands.Strength;
 using CardGames.Poker.Hands.StudHands;
 using CardGames.Poker.Hands.WildCards;
 using Microsoft.EntityFrameworkCore;
-using Entities = CardGames.Poker.Api.Data.Entities;
 
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
-/// Builds table state snapshots for SignalR broadcasts.
+///     Builds table state snapshots for SignalR broadcasts.
 /// </summary>
 public sealed class TableStateBuilder : ITableStateBuilder
 {
+	private const int WinningSoundFrequencyHands = 10;
 	private static readonly StringComparer GameCodeComparer = StringComparer.OrdinalIgnoreCase;
+
 	private static readonly Dictionary<string, Func<List<Card>, HandBase>> DrawHandFactories =
 		new(GameCodeComparer)
 		{
 			[PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode] = cards => new TwosJacksManWithTheAxeDrawHand(cards),
 			[PokerGameMetadataRegistry.KingsAndLowsCode] = cards => new KingsAndLowsDrawHand(cards)
 		};
+
 	private static readonly Dictionary<string, Func<List<GameCard>, List<Card>, string>> StudVariantEvaluators =
 		new(GameCodeComparer)
 		{
 			[PokerGameMetadataRegistry.BaseballCode] = EvaluateBaseballHandDescription,
 			[PokerGameMetadataRegistry.RazzCode] = EvaluateRazzHandDescription
 		};
+
 	private static readonly HashSet<string> StudGameCodes =
 		new(GameCodeComparer)
 		{
@@ -57,25 +59,24 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.PairPressureCode,
 			PokerGameMetadataRegistry.TollboothCode
 		};
+
 	private static readonly Dictionary<string, string[]> TableSoundboardFiles =
-		new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+		new(StringComparer.OrdinalIgnoreCase)
 		{
 			["winning"] = ["pay_dat_man_his_money.mp3"]
 		};
-	private const int WinningSoundFrequencyHands = 10;
+
+	private readonly IActionTimerService _actionTimerService;
 
 	private readonly CardsDbContext _context;
-	private readonly IActionTimerService _actionTimerService;
-	private readonly IPlayerChipWalletService _walletService;
 	private readonly ILogger<TableStateBuilder> _logger;
-
-	private sealed record UserProfile(string UserId, string? FirstName, string? AvatarUrl);
-	private sealed record KingsAndLowsDeckOutcome(bool PlayerWins, ShowdownPlayerResultDto DeckResult, List<string>? Losers);
+	private readonly IPlayerChipWalletService _walletService;
 
 	/// <summary>
-	/// Initializes a new instance of the <see cref="TableStateBuilder"/> class.
+	///     Initializes a new instance of the <see cref="TableStateBuilder" /> class.
 	/// </summary>
-	public TableStateBuilder(CardsDbContext context, IActionTimerService actionTimerService, IPlayerChipWalletService walletService, ILogger<TableStateBuilder> logger)
+	public TableStateBuilder(CardsDbContext context, IActionTimerService actionTimerService,
+		IPlayerChipWalletService walletService, ILogger<TableStateBuilder> logger)
 	{
 		_context = context;
 		_actionTimerService = actionTimerService;
@@ -84,7 +85,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <inheritdoc />
-	public async Task<TableStatePublicDto?> BuildPublicStateAsync(Guid gameId, CancellationToken cancellationToken = default)
+	public async Task<TableStatePublicDto?> BuildPublicStateAsync(Guid gameId,
+		CancellationToken cancellationToken = default)
 	{
 		var game = await _context.Games
 			.Include(g => g.GameType)
@@ -99,78 +101,81 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		var gamePlayers = await _context.GamePlayers
-				.Where(gp => gp.GameId == gameId && gp.Status != Entities.GamePlayerStatus.Left)
-				.Include(gp => gp.Player)
-				.Include(gp => gp.Cards)
-				.OrderBy(gp => gp.SeatPosition)
-				.AsNoTracking()
-				.ToListAsync(cancellationToken);
+			.Where(gp => gp.GameId == gameId && gp.Status != GamePlayerStatus.Left)
+			.Include(gp => gp.Player)
+			.Include(gp => gp.Cards)
+			.OrderBy(gp => gp.SeatPosition)
+			.AsNoTracking()
+			.ToListAsync(cancellationToken);
 
-			// DEBUG: Log card data before ordering for Seven Card Stud
-			var isSevenCardStudGame = IsStudGame(game.GameType?.Code);
-			if (isSevenCardStudGame)
+		// DEBUG: Log card data before ordering for Seven Card Stud
+		var isSevenCardStudGame = IsStudGame(game.GameType?.Code);
+		if (isSevenCardStudGame)
+		{
+			foreach (var gp in gamePlayers)
 			{
-				foreach (var gp in gamePlayers)
+				var cardsForHand = gp.Cards
+					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+					.ToList();
+
+				if (cardsForHand.Count > 0)
 				{
-					var cardsForHand = gp.Cards
-						.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-						.ToList();
+					_logger.LogInformation(
+						"[CARD-ORDER-DEBUG] Player {PlayerName} (Seat {Seat}), Phase {Phase}, Hand #{HandNumber}: " +
+						"RAW cards before ordering: [{RawCards}]",
+						gp.Player.Name,
+						gp.SeatPosition,
+						game.CurrentPhase,
+						game.CurrentHandNumber,
+						string.Join(", ", cardsForHand.Select(c =>
+							$"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}(DO={c.DealOrder},Loc={c.Location},Phase={c.DealtAtPhase},Vis={c.IsVisible})")));
 
-					if (cardsForHand.Count > 0)
+					// Also log the computed order keys
+					var orderKeys = cardsForHand.Select(c => new
 					{
-						_logger.LogInformation(
-							"[CARD-ORDER-DEBUG] Player {PlayerName} (Seat {Seat}), Phase {Phase}, Hand #{HandNumber}: " +
-							"RAW cards before ordering: [{RawCards}]",
-							gp.Player.Name,
-							gp.SeatPosition,
-							game.CurrentPhase,
-							game.CurrentHandNumber,
-							string.Join(", ", cardsForHand.Select(c =>
-								$"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}(DO={c.DealOrder},Loc={c.Location},Phase={c.DealtAtPhase},Vis={c.IsVisible})")));
+						Card = $"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}",
+						OrderKey = StudOrderHelper.GetPlayerCardOrderKey(c.DealtAtPhase,
+							c.Location == CardLocation.Hole, c.DealOrder),
+						c.DealOrder,
+						c.Location,
+						c.DealtAtPhase,
+						c.IsVisible
+					}).OrderBy(x => x.OrderKey).ToList();
 
-						// Also log the computed order keys
-						var orderKeys = cardsForHand.Select(c => new
-						{
-							Card = $"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}",
-							OrderKey = StudOrderHelper.GetPlayerCardOrderKey(c.DealtAtPhase, c.Location == CardLocation.Hole, c.DealOrder),
-							c.DealOrder,
-							c.Location,
-							c.DealtAtPhase,
-							c.IsVisible
-						}).OrderBy(x => x.OrderKey).ToList();
-
-						_logger.LogInformation(
-							"[CARD-ORDER-DEBUG] Player {PlayerName}: Computed order keys: [{OrderKeys}]",
-							gp.Player.Name,
-							string.Join(", ", orderKeys.Select(x =>
-								$"{x.Card}(Key={x.OrderKey},DO={x.DealOrder},Loc={x.Location},Phase={x.DealtAtPhase})")));
-					}
+					_logger.LogInformation(
+						"[CARD-ORDER-DEBUG] Player {PlayerName}: Computed order keys: [{OrderKeys}]",
+						gp.Player.Name,
+						string.Join(", ", orderKeys.Select(x =>
+							$"{x.Card}(Key={x.OrderKey},DO={x.DealOrder},Loc={x.Location},Phase={x.DealtAtPhase})")));
 				}
 			}
+		}
 
-			// Calculate total pot from current betting round contributions
-			var totalPot = await CalculateTotalPotAsync(game, game.CurrentHandNumber, cancellationToken);
+		// Calculate total pot from current betting round contributions
+		var totalPot = await CalculateTotalPotAsync(game, game.CurrentHandNumber, cancellationToken);
 
-			// Build seat DTOs with cards hidden (face-down)
-			// Enrich with Identity profile data (first name/avatar) when available.
-			var userProfilesByEmail = await _context.Users
-				.AsNoTracking()
-				.Where(u => u.Email != null)
-				.Select(u => new { u.Id, Email = u.Email!, u.FirstName, u.AvatarUrl })
-				.ToDictionaryAsync(
-					u => u.Email,
-					u => new UserProfile(u.Id, u.FirstName, u.AvatarUrl),
-					StringComparer.OrdinalIgnoreCase,
-					cancellationToken);
+		// Build seat DTOs with cards hidden (face-down)
+		// Enrich with Identity profile data (first name/avatar) when available.
+		var userProfilesByEmail = await _context.Users
+			.AsNoTracking()
+			.Where(u => u.Email != null)
+			.Select(u => new { u.Id, Email = u.Email!, u.FirstName, u.AvatarUrl })
+			.ToDictionaryAsync(
+				u => u.Email,
+				u => new UserProfile(u.Id, u.FirstName, u.AvatarUrl),
+				StringComparer.OrdinalIgnoreCase,
+				cancellationToken);
 
-			var seats = gamePlayers
-				.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code, game.CurrentPhase, userProfilesByEmail))
-						.ToList();
+		var seats = gamePlayers
+			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code,
+				game.CurrentPhase, userProfilesByEmail))
+			.ToList();
 
 		var serverUtcNow = DateTimeOffset.UtcNow;
 
 		// Calculate results phase state
-		var isResultsPhase = (game.CurrentPhase == "Complete" || game.CurrentPhase == "PotMatching") && game.HandCompletedAt.HasValue;
+		var isResultsPhase = (game.CurrentPhase == "Complete" || game.CurrentPhase == "PotMatching") &&
+		                     game.HandCompletedAt.HasValue;
 		int? secondsUntilNextHand = null;
 		if (isResultsPhase && game.NextHandStartsAt.HasValue)
 		{
@@ -179,7 +184,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		// Get hand history for the dashboard (limited to recent hands)
-		var handHistory = await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
+		var handHistory =
+			await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
 
 		// Get game rules for phase metadata
 		GameRules? rules = null;
@@ -200,15 +206,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Build Chip Check Pause state (for Kings and Lows)
 		var chipCheckPause = BuildChipCheckPauseState(game, gamePlayers, totalPot);
 		var isBobBarkerShowdownReveal = IsBobBarkerGame(game.GameType?.Code)
-			&& (string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
-				|| string.Equals(game.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase));
+		                                && (string.Equals(game.CurrentPhase, "Showdown",
+			                                    StringComparison.OrdinalIgnoreCase)
+		                                    || string.Equals(game.CurrentPhase, "Complete",
+			                                    StringComparison.OrdinalIgnoreCase));
 
 		// Build community cards for variants that use table cards (e.g., Good Bad Ugly)
 		var communityCards = await _context.GameCards
 			.Where(c => c.GameId == gameId
-				&& !c.IsDiscarded
-				&& c.HandNumber == game.CurrentHandNumber
-				&& c.Location == CardLocation.Community)
+			            && !c.IsDiscarded
+			            && c.HandNumber == game.CurrentHandNumber
+			            && c.Location == CardLocation.Community)
 			.OrderBy(c => c.DealOrder)
 			.AsNoTracking()
 			.Select(c => new CardPublicDto
@@ -250,7 +258,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			TotalPot = totalPot,
 			DealerSeatIndex = game.DealerPosition,
 			CurrentActorSeatIndex = game.CurrentPlayerIndex,
-			IsPaused = game.Status == Entities.GameStatus.BetweenHands,
+			IsPaused = game.Status == GameStatus.BetweenHands,
 			CurrentHandNumber = game.CurrentHandNumber,
 			CreatedByName = game.CreatedByName,
 			Seats = seats,
@@ -266,8 +274,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
 			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
 			DrawingConfig = BuildDrawingConfigDto(rules),
-				SpecialRules = await BuildSpecialRulesDtoAsync(rules, game, cancellationToken),
-				PlayerVsDeck = playerVsDeck,
+			SpecialRules = await BuildSpecialRulesDtoAsync(rules, game, cancellationToken),
+			PlayerVsDeck = playerVsDeck,
 			ActionTimer = actionTimer,
 			AllInRunout = allInRunout,
 			ChipCheckPause = chipCheckPause,
@@ -278,53 +286,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		};
 	}
 
-	private static IReadOnlyList<TableSoundEffectDto>? BuildTableSoundEffects(Entities.Game game, ShowdownPublicDto? showdown)
-	{
-		if (game.CurrentHandNumber <= 0 || game.CurrentHandNumber % WinningSoundFrequencyHands != 0 || showdown is not { IsComplete: true })
-		{
-			return null;
-		}
-
-		var hasWinner = showdown.PlayerResults.Any(result => result.IsWinner || result.AmountWon > 0);
-		if (!hasWinner)
-		{
-			return null;
-		}
-
-		var source = ChooseDeterministicSoundboardSource(game.Id, game.CurrentHandNumber, "winning");
-		if (string.IsNullOrWhiteSpace(source))
-		{
-			return null;
-		}
-
-		return
-		[
-			new TableSoundEffectDto
-			{
-				CueKey = $"winning:{game.CurrentHandNumber}:{Path.GetFileName(source)}",
-				EventKey = "winning",
-				HandNumber = game.CurrentHandNumber,
-				Source = source
-			}
-		];
-	}
-
-	private static string? ChooseDeterministicSoundboardSource(Guid gameId, int handNumber, string eventKey)
-	{
-		if (!TableSoundboardFiles.TryGetValue(eventKey, out var files) || files.Length == 0)
-		{
-			return null;
-		}
-
-		var seedBytes = Encoding.UTF8.GetBytes($"{gameId:N}:{handNumber}:{eventKey}");
-		var hashBytes = SHA256.HashData(seedBytes);
-		var selectedIndex = BitConverter.ToUInt32(hashBytes, 0) % (uint)files.Length;
-		var fileName = files[(int)selectedIndex];
-		return $"/sounds/soundboard/{eventKey}/{Uri.EscapeDataString(fileName)}";
-	}
-
 	/// <inheritdoc />
-	public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+	public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId,
+		CancellationToken cancellationToken = default)
 	{
 		_logger.LogDebug("BuildPrivateStateAsync called for game {GameId}, userId {UserId}", gameId, userId);
 
@@ -342,7 +306,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Find the player by matching the authenticated user id.
 		// SignalR `Clients.User(userId)` now routes by email claim, so prefer email/name matching.
 		var gamePlayer = await _context.GamePlayers
-			.Where(gp => gp.GameId == gameId && gp.Status != Entities.GamePlayerStatus.Left)
+			.Where(gp => gp.GameId == gameId && gp.Status != GamePlayerStatus.Left)
 			.Include(gp => gp.Player)
 			.Include(gp => gp.Cards)
 			.AsNoTracking()
@@ -393,8 +357,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var playerCardEntities = gamePlayer.Cards
 				.Where(c => !c.IsDiscarded
-					&& c.HandNumber == game.CurrentHandNumber
-					&& (selectedShowcaseDealOrder is null || c.DealOrder != selectedShowcaseDealOrder.Value))
+				            && c.HandNumber == game.CurrentHandNumber
+				            && (selectedShowcaseDealOrder is null || c.DealOrder != selectedShowcaseDealOrder.Value))
 				.OrderBy(c => c.DealOrder)
 				.ToList();
 
@@ -404,10 +368,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var communityCards = await _context.GameCards
 				.Where(c => c.GameId == gameId
-						&& !c.IsDiscarded
-						&& c.HandNumber == game.CurrentHandNumber
-						&& c.Location == CardLocation.Community
-						&& c.IsVisible)
+				            && !c.IsDiscarded
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && c.IsVisible)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
@@ -425,17 +389,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var isSevenCardStud = IsStudGame(game.GameType?.Code);
 			var isCommunityCardGame = IsHoldEmGame(game.GameType?.Code)
-				|| IsHoldTheBaseballGame(game.GameType?.Code)
-				|| IsOmahaGame(game.GameType?.Code)
-				|| IsBobBarkerGame(game.GameType?.Code)
-				|| IsNebraskaGame(game.GameType?.Code)
-				|| IsSouthDakotaGame(game.GameType?.Code)
-				|| IsIrishHoldEmGame(game.GameType?.Code);
+			                          || IsHoldTheBaseballGame(game.GameType?.Code)
+			                          || IsOmahaGame(game.GameType?.Code)
+			                          || IsBobBarkerGame(game.GameType?.Code)
+			                          || IsNebraskaGame(game.GameType?.Code)
+			                          || IsSouthDakotaGame(game.GameType?.Code)
+			                          || IsIrishHoldEmGame(game.GameType?.Code);
 
 			// Seven Card Stud / Baseball / Follow The Queen: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
 			if (isSevenCardStud)
 			{
-				handEvaluationDescription = await BuildStudVariantHandDescriptionAsync(game, gamePlayer, cancellationToken);
+				handEvaluationDescription =
+					await BuildStudVariantHandDescriptionAsync(game, gamePlayer, cancellationToken);
 			}
 			// Draw games (no community cards). Provide a description for any cards held.
 			// (During seating / pre-deal phases there may be 0-4 cards and we keep the description null.)
@@ -462,17 +427,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						int? wildRank = null;
 						var goodCard = await _context.GameCards
 							.Where(c => c.GameId == gameId
-								&& c.HandNumber == game.CurrentHandNumber
-								&& c.Location == CardLocation.Community
-								&& c.DealtAtPhase == "TheGood"
-								&& c.IsVisible)
+							            && c.HandNumber == game.CurrentHandNumber
+							            && c.Location == CardLocation.Community
+							            && c.DealtAtPhase == "TheGood"
+							            && c.IsVisible)
 							.AsNoTracking()
 							.FirstOrDefaultAsync(cancellationToken);
 						if (goodCard is not null)
 						{
 							wildRank = (int)goodCard.Symbol;
 						}
-						var gbuHand = new GoodBadUglyHand(playerCards.Concat(communityCards).ToList(), [], [], wildRank, new GoodBadUglyWildCardRules());
+
+						var gbuHand = new GoodBadUglyHand(playerCards.Concat(communityCards).ToList(), [], [], wildRank,
+							new GoodBadUglyWildCardRules());
 						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(gbuHand);
 					}
 				}
@@ -483,14 +450,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					{
 						var klondikeCardEntity = await _context.GameCards
 							.Where(c => c.GameId == gameId
-								&& c.HandNumber == game.CurrentHandNumber
-								&& c.DealtAtPhase == "KlondikeCard")
+							            && c.HandNumber == game.CurrentHandNumber
+							            && c.DealtAtPhase == "KlondikeCard")
 							.AsNoTracking()
 							.FirstOrDefaultAsync(cancellationToken);
 
 						if (klondikeCardEntity is { IsVisible: true })
 						{
-							visibleKlondikeCard = new Card((Suit)klondikeCardEntity.Suit, (Symbol)klondikeCardEntity.Symbol);
+							visibleKlondikeCard = new Card((Suit)klondikeCardEntity.Suit,
+								(Symbol)klondikeCardEntity.Symbol);
 						}
 					}
 
@@ -504,7 +472,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 		catch (Exception ex)
 		{
-			_logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}", gameId, gamePlayer.Player.Name);
+			_logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}",
+				gameId, gamePlayer.Player.Name);
 		}
 
 		var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition;
@@ -550,7 +519,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <inheritdoc />
-	public async Task<IReadOnlyList<string>> GetPlayerUserIdsAsync(Guid gameId, CancellationToken cancellationToken = default)
+	public async Task<IReadOnlyList<string>> GetPlayerUserIdsAsync(Guid gameId,
+		CancellationToken cancellationToken = default)
 	{
 		var players = await _context.GamePlayers
 			.Where(gp => gp.GameId == gameId)
@@ -589,9 +559,57 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			gameId,
 			players.Count,
 			string.Join(", ", userIds),
-			string.Join(", ", players.Select(p => $"Email={p.Email ?? "(null)"}, Name={p.Name ?? "(null)"}, ExternalId={p.ExternalId ?? "(null)"}")));
+			string.Join(", ",
+				players.Select(p =>
+					$"Email={p.Email ?? "(null)"}, Name={p.Name ?? "(null)"}, ExternalId={p.ExternalId ?? "(null)"}")));
 
 		return userIds;
+	}
+
+	private static IReadOnlyList<TableSoundEffectDto>? BuildTableSoundEffects(Game game, ShowdownPublicDto? showdown)
+	{
+		if (game.CurrentHandNumber <= 0 || game.CurrentHandNumber % WinningSoundFrequencyHands != 0 ||
+		    showdown is not { IsComplete: true })
+		{
+			return null;
+		}
+
+		var hasWinner = showdown.PlayerResults.Any(result => result.IsWinner || result.AmountWon > 0);
+		if (!hasWinner)
+		{
+			return null;
+		}
+
+		var source = ChooseDeterministicSoundboardSource(game.Id, game.CurrentHandNumber, "winning");
+		if (string.IsNullOrWhiteSpace(source))
+		{
+			return null;
+		}
+
+		return
+		[
+			new TableSoundEffectDto
+			{
+				CueKey = $"winning:{game.CurrentHandNumber}:{Path.GetFileName(source)}",
+				EventKey = "winning",
+				HandNumber = game.CurrentHandNumber,
+				Source = source
+			}
+		];
+	}
+
+	private static string? ChooseDeterministicSoundboardSource(Guid gameId, int handNumber, string eventKey)
+	{
+		if (!TableSoundboardFiles.TryGetValue(eventKey, out var files) || files.Length == 0)
+		{
+			return null;
+		}
+
+		var seedBytes = Encoding.UTF8.GetBytes($"{gameId:N}:{handNumber}:{eventKey}");
+		var hashBytes = SHA256.HashData(seedBytes);
+		var selectedIndex = BitConverter.ToUInt32(hashBytes, 0) % (uint)files.Length;
+		var fileName = files[(int)selectedIndex];
+		return $"/sounds/soundboard/{eventKey}/{Uri.EscapeDataString(fileName)}";
 	}
 
 	private static SeatPublicDto BuildSeatPublicDto(
@@ -608,8 +626,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// Check if we're in a showdown phase where cards should be revealed
 		var isShowdownPhase = string.Equals(currentPhase, "Showdown", StringComparison.OrdinalIgnoreCase) ||
-							  string.Equals(currentPhase, "Complete", StringComparison.OrdinalIgnoreCase) ||
-							  string.Equals(currentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
+		                      string.Equals(currentPhase, "Complete", StringComparison.OrdinalIgnoreCase) ||
+		                      string.Equals(currentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
 
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		// During showdown phases, show cards face-up for players who haven't folded
@@ -660,14 +678,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PlayerFirstName = firstName,
 			PlayerAvatarUrl = avatarUrl,
 			Chips = gamePlayer.ChipStack,
-			IsReady = gamePlayer.Status == Entities.GamePlayerStatus.Active && !gamePlayer.IsSittingOut,
+			IsReady = gamePlayer.Status == GamePlayerStatus.Active && !gamePlayer.IsSittingOut,
 			IsFolded = gamePlayer.HasFolded,
 			IsAllIn = gamePlayer.IsAllIn,
 			IsDisconnected = !gamePlayer.IsConnected,
 			IsSittingOut = gamePlayer.IsSittingOut,
 			SittingOutReason = sittingOutReason,
 			CurrentBet = gamePlayer.CurrentBet,
-			HasDecidedDropOrStay = gamePlayer.DropOrStayDecision.HasValue && gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
+			HasDecidedDropOrStay = gamePlayer.DropOrStayDecision.HasValue &&
+			                       gamePlayer.DropOrStayDecision.Value != DropOrStayDecision.Undecided,
 			Cards = publicCards,
 			HandEvaluationDescription = handEvaluationDescription
 		};
@@ -675,7 +694,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static string? GetPublicHandEvaluationDescription(string? gameTypeCode, string? variantState)
 	{
-		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase))
+		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			    StringComparison.OrdinalIgnoreCase))
 		{
 			return null;
 		}
@@ -688,7 +708,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		};
 	}
 
-	private static string? GetPlayerFirstName(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
+	private static string? GetPlayerFirstName(GamePlayer gamePlayer,
+		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
 		// Try Identity profile lookup by email
 		var email = gamePlayer.Player.Email;
@@ -698,8 +719,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		if (!string.IsNullOrWhiteSpace(email)
-			&& userProfilesByEmail.TryGetValue(email, out var profile)
-			&& !string.IsNullOrWhiteSpace(profile.FirstName))
+		    && userProfilesByEmail.TryGetValue(email, out var profile)
+		    && !string.IsNullOrWhiteSpace(profile.FirstName))
 		{
 			return profile.FirstName.Trim();
 		}
@@ -713,14 +734,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var segments = localPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
 			if (segments.Length > 0)
 			{
-				return System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(segments[0].ToLowerInvariant());
+				return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(segments[0].ToLowerInvariant());
 			}
 		}
 
 		return null;
 	}
 
-	private static string? GetPlayerAvatarUrl(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
+	private static string? GetPlayerAvatarUrl(GamePlayer gamePlayer,
+		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
 		var email = gamePlayer.Player.Email;
 		if (string.IsNullOrWhiteSpace(email) && gamePlayer.Player.Name?.Contains('@') == true)
@@ -729,7 +751,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		if (!string.IsNullOrWhiteSpace(email)
-			&& userProfilesByEmail.TryGetValue(email, out var profile))
+		    && userProfilesByEmail.TryGetValue(email, out var profile))
 		{
 			return BuildAvatarUrl(profile.UserId, profile.AvatarUrl);
 		}
@@ -765,6 +787,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			{
 				return "Insufficient chips";
 			}
+
 			return "Sitting out";
 		}
 
@@ -794,7 +817,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			gamePlayer.Player.Name,
 			orderedCards.Count,
 			currentHandNumber,
-			string.Join(", ", orderedCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder},Phase={c.DealtAtPhase})")));
+			string.Join(", ",
+				orderedCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder},Phase={c.DealtAtPhase})")));
 
 		var selectedShowcaseDealOrder = IsBobBarkerGame(gameTypeCode)
 			? BobBarkerVariantState.GetSelectedShowcaseDealOrder(gamePlayer)
@@ -893,19 +917,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.ToList();
 
 		var baseMaxDiscards = rules?.Drawing?.MaxDiscards ?? 3;
-		var hasAce = playerCards.Any(c => c.Symbol == Entities.CardSymbol.Ace);
+		var hasAce = playerCards.Any(c => c.Symbol == CardSymbol.Ace);
 
 		// Traditional 5-card draw rules: 3 discards, or 4 if you have an Ace.
 		// If the game rules specify a different MaxDiscards (like 5 in Kings and Lows), respect that.
-		var maxDiscards = (baseMaxDiscards == 3 && hasAce) ? 4 : baseMaxDiscards;
+		var maxDiscards = baseMaxDiscards == 3 && hasAce ? 4 : baseMaxDiscards;
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
 		var isBobBarker = IsBobBarkerGame(game.GameType?.Code);
 		var isEligibleIrishDiscardActor = gamePlayer.Status == GamePlayerStatus.Active
-			&& !gamePlayer.HasFolded
-			&& !gamePlayer.HasDrawnThisRound;
+		                                  && !gamePlayer.HasFolded
+		                                  && !gamePlayer.HasDrawnThisRound;
 		var isEligibleBobBarkerSelector = gamePlayer.Status == GamePlayerStatus.Active
-			&& !gamePlayer.HasFolded
-			&& !gamePlayer.HasDrawnThisRound;
+		                                  && !gamePlayer.HasFolded
+		                                  && !gamePlayer.HasDrawnThisRound;
 
 		return new DrawPrivateDto
 		{
@@ -936,8 +960,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
 
 		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode)
-			|| IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.RazzCode)
-			|| IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.TollboothCode);
+		                      || IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.RazzCode)
+		                      || IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.TollboothCode);
 		var isRazz = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.RazzCode);
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
 		var isKingsAndLows = IsKingsAndLowsGame(game.GameType?.Code);
@@ -956,16 +980,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		if (game.CurrentPhase != "Showdown" &&
-			game.CurrentPhase != "Complete" &&
-			game.CurrentPhase != "PotMatching" &&
-			!isTerminalScrewYourNeighborShowdown)
+		    game.CurrentPhase != "Complete" &&
+		    game.CurrentPhase != "PotMatching" &&
+		    !isTerminalScrewYourNeighborShowdown)
 		{
 			return null;
 		}
 
 		// Evaluate all hands for players who haven't folded
 		// Use HandBase as the base type since all hand types inherit from it
-		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes, List<int> bestCardIndexes)>();
+		var playerHandEvaluations =
+			new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand?
+				kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int>
+				wildIndexes, List<int> bestCardIndexes)>();
 		var showdownPlayers = gamePlayers
 			.Where(gp => !gp.HasFolded)
 			.ToList();
@@ -976,9 +1003,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			var gbuCommunityCards = await _context.GameCards
 				.Where(c => c.GameId == game.Id
-					&& c.HandNumber == game.CurrentHandNumber
-					&& c.Location == CardLocation.Community
-					&& !c.IsDiscarded)
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && !c.IsDiscarded)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
@@ -1033,10 +1060,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			var holdemCommunityCards = await _context.GameCards
 				.Where(c => c.GameId == game.Id
-					&& c.HandNumber == game.CurrentHandNumber
-					&& c.Location == CardLocation.Community
-					&& c.GamePlayerId == null
-					&& !c.IsDiscarded)
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && c.GamePlayerId == null
+				            && !c.IsDiscarded)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
@@ -1079,10 +1106,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			var holdTheBaseballCommunityCards = await _context.GameCards
 				.Where(c => c.GameId == game.Id
-					&& c.HandNumber == game.CurrentHandNumber
-					&& c.Location == CardLocation.Community
-					&& c.GamePlayerId == null
-					&& !c.IsDiscarded)
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && c.GamePlayerId == null
+				            && !c.IsDiscarded)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
@@ -1120,7 +1147,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					}
 				}
 
-				playerHandEvaluations[gp.Player.Name] = (holdTheBaseballHand, null, null, null, gp, allDisplayCards, wildIndexes,
+				playerHandEvaluations[gp.Player.Name] = (holdTheBaseballHand, null, null, null, gp, allDisplayCards,
+					wildIndexes,
 					GetCardIndexes(allCoreCards, holdTheBaseballHand.BestHandSourceCards));
 			}
 		}
@@ -1130,10 +1158,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			var omahaCommunityCards = await _context.GameCards
 				.Where(c => c.GameId == game.Id
-					&& c.HandNumber == game.CurrentHandNumber
-					&& c.Location == CardLocation.Community
-					&& c.GamePlayerId == null
-					&& !c.IsDiscarded)
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && c.GamePlayerId == null
+				            && !c.IsDiscarded)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
@@ -1175,11 +1203,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			var bobBarkerCommunityCards = await _context.GameCards
 				.Where(c => c.GameId == game.Id
-					&& c.HandNumber == game.CurrentHandNumber
-					&& c.Location == CardLocation.Community
-					&& c.GamePlayerId == null
-					&& !c.IsDiscarded
-					&& c.IsVisible)
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && c.GamePlayerId == null
+				            && !c.IsDiscarded
+				            && c.IsVisible)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
@@ -1193,8 +1221,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var selectedShowcaseDealOrder = BobBarkerVariantState.GetSelectedShowcaseDealOrder(gp);
 				var ownedCards = gp.Cards
 					.Where(c => !c.IsDiscarded
-						&& c.HandNumber == game.CurrentHandNumber
-						&& (selectedShowcaseDealOrder is null || c.DealOrder != selectedShowcaseDealOrder.Value))
+					            && c.HandNumber == game.CurrentHandNumber
+					            && (selectedShowcaseDealOrder is null ||
+					                c.DealOrder != selectedShowcaseDealOrder.Value))
 					.OrderBy(c => c.DealOrder)
 					.ToList();
 
@@ -1221,10 +1250,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			var nebraskaCommunityCards = await _context.GameCards
 				.Where(c => c.GameId == game.Id
-					&& c.HandNumber == game.CurrentHandNumber
-					&& c.Location == CardLocation.Community
-					&& c.GamePlayerId == null
-					&& !c.IsDiscarded)
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && c.GamePlayerId == null
+				            && !c.IsDiscarded)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
@@ -1265,10 +1294,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			var irishCommunityCards = await _context.GameCards
 				.Where(c => c.GameId == game.Id
-					&& c.HandNumber == game.CurrentHandNumber
-					&& c.Location == CardLocation.Community
-					&& c.GamePlayerId == null
-					&& !c.IsDiscarded)
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && c.GamePlayerId == null
+				            && !c.IsDiscarded)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
@@ -1334,7 +1363,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes, Enumerable.Range(0, cards.Count).ToList());
+
+					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes,
+						Enumerable.Range(0, cards.Count).ToList());
 				}
 				else if (isBaseball)
 				{
@@ -1364,7 +1395,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (baseballHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, baseballHand.BestHandSourceCards));
+
+					playerHandEvaluations[gp.Player.Name] = (baseballHand, null, null, null, gp, cards, wildIndexes,
+						GetCardIndexes(coreCards, baseballHand.BestHandSourceCards));
 				}
 				else if (isFollowTheQueen)
 				{
@@ -1401,7 +1434,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 								wildIndexes.Add(i);
 							}
 						}
-						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
+
+						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes,
+							GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
 					}
 					else if (initialHoleCards.Count >= 2)
 					{
@@ -1418,7 +1453,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 								wildIndexes.Add(i);
 							}
 						}
-						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
+
+						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes,
+							GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
 					}
 				}
 				else if (isPairPressure)
@@ -1445,7 +1482,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						var downCard = holeCards.Count >= 3
 							? new Card((Suit)holeCards[2].Suit, (Symbol)holeCards[2].Symbol)
 							: null;
-						var pairPressureHand = new PairPressureHand(initialHoleCards, openCards, downCard, faceUpCardsInOrder);
+						var pairPressureHand =
+							new PairPressureHand(initialHoleCards, openCards, downCard, faceUpCardsInOrder);
 						var wildCards = pairPressureHand.WildCards;
 						var wildIndexes = new List<int>();
 						for (var i = 0; i < coreCards.Count; i++)
@@ -1456,7 +1494,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							}
 						}
 
-						playerHandEvaluations[gp.Player.Name] = (pairPressureHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, pairPressureHand.BestHandSourceCards));
+						playerHandEvaluations[gp.Player.Name] = (pairPressureHand, null, null, null, gp, cards,
+							wildIndexes, GetCardIndexes(coreCards, pairPressureHand.BestHandSourceCards));
 					}
 				}
 				else if (isSevenCardStud)
@@ -1489,12 +1528,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						if (isRazz)
 						{
 							var razzHand = new RazzHand(initialHoleCards, openCards, [downCard]);
-							playerHandEvaluations[gp.Player.Name] = (razzHand, null, null, null, gp, cards, [], GetCardIndexes(coreCards, razzHand.GetBestLowHand()));
+							playerHandEvaluations[gp.Player.Name] = (razzHand, null, null, null, gp, cards, [],
+								GetCardIndexes(coreCards, razzHand.GetBestLowHand()));
 						}
 						else
 						{
 							var studHand = new SevenCardStudHand(initialHoleCards, openCards, downCard);
-							playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, [], GetCardIndexes(coreCards, studHand.GetBestHand()));
+							playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, [],
+								GetCardIndexes(coreCards, studHand.GetBestHand()));
 						}
 					}
 				}
@@ -1511,12 +1552,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, null, gp, cards, wildIndexes, Enumerable.Range(0, cards.Count).ToList());
+
+					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, null, gp, cards,
+						wildIndexes, Enumerable.Range(0, cards.Count).ToList());
 				}
 				else
 				{
 					var drawHand = new DrawHand(coreCards);
-					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, null, gp, cards, [], Enumerable.Range(0, cards.Count).ToList());
+					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, null, gp, cards, [],
+						Enumerable.Range(0, cards.Count).ToList());
 				}
 			}
 		}
@@ -1527,7 +1571,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var sevensPoolRolledOver = false;
 
 		// Extract actual payouts from pots if they have been awarded
-		var actualPayouts = new Dictionary<string, (int Total, int Sevens, int High, int Showcase)>(StringComparer.OrdinalIgnoreCase);
+		var actualPayouts =
+			new Dictionary<string, (int Total, int Sevens, int High, int Showcase)>(StringComparer.OrdinalIgnoreCase);
 		var awardedHandPots = game.Pots
 			.Where(p => p.HandNumber == game.CurrentHandNumber && p.IsAwarded)
 			.ToList();
@@ -1578,7 +1623,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 						if (actualPayouts.TryGetValue(name, out var existing))
 						{
-							actualPayouts[name] = (existing.Total + amount, existing.Sevens + sevensAmount, existing.High + highAmount, existing.Showcase + showcaseAmount);
+							actualPayouts[name] = (existing.Total + amount, existing.Sevens + sevensAmount,
+								existing.High + highAmount, existing.Showcase + showcaseAmount);
 						}
 						else
 						{
@@ -1599,7 +1645,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			if (isGoodBadUgly)
 			{
 				var eligibleEvaluations = playerHandEvaluations
-					.Where(kvp => !string.Equals(kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase))
+					.Where(kvp => !string.Equals(kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED",
+						StringComparison.OrdinalIgnoreCase))
 					.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
 				if (eligibleEvaluations.Count > 0)
@@ -1632,10 +1679,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			// For Twos/Jacks/Axe, also determine sevens winners
 			if (isTwosJacksAxe)
 			{
-				foreach (var kvp in playerHandEvaluations.Where(k => k.Value.twosJacksHand?.HasNaturalPairOfSevens() == true))
+				foreach (var kvp in playerHandEvaluations.Where(k =>
+					         k.Value.twosJacksHand?.HasNaturalPairOfSevens() == true))
 				{
 					sevensWinners.Add(kvp.Key);
 				}
+
 				sevensPoolRolledOver = sevensWinners.Count == 0;
 			}
 		}
@@ -1647,10 +1696,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var synHandCards = await _context.GameCards
 				.Where(gc => gc.GameId == game.Id
-					&& gc.HandNumber == game.CurrentHandNumber
-					&& gc.GamePlayerId != null
-					&& gc.Location == CardLocation.Hand
-					&& !gc.IsDiscarded)
+				             && gc.HandNumber == game.CurrentHandNumber
+				             && gc.GamePlayerId != null
+				             && gc.Location == CardLocation.Hand
+				             && !gc.IsDiscarded)
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
 
@@ -1695,12 +1744,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// Combined winners for IsWinner flag
 		var showcaseWinners = isBobBarker
-			? actualPayouts.Where(kvp => kvp.Value.Showcase > 0).Select(kvp => kvp.Key).ToHashSet(StringComparer.OrdinalIgnoreCase)
+			? actualPayouts.Where(kvp => kvp.Value.Showcase > 0).Select(kvp => kvp.Key)
+				.ToHashSet(StringComparer.OrdinalIgnoreCase)
 			: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		var mainHandWinners = isBobBarker && actualPayouts.Any(kvp => kvp.Value.High > 0)
-			? actualPayouts.Where(kvp => kvp.Value.High > 0).Select(kvp => kvp.Key).ToHashSet(StringComparer.OrdinalIgnoreCase)
+			? actualPayouts.Where(kvp => kvp.Value.High > 0).Select(kvp => kvp.Key)
+				.ToHashSet(StringComparer.OrdinalIgnoreCase)
 			: highHandWinners;
-		var allWinners = mainHandWinners.Union(sevensWinners).Union(showcaseWinners).ToHashSet(StringComparer.OrdinalIgnoreCase);
+		var allWinners = mainHandWinners.Union(sevensWinners).Union(showcaseWinners)
+			.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 		var allLosers = isKingsAndLows
 			? gamePlayers.Where(gp => !gp.HasFolded && !highHandWinners.Contains(gp.Player.Name))
@@ -1711,10 +1763,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var bobBarkerDealerCard = isBobBarker
 			? await _context.GameCards
 				.Where(c => c.GameId == game.Id
-					&& c.HandNumber == game.CurrentHandNumber
-					&& c.Location == CardLocation.Community
-					&& c.GamePlayerId == null
-					&& !c.IsDiscarded)
+				            && c.HandNumber == game.CurrentHandNumber
+				            && c.Location == CardLocation.Community
+				            && c.GamePlayerId == null
+				            && !c.IsDiscarded)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.FirstOrDefaultAsync(cancellationToken)
@@ -1746,7 +1798,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					? BobBarkerVariantState.GetSelectedShowcaseDealOrder(gp)
 					: null;
 				var showcaseCard = isBobBarker && selectedShowcaseDealOrder.HasValue
-					? gp.Cards.FirstOrDefault(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber && c.DealOrder == selectedShowcaseDealOrder.Value)
+					? gp.Cards.FirstOrDefault(c =>
+						!c.IsDiscarded && c.HandNumber == game.CurrentHandNumber &&
+						c.DealOrder == selectedShowcaseDealOrder.Value)
 					: null;
 
 				return new ShowdownPlayerResultDto
@@ -1755,7 +1809,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					PlayerFirstName = GetPlayerFirstName(gp, userProfilesByEmail),
 					SeatPosition = gp.SeatPosition,
 					HandRanking = handRanking,
-					HandDescription = isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase)
+					HandDescription = isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED",
+						StringComparison.OrdinalIgnoreCase)
 						? "Dead Hand (The Ugly)"
 						: playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
 							? HandDescriptionFormatter.GetHandDescription(e.hand)
@@ -1781,11 +1836,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						},
 					ShowcaseCardValue = showcaseCard is null
 						? null
-						: GetBobBarkerCardValue(showcaseCard.Symbol, bobBarkerDealerCard?.Symbol == Entities.CardSymbol.Ace),
+						: GetBobBarkerCardValue(showcaseCard.Symbol, bobBarkerDealerCard?.Symbol == CardSymbol.Ace),
 					Cards = OrderCardsForDisplay(
 							gp.Cards.Where(c => !c.IsDiscarded
-								&& c.HandNumber == game.CurrentHandNumber
-								&& (!isBobBarker || selectedShowcaseDealOrder is null || c.DealOrder != selectedShowcaseDealOrder.Value)),
+							                    && c.HandNumber == game.CurrentHandNumber
+							                    && (!isBobBarker || selectedShowcaseDealOrder is null ||
+							                        c.DealOrder != selectedShowcaseDealOrder.Value)),
 							isStudStyleShowdown)
 						.Select(c => new CardPublicDto
 						{
@@ -1848,7 +1904,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						Suit = GetCardSuitString(bobBarkerDealerCard.Suit),
 						DealOrder = bobBarkerDealerCard.DealOrder
 					},
-					DealerCardValue = GetBobBarkerCardValue(bobBarkerDealerCard.Symbol, bobBarkerDealerCard.Symbol == Entities.CardSymbol.Ace),
+					DealerCardValue = GetBobBarkerCardValue(bobBarkerDealerCard.Symbol,
+						bobBarkerDealerCard.Symbol == CardSymbol.Ace),
 					MainHandWinners = mainHandWinners.OrderBy(name => name).ToList(),
 					ShowcaseWinners = showcaseWinners.OrderBy(name => name).ToList()
 				}
@@ -1856,9 +1913,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		};
 	}
 
-	private static int GetBobBarkerCardValue(Entities.CardSymbol symbol, bool aceHigh)
+	private static int GetBobBarkerCardValue(CardSymbol symbol, bool aceHigh)
 	{
-		if (symbol == Entities.CardSymbol.Ace)
+		if (symbol == CardSymbol.Ace)
 		{
 			return aceHigh ? 14 : 1;
 		}
@@ -1907,9 +1964,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			// the new pot is created with HandNumber = CurrentHandNumber + 1.
 			// When the game is in Complete phase or paused for chip check,
 			// we need to show the pot for the UPCOMING hand, not the current hand.
-			var isWaitingForNextHand = game.CurrentPhase == "Complete" || 
-									   game.CurrentPhase == "PotMatching" ||
-									   game.IsPausedForChipCheck;
+			var isWaitingForNextHand = game.CurrentPhase == "Complete" ||
+			                           game.CurrentPhase == "PotMatching" ||
+			                           game.IsPausedForChipCheck;
 
 			var targetHandNumber = isWaitingForNextHand ? handNumber + 1 : handNumber;
 
@@ -1944,7 +2001,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsScrewYourNeighborGame(string? gameCode)
 	{
-		return string.Equals(gameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
+		return string.Equals(gameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static bool IsInBetweenGame(string? gameCode)
@@ -1960,10 +2018,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		var deckCards = await _context.GameCards
 			.Where(c => c.GameId == game.Id &&
-						c.HandNumber == game.CurrentHandNumber &&
-						!c.IsDiscarded &&
-						c.GamePlayerId == null &&
-						c.Location == CardLocation.Board)
+			            c.HandNumber == game.CurrentHandNumber &&
+			            !c.IsDiscarded &&
+			            c.GamePlayerId == null &&
+			            c.Location == CardLocation.Board)
 			.OrderBy(c => c.DealOrder)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
@@ -2019,43 +2077,43 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			deckWins ? [playerName] : null);
 	}
 
-	private static string MapSymbolToRank(Entities.CardSymbol symbol)
+	private static string MapSymbolToRank(CardSymbol symbol)
 	{
 		return symbol switch
 		{
-			Entities.CardSymbol.Ace => "A",
-			Entities.CardSymbol.King => "K",
-			Entities.CardSymbol.Queen => "Q",
-			Entities.CardSymbol.Jack => "J",
-			Entities.CardSymbol.Ten => "10",
-			Entities.CardSymbol.Nine => "9",
-			Entities.CardSymbol.Eight => "8",
-			Entities.CardSymbol.Seven => "7",
-			Entities.CardSymbol.Six => "6",
-			Entities.CardSymbol.Five => "5",
-			Entities.CardSymbol.Four => "4",
-			Entities.CardSymbol.Three => "3",
-			Entities.CardSymbol.Deuce => "2",
+			CardSymbol.Ace => "A",
+			CardSymbol.King => "K",
+			CardSymbol.Queen => "Q",
+			CardSymbol.Jack => "J",
+			CardSymbol.Ten => "10",
+			CardSymbol.Nine => "9",
+			CardSymbol.Eight => "8",
+			CardSymbol.Seven => "7",
+			CardSymbol.Six => "6",
+			CardSymbol.Five => "5",
+			CardSymbol.Four => "4",
+			CardSymbol.Three => "3",
+			CardSymbol.Deuce => "2",
 			_ => symbol.ToString()
 		};
 	}
 
-	private static string GetCardSuitString(Entities.CardSuit suit)
+	private static string GetCardSuitString(CardSuit suit)
 	{
 		return suit switch
 		{
-			Entities.CardSuit.Hearts => "Hearts",
-			Entities.CardSuit.Diamonds => "Diamonds",
-			Entities.CardSuit.Spades => "Spades",
-			Entities.CardSuit.Clubs => "Clubs",
+			CardSuit.Hearts => "Hearts",
+			CardSuit.Diamonds => "Diamonds",
+			CardSuit.Spades => "Spades",
+			CardSuit.Clubs => "Clubs",
 			_ => suit.ToString()
 		};
 	}
 
 	/// <summary>
-	/// Retrieves hand history entries for the dashboard.
+	///     Retrieves hand history entries for the dashboard.
 	/// </summary>
-	private async Task<List<CardGames.Contracts.SignalR.HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
+	private async Task<List<HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
 		Guid gameId,
 		Guid? currentUserPlayerId,
 		int take,
@@ -2063,14 +2121,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		var histories = await _context.HandHistories
 			.Include(h => h.Winners)
-				.ThenInclude(w => w.Player)
+			.ThenInclude(w => w.Player)
 			.Include(h => h.PlayerResults)
 			.Where(h => h.GameId == gameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
 			.Take(take)
 			.AsSplitQuery()
 			.AsNoTracking()
-				.ToListAsync(cancellationToken);
+			.ToListAsync(cancellationToken);
 
 		// Get all player IDs from the histories
 		var allPlayerIds = histories
@@ -2079,7 +2137,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Distinct()
 			.ToList();
 
-		_logger.LogInformation("[HANDHISTORY-NAMES] Loading player names/emails for {PlayerCount} player IDs: {PlayerIds}",
+		_logger.LogInformation(
+			"[HANDHISTORY-NAMES] Loading player names/emails for {PlayerCount} player IDs: {PlayerIds}",
 			allPlayerIds.Count, string.Join(", ", allPlayerIds.Take(5)));
 
 		// Load all players separately to get Names and Emails
@@ -2089,17 +2148,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Select(p => new { p.Id, p.Name, p.Email })
 			.ToListAsync(cancellationToken);
 
-		var playersByIdLookup = playersData.ToDictionary(p => p.Id, p => (Name: p.Name, Email: p.Email));
+		var playersByIdLookup = playersData.ToDictionary(p => p.Id, p => (p.Name, p.Email));
 
-		_logger.LogInformation("[HANDHISTORY-NAMES] Loaded {PlayerCount} player names from Players table", playersByIdLookup.Count);
+		_logger.LogInformation("[HANDHISTORY-NAMES] Loaded {PlayerCount} player names from Players table",
+			playersByIdLookup.Count);
 		foreach (var kvp in playersByIdLookup)
 		{
-			_logger.LogInformation("[HANDHISTORY-NAMES] Player {PlayerId} -> Name: '{PlayerName}', Email: '{Email}'", kvp.Key, kvp.Value.Name, kvp.Value.Email);
+			_logger.LogInformation("[HANDHISTORY-NAMES] Player {PlayerId} -> Name: '{PlayerName}', Email: '{Email}'",
+				kvp.Key, kvp.Value.Name, kvp.Value.Email);
 		}
 
 		// Cards are now stored in HandHistoryPlayerResult.ShowdownCards (JSON)
 		// No need to query GameCards table
-		_logger.LogInformation("[HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult");
+		_logger.LogInformation(
+			"[HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult");
 
 		var allEmails = playersData
 			.Select(p => p.Email)
@@ -2116,12 +2178,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.Select(u => new { Email = u.Email!, u.FirstName })
 				.ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
-		_logger.LogInformation("GetHandHistoryEntriesAsync: Found {Count} histories for game {GameId}, currentUserPlayerId={PlayerId}",
+		_logger.LogInformation(
+			"GetHandHistoryEntriesAsync: Found {Count} histories for game {GameId}, currentUserPlayerId={PlayerId}",
 			histories.Count, gameId, currentUserPlayerId);
 
 		return histories.Select(h =>
 		{
-			_logger.LogInformation("HandHistory {HandNumber}: Winners.Count={WinnerCount}, PlayerResults.Count={PlayerResultCount}",
+			_logger.LogInformation(
+				"HandHistory {HandNumber}: Winners.Count={WinnerCount}, PlayerResults.Count={PlayerResultCount}",
 				h.HandNumber, h.Winners.Count, h.PlayerResults.Count);
 
 			// Get winner display
@@ -2131,8 +2195,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var email = firstWinner.Player.Email;
 
 				if (!string.IsNullOrWhiteSpace(email) &&
-					userFirstNamesByEmail.TryGetValue(email, out var firstName) &&
-					!string.IsNullOrWhiteSpace(firstName))
+				    userFirstNamesByEmail.TryGetValue(email, out var firstName) &&
+				    !string.IsNullOrWhiteSpace(firstName))
 				{
 					return firstName;
 				}
@@ -2147,7 +2211,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				_ => $"{GetWinnerFirstNameOrFallback()} +{h.Winners.Count - 1}"
 			};
 
-			_logger.LogInformation("HandHistory {HandNumber}: winnerDisplay='{WinnerDisplay}'", h.HandNumber, winnerDisplay);
+			_logger.LogInformation("HandHistory {HandNumber}: winnerDisplay='{WinnerDisplay}'", h.HandNumber,
+				winnerDisplay);
 
 			var totalWinnings = h.Winners.Sum(w => w.AmountWon);
 
@@ -2162,16 +2227,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 					// Try getting first name (real name) via email if available
 					if (foundInLookup &&
-						!string.IsNullOrWhiteSpace(playerInfo.Email) &&
-						userFirstNamesByEmail.TryGetValue(playerInfo.Email, out var firstName) &&
-						!string.IsNullOrWhiteSpace(firstName))
+					    !string.IsNullOrWhiteSpace(playerInfo.Email) &&
+					    userFirstNamesByEmail.TryGetValue(playerInfo.Email, out var firstName) &&
+					    !string.IsNullOrWhiteSpace(firstName))
 					{
 						playerName = firstName;
 					}
 
 					if (!foundInLookup)
 					{
-						_logger.LogWarning("[HANDHISTORY-NAMES] Player ID {PlayerId} not found in lookup, using stored name: '{StoredName}'",
+						_logger.LogWarning(
+							"[HANDHISTORY-NAMES] Player ID {PlayerId} not found in lookup, using stored name: '{StoredName}'",
 							pr.PlayerId, pr.PlayerName);
 					}
 
@@ -2181,31 +2247,36 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					{
 						try
 						{
-							visibleCards = System.Text.Json.JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
+							visibleCards = JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
 							if (visibleCards != null && visibleCards.Any())
 							{
-								_logger.LogInformation("[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards from ShowdownCards: {Cards}",
-									h.HandNumber, playerName, pr.SeatPosition, visibleCards.Count, string.Join(", ", visibleCards));
+								_logger.LogInformation(
+									"[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards from ShowdownCards: {Cards}",
+									h.HandNumber, playerName, pr.SeatPosition, visibleCards.Count,
+									string.Join(", ", visibleCards));
 							}
 							else
 							{
-								_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): ShowdownCards deserialized but empty",
+								_logger.LogWarning(
+									"[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): ShowdownCards deserialized but empty",
 									h.HandNumber, playerName, pr.SeatPosition);
 							}
 						}
-						catch (System.Text.Json.JsonException ex)
+						catch (JsonException ex)
 						{
-							_logger.LogError(ex, "[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}': Failed to deserialize ShowdownCards: {Json}",
+							_logger.LogError(ex,
+								"[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}': Failed to deserialize ShowdownCards: {Json}",
 								h.HandNumber, playerName, pr.ShowdownCards);
 						}
 					}
 					else if (pr.ReachedShowdown)
 					{
-						_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but ShowdownCards is null/empty",
+						_logger.LogWarning(
+							"[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but ShowdownCards is null/empty",
 							h.HandNumber, playerName, pr.SeatPosition, pr.PlayerId);
 					}
 
-					return new CardGames.Contracts.SignalR.PlayerHandResultDto
+					return new PlayerHandResultDto
 					{
 						PlayerId = pr.PlayerId,
 						PlayerName = playerName,
@@ -2219,14 +2290,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				})
 				.ToList();
 
-			return new CardGames.Contracts.SignalR.HandHistoryEntryDto
+			return new HandHistoryEntryDto
 			{
 				HandNumber = h.HandNumber,
 				CompletedAtUtc = h.CompletedAtUtc,
 				WinnerName = winnerDisplay,
 				AmountWon = totalWinnings,
 				WinningHandDescription = h.WinningHandDescription,
-				WonByFold = h.EndReason == Data.Entities.HandEndReason.FoldedToWinner,
+				WonByFold = h.EndReason == HandEndReason.FoldedToWinner,
 				WinnerCount = h.Winners.Count,
 				PlayerResults = playerResults
 			};
@@ -2234,7 +2305,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the drawing configuration DTO from game rules.
+	///     Builds the drawing configuration DTO from game rules.
 	/// </summary>
 	private static DrawingConfigDto? BuildDrawingConfigDto(GameRules? rules)
 	{
@@ -2253,11 +2324,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the special rules DTO from game rules, with dynamic wild card computation for Follow the Queen.
+	///     Builds the special rules DTO from game rules, with dynamic wild card computation for Follow the Queen.
 	/// </summary>
 	private async Task<GameSpecialRulesDto?> BuildSpecialRulesDtoAsync(
 		GameRules? rules,
-		Entities.Game game,
+		Game game,
 		CancellationToken cancellationToken)
 	{
 		if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0)
@@ -2265,10 +2336,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			return null;
 		}
 
-		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
-		var isPairPressure = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase);
-		var isKlondike = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase);
-		var isGoodBadUgly = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode, StringComparison.OrdinalIgnoreCase);
+		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode,
+			StringComparison.OrdinalIgnoreCase);
+		var isPairPressure = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode,
+			StringComparison.OrdinalIgnoreCase);
+		var isKlondike = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode,
+			StringComparison.OrdinalIgnoreCase);
+		var isGoodBadUgly = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode,
+			StringComparison.OrdinalIgnoreCase);
 
 		// Dynamic-wild stud variants compute their active wild ranks from face-up cards.
 		IReadOnlyList<string>? dynamicWildRanks = null;
@@ -2304,11 +2379,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Computes the current wild card ranks for Follow the Queen based on face-up cards dealt so far.
-	/// Queens are always wild. The rank following the last face-up Queen is also wild.
+	///     Computes the current wild card ranks for Follow the Queen based on face-up cards dealt so far.
+	///     Queens are always wild. The rank following the last face-up Queen is also wild.
 	/// </summary>
 	private async Task<IReadOnlyList<string>> ComputeFollowTheQueenWildRanksAsync(
-		Entities.Game game,
+		Game game,
 		CancellationToken cancellationToken)
 	{
 		var sortedFaceUpCards = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
@@ -2334,7 +2409,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		if (followingWildSymbol.HasValue)
 		{
-			var followRank = MapSymbolToRank((Entities.CardSymbol)followingWildSymbol.Value);
+			var followRank = MapSymbolToRank((CardSymbol)followingWildSymbol.Value);
 			if (followRank is not null)
 			{
 				wildRanks.Add(followRank);
@@ -2345,34 +2420,33 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	private async Task<IReadOnlyList<string>> ComputePairPressureWildRanksAsync(
-		Entities.Game game,
+		Game game,
 		CancellationToken cancellationToken)
 	{
 		var sortedFaceUpCards = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
 		var wildRanks = new PairPressureWildCardRules()
 			.DetermineWildRanks(sortedFaceUpCards)
-			.Select(rank => MapSymbolToRank((Entities.CardSymbol)rank))
+			.Select(rank => MapSymbolToRank((CardSymbol)rank))
 			.Where(rank => rank is not null)
-			.Cast<string>()
 			.ToList();
 
 		return wildRanks;
 	}
 
 	/// <summary>
-	/// Computes the current wild card rank for Klondike.
-	/// When the Klondike Card is revealed, all cards of that rank are wild.
-	/// Returns empty if the card has not been revealed yet.
+	///     Computes the current wild card rank for Klondike.
+	///     When the Klondike Card is revealed, all cards of that rank are wild.
+	///     Returns empty if the card has not been revealed yet.
 	/// </summary>
 	private async Task<IReadOnlyList<string>> ComputeKlondikeWildRanksAsync(
-		Entities.Game game,
+		Game game,
 		CancellationToken cancellationToken)
 	{
 		var klondikeCard = await _context.GameCards
 			.Where(c => c.GameId == game.Id
-				&& c.HandNumber == game.CurrentHandNumber
-				&& c.DealtAtPhase == "KlondikeCard"
-				&& c.IsVisible)
+			            && c.HandNumber == game.CurrentHandNumber
+			            && c.DealtAtPhase == "KlondikeCard"
+			            && c.IsVisible)
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
 
@@ -2386,19 +2460,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Computes the current wild card rank for Good Bad Ugly.
-	/// When The Good card is revealed, all cards of that rank are wild.
-	/// Returns empty if The Good card has not been revealed yet.
+	///     Computes the current wild card rank for Good Bad Ugly.
+	///     When The Good card is revealed, all cards of that rank are wild.
+	///     Returns empty if The Good card has not been revealed yet.
 	/// </summary>
 	private async Task<IReadOnlyList<string>> ComputeGoodBadUglyWildRanksAsync(
-		Entities.Game game,
+		Game game,
 		CancellationToken cancellationToken)
 	{
 		var goodCard = await _context.GameCards
 			.Where(c => c.GameId == game.Id
-				&& c.HandNumber == game.CurrentHandNumber
-				&& c.DealtAtPhase == "TheGood"
-				&& c.IsVisible)
+			            && c.HandNumber == game.CurrentHandNumber
+			            && c.DealtAtPhase == "TheGood"
+			            && c.IsVisible)
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
 
@@ -2412,7 +2486,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the special rules DTO from game rules (static version for non-dynamic games).
+	///     Builds the special rules DTO from game rules (static version for non-dynamic games).
 	/// </summary>
 	private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
 	{
@@ -2436,11 +2510,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds structured wild card rules from game rules.
+	///     Builds structured wild card rules from game rules.
 	/// </summary>
 	/// <param name="rules">The game rules.</param>
 	/// <param name="dynamicWildRanks">Optional pre-computed wild ranks for dynamic wild card games (e.g., Follow the Queen).</param>
-	private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules, IReadOnlyList<string>? dynamicWildRanks = null)
+	private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules,
+		IReadOnlyList<string>? dynamicWildRanks = null)
 	{
 		if (rules?.SpecialRules is null || !rules.SpecialRules.TryGetValue("WildCards", out var wildCardsValue))
 		{
@@ -2453,25 +2528,30 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var lowestCardIsWild = false;
 
 		// Parse known patterns into structured rules based on game type
-		if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode, StringComparison.OrdinalIgnoreCase))
+		if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode,
+			    StringComparison.OrdinalIgnoreCase))
 		{
 			wildRanks.AddRange(["2", "J"]);
 			specificCards.Add("KD"); // King of Diamonds
 		}
-		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase))
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.BaseballCode,
+			         StringComparison.OrdinalIgnoreCase))
 		{
 			wildRanks.AddRange(["3", "9"]);
 		}
-		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode, StringComparison.OrdinalIgnoreCase))
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode,
+			         StringComparison.OrdinalIgnoreCase))
 		{
 			wildRanks.AddRange(["3", "9"]);
 		}
-		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase))
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode,
+			         StringComparison.OrdinalIgnoreCase))
 		{
 			wildRanks.Add("K");
 			lowestCardIsWild = true;
 		}
-		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase))
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode,
+			         StringComparison.OrdinalIgnoreCase))
 		{
 			// Follow the Queen: Queens are always wild, plus the dynamic "follow" rank
 			if (dynamicWildRanks is { Count: > 0 })
@@ -2483,21 +2563,24 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				wildRanks.Add("Q"); // Fallback: at minimum Queens are always wild
 			}
 		}
-		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase))
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode,
+			         StringComparison.OrdinalIgnoreCase))
 		{
 			if (dynamicWildRanks is { Count: > 0 })
 			{
 				wildRanks.AddRange(dynamicWildRanks);
 			}
 		}
-		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase))
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode,
+			         StringComparison.OrdinalIgnoreCase))
 		{
 			if (dynamicWildRanks is { Count: > 0 })
 			{
 				wildRanks.AddRange(dynamicWildRanks);
 			}
 		}
-		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode, StringComparison.OrdinalIgnoreCase))
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode,
+			         StringComparison.OrdinalIgnoreCase))
 		{
 			if (dynamicWildRanks is { Count: > 0 })
 			{
@@ -2515,7 +2598,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the Player vs Deck state for games where only one player stayed.
+	///     Builds the Player vs Deck state for games where only one player stayed.
 	/// </summary>
 	private async Task<PlayerVsDeckStateDto?> BuildPlayerVsDeckStateAsync(
 		Game game,
@@ -2533,17 +2616,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// The deck's hand is stored as cards with no GamePlayerId and Location = Board
 		var deckCards = await _context.GameCards
 			.Where(gc => gc.GameId == game.Id
-					 && gc.GamePlayerId == null
-					 && gc.HandNumber == game.CurrentHandNumber
-					 && gc.Location == Entities.CardLocation.Board
-					 && !gc.IsDiscarded)
+			             && gc.GamePlayerId == null
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Board
+			             && !gc.IsDiscarded)
 			.OrderBy(gc => gc.DealOrder)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
 		// Find the staying player
 		var stayingPlayer = gamePlayers
-			.FirstOrDefault(gp => gp.DropOrStayDecision == Entities.DropOrStayDecision.Stay);
+			.FirstOrDefault(gp => gp.DropOrStayDecision == DropOrStayDecision.Stay);
 
 		if (stayingPlayer is null)
 		{
@@ -2561,9 +2644,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Try dealer first (must be active, not sitting out, and not the staying player)
 		var dealer = orderedPlayers.FirstOrDefault(gp => gp.SeatPosition == dealerSeatPosition);
 		if (dealer is not null &&
-			dealer.PlayerId != stayingPlayer.PlayerId &&
-			dealer.Status == Entities.GamePlayerStatus.Active &&
-			!dealer.IsSittingOut)
+		    dealer.PlayerId != stayingPlayer.PlayerId &&
+		    dealer.Status == GamePlayerStatus.Active &&
+		    !dealer.IsSittingOut)
 		{
 			decisionMaker = dealer;
 		}
@@ -2580,8 +2663,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var nextIndex = (dealerIndex + i) % orderedPlayers.Count;
 				var candidate = orderedPlayers[nextIndex];
 				if (candidate.PlayerId != stayingPlayer.PlayerId &&
-					candidate.Status == Entities.GamePlayerStatus.Active &&
-					!candidate.IsSittingOut)
+				    candidate.Status == GamePlayerStatus.Active &&
+				    !candidate.IsSittingOut)
 				{
 					decisionMaker = candidate;
 					break;
@@ -2595,7 +2678,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Get decision maker's first name from user profile
 		string? decisionMakerFirstName = null;
 		if (!string.IsNullOrWhiteSpace(decisionMaker.Player?.Email) &&
-			userProfilesByEmail.TryGetValue(decisionMaker.Player.Email, out var profile))
+		    userProfilesByEmail.TryGetValue(decisionMaker.Player.Email, out var profile))
 		{
 			decisionMakerFirstName = profile.FirstName;
 		}
@@ -2608,10 +2691,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Get the staying player's cards
 		var stayingPlayerCards = await _context.GameCards
 			.Where(gc => gc.GameId == game.Id
-					 && gc.GamePlayerId == stayingPlayer.Id
-					 && gc.HandNumber == game.CurrentHandNumber
-					 && gc.Location == Entities.CardLocation.Hand
-					 && !gc.IsDiscarded)
+			             && gc.GamePlayerId == stayingPlayer.Id
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Hand
+			             && !gc.IsDiscarded)
 			.OrderBy(gc => gc.DealtAt)
 			.ThenBy(gc => gc.DealOrder)
 			.AsNoTracking()
@@ -2691,7 +2774,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			IsMyTurnToDecide = game.CurrentPlayerIndex == gamePlayer.SeatPosition,
 			HasDecidedThisRound = gamePlayer.DropOrStayDecision.HasValue &&
-										  gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
+			                      gamePlayer.DropOrStayDecision.Value != DropOrStayDecision.Undecided,
 			Decision = gamePlayer.DropOrStayDecision?.ToString()
 		};
 	}
@@ -2699,7 +2782,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private BuyCardOfferPrivateDto? BuildBuyCardOfferPrivateDto(Game game, GamePlayer gamePlayer)
 	{
 		if (!IsBaseballGame(game.GameType?.Code) ||
-			!string.Equals(game.CurrentPhase, nameof(Phases.BuyCardOffer), StringComparison.OrdinalIgnoreCase))
+		    !string.Equals(game.CurrentPhase, nameof(Phases.BuyCardOffer), StringComparison.OrdinalIgnoreCase))
 		{
 			return null;
 		}
@@ -2738,11 +2821,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	private async Task<TollboothOfferPrivateDto?> BuildTollboothOfferPrivateDto(
-		Entities.Game game, GamePlayer gamePlayer, CancellationToken cancellationToken)
+		Game game, GamePlayer gamePlayer, CancellationToken cancellationToken)
 	{
 		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
 		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.TollboothCode, StringComparison.OrdinalIgnoreCase)
-			|| !string.Equals(game.CurrentPhase, nameof(Phases.TollboothOffer), StringComparison.OrdinalIgnoreCase))
+		    || !string.Equals(game.CurrentPhase, nameof(Phases.TollboothOffer), StringComparison.OrdinalIgnoreCase))
 		{
 			return null;
 		}
@@ -2751,10 +2834,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		var displayCards = await _context.GameCards
 			.Where(c => c.GameId == game.Id
-						&& c.Location == CardLocation.Community
-						&& c.GamePlayerId == null
-						&& c.HandNumber == game.CurrentHandNumber
-						&& !c.IsDiscarded)
+			            && c.Location == CardLocation.Community
+			            && c.GamePlayerId == null
+			            && c.HandNumber == game.CurrentHandNumber
+			            && !c.IsDiscarded)
 			.OrderBy(c => c.DealOrder)
 			.AsNoTracking()
 			.Select(c => new CardPublicDto
@@ -2769,8 +2852,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new TollboothOfferPrivateDto
 		{
 			IsMyTurnToChoose = game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition
-							   && !gamePlayer.HasFolded
-							   && !gamePlayer.HasDrawnThisRound,
+			                   && !gamePlayer.HasFolded
+			                   && !gamePlayer.HasDrawnThisRound,
 			HasChosenThisRound = gamePlayer.HasDrawnThisRound,
 			FurthestCost = 0,
 			NearestCost = ante,
@@ -2780,11 +2863,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the chip history DTO for a player from hand history data.
+	///     Builds the chip history DTO for a player from hand history data.
 	/// </summary>
 	private ChipHistoryDto BuildChipHistory(
 		GamePlayer gamePlayer,
-		IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory,
+		IReadOnlyList<HandHistoryEntryDto> handHistory,
 		int cashierBalance)
 	{
 		var entries = new List<ChipHistoryEntryDto>();
@@ -2814,7 +2897,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// use the player's actual starting chips to show the true baseline before any antes or bets.
 		// Otherwise, calculate backwards from current stack.
 		var isFirstHandInWindow = recentHands.FirstOrDefault()?.HandNumber == 1;
-		var windowStartStack = (recentHands.Count == 0 || isFirstHandInWindow)
+		var windowStartStack = recentHands.Count == 0 || isFirstHandInWindow
 			? gamePlayer.StartingChips
 			: currentStack - totalDeltaInWindow;
 
@@ -2860,8 +2943,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the All-In Runout state for games where all players went all-in
-	/// and remaining streets were dealt without betting.
+	///     Builds the All-In Runout state for games where all players went all-in
+	///     and remaining streets were dealt without betting.
 	/// </summary>
 	private async Task<AllInRunoutStateDto?> BuildAllInRunoutStateAsync(
 		Game game,
@@ -2887,14 +2970,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			// Check for allInRunout flag
 			if (!root.TryGetProperty("allInRunout", out var allInRunoutProp) ||
-				!allInRunoutProp.GetBoolean())
+			    !allInRunoutProp.GetBoolean())
 			{
 				return null;
 			}
 
 			// Verify this is for the current hand
 			if (root.TryGetProperty("runoutHandNumber", out var handNumberProp) &&
-				handNumberProp.GetInt32() != game.CurrentHandNumber)
+			    handNumberProp.GetInt32() != game.CurrentHandNumber)
 			{
 				return null;
 			}
@@ -2902,7 +2985,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			// Get the streets that were dealt during the runout
 			var runoutStreets = new List<string>();
 			if (root.TryGetProperty("runoutStreets", out var streetsProp) &&
-				streetsProp.ValueKind == JsonValueKind.Array)
+			    streetsProp.ValueKind == JsonValueKind.Array)
 			{
 				foreach (var street in streetsProp.EnumerateArray())
 				{
@@ -2921,7 +3004,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			{
 				var timestampStr = timestampProp.GetString();
 				if (!string.IsNullOrEmpty(timestampStr) &&
-					DateTimeOffset.TryParse(timestampStr, out var parsed))
+				    DateTimeOffset.TryParse(timestampStr, out var parsed))
 				{
 					runoutTimestamp = parsed;
 				}
@@ -2941,11 +3024,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				// Get cards dealt during the runout streets for this player
 				var runoutCards = await _context.GameCards
 					.Where(gc => gc.GameId == game.Id
-							 && gc.GamePlayerId == player.Id
-							 && gc.HandNumber == game.CurrentHandNumber
-							 && gc.DealtAtPhase != null
-							 && runoutStreets.Contains(gc.DealtAtPhase)
-							 && !gc.IsDiscarded)
+					             && gc.GamePlayerId == player.Id
+					             && gc.HandNumber == game.CurrentHandNumber
+					             && gc.DealtAtPhase != null
+					             && runoutStreets.Contains(gc.DealtAtPhase)
+					             && !gc.IsDiscarded)
 					.OrderBy(gc => gc.DealtAt)
 					.ThenBy(gc => gc.DealOrder)
 					.AsNoTracking()
@@ -2965,17 +3048,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			// Map street names to friendly descriptions
 			var streetDescriptions = new Dictionary<string, string>
-									{
-										{ "FourthStreet", "Fourth Street" },
-										{ "FifthStreet", "Fifth Street" },
-										{ "SixthStreet", "Sixth Street" },
-										{ "SeventhStreet", "Seventh Street (River)" }
-									};
+			{
+				{ "FourthStreet", "Fourth Street" },
+				{ "FifthStreet", "Fifth Street" },
+				{ "SixthStreet", "Sixth Street" },
+				{ "SeventhStreet", "Seventh Street (River)" }
+			};
 
 			var currentStreet = runoutStreets.LastOrDefault();
-			var currentStreetDescription = currentStreet != null && streetDescriptions.TryGetValue(currentStreet, out var desc)
-				? desc
-				: currentStreet;
+			var currentStreetDescription =
+				currentStreet != null && streetDescriptions.TryGetValue(currentStreet, out var desc)
+					? desc
+					: currentStreet;
 
 			return new AllInRunoutStateDto
 			{
@@ -2997,7 +3081,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the chip check pause state for Kings and Lows games.
+	///     Builds the chip check pause state for Kings and Lows games.
 	/// </summary>
 	private static ChipCheckPauseStateDto? BuildChipCheckPauseState(
 		Game game,
@@ -3012,28 +3096,30 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isRebuyGracePause = game.IsPausedForRebuyGrace;
 		var shortPlayers = isRebuyGracePause
 			? gamePlayers
-				.Where(gp => gp.Status is Entities.GamePlayerStatus.Active or Entities.GamePlayerStatus.SittingOut &&
-							 gp.LeftAtHandNumber == -1 &&
-							 gp.ChipStack <= 0)
+				.Where(gp => gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
+				             gp.LeftAtHandNumber == -1 &&
+				             gp.ChipStack <= 0)
 				.Select(gp => new ShortPlayerDto
 				{
 					SeatIndex = gp.SeatPosition,
 					PlayerName = gp.Player?.Name ?? $"Seat {gp.SeatPosition}",
-					PlayerFirstName = gp.Player?.Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(),
+					PlayerFirstName = gp.Player?.Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+						.FirstOrDefault(),
 					CurrentChips = gp.ChipStack,
 					ChipsNeeded = Math.Max(1, (game.Ante ?? 0) - gp.ChipStack)
 				})
 				.ToList()
 			: gamePlayers
-				.Where(gp => gp.Status == Entities.GamePlayerStatus.Active &&
-							 !gp.IsSittingOut &&
-							 gp.ChipStack < currentPot &&
-							 !gp.AutoDropOnDropOrStay)
+				.Where(gp => gp.Status == GamePlayerStatus.Active &&
+				             !gp.IsSittingOut &&
+				             gp.ChipStack < currentPot &&
+				             !gp.AutoDropOnDropOrStay)
 				.Select(gp => new ShortPlayerDto
 				{
 					SeatIndex = gp.SeatPosition,
 					PlayerName = gp.Player?.Name ?? $"Seat {gp.SeatPosition}",
-					PlayerFirstName = gp.Player?.Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(),
+					PlayerFirstName = gp.Player?.Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+						.FirstOrDefault(),
 					CurrentChips = gp.ChipStack,
 					ChipsNeeded = currentPot - gp.ChipStack
 				})
@@ -3051,34 +3137,37 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Gets the deal order for a Seven Card Stud street phase.
-	/// Used to ensure consistent card ordering based on when cards were dealt during the hand.
+	///     Gets the deal order for a Seven Card Stud street phase.
+	///     Used to ensure consistent card ordering based on when cards were dealt during the hand.
 	/// </summary>
 	/// <param name="phase">The street/phase name (e.g., "ThirdStreet", "FourthStreet").</param>
 	/// <returns>A numeric order value (1-5 for streets, 99 for unknown phases).</returns>
-	private static int GetStreetPhaseOrder(string? phase) => phase switch
+	private static int GetStreetPhaseOrder(string? phase)
 	{
-		"ThirdStreet" => 1,
-		"FourthStreet" => 2,
-		"FifthStreet" => 3,
-		"SixthStreet" => 4,
-		"SeventhStreet" => 5,
-		_ => 99 // Unknown phases sort last, not first
-	};
+		return phase switch
+		{
+			"ThirdStreet" => 1,
+			"FourthStreet" => 2,
+			"FifthStreet" => 3,
+			"SixthStreet" => 4,
+			"SeventhStreet" => 5,
+			_ => 99 // Unknown phases sort last, not first
+		};
+	}
 
 	/// <summary>
-	/// Retrieves face-up cards ordered correctly for Follow The Queen wild card determination.
-	/// Accounts for dealing order relative to the Dealer button (Student dealing rotation).
+	///     Retrieves face-up cards ordered correctly for Follow The Queen wild card determination.
+	///     Accounts for dealing order relative to the Dealer button (Student dealing rotation).
 	/// </summary>
 	private async Task<List<Card>> GetOrderedFaceUpCardsAsync(
-		Entities.Game game,
+		Game game,
 		CancellationToken cancellationToken)
 	{
 		var rawFaceUpCards = await _context.GameCards
 			.Where(c => c.GameId == game.Id &&
-						c.HandNumber == game.CurrentHandNumber &&
-						c.IsVisible &&
-						!c.IsDiscarded)
+			            c.HandNumber == game.CurrentHandNumber &&
+			            c.IsVisible &&
+			            !c.IsDiscarded)
 			.Include(c => c.GamePlayer)
 			.Select(c => new
 			{
@@ -3115,18 +3204,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Generates a unique "key" for sorting Seven Card Stud cards.
+	///     Generates a unique "key" for sorting Seven Card Stud cards.
 	/// </summary>
 	/// <remarks>
-	/// Seven Card Stud display order:
-	/// - ThirdStreet: 2 hole cards (face down), then 1 board card (face up) = positions 1, 2, 3
-	/// - FourthStreet: 1 board card (face up) = position 4
-	/// - FifthStreet: 1 board card (face up) = position 5
-	/// - SixthStreet: 1 board card (face up) = position 6
-	/// - SeventhStreet: 1 hole card (face down) = position 7
-	/// 
-	/// This method uses Location to distinguish hole from board cards within ThirdStreet,
-	/// ensuring correct order even if DealOrder values are corrupted.
+	///     Seven Card Stud display order:
+	///     - ThirdStreet: 2 hole cards (face down), then 1 board card (face up) = positions 1, 2, 3
+	///     - FourthStreet: 1 board card (face up) = position 4
+	///     - FifthStreet: 1 board card (face up) = position 5
+	///     - SixthStreet: 1 board card (face up) = position 6
+	///     - SeventhStreet: 1 hole card (face down) = position 7
+	///     This method uses Location to distinguish hole from board cards within ThirdStreet,
+	///     ensuring correct order even if DealOrder values are corrupted.
 	/// </remarks>
 	private static bool IsStudGame(string? gameTypeCode)
 	{
@@ -3134,51 +3222,79 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	private static bool IsBaseballGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.BaseballCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.BaseballCode);
+	}
 
 	private static bool IsKingsAndLowsGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode);
+	}
 
 	private static bool IsFollowTheQueenGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode);
+	}
 
 	private static bool IsPairPressureGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.PairPressureCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.PairPressureCode);
+	}
 
 	private static bool IsTwosJacksAxeGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode);
+	}
 
 	private static bool IsGoodBadUglyGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode);
+	}
 
 	private static bool IsHoldEmGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode)
-		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode)
-		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.KlondikeCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode)
+		       || IsGameType(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode)
+		       || IsGameType(gameTypeCode, PokerGameMetadataRegistry.KlondikeCode);
+	}
 
 	private static bool IsHoldTheBaseballGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode);
+	}
 
 	private static bool IsOmahaGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.OmahaCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.OmahaCode);
+	}
 
 	private static bool IsNebraskaGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.NebraskaCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.NebraskaCode);
+	}
 
 	private static bool IsSouthDakotaGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.SouthDakotaCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.SouthDakotaCode);
+	}
 
 	private static bool IsIrishHoldEmGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode)
-		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode)
-		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode)
+		       || IsGameType(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode)
+		       || IsGameType(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode);
+	}
 
 	private static bool IsBobBarkerGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode);
+	{
+		return IsGameType(gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode);
+	}
 
 	private static bool IsGameType(string? gameTypeCode, string expectedCode)
-		=> !string.IsNullOrWhiteSpace(gameTypeCode) &&
-		   string.Equals(gameTypeCode, expectedCode, StringComparison.OrdinalIgnoreCase);
+	{
+		return !string.IsNullOrWhiteSpace(gameTypeCode) &&
+		       string.Equals(gameTypeCode, expectedCode, StringComparison.OrdinalIgnoreCase);
+	}
 
 	private static HandBase BuildDrawHandForGame(string? gameTypeCode, List<Card> playerCards)
 	{
@@ -3190,7 +3306,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new DrawHand(playerCards);
 	}
 
-	private async Task<string?> BuildStudVariantHandDescriptionAsync(Game game, GamePlayer gamePlayer, CancellationToken cancellationToken)
+	private async Task<string?> BuildStudVariantHandDescriptionAsync(Game game, GamePlayer gamePlayer,
+		CancellationToken cancellationToken)
 	{
 		var playerCardEntities = gamePlayer.Cards
 			.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
@@ -3219,15 +3336,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		if (IsFollowTheQueenGame(game.GameType?.Code))
 		{
-			return await EvaluateFollowTheQueenHandDescriptionAsync(game, holeCardEntities, initialHoleCards, boardCards, cancellationToken);
+			return await EvaluateFollowTheQueenHandDescriptionAsync(game, holeCardEntities, initialHoleCards,
+				boardCards, cancellationToken);
 		}
 
 		if (IsPairPressureGame(game.GameType?.Code))
 		{
-			return await EvaluatePairPressureHandDescriptionAsync(game, holeCardEntities, initialHoleCards, boardCards, cancellationToken);
+			return await EvaluatePairPressureHandDescriptionAsync(game, holeCardEntities, initialHoleCards, boardCards,
+				cancellationToken);
 		}
 
-		if (!string.IsNullOrWhiteSpace(game.GameType?.Code) && StudVariantEvaluators.TryGetValue(game.GameType.Code, out var evaluator))
+		if (!string.IsNullOrWhiteSpace(game.GameType?.Code) &&
+		    StudVariantEvaluators.TryGetValue(game.GameType.Code, out var evaluator))
 		{
 			return evaluator(holeCardEntities, boardCards);
 		}
@@ -3244,7 +3364,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return HandDescriptionFormatter.GetHandDescription(baseballHand);
 	}
 
-	private static string? EvaluateSevenCardStudHandDescription(List<GameCard> holeCardEntities, List<Card> initialHoleCards, List<Card> openCards)
+	private static string? EvaluateSevenCardStudHandDescription(List<GameCard> holeCardEntities,
+		List<Card> initialHoleCards, List<Card> openCards)
 	{
 		if (holeCardEntities.Count >= 3 && openCards.Count <= 4)
 		{
@@ -3309,8 +3430,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Orders cards in the correct deal sequence, handling Seven Card Stud's multi-street dealing.
-	/// For stud games, uses a composite key based on phase and location; for other games, falls back to DealOrder.
+	///     Orders cards in the correct deal sequence, handling Seven Card Stud's multi-street dealing.
+	///     For stud games, uses a composite key based on phase and location; for other games, falls back to DealOrder.
 	/// </summary>
 	/// <param name="cards">The collection of cards to order.</param>
 	/// <param name="isSevenCardStud">Whether this is a Seven Card Stud game.</param>
@@ -3349,12 +3470,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				}
 			}
 		}
+
 		return indexes;
 	}
 
 	/// <summary>
-	/// Finds the best 5-card hand from a set of cards (e.g., 7 cards in Hold'Em)
-	/// by evaluating all C(n,5) combinations for the strongest hand.
+	///     Finds the best 5-card hand from a set of cards (e.g., 7 cards in Hold'Em)
+	///     by evaluating all C(n,5) combinations for the strongest hand.
 	/// </summary>
 	private static List<Card> FindBestFiveCardHand(List<Card> allCards)
 	{
@@ -3383,8 +3505,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Finds the best 5-card Omaha hand using exactly 2 hole cards + 3 community cards.
-	/// Evaluates all C(4,2) × C(5,3) = 60 valid combinations.
+	///     Finds the best 5-card Omaha hand using exactly 2 hole cards + 3 community cards.
+	///     Evaluates all C(4,2) × C(5,3) = 60 valid combinations.
 	/// </summary>
 	private static List<Card> FindBestOmahaHand(List<Card> holeCards, List<Card> communityCards)
 	{
@@ -3411,8 +3533,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Finds the best 5-card Nebraska hand using exactly 3 hole cards + 2 community cards.
-	/// Evaluates all C(5,3) × C(5,2) = 100 valid combinations.
+	///     Finds the best 5-card Nebraska hand using exactly 3 hole cards + 2 community cards.
+	///     Evaluates all C(5,3) × C(5,2) = 100 valid combinations.
 	/// </summary>
 	private static List<Card> FindBestNebraskaHand(List<Card> holeCards, List<Card> communityCards)
 	{
@@ -3437,4 +3559,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		return bestCombo ?? holeCards.Take(3).Concat(communityCards.Take(2)).ToList();
 	}
+
+	private sealed record UserProfile(string UserId, string? FirstName, string? AvatarUrl);
+
+	private sealed record KingsAndLowsDeckOutcome(
+		bool PlayerWins,
+		ShowdownPlayerResultDto DeckResult,
+		List<string>? Losers);
 }

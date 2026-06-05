@@ -8,9 +8,12 @@ public static class UpdateLeagueSeasonEventEndpoint
 	public static RouteGroupBuilder MapUpdateLeagueSeasonEvent(this RouteGroupBuilder group)
 	{
 		group.MapPut("{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}",
-				async (Guid leagueId, Guid seasonId, Guid eventId, UpdateLeagueSeasonEventRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, Guid seasonId, Guid eventId, UpdateLeagueSeasonEventRequest request,
+					IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, seasonId, eventId, request), cancellationToken);
+					var result =
+						await mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, seasonId, eventId, request),
+							cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),
@@ -21,7 +24,8 @@ public static class UpdateLeagueSeasonEventEndpoint
 							UpdateLeagueSeasonEventErrorCode.LeagueNotFound => Results.NotFound(new { error.Message }),
 							UpdateLeagueSeasonEventErrorCode.SeasonNotFound => Results.NotFound(new { error.Message }),
 							UpdateLeagueSeasonEventErrorCode.EventNotFound => Results.NotFound(new { error.Message }),
-							UpdateLeagueSeasonEventErrorCode.InvalidRequest => Results.BadRequest(new { error.Message }),
+							UpdateLeagueSeasonEventErrorCode.InvalidRequest =>
+								Results.BadRequest(new { error.Message }),
 							UpdateLeagueSeasonEventErrorCode.Conflict => Results.Conflict(new { error.Message }),
 							_ => Results.Problem(error.Message)
 						});

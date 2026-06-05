@@ -1,9 +1,7 @@
+using System.Diagnostics;
 using CardGames.Poker.Api.Contracts;
-using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
-using System.Diagnostics;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague;
 
@@ -11,15 +9,18 @@ public static class JoinLeagueEndpoint
 {
 	public static RouteGroupBuilder MapJoinLeague(this RouteGroupBuilder group)
 	{
-		Task<IResult> Handler(JoinLeagueRequest request, IMediator mediator, LeaguesTelemetry telemetry, CancellationToken cancellationToken) =>
-			HandleJoinAsync(request, mediator, telemetry, cancellationToken);
+		Task<IResult> Handler(JoinLeagueRequest request, IMediator mediator, LeaguesTelemetry telemetry,
+			CancellationToken cancellationToken)
+		{
+			return HandleJoinAsync(request, mediator, telemetry, cancellationToken);
+		}
 
 		group.MapPost("join",
 				Handler)
 			.WithName("JoinLeague")
 			.WithSummary("Join league")
 			.WithDescription("Joins a league with a valid invite token.")
-			.Produces<JoinLeagueResponse>(StatusCodes.Status200OK)
+			.Produces<JoinLeagueResponse>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status429TooManyRequests)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
@@ -31,7 +32,7 @@ public static class JoinLeagueEndpoint
 			.WithName("JoinLeagueByInvite")
 			.WithSummary("Join league by invite")
 			.WithDescription("Compatibility alias for joining a league with a valid invite token.")
-			.Produces<JoinLeagueResponse>(StatusCodes.Status200OK)
+			.Produces<JoinLeagueResponse>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status429TooManyRequests)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
@@ -41,7 +42,8 @@ public static class JoinLeagueEndpoint
 		return group;
 	}
 
-	private static async Task<IResult> HandleJoinAsync(JoinLeagueRequest request, IMediator mediator, LeaguesTelemetry telemetry, CancellationToken cancellationToken)
+	private static async Task<IResult> HandleJoinAsync(JoinLeagueRequest request, IMediator mediator,
+		LeaguesTelemetry telemetry, CancellationToken cancellationToken)
 	{
 		var started = Stopwatch.GetTimestamp();
 		var result = await mediator.Send(new JoinLeagueCommand(request), cancellationToken);
@@ -58,7 +60,8 @@ public static class JoinLeagueEndpoint
 			});
 
 		var statusCode = (httpResult as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK;
-		telemetry.RecordEndpointLatency("join_request", statusCode, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+		telemetry.RecordEndpointLatency("join_request", statusCode,
+			Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 		telemetry.RecordFunnelAttempt("request", statusCode < 400 ? "success" : "failure");
 
 		return httpResult;

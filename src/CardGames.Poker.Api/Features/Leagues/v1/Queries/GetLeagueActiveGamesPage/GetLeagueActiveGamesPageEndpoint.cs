@@ -22,10 +22,13 @@ public static class GetLeagueActiveGamesPageEndpoint
 
 					if (!pageNumber.HasValue && skip.HasValue)
 					{
-						resolvedPageNumber = Math.Max(1, (skip.Value / resolvedPageSize) + 1);
+						resolvedPageNumber = Math.Max(1, skip.Value / resolvedPageSize + 1);
 					}
 
-					var result = await mediator.Send(new GetLeagueActiveGamesPageQuery(leagueId, resolvedPageSize, resolvedPageNumber), cancellationToken);
+					var result =
+						await mediator.Send(
+							new GetLeagueActiveGamesPageQuery(leagueId, resolvedPageSize, resolvedPageNumber),
+							cancellationToken);
 
 					return result.Match(
 						success => Results.Ok(success),
@@ -39,7 +42,7 @@ public static class GetLeagueActiveGamesPageEndpoint
 			.WithName("GetLeagueActiveGamesPage")
 			.WithSummary("Get league active games page")
 			.WithDescription("Returns a paged list of active launched league games for an active league member.")
-			.Produces<LeagueActiveGamesPageDto>(StatusCodes.Status200OK)
+			.Produces<LeagueActiveGamesPageDto>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.RequireAuthorization();

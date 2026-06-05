@@ -22,10 +22,13 @@ public static class GetLeagueUpcomingEventsPageEndpoint
 
 					if (!pageNumber.HasValue && skip.HasValue)
 					{
-						resolvedPageNumber = Math.Max(1, (skip.Value / resolvedPageSize) + 1);
+						resolvedPageNumber = Math.Max(1, skip.Value / resolvedPageSize + 1);
 					}
 
-					var result = await mediator.Send(new GetLeagueUpcomingEventsPageQuery(leagueId, resolvedPageSize, resolvedPageNumber), cancellationToken);
+					var result =
+						await mediator.Send(
+							new GetLeagueUpcomingEventsPageQuery(leagueId, resolvedPageSize, resolvedPageNumber),
+							cancellationToken);
 
 					return result.Match(
 						success => Results.Ok(success),
@@ -39,7 +42,7 @@ public static class GetLeagueUpcomingEventsPageEndpoint
 			.WithName("GetLeagueUpcomingEventsPage")
 			.WithSummary("Get league upcoming events page")
 			.WithDescription("Returns a paged list of upcoming league events for an active league member.")
-			.Produces<LeagueUpcomingEventsPageDto>(StatusCodes.Status200OK)
+			.Produces<LeagueUpcomingEventsPageDto>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.RequireAuthorization();

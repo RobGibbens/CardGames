@@ -4,74 +4,75 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 
 /// <summary>
-/// Endpoint for joining a game at a specific seat.
+///     Endpoint for joining a game at a specific seat.
 /// </summary>
 public static class JoinGameEndpoint
 {
-    /// <summary>
-    /// Maps the POST endpoint for joining a game.
-    /// </summary>
-    public static RouteGroupBuilder MapJoinGame(this RouteGroupBuilder group)
-    {
-        group.MapPost("{gameId:guid}/players",
-                async (Guid gameId, JoinGameRequest request, IMediator mediator, HttpContext httpContext, CancellationToken cancellationToken) =>
-                {
-                    var command = new JoinGameCommand(gameId, request.SeatIndex, request.StartingChips);
-                    var result = await mediator.Send(command, cancellationToken);
+	/// <summary>
+	///     Maps the POST endpoint for joining a game.
+	/// </summary>
+	public static RouteGroupBuilder MapJoinGame(this RouteGroupBuilder group)
+	{
+		group.MapPost("{gameId:guid}/players",
+				async (Guid gameId, JoinGameRequest request, IMediator mediator, HttpContext httpContext,
+					CancellationToken cancellationToken) =>
+				{
+					var command = new JoinGameCommand(gameId, request.SeatIndex, request.StartingChips);
+					var result = await mediator.Send(command, cancellationToken);
 
-                    return result.Match<IResult>(
-                        success => Results.Ok(success),
-                        error => error.Code switch
-                        {
-                            JoinGameErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
-                            JoinGameErrorCode.SeatOccupied => Results.Conflict(new { error.Message }),
-                            JoinGameErrorCode.AlreadySeated => Results.Conflict(new { error.Message }),
-                            JoinGameErrorCode.MaxPlayersReached => Results.Conflict(new { error.Message }),
-                            JoinGameErrorCode.InvalidSeatIndex => Results.BadRequest(new { error.Message }),
-                            JoinGameErrorCode.InvalidStartingChips => Results.BadRequest(new { error.Message }),
-                            JoinGameErrorCode.GameEnded => Results.Conflict(new { error.Message }),
-                            JoinGameErrorCode.ZeroAccountBalance => Results.BadRequest(new { error.Message }),
-                            JoinGameErrorCode.InsufficientAccountChips => Results.Conflict(new { error.Message }),
-                            JoinGameErrorCode.BuyInExceedsTableMaximum => Results.Conflict(new { error.Message }),
-                            JoinGameErrorCode.LeagueMembershipRequired => Results.Forbid(),
-                            JoinGameErrorCode.LateJoinNotAllowed => Results.Conflict(new { error.Message }),
-                            JoinGameErrorCode.JoinApprovalPending => Results.Conflict(new { error.Message }),
-                            _ => Results.Problem(error.Message)
-                        },
-                        pending =>
-                        {
-                            httpContext.Response.Headers.Append("X-Join-Request-Id", pending.JoinRequestId.ToString());
-                            httpContext.Response.Headers.Append("X-Host-Name", pending.HostName);
-                            return Results.Accepted();
-                        }
-                    );
-                })
-            .WithName($"{nameof(MapJoinGame).TrimPrefix("Map")}")
-            .WithSummary("Join Game")
-            .WithDescription(
-                "Adds the currently authenticated player to a game at the specified seat. " +
-                "Players can join a game at any time as long as the game hasn't ended and " +
-                "there are seats available. If joining mid-hand, the player will sit out " +
-                "the current hand and join play on the next hand. Some variants, such as Screw Your Neighbor, do not allow late entry after the game has started.\n\n" +
-                "**Validations:**\n" +
-                "- Game must exist and not be ended\n" +
-                "- Seat must be available (not already occupied)\n" +
-                "- Player must not already be seated elsewhere in the game\n" +
-                "- Game must not have reached maximum player count\n" +
-                "- Variant must allow late entry for started games\n" +
-                "- Starting chips must be greater than 0\n" +
-                "- Player account balance must be greater than 0\n" +
-                "- Requested buy-in must not exceed the table maximum buy-in, when configured\n" +
-                "- Requested buy-in must not exceed account balance\n\n" +
-                "**Response:**\n" +
-                "- `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase")
-            .Produces<JoinGameSuccessful>()
-            .Produces(StatusCodes.Status202Accepted)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+					return result.Match<IResult>(
+						success => Results.Ok(success),
+						error => error.Code switch
+						{
+							JoinGameErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
+							JoinGameErrorCode.SeatOccupied => Results.Conflict(new { error.Message }),
+							JoinGameErrorCode.AlreadySeated => Results.Conflict(new { error.Message }),
+							JoinGameErrorCode.MaxPlayersReached => Results.Conflict(new { error.Message }),
+							JoinGameErrorCode.InvalidSeatIndex => Results.BadRequest(new { error.Message }),
+							JoinGameErrorCode.InvalidStartingChips => Results.BadRequest(new { error.Message }),
+							JoinGameErrorCode.GameEnded => Results.Conflict(new { error.Message }),
+							JoinGameErrorCode.ZeroAccountBalance => Results.BadRequest(new { error.Message }),
+							JoinGameErrorCode.InsufficientAccountChips => Results.Conflict(new { error.Message }),
+							JoinGameErrorCode.BuyInExceedsTableMaximum => Results.Conflict(new { error.Message }),
+							JoinGameErrorCode.LeagueMembershipRequired => Results.Forbid(),
+							JoinGameErrorCode.LateJoinNotAllowed => Results.Conflict(new { error.Message }),
+							JoinGameErrorCode.JoinApprovalPending => Results.Conflict(new { error.Message }),
+							_ => Results.Problem(error.Message)
+						},
+						pending =>
+						{
+							httpContext.Response.Headers.Append("X-Join-Request-Id", pending.JoinRequestId.ToString());
+							httpContext.Response.Headers.Append("X-Host-Name", pending.HostName);
+							return Results.Accepted();
+						}
+					);
+				})
+			.WithName($"{nameof(MapJoinGame).TrimPrefix("Map")}")
+			.WithSummary("Join Game")
+			.WithDescription(
+				"Adds the currently authenticated player to a game at the specified seat. " +
+				"Players can join a game at any time as long as the game hasn't ended and " +
+				"there are seats available. If joining mid-hand, the player will sit out " +
+				"the current hand and join play on the next hand. Some variants, such as Screw Your Neighbor, do not allow late entry after the game has started.\n\n" +
+				"**Validations:**\n" +
+				"- Game must exist and not be ended\n" +
+				"- Seat must be available (not already occupied)\n" +
+				"- Player must not already be seated elsewhere in the game\n" +
+				"- Game must not have reached maximum player count\n" +
+				"- Variant must allow late entry for started games\n" +
+				"- Starting chips must be greater than 0\n" +
+				"- Player account balance must be greater than 0\n" +
+				"- Requested buy-in must not exceed the table maximum buy-in, when configured\n" +
+				"- Requested buy-in must not exceed account balance\n\n" +
+				"**Response:**\n" +
+				"- `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase")
+			.Produces<JoinGameSuccessful>()
+			.Produces(StatusCodes.Status202Accepted)
+			.ProducesProblem(StatusCodes.Status400BadRequest)
+			.ProducesProblem(StatusCodes.Status403Forbidden)
+			.ProducesProblem(StatusCodes.Status404NotFound)
+			.ProducesProblem(StatusCodes.Status409Conflict);
 
-        return group;
-    }
+		return group;
+	}
 }

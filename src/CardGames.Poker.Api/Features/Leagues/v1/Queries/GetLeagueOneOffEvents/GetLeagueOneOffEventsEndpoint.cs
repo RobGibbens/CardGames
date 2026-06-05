@@ -13,7 +13,7 @@ public static class GetLeagueOneOffEventsEndpoint
 					var result = await mediator.Send(new GetLeagueOneOffEventsQuery(leagueId), cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							GetLeagueOneOffEventsErrorCode.Unauthorized => Results.Unauthorized(),
@@ -24,7 +24,7 @@ public static class GetLeagueOneOffEventsEndpoint
 			.WithName("GetLeagueOneOffEvents")
 			.WithSummary("Get league one-off events")
 			.WithDescription("Returns one-off events for an active member of the league.")
-			.Produces<IReadOnlyList<LeagueOneOffEventDto>>(StatusCodes.Status200OK)
+			.Produces<IReadOnlyList<LeagueOneOffEventDto>>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.RequireAuthorization();

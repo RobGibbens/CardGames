@@ -6,29 +6,30 @@ using Microsoft.EntityFrameworkCore;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules;
 
 /// <summary>
-/// Handler for retrieving game rules by game identifier.
+///     Handler for retrieving game rules by game identifier.
 /// </summary>
 public sealed class GetGameRulesByGameIdQueryHandler(CardsDbContext context)
-    : IRequestHandler<GetGameRulesByGameIdQuery, GetGameRulesResponse?>
+	: IRequestHandler<GetGameRulesByGameIdQuery, GetGameRulesResponse?>
 {
-    public async Task<GetGameRulesResponse?> Handle(GetGameRulesByGameIdQuery request, CancellationToken cancellationToken)
-    {
-        var gameTypeCode = await context.Games
-            .Where(g => g.Id == request.GameId && !g.IsDeleted)
-            .Select(g => g.GameType.Code)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(cancellationToken);
+	public async Task<GetGameRulesResponse?> Handle(GetGameRulesByGameIdQuery request,
+		CancellationToken cancellationToken)
+	{
+		var gameTypeCode = await context.Games
+			.Where(g => g.Id == request.GameId && !g.IsDeleted)
+			.Select(g => g.GameType.Code)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(cancellationToken);
 
-        if (string.IsNullOrEmpty(gameTypeCode))
-        {
-            return null;
-        }
+		if (string.IsNullOrEmpty(gameTypeCode))
+		{
+			return null;
+		}
 
-        if (!PokerGameRulesRegistry.TryGet(gameTypeCode, out var rules) || rules is null)
-        {
-            return null;
-        }
+		if (!PokerGameRulesRegistry.TryGet(gameTypeCode, out var rules) || rules is null)
+		{
+			return null;
+		}
 
-        return GameRulesMapper.ToResponse(rules);
-    }
+		return GameRulesMapper.ToResponse(rules);
+	}
 }

@@ -12,7 +12,8 @@ public sealed class GetLeagueStandingsQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetLeagueStandingsQuery, OneOf<IReadOnlyList<LeagueStandingEntryDto>, GetLeagueStandingsError>>
 {
-	public async Task<OneOf<IReadOnlyList<LeagueStandingEntryDto>, GetLeagueStandingsError>> Handle(GetLeagueStandingsQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<IReadOnlyList<LeagueStandingEntryDto>, GetLeagueStandingsError>> Handle(
+		GetLeagueStandingsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -21,11 +22,13 @@ public sealed class GetLeagueStandingsQueryHandler(
 
 		var isActiveMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive, cancellationToken);
+			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive,
+				cancellationToken);
 
 		if (!isActiveMember)
 		{
-			return new GetLeagueStandingsError(GetLeagueStandingsErrorCode.Forbidden, "Only active members can view standings.");
+			return new GetLeagueStandingsError(GetLeagueStandingsErrorCode.Forbidden,
+				"Only active members can view standings.");
 		}
 
 		var resultsQuery = context.LeagueSeasonEventResults
@@ -78,7 +81,8 @@ public sealed class GetLeagueStandingsQueryHandler(
 			.ToList();
 
 		var userIds = standingRows.Select(x => x.UserId).ToArray();
-		var displayNamesByUserId = await Queries.LeagueUserDisplayNameResolver.GetDisplayNamesByUserIdAsync(context, userIds, cancellationToken);
+		var displayNamesByUserId =
+			await LeagueUserDisplayNameResolver.GetDisplayNamesByUserIdAsync(context, userIds, cancellationToken);
 
 		var results = new List<LeagueStandingEntryDto>(standingRows.Count);
 		var rank = 0;
@@ -98,7 +102,8 @@ public sealed class GetLeagueStandingsQueryHandler(
 			results.Add(new LeagueStandingEntryDto
 			{
 				UserId = row.UserId,
-				UserDisplayName = Queries.LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, row.UserId),
+				UserDisplayName =
+					LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, row.UserId),
 				Rank = rank,
 				TotalEvents = row.TotalEvents,
 				TotalPoints = row.TotalPoints,

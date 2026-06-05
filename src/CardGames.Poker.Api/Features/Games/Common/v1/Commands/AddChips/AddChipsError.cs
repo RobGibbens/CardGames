@@ -1,37 +1,37 @@
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
 
 /// <summary>
-/// Error codes for AddChips command failures.
+///     Error codes for AddChips command failures.
 /// </summary>
 public enum AddChipsErrorCode
 {
 	/// <summary>
-	/// The game was not found.
+	///     The game was not found.
 	/// </summary>
 	GameNotFound,
 
 	/// <summary>
-	/// The player is not part of this game.
+	///     The player is not part of this game.
 	/// </summary>
 	PlayerNotInGame,
 
 	/// <summary>
-	/// The amount provided is invalid (e.g., zero or negative).
+	///     The amount provided is invalid (e.g., zero or negative).
 	/// </summary>
 	InvalidAmount,
 
 	/// <summary>
-	/// Cannot add chips because the game has ended.
+	///     Cannot add chips because the game has ended.
 	/// </summary>
 	GameEnded,
 
 	/// <summary>
-	/// Cannot add chips because tournament tables do not allow rebuys.
+	///     Cannot add chips because tournament tables do not allow rebuys.
 	/// </summary>
 	TournamentRebuyNotAllowed
 }
 
 /// <summary>
-/// Error response for AddChips command.
+///     Error response for AddChips command.
 /// </summary>
 public sealed record AddChipsError(AddChipsErrorCode Code, string Message);

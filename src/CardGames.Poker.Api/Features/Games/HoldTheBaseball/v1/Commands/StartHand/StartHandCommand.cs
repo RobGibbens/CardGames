@@ -5,7 +5,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHand;
 
 /// <summary>
-/// Command to start a new hand in a Hold the Baseball game.
+///     Command to start a new hand in a Hold the Baseball game.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 public record StartHandCommand(Guid GameId)

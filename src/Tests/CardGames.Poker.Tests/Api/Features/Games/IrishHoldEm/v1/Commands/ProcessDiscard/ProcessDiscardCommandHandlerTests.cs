@@ -1,7 +1,6 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -64,7 +63,8 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], PlayerSeatIndex: 99), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], PlayerSeatIndex: 99),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDiscardErrorCode.NotPlayerTurn);
@@ -129,7 +129,8 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context, firstPlayerHasDrawn: true, secondPlayerHasDrawn: false);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], PlayerSeatIndex: 0),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDiscardErrorCode.AlreadyDiscarded);
@@ -153,7 +154,7 @@ public class ProcessDiscardCommandHandlerTests
 
 		_ = await staleContext.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameType)
 			.Include(g => g.GameCards.Where(gc => gc.HandNumber == 1 && !gc.IsDiscarded))
 			.FirstAsync(g => g.Id == gameId);
@@ -161,8 +162,10 @@ public class ProcessDiscardCommandHandlerTests
 		var freshSut = new ProcessDiscardCommandHandler(freshContext);
 		var staleSut = new ProcessDiscardCommandHandler(staleContext);
 
-		var firstResult = await freshSut.Handle(new ProcessDiscardCommand(gameId, [0, 1], PlayerSeatIndex: 0), CancellationToken.None);
-		var secondResult = await staleSut.Handle(new ProcessDiscardCommand(gameId, [0, 1], PlayerSeatIndex: 1), CancellationToken.None);
+		var firstResult = await freshSut.Handle(new ProcessDiscardCommand(gameId, [0, 1], PlayerSeatIndex: 0),
+			CancellationToken.None);
+		var secondResult = await staleSut.Handle(new ProcessDiscardCommand(gameId, [0, 1], PlayerSeatIndex: 1),
+			CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
 		secondResult.IsT0.Should().BeTrue();
@@ -184,7 +187,8 @@ public class ProcessDiscardCommandHandlerTests
 		players.Should().OnlyContain(player => player.HasDrawnThisRound);
 		communityCards.Should().ContainSingle();
 		communityCards[0].DealtAtPhase.Should().Be(nameof(Phases.Turn));
-		verificationContext.BettingRounds.Should().ContainSingle(round => round.GameId == gameId && round.Street == nameof(Phases.Turn));
+		verificationContext.BettingRounds.Should()
+			.ContainSingle(round => round.GameId == gameId && round.Street == nameof(Phases.Turn));
 	}
 
 	private static CardsDbContext CreateContext()
@@ -326,7 +330,8 @@ public class ProcessDiscardCommandHandlerTests
 		};
 	}
 
-	private static GamePlayer CreateGamePlayer(Game game, Player player, int seatPosition, bool hasDrawnThisRound, DateTimeOffset now)
+	private static GamePlayer CreateGamePlayer(Game game, Player player, int seatPosition, bool hasDrawnThisRound,
+		DateTimeOffset now)
 	{
 		return new GamePlayer
 		{

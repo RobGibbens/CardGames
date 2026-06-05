@@ -1,77 +1,38 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueOneOffEventStatus = CardGames.Poker.Api.Data.Entities.LeagueOneOffEventStatus;
+using LeagueSeasonEventStatus = CardGames.Poker.Api.Data.Entities.LeagueSeasonEventStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueUpcomingEventsPage;
 
 public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService)
-	: IRequestHandler<GetLeagueUpcomingEventsPageQuery, OneOf<LeagueUpcomingEventsPageDto, GetLeagueUpcomingEventsPageError>>
+	: IRequestHandler<GetLeagueUpcomingEventsPageQuery,
+		OneOf<LeagueUpcomingEventsPageDto, GetLeagueUpcomingEventsPageError>>
 {
-	private sealed record UpcomingEventRow
-	{
-		public required DateTimeOffset SortAt { get; init; }
-
-		public required DateTimeOffset CreatedAtUtc { get; init; }
-
-		public required string Name { get; init; }
-
-		public required bool IsSeasonEvent { get; init; }
-
-		public Guid EventId { get; init; }
-
-		public Guid LeagueId { get; init; }
-
-		public Guid? SeasonId { get; init; }
-
-		public int? SequenceNumber { get; init; }
-
-		public DateTimeOffset? ScheduledAtUtc { get; init; }
-
-		public int StatusValue { get; init; }
-
-		public string? Notes { get; init; }
-
-		public required string CreatedByUserId { get; init; }
-
-		public Guid? LaunchedGameId { get; init; }
-
-		public int? TournamentBuyIn { get; init; }
-
-		public int? OneOffEventTypeValue { get; init; }
-
-		public string? GameTypeCode { get; init; }
-
-		public string? GameTypeName { get; init; }
-
-		public int? Ante { get; init; }
-
-		public int? MinBet { get; init; }
-
-		public int? SmallBlind { get; init; }
-
-		public int? BigBlind { get; init; }
-	}
-
-	public async Task<OneOf<LeagueUpcomingEventsPageDto, GetLeagueUpcomingEventsPageError>> Handle(GetLeagueUpcomingEventsPageQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<LeagueUpcomingEventsPageDto, GetLeagueUpcomingEventsPageError>> Handle(
+		GetLeagueUpcomingEventsPageQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new GetLeagueUpcomingEventsPageError(GetLeagueUpcomingEventsPageErrorCode.Unauthorized, "User is not authenticated.");
+			return new GetLeagueUpcomingEventsPageError(GetLeagueUpcomingEventsPageErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive, cancellationToken);
+			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive,
+				cancellationToken);
 
 		if (!isMember)
 		{
-			return new GetLeagueUpcomingEventsPageError(GetLeagueUpcomingEventsPageErrorCode.Forbidden, "Only active members can view upcoming league events.");
+			return new GetLeagueUpcomingEventsPageError(GetLeagueUpcomingEventsPageErrorCode.Forbidden,
+				"Only active members can view upcoming league events.");
 		}
 
 		var pageSize = Math.Clamp(request.PageSize, 1, 100);
@@ -80,9 +41,9 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 		var seasonEvents = context.LeagueSeasonEvents
 			.AsNoTracking()
 			.Where(x => x.LeagueId == request.LeagueId
-				&& !x.LaunchedGameId.HasValue
-				&& x.Status != Data.Entities.LeagueSeasonEventStatus.Completed
-				&& x.Status != Data.Entities.LeagueSeasonEventStatus.Canceled)
+			            && !x.LaunchedGameId.HasValue
+			            && x.Status != LeagueSeasonEventStatus.Completed
+			            && x.Status != LeagueSeasonEventStatus.Canceled)
 			.Select(x => new UpcomingEventRow
 			{
 				SortAt = x.ScheduledAtUtc ?? x.CreatedAtUtc,
@@ -111,10 +72,11 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 		var oneOffEvents =
 			from oneOffEvent in context.LeagueOneOffEvents.AsNoTracking()
 			where oneOffEvent.LeagueId == request.LeagueId
-				&& !oneOffEvent.LaunchedGameId.HasValue
-				&& oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Completed
-				&& oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Canceled
-			join gameType in context.GameTypes.AsNoTracking() on oneOffEvent.GameTypeCode equals gameType.Code into gameTypes
+			      && !oneOffEvent.LaunchedGameId.HasValue
+			      && oneOffEvent.Status != LeagueOneOffEventStatus.Completed
+			      && oneOffEvent.Status != LeagueOneOffEventStatus.Canceled
+			join gameType in context.GameTypes.AsNoTracking() on oneOffEvent.GameTypeCode equals gameType.Code into
+				gameTypes
 			from gameType in gameTypes.DefaultIfEmpty()
 			select new UpcomingEventRow
 			{
@@ -195,7 +157,7 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 					LeagueId = row.LeagueId,
 					Name = row.Name,
 					ScheduledAtUtc = row.ScheduledAtUtc ?? row.SortAt,
-					EventType = (Contracts.LeagueOneOffEventType)(row.OneOffEventTypeValue ?? 0),
+					EventType = (LeagueOneOffEventType)(row.OneOffEventTypeValue ?? 0),
 					Status = (Contracts.LeagueOneOffEventStatus)row.StatusValue,
 					Notes = row.Notes,
 					CreatedByUserId = row.CreatedByUserId,
@@ -220,5 +182,50 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 			PageSize = pageSize,
 			TotalPages = totalPages
 		};
+	}
+
+	private sealed record UpcomingEventRow
+	{
+		public required DateTimeOffset SortAt { get; init; }
+
+		public required DateTimeOffset CreatedAtUtc { get; init; }
+
+		public required string Name { get; init; }
+
+		public required bool IsSeasonEvent { get; init; }
+
+		public Guid EventId { get; init; }
+
+		public Guid LeagueId { get; init; }
+
+		public Guid? SeasonId { get; init; }
+
+		public int? SequenceNumber { get; init; }
+
+		public DateTimeOffset? ScheduledAtUtc { get; init; }
+
+		public int StatusValue { get; init; }
+
+		public string? Notes { get; init; }
+
+		public required string CreatedByUserId { get; init; }
+
+		public Guid? LaunchedGameId { get; init; }
+
+		public int? TournamentBuyIn { get; init; }
+
+		public int? OneOffEventTypeValue { get; init; }
+
+		public string? GameTypeCode { get; init; }
+
+		public string? GameTypeName { get; init; }
+
+		public int? Ante { get; init; }
+
+		public int? MinBet { get; init; }
+
+		public int? SmallBlind { get; init; }
+
+		public int? BigBlind { get; init; }
 	}
 }

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace CardGames.Poker.Api.Data.Configurations;
 
 /// <summary>
-/// Entity Framework Core configuration for the <see cref="Game"/> entity.
+///     Entity Framework Core configuration for the <see cref="Game" /> entity.
 /// </summary>
 public class GameConfiguration : IEntityTypeConfiguration<Game>
 {
@@ -108,7 +108,7 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 }
 
 /// <summary>
-/// Field constraints for the <see cref="Game"/> entity.
+///     Field constraints for the <see cref="Game" /> entity.
 /// </summary>
 public static class GameFields
 {
@@ -130,29 +130,29 @@ public static class GameFields
 		public const int MaxLength = 50;
 	}
 
-		public static class GameSettings
-		{
-			public const int MinLength = 0;
-			public const int MaxLength = 4000;
-		}
+	public static class GameSettings
+	{
+		public const int MinLength = 0;
+		public const int MaxLength = 4000;
+	}
 
-		public static class CreatedById
-		{
-			public const int MaxLength = 450;
-		}
+	public static class CreatedById
+	{
+		public const int MaxLength = 450;
+	}
 
-			public static class CreatedByName
-			{
-				public const int MaxLength = 256;
-			}
+	public static class CreatedByName
+	{
+		public const int MaxLength = 256;
+	}
 
-			public static class UpdatedById
-			{
-				public const int MaxLength = 450;
-			}
+	public static class UpdatedById
+	{
+		public const int MaxLength = 450;
+	}
 
-			public static class UpdatedByName
-			{
-				public const int MaxLength = 256;
-			}
-		}
+	public static class UpdatedByName
+	{
+		public const int MaxLength = 256;
+	}
+}

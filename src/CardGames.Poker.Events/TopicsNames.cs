@@ -2,14 +2,18 @@
 
 namespace CardGames.Poker.Events;
 
-public static partial class TopicNames
+public static class TopicNames
 {
-	public static IReadOnlyList<string> GetTopics(Type parentType) =>
-		parentType
-			.GetNestedTypes(BindingFlags.Public) // add NonPublic if you want internal/private too
-			.Where(t => t.IsClass)
-			.Select(t => t.Name)
-			.ToArray();
+	public static IReadOnlyList<string> GetTopics(Type parentType)
+	{
+		return
+		[
+			.. parentType
+				.GetNestedTypes(BindingFlags.Public) // add NonPublic if you want internal/private too
+				.Where(t => t.IsClass)
+				.Select(t => t.Name)
+		];
+	}
 
 	public static List<string?> GetTopicSubscriptions(Type nestedClassType)
 	{
@@ -51,7 +55,8 @@ public static partial class TopicNames
 	}
 
 	// Convenience: process many child names (e.g., "Categories", "Favorites", "Ingredients")
-	public static IReadOnlyList<string> GetStringValuesUnderChildren(Type parentType, IEnumerable<string> childClassNames)
+	public static IReadOnlyList<string> GetStringValuesUnderChildren(Type parentType,
+		IEnumerable<string> childClassNames)
 	{
 		var results = new HashSet<string>(StringComparer.Ordinal);
 		foreach (var name in childClassNames)
@@ -61,6 +66,7 @@ public static partial class TopicNames
 				results.Add(s);
 			}
 		}
+
 		return results.ToArray();
 	}
 }

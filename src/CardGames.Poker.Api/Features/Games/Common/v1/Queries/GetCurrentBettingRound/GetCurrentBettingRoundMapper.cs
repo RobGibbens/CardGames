@@ -11,9 +11,16 @@ public static partial class GetCurrentBettingRoundMapper
 	public static partial GetCurrentBettingRoundResponse ToResponse(this BettingRound model);
 
 	[MapProperty(nameof(BettingRound.Game) + "." + nameof(Game.Pots), nameof(GetCurrentBettingRoundResponse.TotalPot))]
-	public static partial IQueryable<GetCurrentBettingRoundResponse> ProjectToResponse(this IQueryable<BettingRound> query);
+	public static partial IQueryable<GetCurrentBettingRoundResponse> ProjectToResponse(
+		this IQueryable<BettingRound> query);
 
-	private static string MapRowVersion(byte[] rowVersion) => rowVersion.ToBase64String();
+	private static string MapRowVersion(byte[] rowVersion)
+	{
+		return rowVersion.ToBase64String();
+	}
 
-	private static int MapTotalPot(ICollection<Pot> pots) => pots.Sum(p => p.Amount);
+	private static int MapTotalPot(ICollection<Pot> pots)
+	{
+		return pots.Sum(p => p.Amount);
+	}
 }

@@ -8,7 +8,7 @@ public static class GetCashierLedgerEndpoint
 	public static RouteGroupBuilder MapGetCashierLedger(this RouteGroupBuilder group)
 	{
 		group.MapGet("cashier/ledger",
-              async (
+				async (
 					IMediator mediator,
 					int? pageSize = null,
 					int? pageNumber = null,
@@ -16,21 +16,23 @@ public static class GetCashierLedgerEndpoint
 					int? skip = null,
 					CancellationToken cancellationToken = default) =>
 				{
-                    var resolvedPageSize = Math.Clamp(pageSize ?? take ?? 10, 1, 100);
+					var resolvedPageSize = Math.Clamp(pageSize ?? take ?? 10, 1, 100);
 					var resolvedPageNumber = pageNumber ?? 1;
 
 					if (!pageNumber.HasValue && skip.HasValue)
 					{
-						resolvedPageNumber = Math.Max(1, (skip.Value / resolvedPageSize) + 1);
+						resolvedPageNumber = Math.Max(1, skip.Value / resolvedPageSize + 1);
 					}
 
-					var response = await mediator.Send(new GetCashierLedgerQuery(resolvedPageSize, resolvedPageNumber), cancellationToken);
+					var response = await mediator.Send(new GetCashierLedgerQuery(resolvedPageSize, resolvedPageNumber),
+						cancellationToken);
 					return Results.Ok(response);
 				})
 			.WithName("GetCashierLedger")
 			.WithSummary("Get cashier ledger")
-			.WithDescription("Retrieves a paged, newest-first ledger of account chip transactions for the authenticated player.")
-			.Produces<CashierLedgerPageDto>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Retrieves a paged, newest-first ledger of account chip transactions for the authenticated player.")
+			.Produces<CashierLedgerPageDto>()
 			.RequireAuthorization();
 
 		return group;

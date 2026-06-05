@@ -15,7 +15,7 @@ public static class PlaceBetEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => Results.Problem(
 							title: "Place bet error",
 							detail: error.Message,
@@ -27,7 +27,7 @@ public static class PlaceBetEndpoint
 			.WithName($"InBetween{nameof(MapPlaceBet).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapPlaceBet).TrimPrefix("Map"))
 			.WithDescription("Place a bet (or pass with amount 0) during an In-Between turn.")
-			.Produces<PlaceBetSuccessful>(StatusCodes.Status200OK)
+			.Produces<PlaceBetSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -36,6 +36,6 @@ public static class PlaceBetEndpoint
 }
 
 /// <summary>
-/// Request body for placing a bet in In-Between.
+///     Request body for placing a bet in In-Between.
 /// </summary>
 public record PlaceBetRequest(Guid PlayerId, int Amount);

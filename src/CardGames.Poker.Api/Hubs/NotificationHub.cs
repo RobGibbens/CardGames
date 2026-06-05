@@ -9,7 +9,8 @@ public sealed class NotificationHub(ILogger<NotificationHub> logger) : Hub
 {
 	public override async Task OnConnectedAsync()
 	{
-		logger.LogInformation("User {UserId} connected to notification hub with connection {ConnectionId}", Context.UserIdentifier ?? "unknown", Context.ConnectionId);
+		logger.LogInformation("User {UserId} connected to notification hub with connection {ConnectionId}",
+			Context.UserIdentifier ?? "unknown", Context.ConnectionId);
 		await base.OnConnectedAsync();
 	}
 
@@ -17,11 +18,14 @@ public sealed class NotificationHub(ILogger<NotificationHub> logger) : Hub
 	{
 		if (exception is not null)
 		{
-			logger.LogWarning(exception, "Notification hub connection {ConnectionId} closed with error for user {UserId}", Context.ConnectionId, Context.UserIdentifier ?? "unknown");
+			logger.LogWarning(exception,
+				"Notification hub connection {ConnectionId} closed with error for user {UserId}", Context.ConnectionId,
+				Context.UserIdentifier ?? "unknown");
 		}
 		else
 		{
-			logger.LogInformation("Notification hub connection {ConnectionId} closed for user {UserId}", Context.ConnectionId, Context.UserIdentifier ?? "unknown");
+			logger.LogInformation("Notification hub connection {ConnectionId} closed for user {UserId}",
+				Context.ConnectionId, Context.UserIdentifier ?? "unknown");
 		}
 
 		await base.OnDisconnectedAsync(exception);

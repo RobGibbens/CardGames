@@ -8,7 +8,7 @@ using CardGames.Poker.Hands.WildCards;
 namespace CardGames.Poker.Evaluation.Evaluators;
 
 /// <summary>
-/// Hand evaluator for Baseball poker (7-card stud with 3s and 9s wild).
+///     Hand evaluator for Baseball poker (7-card stud with 3s and 9s wild).
 /// </summary>
 [HandEvaluator("BASEBALL")]
 public sealed class BaseballHandEvaluator : IHandEvaluator

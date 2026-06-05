@@ -9,7 +9,8 @@ public static class TransferLeagueOwnershipEndpoint
 		group.MapPost("{leagueId:guid}/members/{memberUserId}/transfer-ownership",
 				async (Guid leagueId, string memberUserId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new TransferLeagueOwnershipCommand(leagueId, memberUserId), cancellationToken);
+					var result = await mediator.Send(new TransferLeagueOwnershipCommand(leagueId, memberUserId),
+						cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),
@@ -18,7 +19,8 @@ public static class TransferLeagueOwnershipEndpoint
 							TransferLeagueOwnershipErrorCode.Unauthorized => Results.Unauthorized(),
 							TransferLeagueOwnershipErrorCode.Forbidden => Results.Forbid(),
 							TransferLeagueOwnershipErrorCode.MemberNotFound => Results.NotFound(new { error.Message }),
-							TransferLeagueOwnershipErrorCode.InvalidRequest => Results.BadRequest(new { error.Message }),
+							TransferLeagueOwnershipErrorCode.InvalidRequest =>
+								Results.BadRequest(new { error.Message }),
 							_ => Results.Problem(error.Message)
 						});
 				})

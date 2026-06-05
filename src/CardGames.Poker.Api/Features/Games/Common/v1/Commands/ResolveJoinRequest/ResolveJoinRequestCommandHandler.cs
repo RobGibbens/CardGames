@@ -1,7 +1,6 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
@@ -22,13 +21,14 @@ public sealed class ResolveJoinRequestCommandHandler(
 {
 	private const int MaxSeatIndex = 7;
 
-	public async Task<OneOf<ResolveJoinRequestSuccessful, ResolveJoinRequestError>> Handle(ResolveJoinRequestCommand command, CancellationToken cancellationToken)
+	public async Task<OneOf<ResolveJoinRequestSuccessful, ResolveJoinRequestError>> Handle(
+		ResolveJoinRequestCommand command, CancellationToken cancellationToken)
 	{
 		var joinRequest = await context.GameJoinRequests
 			.Include(x => x.Game)
-				.ThenInclude(g => g.GameType)
+			.ThenInclude(g => g.GameType)
 			.Include(x => x.Game)
-				.ThenInclude(g => g.GamePlayers)
+			.ThenInclude(g => g.GamePlayers)
 			.Include(x => x.Player)
 			.FirstOrDefaultAsync(x => x.GameId == command.GameId && x.Id == command.JoinRequestId, cancellationToken);
 
@@ -40,17 +40,20 @@ public sealed class ResolveJoinRequestCommandHandler(
 		var game = joinRequest.Game;
 		if (!string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.Ordinal))
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.NotHost, "Only the table host can resolve join requests.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.NotHost,
+				"Only the table host can resolve join requests.");
 		}
 
 		if (game.Status is GameStatus.Completed or GameStatus.Cancelled)
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.GameEnded, "This table is no longer accepting join approvals.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.GameEnded,
+				"This table is no longer accepting join approvals.");
 		}
 
 		if (joinRequest.Status != GameJoinRequestStatus.Pending)
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.AlreadyResolved, "This join request has already been resolved.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.AlreadyResolved,
+				"This join request has already been resolved.");
 		}
 
 		var now = DateTimeOffset.UtcNow;
@@ -86,45 +89,52 @@ public sealed class ResolveJoinRequestCommandHandler(
 		var approvedBuyIn = command.ApprovedBuyIn ?? joinRequest.RequestedBuyIn;
 		if (approvedBuyIn <= 0 || approvedBuyIn > joinRequest.RequestedBuyIn)
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn, "Approved buy-in must be greater than 0 and cannot exceed the requested amount.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn,
+				"Approved buy-in must be greater than 0 and cannot exceed the requested amount.");
 		}
 
 		if (game.MaxBuyIn.HasValue && approvedBuyIn > game.MaxBuyIn.Value)
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn, $"Approved buy-in cannot exceed the table maximum of {game.MaxBuyIn.Value:N0}.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn,
+				$"Approved buy-in cannot exceed the table maximum of {game.MaxBuyIn.Value:N0}.");
 		}
 
 		if (game.TournamentBuyIn.HasValue && approvedBuyIn != game.TournamentBuyIn.Value)
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn, $"This tournament requires a fixed buy-in of {game.TournamentBuyIn.Value:N0}.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn,
+				$"This tournament requires a fixed buy-in of {game.TournamentBuyIn.Value:N0}.");
 		}
 
-		var lateJoinAllowed = !string.Equals(
-				game.GameType?.Code,
-				PokerGameMetadataRegistry.ScrewYourNeighborCode,
-				StringComparison.OrdinalIgnoreCase)
-			&& !string.Equals(
-				game.GameType?.Code,
-				PokerGameMetadataRegistry.InBetweenCode,
-				StringComparison.OrdinalIgnoreCase)
-			|| !game.StartedAt.HasValue;
+		var lateJoinAllowed = (!string.Equals(
+			                       game.GameType?.Code,
+			                       PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			                       StringComparison.OrdinalIgnoreCase)
+		                       && !string.Equals(
+			                       game.GameType?.Code,
+			                       PokerGameMetadataRegistry.InBetweenCode,
+			                       StringComparison.OrdinalIgnoreCase))
+		                      || !game.StartedAt.HasValue;
 
 		if (!lateJoinAllowed)
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.GameEnded, "This game variant no longer allows late joins.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.GameEnded,
+				"This game variant no longer allows late joins.");
 		}
 
 		var maxPlayers = game.GameType?.MaxPlayers ?? MaxSeatIndex + 1;
-		var activePlayerCount = game.GamePlayers.Count(gp => gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut);
+		var activePlayerCount =
+			game.GamePlayers.Count(gp => gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut);
 		if (activePlayerCount >= maxPlayers)
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.SeatUnavailable, "No seats are available anymore.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.SeatUnavailable,
+				"No seats are available anymore.");
 		}
 
 		var seatIndex = ResolveSeatIndex(game.GamePlayers, joinRequest.SeatIndex);
 		if (seatIndex is null)
 		{
-			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.SeatUnavailable, "No seats are available anymore.");
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.SeatUnavailable,
+				"No seats are available anymore.");
 		}
 
 		var debitResult = await playerChipWalletService.TryDebitForBuyInAsync(
@@ -141,7 +151,8 @@ public sealed class ResolveJoinRequestCommandHandler(
 				debitResult.ErrorMessage ?? "The player no longer has enough chips for this buy-in.");
 		}
 
-		var canPlayCurrentHand = string.Equals(game.CurrentPhase, "WaitingToStart", StringComparison.Ordinal) || game.Status == GameStatus.WaitingForPlayers;
+		var canPlayCurrentHand = string.Equals(game.CurrentPhase, "WaitingToStart", StringComparison.Ordinal) ||
+		                         game.Status == GameStatus.WaitingForPlayers;
 		var gamePlayer = new GamePlayer
 		{
 			GameId = game.Id,
@@ -175,15 +186,19 @@ public sealed class ResolveJoinRequestCommandHandler(
 
 		await context.SaveChangesAsync(cancellationToken);
 
-		await gameStateBroadcaster.BroadcastPlayerJoinedAsync(game.Id, joinRequest.Player.Name, seatIndex.Value, canPlayCurrentHand, cancellationToken);
+		await gameStateBroadcaster.BroadcastPlayerJoinedAsync(game.Id, joinRequest.Player.Name, seatIndex.Value,
+			canPlayCurrentHand, cancellationToken);
 		await NotifyRequesterAsync(joinRequest, game, now, cancellationToken);
 
-		logger.LogInformation("Host {HostId} approved join request {JoinRequestId} for game {GameId}", currentUserService.UserId, joinRequest.Id, game.Id);
+		logger.LogInformation("Host {HostId} approved join request {JoinRequestId} for game {GameId}",
+			currentUserService.UserId, joinRequest.Id, game.Id);
 
-		return new ResolveJoinRequestSuccessful(game.Id, joinRequest.Id, joinRequest.Status.ToString(), approvedBuyIn, seatIndex);
+		return new ResolveJoinRequestSuccessful(game.Id, joinRequest.Id, joinRequest.Status.ToString(), approvedBuyIn,
+			seatIndex);
 	}
 
-	private async Task NotifyRequesterAsync(GameJoinRequest joinRequest, Game game, DateTimeOffset resolvedAt, CancellationToken cancellationToken)
+	private async Task NotifyRequesterAsync(GameJoinRequest joinRequest, Game game, DateTimeOffset resolvedAt,
+		CancellationToken cancellationToken)
 	{
 		var routingKey = joinRequest.Player.Email ?? joinRequest.Player.Name;
 		if (string.IsNullOrWhiteSpace(routingKey))

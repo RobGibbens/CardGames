@@ -1,11 +1,12 @@
 ﻿@using CardGames.Poker.Web.Components.Account.Shared
-<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
-    <Found Context="routeData">
-        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
-            <NotAuthorized>
-                <RedirectToLogin />
-            </NotAuthorized>
-        </AuthorizeRouteView>
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
+@using CardGames.Poker.Web.Components.Pages
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(NotFound)">
+	<Found Context="routeData">
+		<AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+			<NotAuthorized>
+				<RedirectToLogin/>
+			</NotAuthorized>
+		</AuthorizeRouteView>
+		<FocusOnNavigate RouteData="routeData" Selector="h1"/>
+	</Found>
 </Router>

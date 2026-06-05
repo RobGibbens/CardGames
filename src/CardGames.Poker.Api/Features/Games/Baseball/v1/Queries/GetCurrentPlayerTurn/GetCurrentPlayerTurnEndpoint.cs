@@ -20,7 +20,7 @@ public static class GetCurrentPlayerTurnEndpoint
 			.WithName($"Baseball{nameof(MapGetCurrentPlayerTurn).TrimPrefix("Map")}")
 			.WithSummary("Get Current Player Turn")
 			.WithDescription("Gets the current player's turn state, including available actions and hand odds.")
-			.Produces<GetCurrentPlayerTurnResponse>(StatusCodes.Status200OK)
+			.Produces<GetCurrentPlayerTurnResponse>()
 			.ProducesProblem(StatusCodes.Status404NotFound);
 
 		return group;

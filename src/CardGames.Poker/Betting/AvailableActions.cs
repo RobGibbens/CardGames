@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace CardGames.Poker.Betting;
 
 /// <summary>
-/// Represents the available actions for a player at any point in a betting round.
+///     Represents the available actions for a player at any point in a betting round.
 /// </summary>
 public class AvailableActions
 {

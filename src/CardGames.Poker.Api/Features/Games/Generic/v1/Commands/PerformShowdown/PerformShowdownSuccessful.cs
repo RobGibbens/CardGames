@@ -5,124 +5,124 @@ using CardGames.Poker.Api.Infrastructure;
 namespace CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 
 /// <summary>
-/// Represents a successful showdown result.
+///     Represents a successful showdown result.
 /// </summary>
 public record PerformShowdownSuccessful : IGameStateBroadcastResult
 {
-    /// <summary>
-    /// The unique identifier of the game.
-    /// </summary>
-    public Guid GameId { get; init; }
+	/// <summary>
+	///     The unique identifier of the game.
+	/// </summary>
+	public Guid GameId { get; init; }
 
-    /// <summary>
-    /// Indicates whether the hand was won by all opponents folding (no showdown required).
-    /// </summary>
-    public bool WonByFold { get; init; }
+	/// <summary>
+	///     Indicates whether the hand was won by all opponents folding (no showdown required).
+	/// </summary>
+	public bool WonByFold { get; init; }
 
-    /// <summary>
-    /// The current phase of the game after the showdown.
-    /// </summary>
-    /// <remarks>
-    /// This varies by game type. For most games it will be "Complete", but games like
-    /// Kings and Lows may transition to "PotMatching" for losers to match the pot.
-    /// </remarks>
-    public required string CurrentPhase { get; init; }
+	/// <summary>
+	///     The current phase of the game after the showdown.
+	/// </summary>
+	/// <remarks>
+	///     This varies by game type. For most games it will be "Complete", but games like
+	///     Kings and Lows may transition to "PotMatching" for losers to match the pot.
+	/// </remarks>
+	public required string CurrentPhase { get; init; }
 
-    /// <summary>
-    /// The chip payouts awarded to each winning player.
-    /// Keys are player names; values are the chip amounts won.
-    /// Multiple entries indicate a split pot scenario.
-    /// </summary>
-    public required Dictionary<string, int> Payouts { get; init; }
+	/// <summary>
+	///     The chip payouts awarded to each winning player.
+	///     Keys are player names; values are the chip amounts won.
+	///     Multiple entries indicate a split pot scenario.
+	/// </summary>
+	public required Dictionary<string, int> Payouts { get; init; }
 
-    /// <summary>
-    /// The evaluated hands for all players who participated in the showdown.
-    /// Ordered by hand strength (strongest first).
-    /// </summary>
-    public required List<ShowdownPlayerHand> PlayerHands { get; init; }
+	/// <summary>
+	///     The evaluated hands for all players who participated in the showdown.
+	///     Ordered by hand strength (strongest first).
+	/// </summary>
+	public required List<ShowdownPlayerHand> PlayerHands { get; init; }
 
-    /// <summary>
-    /// Gets a value indicating whether this successful response should trigger
-    /// the automatic post-command game-state broadcast.
-    /// </summary>
-    [JsonIgnore]
-    public bool ShouldBroadcastGameState { get; init; } = true;
+	/// <summary>
+	///     Gets a value indicating whether this successful response should trigger
+	///     the automatic post-command game-state broadcast.
+	/// </summary>
+	[JsonIgnore]
+	public bool ShouldBroadcastGameState { get; init; } = true;
 }
 
 /// <summary>
-/// Represents a player's hand at showdown.
+///     Represents a player's hand at showdown.
 /// </summary>
 public record ShowdownPlayerHand
 {
-    /// <summary>
-    /// The player's name.
-    /// </summary>
-    public required string PlayerName { get; init; }
+	/// <summary>
+	///     The player's name.
+	/// </summary>
+	public required string PlayerName { get; init; }
 
-    /// <summary>
-    /// The player's first name (from user profile).
-    /// </summary>
-    public string? PlayerFirstName { get; init; }
+	/// <summary>
+	///     The player's first name (from user profile).
+	/// </summary>
+	public string? PlayerFirstName { get; init; }
 
-    /// <summary>
-    /// The cards the player held.
-    /// </summary>
-    public required List<ShowdownCard> Cards { get; init; }
+	/// <summary>
+	///     The cards the player held.
+	/// </summary>
+	public required List<ShowdownCard> Cards { get; init; }
 
-    /// <summary>
-    /// The evaluated hand type (e.g., "Flush", "FullHouse", "HighCard").
-    /// Null if the player won by fold without showing cards.
-    /// </summary>
-    public string? HandType { get; init; }
+	/// <summary>
+	///     The evaluated hand type (e.g., "Flush", "FullHouse", "HighCard").
+	///     Null if the player won by fold without showing cards.
+	/// </summary>
+	public string? HandType { get; init; }
 
-    /// <summary>
-    /// A detailed, human-friendly description of the evaluated hand.
-    /// Examples: "Ace high", "Pair of Aces", "Straight to the Queen"
-    /// Null if the player won by fold without showing cards.
-    /// </summary>
-    public string? HandDescription { get; init; }
+	/// <summary>
+	///     A detailed, human-friendly description of the evaluated hand.
+	///     Examples: "Ace high", "Pair of Aces", "Straight to the Queen"
+	///     Null if the player won by fold without showing cards.
+	/// </summary>
+	public string? HandDescription { get; init; }
 
-    /// <summary>
-    /// The hand strength value used for comparing hands.
-    /// Higher values indicate stronger hands.
-    /// </summary>
-    public long? HandStrength { get; init; }
+	/// <summary>
+	///     The hand strength value used for comparing hands.
+	///     Higher values indicate stronger hands.
+	/// </summary>
+	public long? HandStrength { get; init; }
 
-    /// <summary>
-    /// Indicates whether this player is a winner.
-    /// </summary>
-    public bool IsWinner { get; init; }
+	/// <summary>
+	///     Indicates whether this player is a winner.
+	/// </summary>
+	public bool IsWinner { get; init; }
 
-    /// <summary>
-    /// The amount won by this player, if any.
-    /// </summary>
-    public int AmountWon { get; init; }
+	/// <summary>
+	///     The amount won by this player, if any.
+	/// </summary>
+	public int AmountWon { get; init; }
 
-    /// <summary>
-    /// The zero-based indices of cards in <see cref="Cards"/> that make up the best 5-card hand.
-    /// Used for community card games (Hold'em, Omaha) where the full card list includes
-    /// both hole cards and community cards.
-    /// </summary>
-    public List<int>? BestCardIndexes { get; init; }
+	/// <summary>
+	///     The zero-based indices of cards in <see cref="Cards" /> that make up the best 5-card hand.
+	///     Used for community card games (Hold'em, Omaha) where the full card list includes
+	///     both hole cards and community cards.
+	/// </summary>
+	public List<int>? BestCardIndexes { get; init; }
 
-    /// <summary>
-    /// Indexes of wild cards in the <see cref="Cards"/> list, if any.
-    /// </summary>
-    public List<int>? WildCardIndexes { get; init; }
+	/// <summary>
+	///     Indexes of wild cards in the <see cref="Cards" /> list, if any.
+	/// </summary>
+	public List<int>? WildCardIndexes { get; init; }
 }
 
 /// <summary>
-/// Represents a card shown at showdown.
+///     Represents a card shown at showdown.
 /// </summary>
 public record ShowdownCard
 {
-    /// <summary>
-    /// The card suit.
-    /// </summary>
-    public CardSuit Suit { get; init; }
+	/// <summary>
+	///     The card suit.
+	/// </summary>
+	public CardSuit Suit { get; init; }
 
-    /// <summary>
-    /// The card symbol/rank.
-    /// </summary>
-    public CardSymbol Symbol { get; init; }
+	/// <summary>
+	///     The card symbol/rank.
+	/// </summary>
+	public CardSymbol Symbol { get; init; }
 }

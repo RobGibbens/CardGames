@@ -13,7 +13,8 @@ public class LeagueTimeZoneHelperTests
 		var localDate = new DateTime(2026, 5, 1);
 		var timeZoneId = "America/New_York";
 
-		var converted = LeagueTimeZoneHelper.TryConvertLocalToUtc(localDate, "19:30", timeZoneId, out var utcValue, out var errorMessage);
+		var converted = LeagueTimeZoneHelper.TryConvertLocalToUtc(localDate, "19:30", timeZoneId, out var utcValue,
+			out var errorMessage);
 
 		converted.Should().BeTrue(errorMessage);
 		errorMessage.Should().BeNull();

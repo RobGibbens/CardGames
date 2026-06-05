@@ -9,7 +9,8 @@ public static class DemoteLeagueAdminToMemberEndpoint
 		group.MapPost("{leagueId:guid}/members/{memberUserId}/demote-admin",
 				async (Guid leagueId, string memberUserId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new DemoteLeagueAdminToMemberCommand(leagueId, memberUserId), cancellationToken);
+					var result = await mediator.Send(new DemoteLeagueAdminToMemberCommand(leagueId, memberUserId),
+						cancellationToken);
 
 					return result.Match(
 						success => Results.NoContent(),
@@ -17,8 +18,10 @@ public static class DemoteLeagueAdminToMemberEndpoint
 						{
 							DemoteLeagueAdminToMemberErrorCode.Unauthorized => Results.Unauthorized(),
 							DemoteLeagueAdminToMemberErrorCode.Forbidden => Results.Forbid(),
-							DemoteLeagueAdminToMemberErrorCode.MemberNotFound => Results.NotFound(new { error.Message }),
-							DemoteLeagueAdminToMemberErrorCode.InvalidRequest => Results.BadRequest(new { error.Message }),
+							DemoteLeagueAdminToMemberErrorCode.MemberNotFound =>
+								Results.NotFound(new { error.Message }),
+							DemoteLeagueAdminToMemberErrorCode.InvalidRequest => Results.BadRequest(new
+								{ error.Message }),
 							DemoteLeagueAdminToMemberErrorCode.Conflict => Results.Conflict(new { error.Message }),
 							_ => Results.Problem(error.Message)
 						});

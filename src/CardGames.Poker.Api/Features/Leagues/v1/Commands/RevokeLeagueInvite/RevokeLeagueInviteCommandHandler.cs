@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
@@ -12,7 +13,8 @@ public sealed class RevokeLeagueInviteCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<RevokeLeagueInviteCommand, OneOf<Unit, RevokeLeagueInviteError>>
 {
-	public async Task<OneOf<Unit, RevokeLeagueInviteError>> Handle(RevokeLeagueInviteCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<Unit, RevokeLeagueInviteError>> Handle(RevokeLeagueInviteCommand request,
+		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -27,7 +29,8 @@ public sealed class RevokeLeagueInviteCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.Forbidden, "Only league managers or admins can revoke invites.");
+			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.Forbidden,
+				"Only league managers or admins can revoke invites.");
 		}
 
 		var invite = await context.LeagueInvites
@@ -38,9 +41,9 @@ public sealed class RevokeLeagueInviteCommandHandler(
 			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.InviteNotFound, "Invite not found.");
 		}
 
-		if (invite.Status != Data.Entities.LeagueInviteStatus.Revoked)
+		if (invite.Status != LeagueInviteStatus.Revoked)
 		{
-			invite.Status = Data.Entities.LeagueInviteStatus.Revoked;
+			invite.Status = LeagueInviteStatus.Revoked;
 			invite.RevokedAtUtc = DateTimeOffset.UtcNow;
 			invite.RevokedByUserId = currentUserService.UserId;
 			await context.SaveChangesAsync(cancellationToken);

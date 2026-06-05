@@ -1,9 +1,7 @@
-using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
 using CardGames.Poker.Api.Services;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -33,7 +31,7 @@ public sealed class LeagueGameCompletionSyncTests : IAsyncLifetime
 	public async Task DisposeAsync()
 	{
 		await _context.Database.EnsureDeletedAsync();
-		_context.Dispose();
+		await _context.DisposeAsync();
 	}
 
 	[Fact]
@@ -41,8 +39,15 @@ public sealed class LeagueGameCompletionSyncTests : IAsyncLifetime
 	{
 		// Arrange: Create a league, season, season event, and completed game
 		var userId = "test-user";
-		var league = new League { Id = Guid.NewGuid(), Name = "Test League", CreatedByUserId = userId, CreatedAtUtc = DateTimeOffset.UtcNow };
-		var season = new LeagueSeason { Id = Guid.NewGuid(), LeagueId = league.Id, Name = "Season 1", CreatedByUserId = userId, CreatedAtUtc = DateTimeOffset.UtcNow };
+		var league = new League
+		{
+			Id = Guid.NewGuid(), Name = "Test League", CreatedByUserId = userId, CreatedAtUtc = DateTimeOffset.UtcNow
+		};
+		var season = new LeagueSeason
+		{
+			Id = Guid.NewGuid(), LeagueId = league.Id, Name = "Season 1", CreatedByUserId = userId,
+			CreatedAtUtc = DateTimeOffset.UtcNow
+		};
 		var seasonEvent = new LeagueSeasonEvent
 		{
 			Id = Guid.NewGuid(),
@@ -87,7 +92,10 @@ public sealed class LeagueGameCompletionSyncTests : IAsyncLifetime
 	{
 		// Arrange: Create a league, one-off event, and completed game
 		var userId = "test-user";
-		var league = new League { Id = Guid.NewGuid(), Name = "Test League", CreatedByUserId = userId, CreatedAtUtc = DateTimeOffset.UtcNow };
+		var league = new League
+		{
+			Id = Guid.NewGuid(), Name = "Test League", CreatedByUserId = userId, CreatedAtUtc = DateTimeOffset.UtcNow
+		};
 		var oneOffEvent = new LeagueOneOffEvent
 		{
 			Id = Guid.NewGuid(),
@@ -129,8 +137,15 @@ public sealed class LeagueGameCompletionSyncTests : IAsyncLifetime
 	{
 		// Arrange: Create a league, season event, and active game
 		var userId = "test-user";
-		var league = new League { Id = Guid.NewGuid(), Name = "Test League", CreatedByUserId = userId, CreatedAtUtc = DateTimeOffset.UtcNow };
-		var season = new LeagueSeason { Id = Guid.NewGuid(), LeagueId = league.Id, Name = "Season 1", CreatedByUserId = userId, CreatedAtUtc = DateTimeOffset.UtcNow };
+		var league = new League
+		{
+			Id = Guid.NewGuid(), Name = "Test League", CreatedByUserId = userId, CreatedAtUtc = DateTimeOffset.UtcNow
+		};
+		var season = new LeagueSeason
+		{
+			Id = Guid.NewGuid(), LeagueId = league.Id, Name = "Season 1", CreatedByUserId = userId,
+			CreatedAtUtc = DateTimeOffset.UtcNow
+		};
 		var seasonEvent = new LeagueSeasonEvent
 		{
 			Id = Guid.NewGuid(),
@@ -178,13 +193,21 @@ public sealed class LeagueGameCompletionSyncTests : IAsyncLifetime
 	}
 }
 
-public sealed class MockLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
+public sealed class MockLogger<T> : ILogger<T>
 {
-	public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-	public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => false;
+	public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+	{
+		return null;
+	}
+
+	public bool IsEnabled(LogLevel logLevel)
+	{
+		return false;
+	}
+
 	public void Log<TState>(
-		Microsoft.Extensions.Logging.LogLevel logLevel,
-		Microsoft.Extensions.Logging.EventId eventId,
+		LogLevel logLevel,
+		EventId eventId,
 		TState state,
 		Exception? exception,
 		Func<TState, Exception?, string> formatter)
@@ -194,22 +217,26 @@ public sealed class MockLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
 
 public sealed class MockLeagueBroadcaster : ILeagueBroadcaster
 {
-	public Task BroadcastLeagueEventChangedAsync(CardGames.Contracts.SignalR.LeagueEventChangedDto eventChanged, CancellationToken cancellationToken = default)
+	public Task BroadcastLeagueEventChangedAsync(LeagueEventChangedDto eventChanged,
+		CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}
 
-	public Task BroadcastEventSessionLaunchedAsync(CardGames.Contracts.SignalR.LeagueEventSessionLaunchedDto sessionLaunched, CancellationToken cancellationToken = default)
+	public Task BroadcastEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto sessionLaunched,
+		CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}
 
-	public Task BroadcastJoinRequestSubmittedAsync(CardGames.Contracts.SignalR.LeagueJoinRequestSubmittedDto joinRequestSubmitted, CancellationToken cancellationToken = default)
+	public Task BroadcastJoinRequestSubmittedAsync(LeagueJoinRequestSubmittedDto joinRequestSubmitted,
+		CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}
 
-	public Task BroadcastJoinRequestUpdatedAsync(CardGames.Contracts.SignalR.LeagueJoinRequestUpdatedDto joinRequestUpdated, string? requesterUserId = null, CancellationToken cancellationToken = default)
+	public Task BroadcastJoinRequestUpdatedAsync(LeagueJoinRequestUpdatedDto joinRequestUpdated,
+		string? requesterUserId = null, CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}

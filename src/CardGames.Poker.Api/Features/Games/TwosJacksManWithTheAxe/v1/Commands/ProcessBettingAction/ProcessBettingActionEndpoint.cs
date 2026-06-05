@@ -5,17 +5,18 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Endpoint for processing betting actions in a Five Card Draw game.
+///     Endpoint for processing betting actions in a Five Card Draw game.
 /// </summary>
 public static class ProcessBettingActionEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for processing betting actions.
+	///     Maps the POST endpoint for processing betting actions.
 	/// </summary>
 	public static RouteGroupBuilder MapProcessBettingAction(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/betting/actions",
-				async (Guid gameId, ProcessBettingActionRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, ProcessBettingActionRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new ProcessBettingActionCommand(gameId, request.ActionType, request.Amount);
 					var result = await mediator.Send(command, cancellationToken);
@@ -28,7 +29,8 @@ public static class ProcessBettingActionEndpoint
 							ProcessBettingActionErrorCode.InvalidGameState => Results.Conflict(new { error.Message }),
 							ProcessBettingActionErrorCode.NoBettingRound => Results.Conflict(new { error.Message }),
 							ProcessBettingActionErrorCode.NotPlayerTurn => Results.Conflict(new { error.Message }),
-							ProcessBettingActionErrorCode.InvalidAction => Results.UnprocessableEntity(new { error.Message }),
+							ProcessBettingActionErrorCode.InvalidAction => Results.UnprocessableEntity(new
+								{ error.Message }),
 							_ => Results.Problem(error.Message)
 						}
 					);
@@ -50,7 +52,7 @@ public static class ProcessBettingActionEndpoint
 				"- After first betting round completes: transitions to draw phase\n" +
 				"- After second betting round completes: transitions to showdown\n" +
 				"- If only one player remains (all others folded): transitions directly to showdown")
-			.Produces<ProcessBettingActionSuccessful>(StatusCodes.Status200OK)
+			.Produces<ProcessBettingActionSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict)
 			.ProducesProblem(StatusCodes.Status422UnprocessableEntity);
@@ -60,25 +62,24 @@ public static class ProcessBettingActionEndpoint
 }
 
 /// <summary>
-/// Request body for processing a betting action.
+///     Request body for processing a betting action.
 /// </summary>
 public record ProcessBettingActionRequest
 {
 	/// <summary>
-	/// The type of betting action to perform.
+	///     The type of betting action to perform.
 	/// </summary>
 	/// <remarks>
-	/// Valid values: Check (0), Bet (1), Call (2), Raise (3), Fold (4), AllIn (5)
+	///     Valid values: Check (0), Bet (1), Call (2), Raise (3), Fold (4), AllIn (5)
 	/// </remarks>
 	public BettingActionType ActionType { get; init; }
 
 	/// <summary>
-	/// The chip amount for bet or raise actions.
+	///     The chip amount for bet or raise actions.
 	/// </summary>
 	/// <remarks>
-	/// Ignored for check, call, fold, and all-in actions.
-	/// For raises, this is the total amount to put in, not the raise increment.
+	///     Ignored for check, call, fold, and all-in actions.
+	///     For raises, this is the total amount to put in, not the raise increment.
 	/// </remarks>
 	public int Amount { get; init; }
 }
-

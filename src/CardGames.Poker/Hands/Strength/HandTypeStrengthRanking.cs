@@ -2,6 +2,6 @@
 
 public enum HandTypeStrengthRanking
 {
-    Classic,
-    ShortDeck
+	Classic,
+	ShortDeck
 }

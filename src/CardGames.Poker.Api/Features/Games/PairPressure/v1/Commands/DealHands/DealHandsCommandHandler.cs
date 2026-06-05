@@ -2,7 +2,8 @@ using MediatR;
 using OneOf;
 using SharedDealHandsCommand = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsCommand;
 using SharedDealHandsError = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsError;
-using SharedDealHandsSuccessful = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
+using SharedDealHandsSuccessful =
+	CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
 
 namespace CardGames.Poker.Api.Features.Games.PairPressure.v1.Commands.DealHands;
 
@@ -13,5 +14,7 @@ public sealed class DealHandsCommandHandler(
 	public Task<OneOf<SharedDealHandsSuccessful, SharedDealHandsError>> Handle(
 		DealHandsCommand command,
 		CancellationToken cancellationToken)
-		=> innerHandler.Handle(new SharedDealHandsCommand(command.GameId), cancellationToken);
+	{
+		return innerHandler.Handle(new SharedDealHandsCommand(command.GameId), cancellationToken);
+	}
 }

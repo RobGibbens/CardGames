@@ -2,17 +2,15 @@ using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
 
 /// <summary>
-/// Handles the <see cref="StartHandCommand"/> to start a new hand in a Kings and Lows game.
+///     Handles the <see cref="StartHandCommand" /> to start a new hand in a Kings and Lows game.
 /// </summary>
 public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCommandHandler> logger)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
@@ -26,7 +24,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		// 1. Load the game with its players
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -50,8 +48,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
-						  $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
-						  $"or '{nameof(Phases.Complete)}' phase.",
+				          $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
+				          $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
 		}
@@ -73,9 +71,9 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		var ante = game.Ante ?? 0;
 		var playersWithInsufficientChips = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 gp.ChipStack > 0 &&
-						 gp.ChipStack < ante)
+			             !gp.IsSittingOut &&
+			             gp.ChipStack > 0 &&
+			             gp.ChipStack < ante)
 			.ToList();
 
 		foreach (var player in playersWithInsufficientChips)
@@ -97,15 +95,16 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 (ante == 0 || gp.ChipStack >= ante))
+			             !gp.IsSittingOut &&
+			             (ante == 0 || gp.ChipStack >= ante))
 			.ToList();
 
 		if (eligiblePlayers.Count < 2)
 		{
 			return new StartHandError
 			{
-				Message = "Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
+				Message =
+					"Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
 		}
@@ -133,7 +132,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		{
 			logger.LogInformation(
 				"[CHIP-CHECK] Game {GameId}: Player {PlayerName} (Seat {Seat}) has {ChipStack} chips, pot is {PotAmount}, CanCover={CanCover}",
-				game.Id, player.Player?.Name ?? "Unknown", player.SeatPosition, player.ChipStack, currentPotAmount, player.ChipStack >= currentPotAmount);
+				game.Id, player.Player?.Name ?? "Unknown", player.SeatPosition, player.ChipStack, currentPotAmount,
+				player.ChipStack >= currentPotAmount);
 		}
 
 		// Check if any eligible player cannot cover the pot
@@ -189,7 +189,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 					await context.SaveChangesAsync(cancellationToken);
 					return new StartHandError
 					{
-						Message = "Game is paused waiting for players to add chips. Resume will occur automatically when all players have sufficient chips or after 2 minutes.",
+						Message =
+							"Game is paused waiting for players to add chips. Resume will occur automatically when all players have sufficient chips or after 2 minutes.",
 						Code = StartHandErrorCode.PausedForChipCheck
 					};
 				}
@@ -203,7 +204,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			game.ChipCheckPauseEndsAt = now.AddMinutes(2);
 			game.UpdatedAt = now;
 
-			var shortPlayerNames = string.Join(", ", playersNeedingChips.Select(p => p.Player?.Name ?? $"Seat {p.SeatPosition}"));
+			var shortPlayerNames = string.Join(", ",
+				playersNeedingChips.Select(p => p.Player?.Name ?? $"Seat {p.SeatPosition}"));
 			logger.LogInformation(
 				"Chip check pause initiated for game {GameId}: {PlayerCount} player(s) cannot cover pot of {PotAmount}. Players: {PlayerNames}",
 				game.Id, playersNeedingChips.Count, currentPotAmount, shortPlayerNames);
@@ -212,7 +214,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 
 			return new StartHandError
 			{
-				Message = $"Cannot start hand: {playersNeedingChips.Count} player(s) cannot cover the pot of {currentPotAmount} chips. Game is paused for 2 minutes to allow adding chips.",
+				Message =
+					$"Cannot start hand: {playersNeedingChips.Count} player(s) cannot cover the pot of {currentPotAmount} chips. Game is paused for 2 minutes to allow adding chips.",
 				Code = StartHandErrorCode.PausedForChipCheck
 			};
 		}
@@ -224,7 +227,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			gamePlayer.TotalContributedThisHand = 0;
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
-			gamePlayer.DropOrStayDecision = CardGames.Poker.Api.Data.Entities.DropOrStayDecision.Undecided;
+			gamePlayer.DropOrStayDecision = DropOrStayDecision.Undecided;
 			gamePlayer.HasFolded = gamePlayer.IsSittingOut;
 		}
 
@@ -261,7 +264,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		// 9. Find or create the main pot for this hand
 		// For subsequent hands, the pot is typically created by AcknowledgePotMatchCommandHandler (or PerformShowdown),
 		// but if a hand ends in a fold-win or all dropped, we need to create it here.
-		Pot? mainPot = await context.Pots.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber + 1 && !p.IsAwarded, cancellationToken);
+		Pot? mainPot = await context.Pots.FirstOrDefaultAsync(
+			p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber + 1 && !p.IsAwarded, cancellationToken);
 
 		if (mainPot is null)
 		{
@@ -302,7 +306,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		{
 			foreach (var player in eligiblePlayers)
 			{
-				var anteAmount = Math.Min(ante, player.ChipStack); //TODO:ROB - Don't let them play if they don't have enough
+				var anteAmount =
+					Math.Min(ante, player.ChipStack); //TODO:ROB - Don't let them play if they don't have enough
 				player.ChipStack -= anteAmount;
 				player.CurrentBet = anteAmount;
 				player.TotalContributedThisHand = anteAmount;
@@ -409,35 +414,41 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 	}
 
 	/// <summary>
-	/// Gets the numeric sort value for a card symbol (Ace high = 14).
+	///     Gets the numeric sort value for a card symbol (Ace high = 14).
 	/// </summary>
-	private static int GetCardSortValue(CardSymbol symbol) => symbol switch
+	private static int GetCardSortValue(CardSymbol symbol)
 	{
-		CardSymbol.Deuce => 2,
-		CardSymbol.Three => 3,
-		CardSymbol.Four => 4,
-		CardSymbol.Five => 5,
-		CardSymbol.Six => 6,
-		CardSymbol.Seven => 7,
-		CardSymbol.Eight => 8,
-		CardSymbol.Nine => 9,
-		CardSymbol.Ten => 10,
-		CardSymbol.Jack => 11,
-		CardSymbol.Queen => 12,
-		CardSymbol.King => 13,
-		CardSymbol.Ace => 14,
-		_ => 0
-	};
+		return symbol switch
+		{
+			CardSymbol.Deuce => 2,
+			CardSymbol.Three => 3,
+			CardSymbol.Four => 4,
+			CardSymbol.Five => 5,
+			CardSymbol.Six => 6,
+			CardSymbol.Seven => 7,
+			CardSymbol.Eight => 8,
+			CardSymbol.Nine => 9,
+			CardSymbol.Ten => 10,
+			CardSymbol.Jack => 11,
+			CardSymbol.Queen => 12,
+			CardSymbol.King => 13,
+			CardSymbol.Ace => 14,
+			_ => 0
+		};
+	}
 
 	/// <summary>
-	/// Gets the sort value for a suit (for consistent ordering: Clubs, Diamonds, Hearts, Spades).
+	///     Gets the sort value for a suit (for consistent ordering: Clubs, Diamonds, Hearts, Spades).
 	/// </summary>
-	private static int GetSuitSortValue(CardSuit suit) => suit switch
+	private static int GetSuitSortValue(CardSuit suit)
 	{
-		CardSuit.Clubs => 0,
-		CardSuit.Diamonds => 1,
-		CardSuit.Hearts => 2,
-		CardSuit.Spades => 3,
-		_ => 0
-	};
+		return suit switch
+		{
+			CardSuit.Clubs => 0,
+			CardSuit.Diamonds => 1,
+			CardSuit.Hearts => 2,
+			CardSuit.Spades => 3,
+			_ => 0
+		};
+	}
 }

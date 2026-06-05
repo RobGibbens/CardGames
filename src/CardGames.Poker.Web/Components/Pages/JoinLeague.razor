@@ -1,11 +1,10 @@
 @page "/leagues/join/{Token}"
-@attribute [Authorize]
-@rendermode InteractiveServer
-
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
 @using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
 
 @inject ILeaguesApi LeaguesApi
 @inject NavigationManager NavigationManager
@@ -13,7 +12,7 @@
 
 <PageTitle>Join League - Dealer's Choice Poker</PageTitle>
 
-<AuthenticatedNavBar />
+<AuthenticatedNavBar/>
 
 <main class="lobby-main">
 	<div class="lobby-container">
@@ -88,8 +87,7 @@
 </main>
 
 @code {
-	[Parameter]
-	public string Token { get; set; } = string.Empty;
+	[Parameter] public string Token { get; set; } = string.Empty;
 
 	private bool _isPreviewLoading;
 	private bool _isSubmitting;
@@ -204,4 +202,5 @@
 	{
 		NavigationManager.NavigateTo("/leagues");
 	}
+
 }

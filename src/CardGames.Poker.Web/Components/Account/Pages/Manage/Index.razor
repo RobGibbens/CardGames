@@ -1,12 +1,9 @@
 ﻿@page "/Account/Manage"
-
 @using System.ComponentModel.DataAnnotations
 @using CardGames.Poker.Api.Clients
-@using CardGames.Poker.Web.Infrastructure.Validation
 @using CardGames.Poker.Web.Components.Shared
-@using Microsoft.AspNetCore.Http
-@using Microsoft.AspNetCore.Identity
 @using CardGames.Poker.Web.Data
+@using Microsoft.AspNetCore.Identity
 @using Refit
 
 @inject UserManager<ApplicationUser> UserManager
@@ -18,379 +15,377 @@
 <PageTitle>Profile</PageTitle>
 
 <div class="account-profile">
-    <div class="account-profile-title-row">
-        <h3 class="account-profile-title">Profile</h3>
-        <p class="account-profile-subtitle">Manage your public profile details and avatar.</p>
-    </div>
+	<div class="account-profile-title-row">
+		<h3 class="account-profile-title">Profile</h3>
+		<p class="account-profile-subtitle">Manage your public profile details and avatar.</p>
+	</div>
 
-    <StatusMessage />
+	<StatusMessage/>
 
-    <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post" enctype="multipart/form-data" class="account-profile-form auth-form">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="text-danger" role="alert" />
+	<EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post" enctype="multipart/form-data" class="account-profile-form auth-form">
+		<DataAnnotationsValidator/>
+		<ValidationSummary class="text-danger" role="alert"/>
 
-        <div class="account-profile-grid">
-            <section class="account-avatar-panel">
-                <h4>Avatar</h4>
-                <div class="account-avatar-preview" aria-hidden="true">
-                    @if (CurrentAvatarUrl is not null)
-                    {
-                        <img class="account-avatar-image" src="@CurrentAvatarUrl" alt="Current avatar" />
-                    }
-                    else
-                    {
-                        <span class="account-avatar-fallback">@AvatarFallback</span>
-                    }
-                </div>
-                <p class="account-avatar-help">Use a direct image URL or upload a file from your device.</p>
+		<div class="account-profile-grid">
+			<section class="account-avatar-panel">
+				<h4>Avatar</h4>
+				<div class="account-avatar-preview" aria-hidden="true">
+					@if (CurrentAvatarUrl is not null)
+					{
+						<img class="account-avatar-image" src="@CurrentAvatarUrl" alt="Current avatar"/>
+					}
+					else
+					{
+						<span class="account-avatar-fallback">@AvatarFallback</span>
+					}
+				</div>
+				<p class="account-avatar-help">Use a direct image URL or upload a file from your device.</p>
 
-                <div class="form-floating mb-3" data-label="Avatar URL">
-                    <InputText @bind-Value="Input.AvatarUrl" id="Input.AvatarUrl" class="form-control" placeholder="https://..." />
-                    <ValidationMessage For="() => Input.AvatarUrl" class="text-danger" />
-                </div>
+				<div class="form-floating mb-3" data-label="Avatar URL">
+					<InputText @bind-Value="Input.AvatarUrl" id="Input.AvatarUrl" class="form-control" placeholder="https://..."/>
+					<ValidationMessage For="() => Input.AvatarUrl" class="text-danger"/>
+				</div>
 
-                <div class="mb-3">
-                    <label for="Input.AvatarFile" class="form-label">Avatar image</label>
-                    <input type="file" id="Input.AvatarFile" name="Input.AvatarFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" />
-                    <p class="account-avatar-help">Upload overrides URL when only one avatar source is provided.</p>
-                </div>
-            </section>
+				<div class="mb-3">
+					<label for="Input.AvatarFile" class="form-label">Avatar image</label>
+					<input type="file" id="Input.AvatarFile" name="Input.AvatarFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp"/>
+					<p class="account-avatar-help">Upload overrides URL when only one avatar source is provided.</p>
+				</div>
+			</section>
 
-            <section class="account-details-panel">
-                <h4>Profile details</h4>
+			<section class="account-details-panel">
+				<h4>Profile details</h4>
 
-                <div class="form-floating mb-3" data-label="First name">
-                    <InputText @bind-Value="Input.FirstName" id="Input.FirstName" class="form-control" placeholder="First" />
-                    <ValidationMessage For="() => Input.FirstName" class="text-danger" />
-                </div>
+				<div class="form-floating mb-3" data-label="First name">
+					<InputText @bind-Value="Input.FirstName" id="Input.FirstName" class="form-control" placeholder="First"/>
+					<ValidationMessage For="() => Input.FirstName" class="text-danger"/>
+				</div>
 
-                <div class="form-floating mb-3" data-label="Last name">
-                    <InputText @bind-Value="Input.LastName" id="Input.LastName" class="form-control" placeholder="Last" />
-                    <ValidationMessage For="() => Input.LastName" class="text-danger" />
-                </div>
+				<div class="form-floating mb-3" data-label="Last name">
+					<InputText @bind-Value="Input.LastName" id="Input.LastName" class="form-control" placeholder="Last"/>
+					<ValidationMessage For="() => Input.LastName" class="text-danger"/>
+				</div>
 
-                <div class="form-floating mb-3" data-label="Username">
-                    <input type="text" value="@username" id="username" class="form-control" placeholder="Choose your username." disabled />
-                </div>
+				<div class="form-floating mb-3" data-label="Username">
+					<input type="text" value="@username" id="username" class="form-control" placeholder="Choose your username." disabled/>
+				</div>
 
-                <div class="form-floating mb-3" data-label="Phone number">
-                    <InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" class="form-control" placeholder="Enter your phone number" />
-                    <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
-                </div>
+				<div class="form-floating mb-3" data-label="Phone number">
+					<InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" class="form-control" placeholder="Enter your phone number"/>
+					<ValidationMessage For="() => Input.PhoneNumber" class="text-danger"/>
+				</div>
 
-                <div class="form-floating mb-3" data-label="Site Theme">
-                    <select @bind="Input.Theme" id="Input.Theme" name="Input.Theme" class="filter-select" data-site-theme-select>
-                        <option value="">Default (Astrovista)</option>
-                        @foreach (var themeName in AvailableThemes)
-                        {
-                            <option value="@themeName">@FormatThemeName(themeName)</option>
-                        }
-                    </select>
-                    <ValidationMessage For="() => Input.Theme" class="text-danger" />
-                </div>
+				<div class="form-floating mb-3" data-label="Site Theme">
+					<select @bind="Input.Theme" id="Input.Theme" name="Input.Theme" class="filter-select" data-site-theme-select>
+						<option value="">Default (Astrovista)</option>
+						@foreach (var themeName in AvailableThemes)
+						{
+							<option value="@themeName">@FormatThemeName(themeName)</option>
+						}
+					</select>
+					<ValidationMessage For="() => Input.Theme" class="text-danger"/>
+				</div>
 
-                <script type="module">
+				<script type="module">
                     import { bindSiteThemeSelect } from "/themePreference.js";
 
                     bindSiteThemeSelect("#Input\\.Theme");
                 </script>
 
-                <div class="account-profile-actions">
-                    <button type="submit" class="btn btn-primary btn-lg">Save changes</button>
-                </div>
-            </section>
-        </div>
-    </EditForm>
+				<div class="account-profile-actions">
+					<button type="submit" class="btn btn-primary btn-lg">Save changes</button>
+				</div>
+			</section>
+		</div>
+	</EditForm>
 </div>
 
 @code {
-    private const long MaxAvatarUploadBytes = 5 * 1024 * 1024;
+	private const long MaxAvatarUploadBytes = 5 * 1024 * 1024;
 
-    private ApplicationUser? user;
-    private string? userId;
-    private string? username;
-    private string? phoneNumber;
-    private string? avatarUrl;
-    private string? firstName;
-    private string? lastName;
-    private string? theme;
+	private ApplicationUser? user;
+	private string? userId;
+	private string? username;
+	private string? phoneNumber;
+	private string? avatarUrl;
+	private string? firstName;
+	private string? lastName;
+	private string? theme;
 
-    private static readonly string[] AvailableThemes = ["astrovista.css", "claudeplus.css", "lightgreen.css"];
+	private static readonly string[] AvailableThemes = ["astrovista.css", "claudeplus.css", "lightgreen.css"];
 
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
+	[CascadingParameter] private HttpContext HttpContext { get; set; } = null!;
 
-    [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = default!;
+	[SupplyParameterFromForm] private InputModel Input { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-    {
-        Input ??= new();
+	protected override async Task OnInitializedAsync()
+	{
+		Input ??= new InputModel();
 
-        user = await UserManager.GetUserAsync(HttpContext.User);
-        if (user is null)
-        {
-            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
-            return;
-        }
+		user = await UserManager.GetUserAsync(HttpContext.User);
+		if (user is null)
+		{
+			RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+			return;
+		}
 
-        username = await UserManager.GetUserNameAsync(user);
-        userId = await UserManager.GetUserIdAsync(user);
-        phoneNumber = await UserManager.GetPhoneNumberAsync(user);
-        avatarUrl = NormalizeStoredAvatar(user.AvatarUrl);
-        firstName = NormalizeStoredText(user.FirstName);
-        lastName = NormalizeStoredText(user.LastName);
-        theme = NormalizeStoredTheme(user.Theme);
+		username = await UserManager.GetUserNameAsync(user);
+		userId = await UserManager.GetUserIdAsync(user);
+		phoneNumber = await UserManager.GetPhoneNumberAsync(user);
+		avatarUrl = NormalizeStoredAvatar(user.AvatarUrl);
+		firstName = NormalizeStoredText(user.FirstName);
+		lastName = NormalizeStoredText(user.LastName);
+		theme = NormalizeStoredTheme(user.Theme);
 
-        Input.PhoneNumber ??= phoneNumber;
-        Input.AvatarUrl ??= avatarUrl;
-        Input.FirstName ??= firstName;
-        Input.LastName ??= lastName;
-        Input.Theme ??= theme;
-    }
+		Input.PhoneNumber ??= phoneNumber;
+		Input.AvatarUrl ??= avatarUrl;
+		Input.FirstName ??= firstName;
+		Input.LastName ??= lastName;
+		Input.Theme ??= theme;
+	}
 
-    private async Task OnValidSubmitAsync()
-    {
-        if (user is null)
-        {
-            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
-            return;
-        }
+	private async Task OnValidSubmitAsync()
+	{
+		if (user is null)
+		{
+			RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+			return;
+		}
 
-        var avatarUrlToPersist = NormalizeStoredAvatar(Input.AvatarUrl);
+		var avatarUrlToPersist = NormalizeStoredAvatar(Input.AvatarUrl);
 
-        if (avatarUrlToPersist is not null && Input.AvatarFile is not null)
-        {
-            RedirectManager.RedirectToCurrentPageWithStatus("Error: Please provide either an avatar URL or an uploaded image, not both.", HttpContext);
-            return;
-        }
+		if (avatarUrlToPersist is not null && Input.AvatarFile is not null)
+		{
+			RedirectManager.RedirectToCurrentPageWithStatus("Error: Please provide either an avatar URL or an uploaded image, not both.", HttpContext);
+			return;
+		}
 
-        if (Input.AvatarFile is not null)
-        {
-            if (Input.AvatarFile.Length > MaxAvatarUploadBytes)
-            {
-                RedirectManager.RedirectToCurrentPageWithStatus("Error: Avatar upload exceeded the 5 MB size limit.", HttpContext);
-                return;
-            }
+		if (Input.AvatarFile is not null)
+		{
+			if (Input.AvatarFile.Length > MaxAvatarUploadBytes)
+			{
+				RedirectManager.RedirectToCurrentPageWithStatus("Error: Avatar upload exceeded the 5 MB size limit.", HttpContext);
+				return;
+			}
 
-            try
-            {
-                await using var fileStream = Input.AvatarFile.OpenReadStream();
-                var filePart = new StreamPart(fileStream, Input.AvatarFile.FileName, Input.AvatarFile.ContentType ?? "application/octet-stream");
-                var uploadResponse = await ProfileApi.UploadAvatarAsync(filePart, CancellationToken.None);
+			try
+			{
+				await using var fileStream = Input.AvatarFile.OpenReadStream();
+				var filePart = new StreamPart(fileStream, Input.AvatarFile.FileName, Input.AvatarFile.ContentType ?? "application/octet-stream");
+				var uploadResponse = await ProfileApi.UploadAvatarAsync(filePart, CancellationToken.None);
 
-                if (!uploadResponse.IsSuccessStatusCode || uploadResponse.Content is null || string.IsNullOrWhiteSpace(uploadResponse.Content.AvatarUrl))
-                {
-                    RedirectManager.RedirectToCurrentPageWithStatus("Error: Unable to upload avatar image. Please try a different file.", HttpContext);
-                    return;
-                }
+				if (!uploadResponse.IsSuccessStatusCode || uploadResponse.Content is null || string.IsNullOrWhiteSpace(uploadResponse.Content.AvatarUrl))
+				{
+					RedirectManager.RedirectToCurrentPageWithStatus("Error: Unable to upload avatar image. Please try a different file.", HttpContext);
+					return;
+				}
 
-                avatarUrlToPersist = NormalizeStoredAvatar(ResolveUploadedAvatarUrl(uploadResponse.Content.AvatarUrl));
-            }
-            catch (ApiException)
-            {
-                RedirectManager.RedirectToCurrentPageWithStatus("Error: Avatar upload failed. Please try again.", HttpContext);
-                return;
-            }
-        }
+				avatarUrlToPersist = NormalizeStoredAvatar(ResolveUploadedAvatarUrl(uploadResponse.Content.AvatarUrl));
+			}
+			catch (ApiException)
+			{
+				RedirectManager.RedirectToCurrentPageWithStatus("Error: Avatar upload failed. Please try again.", HttpContext);
+				return;
+			}
+		}
 
-        var phoneNumberToPersist = NormalizeStoredText(Input.PhoneNumber);
-        if (!string.Equals(phoneNumberToPersist, phoneNumber, StringComparison.Ordinal))
-        {
-            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, phoneNumberToPersist);
-            if (!setPhoneResult.Succeeded)
-            {
-                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
-                return;
-            }
+		var phoneNumberToPersist = NormalizeStoredText(Input.PhoneNumber);
+		if (!string.Equals(phoneNumberToPersist, phoneNumber, StringComparison.Ordinal))
+		{
+			var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, phoneNumberToPersist);
+			if (!setPhoneResult.Succeeded)
+			{
+				RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
+				return;
+			}
 
-            phoneNumber = phoneNumberToPersist;
-        }
+			phoneNumber = phoneNumberToPersist;
+		}
 
-        var firstNameToPersist = NormalizeStoredText(Input.FirstName);
-        var lastNameToPersist = NormalizeStoredText(Input.LastName);
-        var themeToPersist = NormalizeStoredTheme(Input.Theme);
+		var firstNameToPersist = NormalizeStoredText(Input.FirstName);
+		var lastNameToPersist = NormalizeStoredText(Input.LastName);
+		var themeToPersist = NormalizeStoredTheme(Input.Theme);
 
-        if (!string.Equals(avatarUrlToPersist, avatarUrl, StringComparison.Ordinal)
-            || !string.Equals(firstNameToPersist, firstName, StringComparison.Ordinal)
-            || !string.Equals(lastNameToPersist, lastName, StringComparison.Ordinal)
-            || !string.Equals(themeToPersist, theme, StringComparison.Ordinal))
-        {
-            user.FirstName = firstNameToPersist;
-            user.LastName = lastNameToPersist;
-            user.AvatarUrl = avatarUrlToPersist;
-            user.Theme = themeToPersist;
-            var updateProfileResult = await UserManager.UpdateAsync(user);
-            if (!updateProfileResult.Succeeded)
-            {
-                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to update profile details.", HttpContext);
-                return;
-            }
+		if (!string.Equals(avatarUrlToPersist, avatarUrl, StringComparison.Ordinal)
+		    || !string.Equals(firstNameToPersist, firstName, StringComparison.Ordinal)
+		    || !string.Equals(lastNameToPersist, lastName, StringComparison.Ordinal)
+		    || !string.Equals(themeToPersist, theme, StringComparison.Ordinal))
+		{
+			user.FirstName = firstNameToPersist;
+			user.LastName = lastNameToPersist;
+			user.AvatarUrl = avatarUrlToPersist;
+			user.Theme = themeToPersist;
+			var updateProfileResult = await UserManager.UpdateAsync(user);
+			if (!updateProfileResult.Succeeded)
+			{
+				RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to update profile details.", HttpContext);
+				return;
+			}
 
-            firstName = firstNameToPersist;
-            lastName = lastNameToPersist;
-            avatarUrl = avatarUrlToPersist;
-            theme = themeToPersist;
-        }
+			firstName = firstNameToPersist;
+			lastName = lastNameToPersist;
+			avatarUrl = avatarUrlToPersist;
+			theme = themeToPersist;
+		}
 
-        await SignInManager.RefreshSignInAsync(user);
-        RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
-    }
+		await SignInManager.RefreshSignInAsync(user);
+		RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
+	}
 
-    private string? CurrentAvatarUrl
-    {
-        get
-        {
-            var inputAvatarUrl = NormalizeAvatarUrl(Input?.AvatarUrl);
-            var storedAvatarUrl = NormalizeAvatarUrl(avatarUrl);
+	private string? CurrentAvatarUrl
+	{
+		get
+		{
+			var inputAvatarUrl = NormalizeAvatarUrl(Input?.AvatarUrl);
+			var storedAvatarUrl = NormalizeAvatarUrl(avatarUrl);
 
-            if (!string.IsNullOrWhiteSpace(inputAvatarUrl)
-                && !string.Equals(inputAvatarUrl, storedAvatarUrl, StringComparison.Ordinal))
-            {
-                return inputAvatarUrl;
-            }
+			if (!string.IsNullOrWhiteSpace(inputAvatarUrl)
+			    && !string.Equals(inputAvatarUrl, storedAvatarUrl, StringComparison.Ordinal))
+			{
+				return inputAvatarUrl;
+			}
 
-            return UserProfileDisplayHelpers.BuildPreferredAvatarUrl(userId, storedAvatarUrl);
-        }
-    }
+			return UserProfileDisplayHelpers.BuildPreferredAvatarUrl(userId, storedAvatarUrl);
+		}
+	}
 
-    private string AvatarFallback => GetUserInitial(username);
+	private string AvatarFallback => GetUserInitial(username);
 
-    private static string GetUserInitial(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "?";
-        }
+	private static string GetUserInitial(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return "?";
+		}
 
-        return value.Trim()[0].ToString().ToUpperInvariant();
-    }
+		return value.Trim()[0].ToString().ToUpperInvariant();
+	}
 
-    private static string? NormalizeStoredAvatar(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
+	private static string? NormalizeStoredAvatar(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return null;
+		}
 
-        return value.Trim();
-    }
+		return value.Trim();
+	}
 
-    private static string? NormalizeStoredText(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
+	private static string? NormalizeStoredText(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return null;
+		}
 
-        return value.Trim();
-    }
+		return value.Trim();
+	}
 
-    private static string? NormalizeStoredTheme(string? value)
-    {
-        var normalized = NormalizeStoredText(value);
-        if (normalized is null)
-        {
-            return null;
-        }
+	private static string? NormalizeStoredTheme(string? value)
+	{
+		var normalized = NormalizeStoredText(value);
+		if (normalized is null)
+		{
+			return null;
+		}
 
-        return AvailableThemes.Contains(normalized, StringComparer.OrdinalIgnoreCase)
-            ? normalized
-            : null;
-    }
+		return AvailableThemes.Contains(normalized, StringComparer.OrdinalIgnoreCase)
+			? normalized
+			: null;
+	}
 
-    private static string FormatThemeName(string fileName)
-    {
-        var nameWithoutExtension = fileName.Replace(".css", "", StringComparison.OrdinalIgnoreCase);
-        return char.ToUpperInvariant(nameWithoutExtension[0]) + nameWithoutExtension[1..];
-    }
+	private static string FormatThemeName(string fileName)
+	{
+		var nameWithoutExtension = fileName.Replace(".css", "", StringComparison.OrdinalIgnoreCase);
+		return char.ToUpperInvariant(nameWithoutExtension[0]) + nameWithoutExtension[1..];
+	}
 
-    private static string? NormalizeAvatarUrl(string? url)
-    {
-        var normalized = NormalizeStoredAvatar(url);
-        if (normalized is null)
-        {
-            return null;
-        }
+	private static string? NormalizeAvatarUrl(string? url)
+	{
+		var normalized = NormalizeStoredAvatar(url);
+		if (normalized is null)
+		{
+			return null;
+		}
 
-        if (normalized.StartsWith("/", StringComparison.Ordinal))
-        {
-            return normalized;
-        }
+		if (normalized.StartsWith("/", StringComparison.Ordinal))
+		{
+			return normalized;
+		}
 
-        if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri))
-        {
-            return null;
-        }
+		if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri))
+		{
+			return null;
+		}
 
-        if (uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return uri.ToString();
-        }
+		if (uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+		{
+			return uri.ToString();
+		}
 
-        if (uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) && (uri.IsLoopback || uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)))
-        {
-            return uri.ToString();
-        }
+		if (uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) && (uri.IsLoopback || uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)))
+		{
+			return uri.ToString();
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    private string ResolveUploadedAvatarUrl(string avatarUrl)
-    {
-        if (!Uri.TryCreate(avatarUrl, UriKind.Absolute, out var avatarUri))
-        {
-            return avatarUrl;
-        }
+	private string ResolveUploadedAvatarUrl(string avatarUrl)
+	{
+		if (!Uri.TryCreate(avatarUrl, UriKind.Absolute, out var avatarUri))
+		{
+			return avatarUrl;
+		}
 
-        var isLocalHost = avatarUri.IsLoopback || string.Equals(avatarUri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
-        if (!isLocalHost)
-        {
-            return avatarUrl;
-        }
+		var isLocalHost = avatarUri.IsLoopback || string.Equals(avatarUri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
+		if (!isLocalHost)
+		{
+			return avatarUrl;
+		}
 
-        var currentUri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
-        if (!string.Equals(currentUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return avatarUrl;
-        }
+		var currentUri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+		if (!string.Equals(currentUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+		{
+			return avatarUrl;
+		}
 
-        var rewrittenAvatarUri = new UriBuilder(avatarUri)
-        {
-            Scheme = currentUri.Scheme,
-            Host = currentUri.Host,
-            Port = currentUri.IsDefaultPort ? -1 : currentUri.Port
-        };
+		var rewrittenAvatarUri = new UriBuilder(avatarUri)
+		{
+			Scheme = currentUri.Scheme,
+			Host = currentUri.Host,
+			Port = currentUri.IsDefaultPort ? -1 : currentUri.Port
+		};
 
-        return rewrittenAvatarUri.Uri.ToString();
-    }
+		return rewrittenAvatarUri.Uri.ToString();
+	}
 
-    private sealed class InputModel
-    {
-        [Required(ErrorMessage = "First name is required.")]
-        [StringLength(100)]
-        [Display(Name = "First name")]
-        public string? FirstName { get; set; }
+	private sealed class InputModel
+	{
+		[Required(ErrorMessage = "First name is required.")]
+		[StringLength(100)]
+		[Display(Name = "First name")]
+		public string? FirstName { get; set; }
 
-        [Required(ErrorMessage = "Last name is required.")]
-        [StringLength(100)]
-        [Display(Name = "Last name")]
-        public string? LastName { get; set; }
+		[Required(ErrorMessage = "Last name is required.")]
+		[StringLength(100)]
+		[Display(Name = "Last name")]
+		public string? LastName { get; set; }
 
-        [OptionalUrl]
-        [StringLength(512)]
-        [Display(Name = "Avatar URL")]
-        public string? AvatarUrl { get; set; }
+		[OptionalUrl]
+		[StringLength(512)]
+		[Display(Name = "Avatar URL")]
+		public string? AvatarUrl { get; set; }
 
-        [Display(Name = "Avatar image")]
-        public IFormFile? AvatarFile { get; set; }
+		[Display(Name = "Avatar image")] public IFormFile? AvatarFile { get; set; }
 
-        [OptionalPhone]
-        [Display(Name = "Phone number")]
-        public string? PhoneNumber { get; set; }
+		[OptionalPhone]
+		[Display(Name = "Phone number")]
+		public string? PhoneNumber { get; set; }
 
-        [StringLength(100)]
-        [Display(Name = "Site theme")]
-        public string? Theme { get; set; }
-    }
+		[StringLength(100)]
+		[Display(Name = "Site theme")]
+		public string? Theme { get; set; }
+	}
+
 }

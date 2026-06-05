@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.DealHands;
 
 /// <summary>
-/// Endpoint for dealing hands to all players in a Five Card Draw game.
+///     Endpoint for dealing hands to all players in a Five Card Draw game.
 /// </summary>
 public static class DealHandsEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for dealing hands.
+	///     Maps the POST endpoint for dealing hands.
 	/// </summary>
 	public static RouteGroupBuilder MapDealHands(this RouteGroupBuilder group)
 	{
@@ -32,12 +32,13 @@ public static class DealHandsEndpoint
 				})
 			.WithName($"TwosJacksManWithTheAxe{nameof(MapDealHands).TrimPrefix("Map")}")
 			.WithSummary("Deal Hands")
-			.WithDescription("Deals five cards to each active player from the shuffled deck and initiates the first betting round. " +
-			                 "After dealing, the game transitions to the FirstBettingRound phase. " +
-			                 "This method deals 5 cards to each player who has not folded, " +
-			                 "resets all players' current bet amounts for the new betting round, " +
-			                 "and automatically starts the first betting round.")
-			.Produces<DealHandsSuccessful>(StatusCodes.Status200OK)
+			.WithDescription(
+				"Deals five cards to each active player from the shuffled deck and initiates the first betting round. " +
+				"After dealing, the game transitions to the FirstBettingRound phase. " +
+				"This method deals 5 cards to each player who has not folded, " +
+				"resets all players' current bet amounts for the new betting round, " +
+				"and automatically starts the first betting round.")
+			.Produces<DealHandsSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict)
 			.ProducesProblem(StatusCodes.Status422UnprocessableEntity);

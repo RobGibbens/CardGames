@@ -13,10 +13,14 @@ public static partial class GetCurrentPlayerTurnMapper
 	[MapperIgnoreSource(nameof(GamePlayer.Game))]
 	public static partial CurrentPlayerResponse ToCurrentPlayerResponse(this GamePlayer model);
 
-	private static string MapRowVersion(byte[] rowVersion) => rowVersion.ToBase64String();
+	private static string MapRowVersion(byte[] rowVersion)
+	{
+		return rowVersion.ToBase64String();
+	}
 
-	private static IReadOnlyList<DealtCard> MapCards(ICollection<GameCard> cards) =>
-		cards
+	private static IReadOnlyList<DealtCard> MapCards(ICollection<GameCard> cards)
+	{
+		return cards
 			.Where(c => !c.IsDiscarded)
 			.OrderBy(c => c.DealOrder)
 			.Select(c => new DealtCard
@@ -26,4 +30,5 @@ public static partial class GetCurrentPlayerTurnMapper
 				DealOrder = c.DealOrder
 			})
 			.ToList();
+	}
 }

@@ -28,7 +28,7 @@ public sealed class GetGamePreferencesQueryHandler(
 		{
 			var resolvedUserId = await ResolveLocalUserIdAsync(cancellationToken);
 			if (!string.IsNullOrWhiteSpace(resolvedUserId)
-				&& !string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
+			    && !string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
 			{
 				preferences = await context.UserGamePreferences
 					.AsNoTracking()
@@ -50,13 +50,16 @@ public sealed class GetGamePreferencesQueryHandler(
 		};
 	}
 
-	private static GamePreferencesDto DefaultPreferences() => new()
+	private static GamePreferencesDto DefaultPreferences()
 	{
-		DefaultSmallBlind = 1,
-		DefaultBigBlind = 2,
-		DefaultAnte = 5,
-		DefaultMinimumBet = 10
-	};
+		return new GamePreferencesDto
+		{
+			DefaultSmallBlind = 1,
+			DefaultBigBlind = 2,
+			DefaultAnte = 5,
+			DefaultMinimumBet = 10
+		};
+	}
 
 	private async Task<string?> ResolveLocalUserIdAsync(CancellationToken cancellationToken)
 	{

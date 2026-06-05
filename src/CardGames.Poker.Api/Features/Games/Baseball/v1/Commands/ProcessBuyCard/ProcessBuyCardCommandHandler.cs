@@ -1,6 +1,5 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.Baseball;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.DealHands;
 using CardGames.Poker.Betting;
 using MediatR;
@@ -23,9 +22,9 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.Pots)
-				.ThenInclude(p => p.Contributions)
+			.ThenInclude(p => p.Contributions)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -76,7 +75,7 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 			};
 		}
 
-		var buyCardPrice = buyCardState.BuyCardPrice > 0 ? buyCardState.BuyCardPrice : (game.MinBet ?? 0);
+		var buyCardPrice = buyCardState.BuyCardPrice > 0 ? buyCardState.BuyCardPrice : game.MinBet ?? 0;
 		if (command.Accept && player.ChipStack < buyCardPrice)
 		{
 			return new ProcessBuyCardError
@@ -134,8 +133,8 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 
 			var deckCard = await context.GameCards
 				.Where(gc => gc.GameId == game.Id &&
-							 gc.HandNumber == game.CurrentHandNumber &&
-							 gc.Location == CardLocation.Deck)
+				             gc.HandNumber == game.CurrentHandNumber &&
+				             gc.Location == CardLocation.Deck)
 				.OrderBy(gc => gc.DealOrder)
 				.FirstOrDefaultAsync(cancellationToken);
 
@@ -153,11 +152,11 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 					// Shift subsequent cards to make room for the new card
 					var cardsToShift = await context.GameCards
 						.Where(gc => gc.GameId == game.Id &&
-									 gc.HandNumber == game.CurrentHandNumber &&
-									 gc.GamePlayerId == player.Id &&
-									 gc.DealOrder >= newDealOrder &&
-									 gc.Location != CardLocation.Deck &&
-									 !gc.IsDiscarded)
+						             gc.HandNumber == game.CurrentHandNumber &&
+						             gc.GamePlayerId == player.Id &&
+						             gc.DealOrder >= newDealOrder &&
+						             gc.Location != CardLocation.Deck &&
+						             !gc.IsDiscarded)
 						.ToListAsync(cancellationToken);
 
 					foreach (var card in cardsToShift)
@@ -170,9 +169,9 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 					// Fallback: append to end
 					var existingCardCount = await context.GameCards
 						.CountAsync(gc => gc.GamePlayerId == player.Id &&
-										  gc.HandNumber == game.CurrentHandNumber &&
-										  gc.Location != CardLocation.Deck &&
-										  !gc.IsDiscarded, cancellationToken);
+						                  gc.HandNumber == game.CurrentHandNumber &&
+						                  gc.Location != CardLocation.Deck &&
+						                  !gc.IsDiscarded, cancellationToken);
 					newDealOrder = existingCardCount + 1;
 				}
 

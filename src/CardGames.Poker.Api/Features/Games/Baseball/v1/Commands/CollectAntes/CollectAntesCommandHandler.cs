@@ -19,7 +19,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -36,15 +36,15 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 			return new CollectAntesError
 			{
 				Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase. " +
-						  $"Antes can only be collected when the game is in '{nameof(Phases.CollectingAntes)}' phase.",
+				          $"Antes can only be collected when the game is in '{nameof(Phases.CollectingAntes)}' phase.",
 				Code = CollectAntesErrorCode.InvalidGameState
 			};
 		}
 
 		var mainPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-									  p.HandNumber == game.CurrentHandNumber &&
-									  p.PotType == PotType.Main,
+			                          p.HandNumber == game.CurrentHandNumber &&
+			                          p.PotType == PotType.Main,
 				cancellationToken);
 
 		if (mainPot is null)

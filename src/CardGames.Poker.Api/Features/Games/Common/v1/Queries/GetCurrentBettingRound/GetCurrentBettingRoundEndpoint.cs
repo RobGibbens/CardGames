@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentBettingRound;
 
 /// <summary>
-/// Endpoint for retrieving the current betting round for a specific game.
+///     Endpoint for retrieving the current betting round for a specific game.
 /// </summary>
 public static class GetCurrentBettingRoundEndpoint
 {
@@ -22,7 +22,7 @@ public static class GetCurrentBettingRoundEndpoint
 			.WithSummary(nameof(MapGetCurrentBettingRound).TrimPrefix("Map"))
 			.WithDescription("Retrieve the current betting round for a specific game.")
 			.MapToApiVersion(1.0)
-			.Produces<GetCurrentBettingRoundResponse>(StatusCodes.Status200OK)
+			.Produces<GetCurrentBettingRoundResponse>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

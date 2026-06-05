@@ -17,7 +17,7 @@ public static class GetActiveGamesEndpoint
 			.WithSummary(nameof(MapGetActiveGames).TrimPrefix("Map"))
 			.WithDescription("Retrieve a list of all non-complete games.")
 			.MapToApiVersion(1.0)
-			.Produces<List<GetActiveGamesResponse>>(StatusCodes.Status200OK)
+			.Produces<List<GetActiveGamesResponse>>()
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
 		return group;

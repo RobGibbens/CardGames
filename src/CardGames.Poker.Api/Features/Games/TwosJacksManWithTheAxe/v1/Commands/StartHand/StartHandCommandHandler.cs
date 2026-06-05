@@ -1,7 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -10,7 +9,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.StartHand;
 
 /// <summary>
-/// Handles the <see cref="StartHandCommand"/> to start a new hand in a Five Card Draw game.
+///     Handles the <see cref="StartHandCommand" /> to start a new hand in a Five Card Draw game.
 /// </summary>
 public class StartHandCommandHandler(CardsDbContext context)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
@@ -47,8 +46,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
-						  $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
-						  $"or '{nameof(Phases.Complete)}' phase.",
+				          $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
+				          $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
 		}
@@ -81,9 +80,9 @@ public class StartHandCommandHandler(CardsDbContext context)
 		var ante = game.Ante ?? 0;
 		var playersWithInsufficientChips = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 gp.ChipStack > 0 &&
-						 gp.ChipStack < ante)
+			             !gp.IsSittingOut &&
+			             gp.ChipStack > 0 &&
+			             gp.ChipStack < ante)
 			.ToList();
 
 		foreach (var player in playersWithInsufficientChips)
@@ -94,15 +93,16 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 (ante == 0 || gp.ChipStack >= ante))
+			             !gp.IsSittingOut &&
+			             (ante == 0 || gp.ChipStack >= ante))
 			.ToList();
 
 		if (eligiblePlayers.Count < 2)
 		{
 			return new StartHandError
 			{
-				Message = "Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
+				Message =
+					"Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
 		}

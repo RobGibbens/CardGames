@@ -4,7 +4,10 @@ using OneOf;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent;
 
-public sealed record CreateLeagueSeasonEventCommand(Guid LeagueId, Guid SeasonId, CreateLeagueSeasonEventRequest Request)
+public sealed record CreateLeagueSeasonEventCommand(
+	Guid LeagueId,
+	Guid SeasonId,
+	CreateLeagueSeasonEventRequest Request)
 	: IRequest<OneOf<CreateLeagueSeasonEventResponse, CreateLeagueSeasonEventError>>;
 
 public enum CreateLeagueSeasonEventErrorCode

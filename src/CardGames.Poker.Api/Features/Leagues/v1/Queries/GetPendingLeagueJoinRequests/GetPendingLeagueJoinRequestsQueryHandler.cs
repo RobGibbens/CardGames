@@ -1,25 +1,27 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
-using CardGames.Poker.Api.Features.Leagues.v1.Queries;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueJoinRequestStatus = CardGames.Poker.Api.Data.Entities.LeagueJoinRequestStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetPendingLeagueJoinRequests;
 
 public sealed class GetPendingLeagueJoinRequestsQueryHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService)
-	: IRequestHandler<GetPendingLeagueJoinRequestsQuery, OneOf<IReadOnlyList<LeagueJoinRequestQueueItemDto>, GetPendingLeagueJoinRequestsError>>
+	: IRequestHandler<GetPendingLeagueJoinRequestsQuery,
+		OneOf<IReadOnlyList<LeagueJoinRequestQueueItemDto>, GetPendingLeagueJoinRequestsError>>
 {
-	public async Task<OneOf<IReadOnlyList<LeagueJoinRequestQueueItemDto>, GetPendingLeagueJoinRequestsError>> Handle(GetPendingLeagueJoinRequestsQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<IReadOnlyList<LeagueJoinRequestQueueItemDto>, GetPendingLeagueJoinRequestsError>> Handle(
+		GetPendingLeagueJoinRequestsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new GetPendingLeagueJoinRequestsError(GetPendingLeagueJoinRequestsErrorCode.Unauthorized, "User is not authenticated.");
+			return new GetPendingLeagueJoinRequestsError(GetPendingLeagueJoinRequestsErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
@@ -30,19 +32,21 @@ public sealed class GetPendingLeagueJoinRequestsQueryHandler(
 
 		if (!canManageLeague)
 		{
-			return new GetPendingLeagueJoinRequestsError(GetPendingLeagueJoinRequestsErrorCode.Forbidden, "Only league managers or admins can view pending join requests.");
+			return new GetPendingLeagueJoinRequestsError(GetPendingLeagueJoinRequestsErrorCode.Forbidden,
+				"Only league managers or admins can view pending join requests.");
 		}
 
 		var now = DateTimeOffset.UtcNow;
 		var expiredPendingRequests = await context.LeagueJoinRequests
-			.Where(x => x.LeagueId == request.LeagueId && x.Status == Data.Entities.LeagueJoinRequestStatus.Pending && x.ExpiresAtUtc <= now)
+			.Where(x => x.LeagueId == request.LeagueId && x.Status == LeagueJoinRequestStatus.Pending &&
+			            x.ExpiresAtUtc <= now)
 			.ToListAsync(cancellationToken);
 
 		if (expiredPendingRequests.Count > 0)
 		{
 			foreach (var expiredRequest in expiredPendingRequests)
 			{
-				expiredRequest.Status = Data.Entities.LeagueJoinRequestStatus.Expired;
+				expiredRequest.Status = LeagueJoinRequestStatus.Expired;
 				expiredRequest.UpdatedAtUtc = now;
 				expiredRequest.ResolvedAtUtc = now;
 				expiredRequest.ResolvedByUserId = null;
@@ -54,7 +58,7 @@ public sealed class GetPendingLeagueJoinRequestsQueryHandler(
 
 		var pendingRequests = await context.LeagueJoinRequests
 			.AsNoTracking()
-			.Where(x => x.LeagueId == request.LeagueId && x.Status == Data.Entities.LeagueJoinRequestStatus.Pending)
+			.Where(x => x.LeagueId == request.LeagueId && x.Status == LeagueJoinRequestStatus.Pending)
 			.OrderBy(x => x.CreatedAtUtc)
 			.Select(x => new
 			{
@@ -79,7 +83,8 @@ public sealed class GetPendingLeagueJoinRequestsQueryHandler(
 				LeagueId = x.LeagueId,
 				InviteId = x.InviteId,
 				RequesterUserId = x.RequesterUserId,
-				RequesterDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, x.RequesterUserId),
+				RequesterDisplayName =
+					LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, x.RequesterUserId),
 				Status = Contracts.LeagueJoinRequestStatus.Pending,
 				CreatedAtUtc = x.CreatedAtUtc,
 				ExpiresAtUtc = x.ExpiresAtUtc

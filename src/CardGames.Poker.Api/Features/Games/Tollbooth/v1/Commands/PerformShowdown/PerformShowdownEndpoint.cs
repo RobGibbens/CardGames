@@ -1,7 +1,9 @@
 using CardGames.Poker.Api.Extensions;
 using MediatR;
-using SharedPerformShowdownErrorCode = CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown.PerformShowdownErrorCode;
-using SharedPerformShowdownSuccessful = CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown.PerformShowdownSuccessful;
+using SharedPerformShowdownErrorCode =
+	CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown.PerformShowdownErrorCode;
+using SharedPerformShowdownSuccessful =
+	CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown.PerformShowdownSuccessful;
 
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.PerformShowdown;
 
@@ -21,7 +23,8 @@ public static class PerformShowdownEndpoint
 							SharedPerformShowdownErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
 							SharedPerformShowdownErrorCode.InvalidGameState => Results.Conflict(new { error.Message }),
 							SharedPerformShowdownErrorCode.NoValidHands => Results.BadRequest(new { error.Message }),
-							SharedPerformShowdownErrorCode.UnsupportedGameType => Results.BadRequest(new { error.Message }),
+							SharedPerformShowdownErrorCode.UnsupportedGameType => Results.BadRequest(new
+								{ error.Message }),
 							_ => Results.Problem(error.Message)
 						}
 					);
@@ -29,7 +32,7 @@ public static class PerformShowdownEndpoint
 			.WithName($"Tollbooth{nameof(MapPerformShowdown).TrimPrefix("Map")}")
 			.WithSummary("Perform Showdown")
 			.WithDescription("Performs Tollbooth showdown and awards the hand.")
-			.Produces<SharedPerformShowdownSuccessful>(StatusCodes.Status200OK)
+			.Produces<SharedPerformShowdownSuccessful>()
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);

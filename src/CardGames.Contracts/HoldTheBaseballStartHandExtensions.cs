@@ -1,10 +1,8 @@
-using Refit;
-
 namespace CardGames.Poker.Api.Clients;
 
 /// <summary>
-/// Extends the generated IGamesApi with the Hold the Baseball start-hand endpoint.
-/// Will be auto-generated when Refit clients are regenerated.
+///     Extends the generated IGamesApi with the Hold the Baseball start-hand endpoint.
+///     Will be auto-generated when Refit clients are regenerated.
 /// </summary>
 public partial interface IGamesApi
 {

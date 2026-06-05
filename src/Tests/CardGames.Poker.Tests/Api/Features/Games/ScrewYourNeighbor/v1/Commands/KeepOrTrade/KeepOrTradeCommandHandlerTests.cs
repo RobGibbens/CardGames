@@ -28,7 +28,8 @@ public class KeepOrTradeCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new KeepOrTradeCommand(Guid.NewGuid(), Guid.NewGuid(), "Keep"), CancellationToken.None);
+		var result = await sut.Handle(new KeepOrTradeCommand(Guid.NewGuid(), Guid.NewGuid(), "Keep"),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(KeepOrTradeErrorCode.GameNotFound);
@@ -115,7 +116,8 @@ public class KeepOrTradeCommandHandlerTests
 		result.AsT0.NextPhase.Should().Be(nameof(Phases.KeepOrTrade));
 		result.AsT0.NextPlayerSeatIndex.Should().Be(1);
 
-		var persistedPlayer = await context.GamePlayers.SingleAsync(gamePlayer => gamePlayer.GameId == game.Id && gamePlayer.PlayerId == playerId);
+		var persistedPlayer = await context.GamePlayers.SingleAsync(gamePlayer =>
+			gamePlayer.GameId == game.Id && gamePlayer.PlayerId == playerId);
 		persistedPlayer.VariantState.Should().Be("SYN_TRADED");
 	}
 
@@ -137,18 +139,18 @@ public class KeepOrTradeCommandHandlerTests
 		var sut = CreateSut(context, out var flowHandler, out var handSettlementService);
 
 		flowHandler.PerformShowdownAsync(
-			Arg.Any<CardsDbContext>(),
-			Arg.Any<Game>(),
-			Arg.Any<IHandHistoryRecorder>(),
-			Arg.Any<DateTimeOffset>(),
-			Arg.Any<CancellationToken>())
+				Arg.Any<CardsDbContext>(),
+				Arg.Any<Game>(),
+				Arg.Any<IHandHistoryRecorder>(),
+				Arg.Any<DateTimeOffset>(),
+				Arg.Any<CancellationToken>())
 			.Returns(ShowdownResult.Success([], [], 0));
 		flowHandler.ProcessPostShowdownAsync(
-			Arg.Any<CardsDbContext>(),
-			Arg.Any<Game>(),
-			Arg.Any<ShowdownResult>(),
-			Arg.Any<DateTimeOffset>(),
-			Arg.Any<CancellationToken>())
+				Arg.Any<CardsDbContext>(),
+				Arg.Any<Game>(),
+				Arg.Any<ShowdownResult>(),
+				Arg.Any<DateTimeOffset>(),
+				Arg.Any<CancellationToken>())
 			.Returns(nameof(Phases.Complete));
 
 		var result = await sut.Handle(new KeepOrTradeCommand(game.Id, dealerPlayerId, "Trade"), CancellationToken.None);
@@ -202,15 +204,17 @@ public class KeepOrTradeCommandHandlerTests
 
 		_ = await staleContext.Games
 			.Include(game => game.GamePlayers)
-				.ThenInclude(gamePlayer => gamePlayer.Player)
+			.ThenInclude(gamePlayer => gamePlayer.Player)
 			.Include(game => game.GameCards)
 			.FirstAsync(game => game.Id == gameId);
 
 		var freshSut = CreateSut(freshContext);
 		var staleSut = CreateSut(staleContext);
 
-		var firstResult = await freshSut.Handle(new KeepOrTradeCommand(gameId, playerId, "Trade"), CancellationToken.None);
-		var secondResult = await staleSut.Handle(new KeepOrTradeCommand(gameId, playerId, "Keep"), CancellationToken.None);
+		var firstResult =
+			await freshSut.Handle(new KeepOrTradeCommand(gameId, playerId, "Trade"), CancellationToken.None);
+		var secondResult =
+			await staleSut.Handle(new KeepOrTradeCommand(gameId, playerId, "Keep"), CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
 		firstResult.AsT0.DidTrade.Should().BeTrue();
@@ -225,16 +229,18 @@ public class KeepOrTradeCommandHandlerTests
 			.ToListAsync();
 		var handCards = await verificationContext.GameCards
 			.Where(gameCard => gameCard.GameId == gameId &&
-			                  gameCard.HandNumber == persistedGame.CurrentHandNumber &&
-			                  gameCard.Location == CardLocation.Hand &&
-			                  !gameCard.IsDiscarded)
+			                   gameCard.HandNumber == persistedGame.CurrentHandNumber &&
+			                   gameCard.Location == CardLocation.Hand &&
+			                   !gameCard.IsDiscarded)
 			.ToListAsync();
 
 		persistedGame.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
 		persistedGame.CurrentPlayerIndex.Should().Be(1);
 		players[0].VariantState.Should().Be("SYN_TRADED");
-		handCards.Should().ContainSingle(gameCard => gameCard.GamePlayerId == players[0].Id && gameCard.Symbol == CardSymbol.Six);
-		handCards.Should().ContainSingle(gameCard => gameCard.GamePlayerId == players[1].Id && gameCard.Symbol == CardSymbol.Four);
+		handCards.Should().ContainSingle(gameCard =>
+			gameCard.GamePlayerId == players[0].Id && gameCard.Symbol == CardSymbol.Six);
+		handCards.Should().ContainSingle(gameCard =>
+			gameCard.GamePlayerId == players[1].Id && gameCard.Symbol == CardSymbol.Four);
 	}
 
 	private static KeepOrTradeCommandHandler CreateSut(CardsDbContext context)

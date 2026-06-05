@@ -10,25 +10,29 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueSeasonEvents;
 public sealed class GetLeagueSeasonEventsQueryHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService)
-	: IRequestHandler<GetLeagueSeasonEventsQuery, OneOf<IReadOnlyList<LeagueSeasonEventDto>, GetLeagueSeasonEventsError>>
+	: IRequestHandler<GetLeagueSeasonEventsQuery,
+		OneOf<IReadOnlyList<LeagueSeasonEventDto>, GetLeagueSeasonEventsError>>
 {
-	public async Task<OneOf<IReadOnlyList<LeagueSeasonEventDto>, GetLeagueSeasonEventsError>> Handle(GetLeagueSeasonEventsQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<IReadOnlyList<LeagueSeasonEventDto>, GetLeagueSeasonEventsError>> Handle(
+		GetLeagueSeasonEventsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.Unauthorized, "User is not authenticated.");
+			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
 			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive,
+			               x.UserId == currentUserService.UserId &&
+			               x.IsActive,
 				cancellationToken);
 
 		if (!isMember)
 		{
-			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.Forbidden, "Only active members can view season events.");
+			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.Forbidden,
+				"Only active members can view season events.");
 		}
 
 		var seasonExists = await context.LeagueSeasons
@@ -37,7 +41,8 @@ public sealed class GetLeagueSeasonEventsQueryHandler(
 
 		if (!seasonExists)
 		{
-			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.SeasonNotFound, "Season not found in league.");
+			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.SeasonNotFound,
+				"Season not found in league.");
 		}
 
 		var events = await context.LeagueSeasonEvents
@@ -55,7 +60,7 @@ public sealed class GetLeagueSeasonEventsQueryHandler(
 				Name = x.Name,
 				SequenceNumber = x.SequenceNumber,
 				ScheduledAtUtc = x.ScheduledAtUtc,
-				Status = (Contracts.LeagueSeasonEventStatus)x.Status,
+				Status = (LeagueSeasonEventStatus)x.Status,
 				Notes = x.Notes,
 				CreatedByUserId = x.CreatedByUserId,
 				CreatedAtUtc = x.CreatedAtUtc,

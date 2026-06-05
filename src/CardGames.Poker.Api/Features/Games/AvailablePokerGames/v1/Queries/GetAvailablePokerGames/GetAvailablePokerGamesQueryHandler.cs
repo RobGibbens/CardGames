@@ -1,5 +1,4 @@
 using System.Reflection;
-using System;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games;
 using MediatR;
@@ -8,8 +7,8 @@ using Microsoft.Extensions.Caching.Hybrid;
 namespace CardGames.Poker.Api.Features.Games.AvailablePokerGames.v1.Queries.GetAvailablePokerGames;
 
 /// <summary>
-/// Handler that uses reflection to discover all IPokerGame implementations
-/// in the CardGames.Poker assembly and returns their metadata.
+///     Handler that uses reflection to discover all IPokerGame implementations
+///     in the CardGames.Poker assembly and returns their metadata.
 /// </summary>
 public class GetAvailablePokerGamesQueryHandler(
 	HybridCache hybridCache)
@@ -36,7 +35,8 @@ public class GetAvailablePokerGamesQueryHandler(
 					.Select(CreateGameResponse)
 					.Where(g => g is not null)
 					.Cast<GetAvailablePokerGamesResponse>()
-					.Where(g => string.IsNullOrWhiteSpace(request.Variant) || g.Name.Equals(request.Variant, StringComparison.OrdinalIgnoreCase))
+					.Where(g => string.IsNullOrWhiteSpace(request.Variant) ||
+					            g.Name.Equals(request.Variant, StringComparison.OrdinalIgnoreCase))
 					.OrderBy(g => g.Name)
 					.ToList();
 

@@ -1,6 +1,5 @@
-using Aspire.Hosting;
-using Aspire.Hosting.DevTunnels;
 using CardGames.AppHost;
+using Projects;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -20,30 +19,27 @@ var blobs = builder
 	.AddBlobs("blobs");
 
 var sqlServer = builder.AddAzureSqlServer("sqlserver")
-	.RunAsContainer(c =>
-	{
-		c.WithLifetime(ContainerLifetime.Persistent);
-	});
+	.RunAsContainer(c => { c.WithLifetime(ContainerLifetime.Persistent); });
 
 var sqldb = sqlServer.AddDatabase("cardsdb");
 
-var migrations = builder.AddProject<Projects.CardGames_MigrationService>("migrations")
+var migrations = builder.AddProject<CardGames_MigrationService>("migrations")
 	.WithReference(sqldb)
 	.WaitFor(sqldb);
 
-var api = builder.AddProject<Projects.CardGames_Poker_Api>("api")
-.WithReference(serviceBus)
-.WaitFor(serviceBus)
-.WithReference(cache)
-.WaitFor(cache)
+var api = builder.AddProject<CardGames_Poker_Api>("api")
+	.WithReference(serviceBus)
+	.WaitFor(serviceBus)
+	.WithReference(cache)
+	.WaitFor(cache)
 	.WithReference(blobs)
 	.WaitFor(blobs)
-.WithReference(sqldb)
-.WaitFor(sqldb)
-.WithReference(migrations)
-.WaitForCompletion(migrations);
+	.WithReference(sqldb)
+	.WaitFor(sqldb)
+	.WithReference(migrations)
+	.WaitForCompletion(migrations);
 
-var web = builder.AddProject<Projects.CardGames_Poker_Web>("web")
+var web = builder.AddProject<CardGames_Poker_Web>("web")
 	.WithReference(sqldb)
 	.WaitFor(sqldb)
 	.WithReference(api)

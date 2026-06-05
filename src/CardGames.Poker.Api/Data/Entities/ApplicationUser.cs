@@ -5,19 +5,11 @@ namespace CardGames.Poker.Api.Data.Entities;
 
 public class ApplicationUser : IdentityUser
 {
-	[PersonalData]
-	[MaxLength(100)]
-	public string? FirstName { get; set; }
+	[PersonalData] [MaxLength(100)] public string? FirstName { get; set; }
 
-	[PersonalData]
-	[MaxLength(100)]
-	public string? LastName { get; set; }
+	[PersonalData] [MaxLength(100)] public string? LastName { get; set; }
 
-	[PersonalData]
-	[MaxLength(512)]
-	public string? AvatarUrl { get; set; }
+	[PersonalData] [MaxLength(512)] public string? AvatarUrl { get; set; }
 
-	[PersonalData]
-	[MaxLength(100)]
-	public string? Theme { get; set; }
+	[PersonalData] [MaxLength(100)] public string? Theme { get; set; }
 }

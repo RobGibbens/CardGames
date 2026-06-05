@@ -4,20 +4,22 @@ using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.StudHands;
 using CardGames.Poker.Hands.WildCards;
 
 namespace CardGames.Poker.Games.PairPressure;
 
 /// <summary>
-/// Orchestrates a Pair Pressure poker game with betting.
-/// Pair Pressure is a seven card stud variant where face-up paired ranks become wild,
-/// and only the two most recent paired ranks remain active.
+///     Orchestrates a Pair Pressure poker game with betting.
+///     Pair Pressure is a seven card stud variant where face-up paired ranks become wild,
+///     and only the two most recent paired ranks remain active.
 /// </summary>
 [PokerGameMetadata(
 	code: "PAIRPRESSURE",
 	name: "Pair Pressure",
-	description: "A seven card stud poker variant where face-up paired ranks become wild, with only the two most recent paired ranks remaining active.",
+	description:
+	"A seven card stud poker variant where face-up paired ranks become wild, with only the two most recent paired ranks remaining active.",
 	minimumNumberOfPlayers: 2,
 	maximumNumberOfPlayers: 7,
 	initialHoleCards: 2,
@@ -31,42 +33,14 @@ namespace CardGames.Poker.Games.PairPressure;
 	imageName: "pairpressure.png")]
 public class PairPressureGame : IPokerGame
 {
-	private readonly List<PairPressureGamePlayer> _gamePlayers;
 	private readonly FrenchDeckDealer _dealer;
-	private readonly int _ante;
-	private readonly int _bringIn;
-	private readonly int _smallBet;
-	private readonly int _bigBet;
-	private readonly bool _useBringIn;
+	private readonly List<Card> _faceUpCardsInOrder = new();
+	private readonly List<PairPressureGamePlayer> _gamePlayers;
 	private readonly PairPressureWildCardRules _wildCardRules = new();
-
-	private PotManager _potManager;
-	private BettingRound _currentBettingRound;
-	private int _dealerPosition;
 	private int _bringInPlayerIndex;
-	private List<Card> _faceUpCardsInOrder = new();
-
-	public string Name { get; } = "Pair Pressure";
-	public string Description { get; } = "A seven card stud poker variant where face-up paired ranks become wild, with only the two most recent paired ranks remaining active.";
-	public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.Stud;
-	public int MinimumNumberOfPlayers { get; } = 2;
-	public int MaximumNumberOfPlayers { get; } = 7;
-	public Phases CurrentPhase { get; private set; }
-	public IReadOnlyList<PairPressureGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
-	public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
-	public int TotalPot => _potManager?.TotalPotAmount ?? 0;
-	public BettingRound CurrentBettingRound => _currentBettingRound;
-	public int DealerPosition => _dealerPosition;
-	public PotManager PotManager => _potManager;
-	public int Ante => _ante;
-	public int BringIn => _bringIn;
-	public int SmallBet => _smallBet;
-	public int BigBet => _bigBet;
-	public IReadOnlyList<Card> FaceUpCardsInOrder => _faceUpCardsInOrder.AsReadOnly();
-	public bool UseBringIn => _useBringIn;
 
 	/// <summary>
-	/// Constructor for rules discovery only.
+	///     Constructor for rules discovery only.
 	/// </summary>
 	public PairPressureGame()
 		: this(
@@ -102,16 +76,46 @@ public class PairPressureGame : IPokerGame
 			.ToList();
 
 		_dealer = FrenchDeckDealer.WithFullDeck();
-		_ante = ante;
-		_bringIn = bringIn;
-		_smallBet = smallBet;
-		_bigBet = bigBet;
-		_useBringIn = useBringIn;
-		_dealerPosition = 0;
+		Ante = ante;
+		BringIn = bringIn;
+		SmallBet = smallBet;
+		BigBet = bigBet;
+		UseBringIn = useBringIn;
+		DealerPosition = 0;
 		CurrentPhase = Phases.WaitingToStart;
 	}
 
-	public GameFlow.GameRules GetGameRules()
+	public Phases CurrentPhase { get; private set; }
+	public IReadOnlyList<PairPressureGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
+	public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
+	public int TotalPot => PotManager?.TotalPotAmount ?? 0;
+	public BettingRound CurrentBettingRound { get; private set; }
+
+	public int DealerPosition { get; private set; }
+
+	public PotManager PotManager { get; private set; }
+
+	public int Ante { get; }
+
+	public int BringIn { get; }
+
+	public int SmallBet { get; }
+
+	public int BigBet { get; }
+
+	public IReadOnlyList<Card> FaceUpCardsInOrder => _faceUpCardsInOrder.AsReadOnly();
+	public bool UseBringIn { get; }
+
+	public string Name { get; } = "Pair Pressure";
+
+	public string Description { get; } =
+		"A seven card stud poker variant where face-up paired ranks become wild, with only the two most recent paired ranks remaining active.";
+
+	public VariantType VariantType { get; } = VariantType.Stud;
+	public int MinimumNumberOfPlayers { get; } = 2;
+	public int MaximumNumberOfPlayers { get; } = 7;
+
+	public GameRules GetGameRules()
 	{
 		return PairPressureRules.CreateGameRules();
 	}
@@ -119,7 +123,7 @@ public class PairPressureGame : IPokerGame
 	public void StartHand()
 	{
 		_dealer.Shuffle();
-		_potManager = new PotManager();
+		PotManager = new PotManager();
 		_faceUpCardsInOrder.Clear();
 
 		foreach (var gamePlayer in _gamePlayers)
@@ -143,7 +147,7 @@ public class PairPressureGame : IPokerGame
 		foreach (var gamePlayer in _gamePlayers)
 		{
 			var player = gamePlayer.Player;
-			var anteAmount = Math.Min(_ante, player.ChipStack);
+			var anteAmount = Math.Min(Ante, player.ChipStack);
 
 			if (anteAmount <= 0)
 			{
@@ -151,7 +155,7 @@ public class PairPressureGame : IPokerGame
 			}
 
 			var actualAmount = player.PlaceBet(anteAmount);
-			_potManager.AddContribution(player.Name, actualAmount);
+			PotManager.AddContribution(player.Name, actualAmount);
 			actions.Add(new BettingAction(player.Name, BettingActionType.Post, actualAmount));
 		}
 
@@ -166,7 +170,7 @@ public class PairPressureGame : IPokerGame
 			throw new InvalidOperationException("Cannot deal third street in current phase");
 		}
 
-		var startPosition = (_dealerPosition + 1) % _gamePlayers.Count;
+		var startPosition = (DealerPosition + 1) % _gamePlayers.Count;
 		for (var index = 0; index < _gamePlayers.Count; index++)
 		{
 			var gamePlayer = _gamePlayers[(startPosition + index) % _gamePlayers.Count];
@@ -187,7 +191,7 @@ public class PairPressureGame : IPokerGame
 			gamePlayer.Player.ResetCurrentBet();
 		}
 
-		_bringInPlayerIndex = _useBringIn ? FindBringInPlayer() : -1;
+		_bringInPlayerIndex = UseBringIn ? FindBringInPlayer() : -1;
 	}
 
 	public BettingAction PostBringIn()
@@ -197,14 +201,14 @@ public class PairPressureGame : IPokerGame
 			throw new InvalidOperationException("Cannot post bring-in in current phase");
 		}
 
-		if (!_useBringIn)
+		if (!UseBringIn)
 		{
 			throw new InvalidOperationException("Bring-in is disabled for this game");
 		}
 
 		var bringInPlayer = _gamePlayers[_bringInPlayerIndex];
-		var actualAmount = bringInPlayer.Player.PlaceBet(Math.Min(_bringIn, bringInPlayer.Player.ChipStack));
-		_potManager.AddContribution(bringInPlayer.Player.Name, actualAmount);
+		var actualAmount = bringInPlayer.Player.PlaceBet(Math.Min(BringIn, bringInPlayer.Player.ChipStack));
+		PotManager.AddContribution(bringInPlayer.Player.Name, actualAmount);
 
 		return new BettingAction(bringInPlayer.Player.Name, BettingActionType.Post, actualAmount);
 	}
@@ -220,7 +224,7 @@ public class PairPressureGame : IPokerGame
 		switch (CurrentPhase)
 		{
 			case Phases.ThirdStreet:
-				if (_useBringIn && _bringInPlayerIndex >= 0)
+				if (UseBringIn && _bringInPlayerIndex >= 0)
 				{
 					startPosition = _bringInPlayerIndex;
 					var bringInPlayer = _gamePlayers[_bringInPlayerIndex].Player;
@@ -231,23 +235,25 @@ public class PairPressureGame : IPokerGame
 				{
 					startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
 				}
-				minBet = _smallBet;
+
+				minBet = SmallBet;
 				break;
 			case Phases.FourthStreet:
 				startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
-				minBet = _smallBet;
+				minBet = SmallBet;
 				break;
 			case Phases.FifthStreet:
 			case Phases.SixthStreet:
 			case Phases.SeventhStreet:
 				startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
-				minBet = _bigBet;
+				minBet = BigBet;
 				break;
 			default:
 				throw new InvalidOperationException("Cannot start betting round in current phase");
 		}
 
-		_currentBettingRound = new BettingRound(activePlayers, _potManager, startPosition, minBet, initialBet, forcedBetPlayerIndex);
+		CurrentBettingRound = new BettingRound(activePlayers, PotManager, startPosition, minBet, initialBet,
+			forcedBetPlayerIndex);
 	}
 
 	private int GetDealerPositionForFirstActingPlayer(int firstActingPlayerIndex)
@@ -257,12 +263,12 @@ public class PairPressureGame : IPokerGame
 
 	public AvailableActions GetAvailableActions()
 	{
-		return _currentBettingRound?.GetAvailableActions();
+		return CurrentBettingRound?.GetAvailableActions();
 	}
 
 	public PokerPlayer GetCurrentPlayer()
 	{
-		return _currentBettingRound?.CurrentPlayer;
+		return CurrentBettingRound?.CurrentPlayer;
 	}
 
 	public PairPressureGamePlayer GetBringInPlayer()
@@ -277,7 +283,7 @@ public class PairPressureGame : IPokerGame
 
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
-		if (_currentBettingRound == null)
+		if (CurrentBettingRound == null)
 		{
 			return new BettingRoundResult
 			{
@@ -286,7 +292,7 @@ public class PairPressureGame : IPokerGame
 			};
 		}
 
-		var result = _currentBettingRound.ProcessAction(actionType, amount);
+		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
 		if (result.RoundComplete)
 		{
@@ -308,7 +314,7 @@ public class PairPressureGame : IPokerGame
 		var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
 		if (hasAllIn)
 		{
-			_potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
+			PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 		}
 
 		var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
@@ -336,12 +342,13 @@ public class PairPressureGame : IPokerGame
 
 	public void DealStreetCard()
 	{
-		if (CurrentPhase is not (Phases.FourthStreet or Phases.FifthStreet or Phases.SixthStreet or Phases.SeventhStreet))
+		if (CurrentPhase is not (Phases.FourthStreet or Phases.FifthStreet or Phases.SixthStreet
+		    or Phases.SeventhStreet))
 		{
 			throw new InvalidOperationException("Cannot deal street card in current phase");
 		}
 
-		var startPosition = (_dealerPosition + 1) % _gamePlayers.Count;
+		var startPosition = (DealerPosition + 1) % _gamePlayers.Count;
 		for (var index = 0; index < _gamePlayers.Count; index++)
 		{
 			var gamePlayer = _gamePlayers[(startPosition + index) % _gamePlayers.Count];
@@ -384,7 +391,7 @@ public class PairPressureGame : IPokerGame
 		if (playersInHand.Count == 1)
 		{
 			var winner = playersInHand[0];
-			var totalPot = _potManager.TotalPotAmount;
+			var totalPot = PotManager.TotalPotAmount;
 			winner.Player.AddChips(totalPot);
 
 			CurrentPhase = Phases.Complete;
@@ -414,7 +421,7 @@ public class PairPressureGame : IPokerGame
 				return (hand, cards: (IReadOnlyCollection<Card>)allCards);
 			});
 
-		var payouts = _potManager.AwardPots(eligiblePlayers =>
+		var payouts = PotManager.AwardPots(eligiblePlayers =>
 		{
 			var eligibleHands = playerHands
 				.Where(kvp => eligiblePlayers.Contains(kvp.Key))
@@ -443,7 +450,7 @@ public class PairPressureGame : IPokerGame
 
 	private void MoveDealer()
 	{
-		_dealerPosition = (_dealerPosition + 1) % _gamePlayers.Count;
+		DealerPosition = (DealerPosition + 1) % _gamePlayers.Count;
 	}
 
 	public IEnumerable<PokerPlayer> GetPlayersWithChips()
@@ -612,12 +619,12 @@ public class PairPressureGame : IPokerGame
 	{
 		return CurrentPhase switch
 		{
-			Phases.ThirdStreet => _smallBet,
-			Phases.FourthStreet => _smallBet,
-			Phases.FifthStreet => _bigBet,
-			Phases.SixthStreet => _bigBet,
-			Phases.SeventhStreet => _bigBet,
-			_ => _smallBet
+			Phases.ThirdStreet => SmallBet,
+			Phases.FourthStreet => SmallBet,
+			Phases.FifthStreet => BigBet,
+			Phases.SixthStreet => BigBet,
+			Phases.SeventhStreet => BigBet,
+			_ => SmallBet
 		};
 	}
 

@@ -1,8 +1,7 @@
+using System.Diagnostics;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
-using System.Diagnostics;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueJoinPreview;
 
@@ -11,7 +10,8 @@ public static class GetLeagueJoinPreviewEndpoint
 	public static RouteGroupBuilder MapGetLeagueJoinPreview(this RouteGroupBuilder group)
 	{
 		group.MapGet("join-preview",
-				async (string token, IMediator mediator, LeaguesTelemetry telemetry, CancellationToken cancellationToken) =>
+				async (string token, IMediator mediator, LeaguesTelemetry telemetry,
+					CancellationToken cancellationToken) =>
 				{
 					var started = Stopwatch.GetTimestamp();
 					var result = await mediator.Send(new GetLeagueJoinPreviewQuery(token), cancellationToken);
@@ -26,7 +26,8 @@ public static class GetLeagueJoinPreviewEndpoint
 						});
 
 					var statusCode = (httpResult as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK;
-					telemetry.RecordEndpointLatency("join_preview", statusCode, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+					telemetry.RecordEndpointLatency("join_preview", statusCode,
+						Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 					telemetry.RecordFunnelAttempt("join", statusCode < 400 ? "success" : "failure");
 
 					return httpResult;
@@ -34,7 +35,7 @@ public static class GetLeagueJoinPreviewEndpoint
 			.WithName("GetLeagueJoinPreview")
 			.WithSummary("Get league join preview")
 			.WithDescription("Returns trust preview details for a league invite code.")
-			.Produces<LeagueJoinPreviewDto>(StatusCodes.Status200OK)
+			.Produces<LeagueJoinPreviewDto>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.RequireAuthorization();

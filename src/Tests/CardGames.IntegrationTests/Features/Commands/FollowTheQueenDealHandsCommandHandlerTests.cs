@@ -1,9 +1,6 @@
-using CardGames.IntegrationTests.Infrastructure;
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.StartHand;
-using CardGames.Poker.Betting;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -27,8 +24,8 @@ public class FollowTheQueenDealHandsCommandHandlerTests : IntegrationTestBase
 
 		var firstSixDeckCards = await DbContext.GameCards
 			.Where(gc => gc.GameId == setup.Game.Id
-						 && gc.HandNumber == 1
-						 && gc.Location == CardLocation.Deck)
+			             && gc.HandNumber == 1
+			             && gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.Take(6)
 			.ToListAsync();
@@ -70,9 +67,9 @@ public class FollowTheQueenDealHandsCommandHandlerTests : IntegrationTestBase
 
 		var thirdStreetBoardCards = await DbContext.GameCards
 			.Where(gc => gc.GameId == setup.Game.Id
-						 && gc.HandNumber == setup.Game.CurrentHandNumber
-						 && gc.Location == CardLocation.Board
-						 && gc.DealtAtPhase == nameof(Phases.ThirdStreet))
+			             && gc.HandNumber == setup.Game.CurrentHandNumber
+			             && gc.Location == CardLocation.Board
+			             && gc.DealtAtPhase == nameof(Phases.ThirdStreet))
 			.ToListAsync();
 
 		thirdStreetBoardCards.Single(c => c.GamePlayerId == rob.Id).Symbol = CardSymbol.King;
@@ -82,8 +79,8 @@ public class FollowTheQueenDealHandsCommandHandlerTests : IntegrationTestBase
 
 		var deckCards = await DbContext.GameCards
 			.Where(gc => gc.GameId == setup.Game.Id
-						 && gc.HandNumber == setup.Game.CurrentHandNumber
-						 && gc.Location == CardLocation.Deck)
+			             && gc.HandNumber == setup.Game.CurrentHandNumber
+			             && gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.Take(2)
 			.ToListAsync();
@@ -130,9 +127,9 @@ public class FollowTheQueenDealHandsCommandHandlerTests : IntegrationTestBase
 
 		var thirdStreetBoardCards = await DbContext.GameCards
 			.Where(gc => gc.GameId == setup.Game.Id
-						 && gc.HandNumber == setup.Game.CurrentHandNumber
-						 && gc.Location == CardLocation.Board
-						 && gc.DealtAtPhase == nameof(Phases.ThirdStreet))
+			             && gc.HandNumber == setup.Game.CurrentHandNumber
+			             && gc.Location == CardLocation.Board
+			             && gc.DealtAtPhase == nameof(Phases.ThirdStreet))
 			.ToListAsync();
 
 		thirdStreetBoardCards.Single(c => c.GamePlayerId == rob.Id).Symbol = CardSymbol.Ace;
@@ -142,8 +139,8 @@ public class FollowTheQueenDealHandsCommandHandlerTests : IntegrationTestBase
 
 		var deckCards = await DbContext.GameCards
 			.Where(gc => gc.GameId == setup.Game.Id
-						 && gc.HandNumber == setup.Game.CurrentHandNumber
-						 && gc.Location == CardLocation.Deck)
+			             && gc.HandNumber == setup.Game.CurrentHandNumber
+			             && gc.Location == CardLocation.Deck)
 			.OrderBy(gc => gc.DealOrder)
 			.Take(2)
 			.ToListAsync();

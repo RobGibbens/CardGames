@@ -14,7 +14,7 @@ public static class AcknowledgePotMatchEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => Results.Problem(
 							title: "Acknowledge pot match error",
 							detail: error.Message,
@@ -26,7 +26,7 @@ public static class AcknowledgePotMatchEndpoint
 			.WithName($"KingsAndLows{nameof(MapAcknowledgePotMatch).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapAcknowledgePotMatch).TrimPrefix("Map"))
 			.WithDescription("Process pot matching in Kings and Lows.")
-			.Produces<AcknowledgePotMatchSuccessful>(StatusCodes.Status200OK)
+			.Produces<AcknowledgePotMatchSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

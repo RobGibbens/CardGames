@@ -2,8 +2,10 @@
 
 public class StandardRandomNumberGenerator : IRandomNumberGenerator
 {
-    private System.Random _random = new System.Random();
+	private readonly System.Random _random = new();
 
-    public int Next(int upperBound)
-        => _random.Next(upperBound);
+	public int Next(int upperBound)
+	{
+		return _random.Next(upperBound);
+	}
 }

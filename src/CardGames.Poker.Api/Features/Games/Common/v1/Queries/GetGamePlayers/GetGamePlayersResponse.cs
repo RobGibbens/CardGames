@@ -1,11 +1,10 @@
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 using CardGames.Poker.Api.Models;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGamePlayers;
 
 /// <summary>
-/// Response containing a player's state within a specific game.
+///     Response containing a player's state within a specific game.
 /// </summary>
 public record GetGamePlayersResponse(
 	Guid Id,

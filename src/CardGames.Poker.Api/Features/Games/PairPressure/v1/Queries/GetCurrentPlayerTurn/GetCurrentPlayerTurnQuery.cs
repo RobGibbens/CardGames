@@ -1,5 +1,6 @@
 using MediatR;
-using SharedGetCurrentPlayerTurnResponse = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentPlayerTurn.GetCurrentPlayerTurnResponse;
+using SharedGetCurrentPlayerTurnResponse =
+	CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentPlayerTurn.GetCurrentPlayerTurnResponse;
 
 namespace CardGames.Poker.Api.Features.Games.PairPressure.v1.Queries.GetCurrentPlayerTurn;
 

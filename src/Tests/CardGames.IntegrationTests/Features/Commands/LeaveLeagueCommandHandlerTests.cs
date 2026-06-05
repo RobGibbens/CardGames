@@ -1,10 +1,9 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
-using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.LeaveLeague;
 using CardGames.Poker.Api.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+using LeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -17,7 +16,7 @@ public class LeaveLeagueCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-manager";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Manager Safety League"
 		}));

@@ -12,7 +12,8 @@ public sealed class GetLeagueInvitesQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetLeagueInvitesQuery, OneOf<IReadOnlyList<LeagueInviteSummaryDto>, GetLeagueInvitesError>>
 {
-	public async Task<OneOf<IReadOnlyList<LeagueInviteSummaryDto>, GetLeagueInvitesError>> Handle(GetLeagueInvitesQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<IReadOnlyList<LeagueInviteSummaryDto>, GetLeagueInvitesError>> Handle(
+		GetLeagueInvitesQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -20,11 +21,13 @@ public sealed class GetLeagueInvitesQueryHandler(
 		}
 
 		var isMember = await context.LeagueMembersCurrent
-			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive, cancellationToken);
+			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive,
+				cancellationToken);
 
 		if (!isMember)
 		{
-			return new GetLeagueInvitesError(GetLeagueInvitesErrorCode.Forbidden, "Only league members can view invites.");
+			return new GetLeagueInvitesError(GetLeagueInvitesErrorCode.Forbidden,
+				"Only league members can view invites.");
 		}
 
 		var invites = await context.LeagueInvites
@@ -35,7 +38,7 @@ public sealed class GetLeagueInvitesQueryHandler(
 			{
 				InviteId = x.Id,
 				LeagueId = x.LeagueId,
-				Status = (Contracts.LeagueInviteStatus)x.Status,
+				Status = (LeagueInviteStatus)x.Status,
 				CreatedAtUtc = x.CreatedAtUtc,
 				ExpiresAtUtc = x.ExpiresAtUtc,
 				InviteCode = x.InviteCode

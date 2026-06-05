@@ -1,11 +1,10 @@
-using CardGames.IntegrationTests.Infrastructure;
+using CardGames.Contracts.SignalR;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueOneOffEvent;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.UpdateLeagueOneOffEvent;
 using CardGames.Poker.Api.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using ContractLeagueOneOffEventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType;
 
 namespace CardGames.IntegrationTests.Features.Commands;
@@ -27,28 +26,30 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM",
-			Ante = 10,
-			MinBet = 20
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId,
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM",
+				Ante = 10,
+				MinBet = 20
+			}));
 
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7);
 		fakeLeagueBroadcaster.EventChangedNotifications.Clear();
-		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
-		{
-			Name = "High Stakes",
-			ScheduledAtUtc = scheduledAtUtc,
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			Notes = "Updated notes",
-			GameTypeCode = "OMAHA",
-			Ante = 25,
-			MinBet = 50
-		}));
+		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId,
+			new UpdateLeagueOneOffEventRequest
+			{
+				Name = "High Stakes",
+				ScheduledAtUtc = scheduledAtUtc,
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				Notes = "Updated notes",
+				GameTypeCode = "OMAHA",
+				Ante = 25,
+				MinBet = 50
+			}));
 
 		result.IsT0.Should().BeTrue();
 
@@ -65,9 +66,9 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
 		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
 		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(createEvent.AsT0.EventId);
-		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(LeagueEventSourceType.OneOff);
 		fakeLeagueBroadcaster.EventChangedNotifications[0].SeasonId.Should().BeNull();
-		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(CardGames.Contracts.SignalR.LeagueEventChangeKind.Updated);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(LeagueEventChangeKind.Updated);
 	}
 
 	[Fact]
@@ -84,27 +85,30 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
-			EventType = ContractLeagueOneOffEventType.Tournament,
-			GameTypeCode = "HOLDEM",
-			TournamentBuyIn = 1200
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId,
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+				EventType = ContractLeagueOneOffEventType.Tournament,
+				GameTypeCode = "HOLDEM",
+				TournamentBuyIn = 1200
+			}));
 
-		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
-		{
-			Name = "Championship",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7),
-			EventType = ContractLeagueOneOffEventType.Tournament,
-			GameTypeCode = "OMAHA",
-			TournamentBuyIn = 2400
-		}));
+		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId,
+			new UpdateLeagueOneOffEventRequest
+			{
+				Name = "Championship",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7),
+				EventType = ContractLeagueOneOffEventType.Tournament,
+				GameTypeCode = "OMAHA",
+				TournamentBuyIn = 2400
+			}));
 
 		result.IsT0.Should().BeTrue();
 
-		var savedEvent = await DbContext.LeagueOneOffEvents.AsNoTracking().SingleAsync(x => x.Id == createEvent.AsT0.EventId);
+		var savedEvent = await DbContext.LeagueOneOffEvents.AsNoTracking()
+			.SingleAsync(x => x.Id == createEvent.AsT0.EventId);
 		savedEvent.TournamentBuyIn.Should().Be(2400);
 	}
 
@@ -122,23 +126,25 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM"
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId,
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM"
+			}));
 
 		fakeCurrentUser.UserId = "league-one-off-outsider";
 
-		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
-		{
-			Name = "Outsider Update",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(10),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM"
-		}));
+		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId,
+			new UpdateLeagueOneOffEventRequest
+			{
+				Name = "Outsider Update",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(10),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM"
+			}));
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(UpdateLeagueOneOffEventErrorCode.Forbidden);
@@ -158,25 +164,27 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM"
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId,
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM"
+			}));
 
 		var oneOffEvent = await DbContext.LeagueOneOffEvents.SingleAsync(x => x.Id == createEvent.AsT0.EventId);
 		oneOffEvent.LaunchedGameId = Guid.CreateVersion7();
 		await DbContext.SaveChangesAsync();
 
-		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night Updated",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(10),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM"
-		}));
+		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId,
+			new UpdateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night Updated",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(10),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM"
+			}));
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(UpdateLeagueOneOffEventErrorCode.Conflict);
@@ -196,21 +204,23 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM"
-		}));
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId,
+			new CreateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM"
+			}));
 
-		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
-		{
-			Name = "Friday Night Updated",
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1),
-			EventType = ContractLeagueOneOffEventType.CashGame,
-			GameTypeCode = "HOLDEM"
-		}));
+		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId,
+			new UpdateLeagueOneOffEventRequest
+			{
+				Name = "Friday Night Updated",
+				ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1),
+				EventType = ContractLeagueOneOffEventType.CashGame,
+				GameTypeCode = "HOLDEM"
+			}));
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(UpdateLeagueOneOffEventErrorCode.InvalidRequest);

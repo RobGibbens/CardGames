@@ -4,7 +4,6 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
@@ -29,7 +28,8 @@ public class PlaceBetCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(Guid.NewGuid(), Guid.NewGuid(), Amount: 10), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(Guid.NewGuid(), Guid.NewGuid(), Amount: 10),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.GameNotFound);
@@ -192,7 +192,7 @@ public class PlaceBetCommandHandlerTests
 
 		_ = await staleContext.Games
 			.Include(game => game.GamePlayers)
-				.ThenInclude(gamePlayer => gamePlayer.Player)
+			.ThenInclude(gamePlayer => gamePlayer.Player)
 			.Include(game => game.GameCards)
 			.Include(game => game.Pots)
 			.FirstAsync(game => game.Id == gameId);
@@ -200,8 +200,10 @@ public class PlaceBetCommandHandlerTests
 		var freshSut = CreateSut(freshContext);
 		var staleSut = CreateSut(staleContext);
 
-		var firstResult = await freshSut.Handle(new PlaceBetCommand(gameId, playerId, Amount: 10), CancellationToken.None);
-		var secondResult = await staleSut.Handle(new PlaceBetCommand(gameId, playerId, Amount: 10), CancellationToken.None);
+		var firstResult =
+			await freshSut.Handle(new PlaceBetCommand(gameId, playerId, Amount: 10), CancellationToken.None);
+		var secondResult =
+			await staleSut.Handle(new PlaceBetCommand(gameId, playerId, Amount: 10), CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
 		secondResult.IsT0.Should().BeTrue();
@@ -212,7 +214,8 @@ public class PlaceBetCommandHandlerTests
 		var persistedGame = await verificationContext.Games.SingleAsync(game => game.Id == gameId);
 		var persistedState = GetState(persistedGame);
 		var communityCards = await verificationContext.GameCards
-			.Where(gameCard => gameCard.GameId == gameId && gameCard.Location == CardLocation.Community && !gameCard.IsDiscarded)
+			.Where(gameCard => gameCard.GameId == gameId && gameCard.Location == CardLocation.Community &&
+			                   !gameCard.IsDiscarded)
 			.OrderBy(gameCard => gameCard.DealOrder)
 			.ToListAsync();
 
@@ -366,7 +369,8 @@ public class PlaceBetCommandHandlerTests
 		};
 	}
 
-	private static GamePlayer CreateGamePlayer(Game game, Player player, int seatPosition, int chipStack, DateTimeOffset now)
+	private static GamePlayer CreateGamePlayer(Game game, Player player, int seatPosition, int chipStack,
+		DateTimeOffset now)
 	{
 		return new GamePlayer
 		{

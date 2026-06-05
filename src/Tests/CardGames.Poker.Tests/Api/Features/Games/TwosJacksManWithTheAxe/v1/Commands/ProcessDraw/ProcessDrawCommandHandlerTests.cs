@@ -1,7 +1,6 @@
 #nullable enable
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -141,7 +140,7 @@ public class ProcessDrawCommandHandlerTests
 
 		_ = await staleContext.Games
 			.Include(game => game.GamePlayers)
-				.ThenInclude(gamePlayer => gamePlayer.Player)
+			.ThenInclude(gamePlayer => gamePlayer.Player)
 			.Include(game => game.GameCards.Where(gameCard => gameCard.HandNumber == 1 && !gameCard.IsDiscarded))
 			.FirstAsync(game => game.Id == gameId);
 
@@ -227,12 +226,14 @@ public class ProcessDrawCommandHandlerTests
 
 		for (var cardIndex = 0; cardIndex < currentPlayerCardCount; cardIndex++)
 		{
-			context.GameCards.Add(CreatePlayerCard(game, firstGamePlayer, cardIndex, firstPlayerSymbols[cardIndex], now));
+			context.GameCards.Add(
+				CreatePlayerCard(game, firstGamePlayer, cardIndex, firstPlayerSymbols[cardIndex], now));
 		}
 
 		for (var cardIndex = 0; cardIndex < 5; cardIndex++)
 		{
-			context.GameCards.Add(CreatePlayerCard(game, secondGamePlayer, cardIndex, (CardSymbol)(cardIndex + 8), now));
+			context.GameCards.Add(CreatePlayerCard(game, secondGamePlayer, cardIndex, (CardSymbol)(cardIndex + 8),
+				now));
 		}
 
 		for (var cardIndex = 0; cardIndex < deckCardCount; cardIndex++)

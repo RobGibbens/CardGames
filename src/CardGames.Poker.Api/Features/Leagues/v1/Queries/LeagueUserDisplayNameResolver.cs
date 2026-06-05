@@ -38,9 +38,11 @@ internal static class LeagueUserDisplayNameResolver
 			StringComparer.Ordinal);
 	}
 
-	public static string GetDisplayNameOrFallback(IReadOnlyDictionary<string, string> displayNamesByUserId, string userId)
+	public static string GetDisplayNameOrFallback(IReadOnlyDictionary<string, string> displayNamesByUserId,
+		string userId)
 	{
-		if (!string.IsNullOrWhiteSpace(userId) && displayNamesByUserId.TryGetValue(userId, out var displayName) && !string.IsNullOrWhiteSpace(displayName))
+		if (!string.IsNullOrWhiteSpace(userId) && displayNamesByUserId.TryGetValue(userId, out var displayName) &&
+		    !string.IsNullOrWhiteSpace(displayName))
 		{
 			return displayName;
 		}

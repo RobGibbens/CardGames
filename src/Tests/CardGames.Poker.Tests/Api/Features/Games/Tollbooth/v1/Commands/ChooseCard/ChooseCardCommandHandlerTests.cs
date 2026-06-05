@@ -27,7 +27,8 @@ public class ChooseCardCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new ChooseCardCommandHandler(context);
 
-		var result = await sut.Handle(new ChooseCardCommand(Guid.NewGuid(), TollboothChoice.Furthest), CancellationToken.None);
+		var result = await sut.Handle(new ChooseCardCommand(Guid.NewGuid(), TollboothChoice.Furthest),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ChooseCardErrorCode.GameNotFound);
@@ -87,7 +88,8 @@ public class ChooseCardCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ChooseCardCommandHandler(context);
 
-		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, PlayerSeatIndex: 99), CancellationToken.None);
+		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, PlayerSeatIndex: 99),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ChooseCardErrorCode.NotPlayerTurn);
@@ -106,7 +108,8 @@ public class ChooseCardCommandHandlerTests
 			});
 		var sut = new ChooseCardCommandHandler(context);
 
-		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, PlayerSeatIndex: 0),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ChooseCardErrorCode.AlreadyChosen);
@@ -125,7 +128,8 @@ public class ChooseCardCommandHandlerTests
 			});
 		var sut = new ChooseCardCommandHandler(context);
 
-		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Nearest, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Nearest, PlayerSeatIndex: 0),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ChooseCardErrorCode.CannotAfford);
@@ -178,7 +182,7 @@ public class ChooseCardCommandHandlerTests
 
 		_ = await staleContext.Games
 			.Include(game => game.GamePlayers)
-				.ThenInclude(gamePlayer => gamePlayer.Player)
+			.ThenInclude(gamePlayer => gamePlayer.Player)
 			.Include(game => game.GameType)
 			.Include(game => game.Pots)
 			.FirstAsync(game => game.Id == gameId);
@@ -204,9 +208,9 @@ public class ChooseCardCommandHandlerTests
 			.ToListAsync();
 		var playerCards = await verificationContext.GameCards
 			.Where(gameCard => gameCard.GameId == gameId &&
-			                  gameCard.HandNumber == persistedGame.CurrentHandNumber &&
-			                  gameCard.GamePlayerId != null &&
-			                  gameCard.Location != CardLocation.Deck)
+			                   gameCard.HandNumber == persistedGame.CurrentHandNumber &&
+			                   gameCard.GamePlayerId != null &&
+			                   gameCard.Location != CardLocation.Deck)
 			.ToListAsync();
 
 		persistedGame.CurrentPhase.Should().Be(nameof(Phases.FourthStreet));
@@ -214,7 +218,8 @@ public class ChooseCardCommandHandlerTests
 		players.Should().OnlyContain(player => !player.HasDrawnThisRound);
 		playerCards.Should().Contain(card => card.GamePlayerId == players[0].Id && card.DealOrder == 4);
 		playerCards.Should().Contain(card => card.GamePlayerId == players[1].Id && card.DealOrder == 4);
-		verificationContext.BettingRounds.Should().ContainSingle(round => round.GameId == gameId && round.Street == nameof(Phases.FourthStreet));
+		verificationContext.BettingRounds.Should().ContainSingle(round =>
+			round.GameId == gameId && round.Street == nameof(Phases.FourthStreet));
 	}
 
 	private static CardsDbContext CreateContext()
@@ -298,7 +303,7 @@ public class ChooseCardCommandHandlerTests
 				player,
 				seatPosition,
 				hasDrawnBySeat.TryGetValue(seatPosition, out var hasDrawn) && hasDrawn,
-				chipStacksBySeat.TryGetValue(seatPosition, out var chipStack) ? chipStack : 100,
+				chipStacksBySeat.GetValueOrDefault(seatPosition, 100),
 				now))
 			.ToArray();
 
@@ -381,7 +386,8 @@ public class ChooseCardCommandHandlerTests
 		return game;
 	}
 
-	private static void SeedStudCards(CardsDbContext context, Game game, GamePlayer player, int seatPosition, DateTimeOffset now)
+	private static void SeedStudCards(CardsDbContext context, Game game, GamePlayer player, int seatPosition,
+		DateTimeOffset now)
 	{
 		context.GameCards.Add(new GameCard
 		{

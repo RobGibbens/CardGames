@@ -2,5 +2,5 @@
 
 public abstract class EntityWithRowVersion
 {
-	public byte[] RowVersion { get; set; } = [];
+	public byte[] RowVersion { get; init; } = [];
 }

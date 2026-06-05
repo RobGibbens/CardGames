@@ -1,8 +1,9 @@
 @using CardGames.Poker.Api.Contracts
-
 <div class="league-detail-tab-content">
 	<section class="league-detail-card league-detail-rules-box">
-		<div class="league-detail-rules-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+		<div class="league-detail-rules-icon">
+			<i class="fa-solid fa-scale-balanced"></i>
+		</div>
 		<div>
 			<div class="fw-semibold">Scoring &amp; Tie-break Rules</div>
 			<ul class="league-detail-rules-list">
@@ -92,34 +93,26 @@
 </div>
 
 @code {
-	[Parameter]
-	public Guid? SelectedSeasonId { get; set; }
+	[Parameter] public Guid? SelectedSeasonId { get; set; }
 
-	[Parameter]
-	public string? SelectedSeasonName { get; set; }
+	[Parameter] public string? SelectedSeasonName { get; set; }
 
-	[Parameter]
-	public LeagueStandingEntryDto? MyStanding { get; set; }
+	[Parameter] public LeagueStandingEntryDto? MyStanding { get; set; }
 
-	[Parameter]
-	public Dictionary<string, int> RankMovementByUserId { get; set; } = new(StringComparer.Ordinal);
+	[Parameter] public Dictionary<string, int> RankMovementByUserId { get; set; } = new(StringComparer.Ordinal);
 
-	[Parameter, EditorRequired]
-	public List<LeagueStandingEntryDto> Standings { get; set; } = [];
+	[Parameter, EditorRequired] public List<LeagueStandingEntryDto> Standings { get; set; } = [];
 
-	[Parameter]
-	public bool IsLoading { get; set; }
+	[Parameter] public bool IsLoading { get; set; }
 
-	[Parameter]
-	public string? CurrentUserId { get; set; }
+	[Parameter] public string? CurrentUserId { get; set; }
 
-	[Parameter]
-	public EventCallback LoadStandings { get; set; }
+	[Parameter] public EventCallback LoadStandings { get; set; }
 
 	private bool IsCurrentUserStanding(LeagueStandingEntryDto standing)
 	{
 		return !string.IsNullOrWhiteSpace(CurrentUserId)
-			&& string.Equals(standing.UserId, CurrentUserId, StringComparison.Ordinal);
+		       && string.Equals(standing.UserId, CurrentUserId, StringComparison.Ordinal);
 	}
 
 	private static string FormatChipsDelta(int chipsDelta)
@@ -177,4 +170,5 @@
 			_ => ""
 		};
 	}
+
 }

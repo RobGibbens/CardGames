@@ -1,9 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Services;
-using CardGames.Poker.Betting;
-using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.PerformShowdown;
+using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -11,7 +9,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 
 /// <summary>
-/// Handles the <see cref="DropOrStayCommand"/> to record a player's drop or stay decision.
+///     Handles the <see cref="DropOrStayCommand" /> to record a player's drop or stay decision.
 /// </summary>
 public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator)
 	: IRequestHandler<DropOrStayCommand, OneOf<DropOrStaySuccessful, DropOrStayError>>
@@ -37,34 +35,35 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 		}
 
 		// 2. Validate game is in DropOrStay phase
-			if (game.CurrentPhase != nameof(Phases.DropOrStay))
+		if (game.CurrentPhase != nameof(Phases.DropOrStay))
+		{
+			return new DropOrStayError
 			{
-				return new DropOrStayError
-				{
-					Message = $"Cannot make drop/stay decision. Game is in '{game.CurrentPhase}' phase, " +
-							  $"but must be in '{nameof(Phases.DropOrStay)}' phase.",
-					Code = DropOrStayErrorCode.InvalidPhase
-				};
-			}
+				Message = $"Cannot make drop/stay decision. Game is in '{game.CurrentPhase}' phase, " +
+				          $"but must be in '{nameof(Phases.DropOrStay)}' phase.",
+				Code = DropOrStayErrorCode.InvalidPhase
+			};
+		}
 
-			// 2b. Process any pending auto-drops from chip check pause timeout
-			// This ensures players who couldn't cover the pot are automatically dropped
-			var pendingAutoDrops = game.GamePlayers
-				.Where(gp => gp.Status == GamePlayerStatus.Active &&
-							 !gp.IsSittingOut &&
-							 !gp.HasFolded &&
-							 gp.AutoDropOnDropOrStay &&
-							 (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision.Value == Data.Entities.DropOrStayDecision.Undecided))
-				.ToList();
+		// 2b. Process any pending auto-drops from chip check pause timeout
+		// This ensures players who couldn't cover the pot are automatically dropped
+		var pendingAutoDrops = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active &&
+			             !gp.IsSittingOut &&
+			             !gp.HasFolded &&
+			             gp.AutoDropOnDropOrStay &&
+			             (!gp.DropOrStayDecision.HasValue ||
+			              gp.DropOrStayDecision.Value == DropOrStayDecision.Undecided))
+			.ToList();
 
-			foreach (var autoDropPlayer in pendingAutoDrops)
-			{
-				autoDropPlayer.DropOrStayDecision = Data.Entities.DropOrStayDecision.Drop;
-				autoDropPlayer.HasFolded = true;
-				autoDropPlayer.AutoDropOnDropOrStay = false; // Clear the flag
-			}
+		foreach (var autoDropPlayer in pendingAutoDrops)
+		{
+			autoDropPlayer.DropOrStayDecision = DropOrStayDecision.Drop;
+			autoDropPlayer.HasFolded = true;
+			autoDropPlayer.AutoDropOnDropOrStay = false; // Clear the flag
+		}
 
-			// 3. Find the player
+		// 3. Find the player
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
 		{
@@ -77,7 +76,7 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 
 		// 4. Check if player has already decided
 		if (gamePlayer.DropOrStayDecision.HasValue &&
-			gamePlayer.DropOrStayDecision.Value != Data.Entities.DropOrStayDecision.Undecided)
+		    gamePlayer.DropOrStayDecision.Value != DropOrStayDecision.Undecided)
 		{
 			return new DropOrStayError
 			{
@@ -87,14 +86,14 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 		}
 
 		// 5. Parse and validate decision
-		Data.Entities.DropOrStayDecision decision;
+		DropOrStayDecision decision;
 		if (string.Equals(command.Decision, "Drop", StringComparison.OrdinalIgnoreCase))
 		{
-			decision = Data.Entities.DropOrStayDecision.Drop;
+			decision = DropOrStayDecision.Drop;
 		}
 		else if (string.Equals(command.Decision, "Stay", StringComparison.OrdinalIgnoreCase))
 		{
-			decision = Data.Entities.DropOrStayDecision.Stay;
+			decision = DropOrStayDecision.Stay;
 		}
 		else
 		{
@@ -107,7 +106,7 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 
 		// 6. Record the decision
 		gamePlayer.DropOrStayDecision = decision;
-		if (decision == Data.Entities.DropOrStayDecision.Drop)
+		if (decision == DropOrStayDecision.Drop)
 		{
 			gamePlayer.HasFolded = true;
 		}
@@ -117,50 +116,52 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 		await context.SaveChangesAsync(cancellationToken);
 
 		// Re-fetch players to ensure we have the latest state including other concurrent updates
-			// and the current player's just-saved decision
-			var refreshedGame = await context.Games
-				.Include(g => g.GamePlayers)
-				.AsNoTracking()
-				.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
+		// and the current player's just-saved decision
+		var refreshedGame = await context.Games
+			.Include(g => g.GamePlayers)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
-			if (refreshedGame == null) return new DropOrStayError { Message = "Game lost", Code = DropOrStayErrorCode.GameNotFound };
+		if (refreshedGame == null)
+			return new DropOrStayError { Message = "Game lost", Code = DropOrStayErrorCode.GameNotFound };
 
-			// 6b. Auto-drop any players flagged with AutoDropOnDropOrStay (from chip check pause timeout)
-			var autoDropPlayers = game.GamePlayers
-				.Where(gp => gp.Status == GamePlayerStatus.Active &&
-							 !gp.IsSittingOut &&
-							 !gp.HasFolded &&
-							 gp.AutoDropOnDropOrStay &&
-							 (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision.Value == Data.Entities.DropOrStayDecision.Undecided))
-				.ToList();
+		// 6b. Auto-drop any players flagged with AutoDropOnDropOrStay (from chip check pause timeout)
+		var autoDropPlayers = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active &&
+			             !gp.IsSittingOut &&
+			             !gp.HasFolded &&
+			             gp.AutoDropOnDropOrStay &&
+			             (!gp.DropOrStayDecision.HasValue ||
+			              gp.DropOrStayDecision.Value == DropOrStayDecision.Undecided))
+			.ToList();
 
-			foreach (var autoDropPlayer in autoDropPlayers)
-			{
-				autoDropPlayer.DropOrStayDecision = Data.Entities.DropOrStayDecision.Drop;
-				autoDropPlayer.HasFolded = true;
-				autoDropPlayer.AutoDropOnDropOrStay = false; // Clear the flag after processing
-			}
+		foreach (var autoDropPlayer in autoDropPlayers)
+		{
+			autoDropPlayer.DropOrStayDecision = DropOrStayDecision.Drop;
+			autoDropPlayer.HasFolded = true;
+			autoDropPlayer.AutoDropOnDropOrStay = false; // Clear the flag after processing
+		}
 
-			if (autoDropPlayers.Count > 0)
-			{
-				await context.SaveChangesAsync(cancellationToken);
-			}
+		if (autoDropPlayers.Count > 0)
+		{
+			await context.SaveChangesAsync(cancellationToken);
+		}
 
-			// 7. Check if all players have decided
+		// 7. Check if all players have decided
 		var activePlayers = refreshedGame.GamePlayers
 			.Where(gp => gp is { Status: GamePlayerStatus.Active, IsSittingOut: false, HasFolded: false })
 			.ToList();
 
 		var allDecided = activePlayers.All(gp =>
 			gp.DropOrStayDecision.HasValue &&
-			gp.DropOrStayDecision.Value != Data.Entities.DropOrStayDecision.Undecided);
+			gp.DropOrStayDecision.Value != DropOrStayDecision.Undecided);
 
 		var stayingPlayers = activePlayers
-			.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay)
+			.Where(gp => gp.DropOrStayDecision == DropOrStayDecision.Stay)
 			.ToList();
 
 		var droppedPlayers = activePlayers
-			.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Drop)
+			.Where(gp => gp.DropOrStayDecision == DropOrStayDecision.Drop)
 			.ToList();
 
 		string? nextPhase = null;
@@ -204,15 +205,17 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 				while (searched < gamePlayersList.Count)
 				{
 					var player = gamePlayersList[nextPlayerIndex];
-					if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay)
+					if (player.DropOrStayDecision == DropOrStayDecision.Stay)
 					{
 						game.CurrentDrawPlayerIndex = player.SeatPosition;
 						game.CurrentPlayerIndex = player.SeatPosition;
 						break;
 					}
+
 					nextPlayerIndex = (nextPlayerIndex + 1) % gamePlayersList.Count;
 					searched++;
 				}
+
 				nextPhase = game.CurrentPhase;
 			}
 		}
@@ -226,7 +229,7 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 		if (allDecided && stayingPlayers.Count == 0)
 		{
 			await mediator.Send(
-				new PerformShowdownCommand(game.Id), 
+				new PerformShowdownCommand(game.Id),
 				cancellationToken);
 		}
 
@@ -243,7 +246,7 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 	}
 
 	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise).
+	///     Moves the dealer button to the next occupied seat position (clockwise).
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{

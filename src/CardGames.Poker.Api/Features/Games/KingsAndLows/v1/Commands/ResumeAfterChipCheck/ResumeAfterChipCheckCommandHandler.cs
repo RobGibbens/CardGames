@@ -2,15 +2,16 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.ResumeAfterChipCheck;
 
 /// <summary>
-/// Handles the <see cref="ResumeAfterChipCheckCommand"/> to resume a game after the chip check pause.
+///     Handles the <see cref="ResumeAfterChipCheckCommand" /> to resume a game after the chip check pause.
 /// </summary>
-public class ResumeAfterChipCheckCommandHandler(CardsDbContext context, ILogger<ResumeAfterChipCheckCommandHandler> logger)
+public class ResumeAfterChipCheckCommandHandler(
+	CardsDbContext context,
+	ILogger<ResumeAfterChipCheckCommandHandler> logger)
 	: IRequestHandler<ResumeAfterChipCheckCommand, OneOf<ResumeAfterChipCheckSuccessful, ResumeAfterChipCheckError>>
 {
 	public async Task<OneOf<ResumeAfterChipCheckSuccessful, ResumeAfterChipCheckError>> Handle(
@@ -52,8 +53,8 @@ public class ResumeAfterChipCheckCommandHandler(CardsDbContext context, ILogger<
 		var ante = game.Ante ?? 0;
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 (ante == 0 || gp.ChipStack >= ante))
+			             !gp.IsSittingOut &&
+			             (ante == 0 || gp.ChipStack >= ante))
 			.ToList();
 
 		var playersNeedingChips = eligiblePlayers
@@ -68,7 +69,8 @@ public class ResumeAfterChipCheckCommandHandler(CardsDbContext context, ILogger<
 		{
 			return new ResumeAfterChipCheckError
 			{
-				Message = $"{playersNeedingChips.Count} player(s) still cannot cover the pot of {currentPotAmount} chips. Wait for timer to expire or for players to add chips.",
+				Message =
+					$"{playersNeedingChips.Count} player(s) still cannot cover the pot of {currentPotAmount} chips. Wait for timer to expire or for players to add chips.",
 				Code = ResumeAfterChipCheckErrorCode.PlayersStillShort
 			};
 		}

@@ -4,11 +4,10 @@ using CardGames.Poker.Api.Infrastructure;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Represents a successful betting action result.
+///     Represents a successful betting action result.
 /// </summary>
 public record ProcessBettingActionSuccessful : IPlayerActionResult
 {
-	public Guid GameId { get; init; }
 	public bool RoundComplete { get; init; }
 	public required string CurrentPhase { get; init; }
 	public required BettingActionResult Action { get; init; }
@@ -16,6 +15,7 @@ public record ProcessBettingActionSuccessful : IPlayerActionResult
 	public string? NextPlayerName { get; init; }
 	public int PotTotal { get; init; }
 	public int CurrentBet { get; init; }
+	public Guid GameId { get; init; }
 	public int PlayerSeatIndex { get; init; }
 
 	string? IPlayerActionResult.PlayerName => Action.PlayerName;

@@ -1,14 +1,15 @@
-@namespace CardGames.Poker.Web.Components.Shared
-
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
+@namespace CardGames.Poker.Web.Components.Shared
 
 @inject IProfileApi ProfileApi
 
 <div class="table-overlay dealer-choice-overlay">
 	<div class="dealer-choice-modal">
 		<div class="dealer-choice-header">
-			<div class="dealer-choice-icon"><i class="fa-thin fa-cards"></i></div>
+			<div class="dealer-choice-icon">
+				<i class="fa-thin fa-cards"></i>
+			</div>
 			<h2>Dealer's Choice</h2>
 			<p>You're the dealer! Pick a game variant for this hand.</p>
 		</div>
@@ -25,7 +26,7 @@
 			<div class="dealer-choice-search dc-setting">
 				<label for="dc-search">Search Variants</label>
 				<input type="text" id="dc-search" placeholder="Search by game name" @bind="_variantSearch"
-					   @bind:event="oninput" />
+				       @bind:event="oninput"/>
 			</div>
 
 			@if (_favoriteVariantsError is not null)
@@ -49,9 +50,9 @@
 							<div
 								class="dealer-choice-variant-shell @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)">
 								<button class="@GetFavoriteButtonClasses(game.Code)" type="button"
-										aria-label="@GetFavoriteButtonLabel(game)" aria-pressed="@IsFavoriteVariant(game.Code)"
-										title="@GetFavoriteButtonLabel(game)" disabled="@(!CanManageFavoriteVariants)"
-										@onclick="() => ToggleFavoriteVariantAsync(game.Code)" @onclick:stopPropagation="true">
+								        aria-label="@GetFavoriteButtonLabel(game)" aria-pressed="@IsFavoriteVariant(game.Code)"
+								        title="@GetFavoriteButtonLabel(game)" disabled="@(!CanManageFavoriteVariants)"
+								        @onclick="() => ToggleFavoriteVariantAsync(game.Code)" @onclick:stopPropagation="true">
 									<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
 								</button>
 								<button
@@ -61,11 +62,13 @@
 									<div class="dc-variant-icon">
 										@if (!string.IsNullOrEmpty(game.ImageName))
 										{
-											<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+											<img src="/images/games/@(game.ImageName)" alt="@game.Name"/>
 										}
 										else
 										{
-											<span class="dc-variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+											<span class="dc-variant-icon-fallback">
+												<i class="fa-thin fa-card-club"></i>
+											</span>
 										}
 									</div>
 									<span class="dc-variant-name">@game.Name</span>
@@ -100,9 +103,9 @@
 							<div
 								class="dealer-choice-variant-shell @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)">
 								<button class="@GetFavoriteButtonClasses(game.Code)" type="button"
-										aria-label="@GetFavoriteButtonLabel(game)" aria-pressed="@IsFavoriteVariant(game.Code)"
-										title="@GetFavoriteButtonLabel(game)" disabled="@(!CanManageFavoriteVariants)"
-										@onclick="() => ToggleFavoriteVariantAsync(game.Code)" @onclick:stopPropagation="true">
+								        aria-label="@GetFavoriteButtonLabel(game)" aria-pressed="@IsFavoriteVariant(game.Code)"
+								        title="@GetFavoriteButtonLabel(game)" disabled="@(!CanManageFavoriteVariants)"
+								        @onclick="() => ToggleFavoriteVariantAsync(game.Code)" @onclick:stopPropagation="true">
 									<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
 								</button>
 								<button
@@ -112,11 +115,13 @@
 									<div class="dc-variant-icon">
 										@if (!string.IsNullOrEmpty(game.ImageName))
 										{
-											<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+											<img src="/images/games/@(game.ImageName)" alt="@game.Name"/>
 										}
 										else
 										{
-											<span class="dc-variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+											<span class="dc-variant-icon-fallback">
+												<i class="fa-thin fa-card-club"></i>
+											</span>
 										}
 									</div>
 									<span class="dc-variant-name">@game.Name</span>
@@ -145,12 +150,12 @@
 						<div class="dc-setting">
 							<label for="dc-sb">Small Blind</label>
 							<input type="number" id="dc-sb" min="1" max="500" @bind-value="_smallBlind"
-								   @bind-value:event="oninput" />
+							       @bind-value:event="oninput"/>
 						</div>
 						<div class="dc-setting">
 							<label for="dc-bb">Big Blind</label>
 							<input type="number" id="dc-bb" min="1" max="1000" class="@(ShowDcBigBlindError ? "input-error" : "")"
-								   @bind-value="_bigBlind" @bind-value:event="oninput" />
+							       @bind-value="_bigBlind" @bind-value:event="oninput"/>
 							@if (ShowDcBigBlindError)
 							{
 								<span class="form-hint form-hint-error">Big blind must be greater than small blind.</span>
@@ -161,21 +166,21 @@
 					{
 						<div class="dc-setting">
 							<label for="dc-ante">@(IsScrewYourNeighborGame(_selectedCode) ? "Chip stack amount" : "Ante")</label>
-							<input type="number" id="dc-ante" min="0" max="100" @bind-value="_ante" @bind-value:event="oninput" />
+							<input type="number" id="dc-ante" min="0" max="100" @bind-value="_ante" @bind-value:event="oninput"/>
 						</div>
 						@if (ShouldShowMinBet(_selectedCode))
 						{
 							<div class="dc-setting">
 								<label for="dc-minbet">Min Bet</label>
 								<input type="number" id="dc-minbet" min="1" max="1000" @bind-value="_minBet"
-									   @bind-value:event="oninput" />
+								       @bind-value:event="oninput"/>
 							</div>
 						}
 					}
 				</div>
 
 				<button class="btn btn-primary btn-lg dealer-choice-confirm" @onclick="ConfirmChoiceAsync"
-						disabled="@(_isSubmitting || (IsBlindBasedGame(_selectedCode) ? (_bigBlind < 1 || _bigBlind <= _smallBlind) : RequiresMinBet(_selectedCode) && _minBet < 1))">
+				        disabled="@(_isSubmitting || (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 || _bigBlind <= _smallBlind : RequiresMinBet(_selectedCode) && _minBet < 1))">
 					@if (_isSubmitting)
 					{
 						<span class="loading-spinner-small"></span>
@@ -200,20 +205,15 @@
 </div>
 
 @code {
-	[Parameter, EditorRequired]
-	public IReadOnlyList<GetAvailablePokerGamesResponse> AvailableGames { get; set; } = [];
+	[Parameter, EditorRequired] public IReadOnlyList<GetAvailablePokerGamesResponse> AvailableGames { get; set; } = [];
 
-	[Parameter, EditorRequired]
-	public bool IsLoading { get; set; }
+	[Parameter, EditorRequired] public bool IsLoading { get; set; }
 
-	[Parameter, EditorRequired]
-	public int CurrentActivePlayerCount { get; set; }
+	[Parameter, EditorRequired] public int CurrentActivePlayerCount { get; set; }
 
-	[Parameter]
-	public IReadOnlyCollection<string>? AllowedGameCodes { get; set; }
+	[Parameter] public IReadOnlyCollection<string>? AllowedGameCodes { get; set; }
 
-	[Parameter, EditorRequired]
-	public EventCallback<DealerChoiceSelection> OnGameChosen { get; set; }
+	[Parameter, EditorRequired] public EventCallback<DealerChoiceSelection> OnGameChosen { get; set; }
 
 	private string? _selectedCode;
 	private string? _selectedName;
@@ -223,7 +223,8 @@
 	private int _bigBlind = 10;
 
 	private bool ShowDcBigBlindError => _selectedCode is not null && IsBlindBasedGame(_selectedCode) && _bigBlind > 0 &&
-_smallBlind > 0 && _bigBlind <= _smallBlind;
+	                                    _smallBlind > 0 && _bigBlind <= _smallBlind;
+
 	private string _variantSearch = string.Empty;
 	private HashSet<string>? _allowedGameCodeLookup;
 	private readonly HashSet<string> _favoriteVariantCodes = new(StringComparer.OrdinalIgnoreCase);
@@ -287,7 +288,7 @@ _smallBlind > 0 && _bigBlind <= _smallBlind;
 		}
 
 		var selectedGame = AvailableGames.FirstOrDefault(g => string.Equals(g.Code, _selectedCode,
-StringComparison.OrdinalIgnoreCase));
+			StringComparison.OrdinalIgnoreCase));
 		if (selectedGame is null || !IsAllowedGameType(selectedGame.Code) || IsVariantDisabledForPlayerCount(selectedGame))
 		{
 			_selectedCode = null;
@@ -350,6 +351,7 @@ StringComparison.OrdinalIgnoreCase));
 			_selectedCode = code;
 			_selectedName = name;
 		}
+
 		_error = null;
 	}
 
@@ -364,7 +366,7 @@ StringComparison.OrdinalIgnoreCase));
 	}
 
 	private static VariantGroup CreateGroup(string title, IEnumerable<GetAvailablePokerGamesResponse> games, VariantType
-variantType)
+		variantType)
 	{
 		return new VariantGroup(title, games.Where(g => g.VariantType == variantType).ToList());
 	}
@@ -377,7 +379,7 @@ variantType)
 		}
 
 		var containsSelectedVariant = group.Games.Any(game => string.Equals(game.Code, _selectedCode,
-StringComparison.OrdinalIgnoreCase));
+			StringComparison.OrdinalIgnoreCase));
 		if (!containsSelectedVariant)
 		{
 			return false;
@@ -391,33 +393,41 @@ StringComparison.OrdinalIgnoreCase));
 		return true;
 	}
 
-	private static bool IsBlindBasedGame(string? code) =>
-		string.Equals(code, "HOLDEM", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "REDRIVER", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "OMAHA", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "NEBRASKA", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "SOUTHDAKOTA", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "BOBBARKER", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "PHILSMOM", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(code, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
+	private static bool IsBlindBasedGame(string? code)
+	{
+		return string.Equals(code, "HOLDEM", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "REDRIVER", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "OMAHA", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "NEBRASKA", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "SOUTHDAKOTA", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "BOBBARKER", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "PHILSMOM", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(code, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
+	}
 
-	private static bool RequiresMinBet(string? code) =>
-		!string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase)
-		&& !string.Equals(code, "INBETWEEN", StringComparison.OrdinalIgnoreCase);
+	private static bool RequiresMinBet(string? code)
+	{
+		return !string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase)
+		       && !string.Equals(code, "INBETWEEN", StringComparison.OrdinalIgnoreCase);
+	}
 
-	private static bool IsScrewYourNeighborGame(string? code) =>
-		string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
+	private static bool IsScrewYourNeighborGame(string? code)
+	{
+		return string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
+	}
 
-	private static bool ShouldShowMinBet(string? code) =>
-		RequiresMinBet(code);
+	private static bool ShouldShowMinBet(string? code)
+	{
+		return RequiresMinBet(code);
+	}
 
 	private bool MatchesVariantSearch(string gameName)
 	{
 		return string.IsNullOrWhiteSpace(_variantSearch)
-			|| gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
+		       || gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private bool IsAllowedGameType(string gameCode)
@@ -428,7 +438,7 @@ StringComparison.OrdinalIgnoreCase));
 	private bool IsFavoriteVariant(string? gameCode)
 	{
 		return !string.IsNullOrWhiteSpace(gameCode)
-			&& _favoriteVariantCodes.Contains(gameCode);
+		       && _favoriteVariantCodes.Contains(gameCode);
 	}
 
 	private string GetFavoriteButtonClasses(string gameCode)
@@ -460,7 +470,7 @@ StringComparison.OrdinalIgnoreCase));
 		_favoriteVariantCodes.Clear();
 
 		foreach (var gameCode in favoriteVariants.FavoriteVariantCodes.Select(NormalizeVariantCode).Where(code =>
-!string.IsNullOrWhiteSpace(code)))
+			         !string.IsNullOrWhiteSpace(code)))
 		{
 			_favoriteVariantCodes.Add(gameCode);
 		}
@@ -551,8 +561,10 @@ StringComparison.OrdinalIgnoreCase));
 		if (_selectedCode is null)
 			return;
 
-		if (IsBlindBasedGame(_selectedCode) ? (_bigBlind < 1 || _bigBlind <= _smallBlind) : RequiresMinBet(_selectedCode) &&
-_minBet < 1)
+		if (IsBlindBasedGame(_selectedCode)
+			    ? _bigBlind < 1 || _bigBlind <= _smallBlind
+			    : RequiresMinBet(_selectedCode) &&
+			      _minBet < 1)
 			return;
 
 		_isSubmitting = true;
@@ -582,9 +594,18 @@ _minBet < 1)
 		}
 	}
 
-	public record DealerChoiceSelection(string GameTypeCode, int Ante, int MinBet, int? SmallBlind = null, int? BigBlind =
-null);
+	public record DealerChoiceSelection(
+		string GameTypeCode,
+		int Ante,
+		int MinBet,
+		int? SmallBlind = null,
+		int? BigBlind =
+			null);
 
-	private sealed record VariantGroup(string Title, IReadOnlyList<GetAvailablePokerGamesResponse> Games, bool IsFavorites =
-false);
+	private sealed record VariantGroup(
+		string Title,
+		IReadOnlyList<GetAvailablePokerGamesResponse> Games,
+		bool IsFavorites =
+			false);
+
 }

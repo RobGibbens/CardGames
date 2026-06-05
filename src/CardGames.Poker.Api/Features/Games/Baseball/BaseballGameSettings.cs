@@ -12,18 +12,6 @@ public static class BaseballGameSettings
 	private const string BuyCardReturnPhaseKey = "buyCardReturnPhase";
 	private const string BuyCardReturnActorIndexKey = "buyCardReturnActorIndex";
 
-	public sealed record BuyCardOfferState(
-		Guid PlayerId,
-		int SeatPosition,
-		Guid CardId,
-		string Street);
-
-	public sealed record BuyCardState(
-		int BuyCardPrice,
-		List<BuyCardOfferState> PendingOffers,
-		string? ReturnPhase,
-		int? ReturnActorIndex);
-
 	public static BuyCardState GetState(Game game, int defaultBuyCardPrice)
 	{
 		var settings = ParseSettings(game.GameSettings);
@@ -74,10 +62,10 @@ public static class BaseballGameSettings
 	public static bool IsStreetPhase(string? phase)
 	{
 		return string.Equals(phase, nameof(Phases.ThirdStreet), StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(phase, nameof(Phases.FourthStreet), StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(phase, nameof(Phases.FifthStreet), StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(phase, nameof(Phases.SixthStreet), StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(phase, nameof(Phases.SeventhStreet), StringComparison.OrdinalIgnoreCase);
+		       string.Equals(phase, nameof(Phases.FourthStreet), StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(phase, nameof(Phases.FifthStreet), StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(phase, nameof(Phases.SixthStreet), StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(phase, nameof(Phases.SeventhStreet), StringComparison.OrdinalIgnoreCase);
 	}
 
 	public static int GetExpectedCardsForStreet(string? phase)
@@ -106,4 +94,16 @@ public static class BaseballGameSettings
 			return new JsonObject();
 		}
 	}
+
+	public sealed record BuyCardOfferState(
+		Guid PlayerId,
+		int SeatPosition,
+		Guid CardId,
+		string Street);
+
+	public sealed record BuyCardState(
+		int BuyCardPrice,
+		List<BuyCardOfferState> PendingOffers,
+		string? ReturnPhase,
+		int? ReturnActorIndex);
 }

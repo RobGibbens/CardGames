@@ -6,7 +6,8 @@ namespace CardGames.Poker.Games.InBetween;
 [PokerGameMetadata(
 	code: "INBETWEEN",
 	name: "In-Between",
-	description: "Two boundary cards are dealt face-up. Players bet on whether the next card's rank falls strictly between the two boundaries. Match a boundary and you POST (pay double). Ace can be declared high or low. Game ends when the pot is empty.",
+	description:
+	"Two boundary cards are dealt face-up. Players bet on whether the next card's rank falls strictly between the two boundaries. Match a boundary and you POST (pay double). Ace can be declared high or low. Game ends when the pot is empty.",
 	minimumNumberOfPlayers: 2,
 	maximumNumberOfPlayers: 20,
 	initialHoleCards: 0,
@@ -31,5 +32,8 @@ public sealed class InBetweenGame : IPokerGame
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 20;
 
-	public GameRules GetGameRules() => InBetweenRules.CreateGameRules();
+	public GameRules GetGameRules()
+	{
+		return InBetweenRules.CreateGameRules();
+	}
 }

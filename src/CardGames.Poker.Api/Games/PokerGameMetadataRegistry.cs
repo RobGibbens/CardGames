@@ -5,12 +5,12 @@ using CardGames.Poker.Games;
 namespace CardGames.Poker.Api.Games;
 
 /// <summary>
-/// Registry for poker game metadata. Uses assembly scanning to discover all
-/// <see cref="IPokerGame"/> implementations decorated with <see cref="PokerGameMetadataAttribute"/>.
+///     Registry for poker game metadata. Uses assembly scanning to discover all
+///     <see cref="IPokerGame" /> implementations decorated with <see cref="PokerGameMetadataAttribute" />.
 /// </summary>
 /// <remarks>
-/// New game types are automatically discovered when they implement <see cref="IPokerGame"/>
-/// and are decorated with <see cref="PokerGameMetadataAttribute"/>. No manual registration required.
+///     New game types are automatically discovered when they implement <see cref="IPokerGame" />
+///     and are decorated with <see cref="PokerGameMetadataAttribute" />. No manual registration required.
 /// </remarks>
 public static class PokerGameMetadataRegistry
 {
@@ -68,7 +68,7 @@ public static class PokerGameMetadataRegistry
 	}
 
 	/// <summary>
-	/// Attempts to get metadata for the specified game type code.
+	///     Attempts to get metadata for the specified game type code.
 	/// </summary>
 	/// <param name="gameTypeCode">The game type code (e.g., "FIVECARDDRAW").</param>
 	/// <param name="metadata">The metadata if found.</param>
@@ -85,7 +85,7 @@ public static class PokerGameMetadataRegistry
 	}
 
 	/// <summary>
-	/// Gets the metadata for the specified game type code, or null if not found.
+	///     Gets the metadata for the specified game type code, or null if not found.
 	/// </summary>
 	public static PokerGameMetadataAttribute? Get(string? gameTypeCode)
 	{
@@ -93,7 +93,7 @@ public static class PokerGameMetadataRegistry
 	}
 
 	/// <summary>
-	/// Attempts to get the game type class for the specified game type code.
+	///     Attempts to get the game type class for the specified game type code.
 	/// </summary>
 	/// <param name="gameTypeCode">The game type code (e.g., "FIVECARDDRAW").</param>
 	/// <param name="gameType">The game type class if found.</param>
@@ -110,7 +110,7 @@ public static class PokerGameMetadataRegistry
 	}
 
 	/// <summary>
-	/// Gets all available game type codes.
+	///     Gets all available game type codes.
 	/// </summary>
 	public static IEnumerable<string> GetAllGameTypeCodes()
 	{
@@ -118,7 +118,7 @@ public static class PokerGameMetadataRegistry
 	}
 
 	/// <summary>
-	/// Gets all registered game metadata.
+	///     Gets all registered game metadata.
 	/// </summary>
 	public static IEnumerable<PokerGameMetadataAttribute> GetAllMetadata()
 	{
@@ -126,7 +126,7 @@ public static class PokerGameMetadataRegistry
 	}
 
 	/// <summary>
-	/// Checks if a game type code is registered.
+	///     Checks if a game type code is registered.
 	/// </summary>
 	public static bool IsRegistered(string? gameTypeCode)
 	{

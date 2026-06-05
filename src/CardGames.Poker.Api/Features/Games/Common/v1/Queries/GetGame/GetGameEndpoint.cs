@@ -4,8 +4,8 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 
 /// <summary>
-/// Endpoint for retrieving a specific game by its identifier.
-/// Works for any game type - returns the game with its type code.
+///     Endpoint for retrieving a specific game by its identifier.
+///     Works for any game type - returns the game with its type code.
 /// </summary>
 public static class GetGameEndpoint
 {
@@ -23,7 +23,7 @@ public static class GetGameEndpoint
 			.WithSummary(nameof(MapGetGame).TrimPrefix("Map"))
 			.WithDescription("Retrieve a specific game by its identifier. Works for any game type.")
 			.MapToApiVersion(1.0)
-			.Produces<GetGameResponse>(StatusCodes.Status200OK)
+			.Produces<GetGameResponse>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

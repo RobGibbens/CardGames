@@ -9,7 +9,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.CollectAntes;
 
 /// <summary>
-/// Handles the <see cref="CollectAntesCommand"/> to collect mandatory ante bets from all players.
+///     Handles the <see cref="CollectAntesCommand" /> to collect mandatory ante bets from all players.
 /// </summary>
 public class CollectAntesCommandHandler(CardsDbContext context)
 	: IRequestHandler<CollectAntesCommand, OneOf<CollectAntesSuccessful, CollectAntesError>>
@@ -24,7 +24,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -42,7 +42,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 			return new CollectAntesError
 			{
 				Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase. " +
-						  $"Antes can only be collected when the game is in '{nameof(Phases.CollectingAntes)}' phase.",
+				          $"Antes can only be collected when the game is in '{nameof(Phases.CollectingAntes)}' phase.",
 				Code = CollectAntesErrorCode.InvalidGameState
 			};
 		}
@@ -50,8 +50,8 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		// 3. Get the main pot for this hand
 		var mainPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-									  p.HandNumber == game.CurrentHandNumber &&
-									  p.PotType == PotType.Main,
+			                          p.HandNumber == game.CurrentHandNumber &&
+			                          p.PotType == PotType.Main,
 				cancellationToken);
 
 		if (mainPot is null)

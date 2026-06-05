@@ -27,7 +27,8 @@ public class ProcessBuyCardCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new ProcessBuyCardCommandHandler(context, Substitute.For<IMediator>());
 
-		var result = await sut.Handle(new ProcessBuyCardCommand(Guid.NewGuid(), Guid.NewGuid(), Accept: true), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBuyCardCommand(Guid.NewGuid(), Guid.NewGuid(), Accept: true),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBuyCardErrorCode.GameNotFound);
@@ -43,7 +44,8 @@ public class ProcessBuyCardCommandHandlerTests
 
 		var sut = new ProcessBuyCardCommandHandler(context, Substitute.For<IMediator>());
 
-		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, Guid.NewGuid(), Accept: true), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, Guid.NewGuid(), Accept: true),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBuyCardErrorCode.PlayerNotFound);
@@ -63,7 +65,8 @@ public class ProcessBuyCardCommandHandlerTests
 
 		var sut = new ProcessBuyCardCommandHandler(context, Substitute.For<IMediator>());
 
-		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBuyCardErrorCode.InvalidGameState);
@@ -84,7 +87,8 @@ public class ProcessBuyCardCommandHandlerTests
 
 		var sut = new ProcessBuyCardCommandHandler(context, Substitute.For<IMediator>());
 
-		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBuyCardErrorCode.NoPendingOffer);
@@ -105,7 +109,8 @@ public class ProcessBuyCardCommandHandlerTests
 
 		var sut = new ProcessBuyCardCommandHandler(context, Substitute.For<IMediator>());
 
-		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: false), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: false),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBuyCardErrorCode.NoPendingOffer);
@@ -116,7 +121,7 @@ public class ProcessBuyCardCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = CreateGame(currentPhase: nameof(Phases.BuyCardOffer), minBet: 25);
-		var player = CreatePlayer("Rob");
+		var player = CreatePlayer();
 		var otherPlayer = CreatePlayer("Sam");
 		var gamePlayer = CreateGamePlayer(game, player, seatPosition: 0, chipStack: 100);
 		var otherGamePlayer = CreateGamePlayer(game, otherPlayer, seatPosition: 1, chipStack: 100);
@@ -125,7 +130,8 @@ public class ProcessBuyCardCommandHandlerTests
 			BuyCardPrice: 25,
 			PendingOffers:
 			[
-				new BaseballGameSettings.BuyCardOfferState(otherPlayer.Id, otherGamePlayer.SeatPosition, Guid.NewGuid(), nameof(Phases.FourthStreet))
+				new BaseballGameSettings.BuyCardOfferState(otherPlayer.Id, otherGamePlayer.SeatPosition, Guid.NewGuid(),
+					nameof(Phases.FourthStreet))
 			],
 			ReturnPhase: nameof(Phases.FourthStreet),
 			ReturnActorIndex: otherGamePlayer.SeatPosition));
@@ -137,7 +143,8 @@ public class ProcessBuyCardCommandHandlerTests
 
 		var sut = new ProcessBuyCardCommandHandler(context, Substitute.For<IMediator>());
 
-		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBuyCardErrorCode.NoPendingOffer);
@@ -148,14 +155,18 @@ public class ProcessBuyCardCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = CreateGame(currentPhase: nameof(Phases.BuyCardOffer), minBet: 10);
-		var player = CreatePlayer("Rob");
+		var player = CreatePlayer();
 		var otherPlayer = CreatePlayer("Sam");
 		var gamePlayer = CreateGamePlayer(game, player, seatPosition: 0, chipStack: 100);
 		var otherGamePlayer = CreateGamePlayer(game, otherPlayer, seatPosition: 1, chipStack: 100);
-		var existingFirstCard = CreatePlayerCard(game, gamePlayer, dealOrder: 1, CardLocation.Hole, CardSymbol.Ace, CardSuit.Spades);
-		var existingSecondCard = CreatePlayerCard(game, gamePlayer, dealOrder: 2, CardLocation.Board, CardSymbol.King, CardSuit.Hearts);
-		var existingThirdCard = CreatePlayerCard(game, gamePlayer, dealOrder: 3, CardLocation.Board, CardSymbol.Queen, CardSuit.Diamonds);
-		var otherTriggerCard = CreatePlayerCard(game, otherGamePlayer, dealOrder: 2, CardLocation.Board, CardSymbol.Four, CardSuit.Clubs);
+		var existingFirstCard = CreatePlayerCard(game, gamePlayer, dealOrder: 1, CardLocation.Hole, CardSymbol.Ace,
+			CardSuit.Spades);
+		var existingSecondCard = CreatePlayerCard(game, gamePlayer, dealOrder: 2, CardLocation.Board, CardSymbol.King,
+			CardSuit.Hearts);
+		var existingThirdCard = CreatePlayerCard(game, gamePlayer, dealOrder: 3, CardLocation.Board, CardSymbol.Queen,
+			CardSuit.Diamonds);
+		var otherTriggerCard = CreatePlayerCard(game, otherGamePlayer, dealOrder: 2, CardLocation.Board,
+			CardSymbol.Four, CardSuit.Clubs);
 		var deckCard = CreateDeckCard(game, dealOrder: 100, CardSymbol.Ten, CardSuit.Clubs);
 		var pot = CreateMainPot(game);
 
@@ -163,8 +174,10 @@ public class ProcessBuyCardCommandHandlerTests
 			BuyCardPrice: 10,
 			PendingOffers:
 			[
-				new BaseballGameSettings.BuyCardOfferState(player.Id, gamePlayer.SeatPosition, Guid.NewGuid(), nameof(Phases.FourthStreet)),
-				new BaseballGameSettings.BuyCardOfferState(otherPlayer.Id, otherGamePlayer.SeatPosition, otherTriggerCard.Id, nameof(Phases.FourthStreet))
+				new BaseballGameSettings.BuyCardOfferState(player.Id, gamePlayer.SeatPosition, Guid.NewGuid(),
+					nameof(Phases.FourthStreet)),
+				new BaseballGameSettings.BuyCardOfferState(otherPlayer.Id, otherGamePlayer.SeatPosition,
+					otherTriggerCard.Id, nameof(Phases.FourthStreet))
 			],
 			ReturnPhase: "ResumeBuyCardRound",
 			ReturnActorIndex: otherGamePlayer.SeatPosition));
@@ -172,13 +185,15 @@ public class ProcessBuyCardCommandHandlerTests
 		context.Games.Add(game);
 		context.Players.AddRange(player, otherPlayer);
 		context.GamePlayers.AddRange(gamePlayer, otherGamePlayer);
-		context.GameCards.AddRange(existingFirstCard, existingSecondCard, existingThirdCard, otherTriggerCard, deckCard);
+		context.GameCards.AddRange(existingFirstCard, existingSecondCard, existingThirdCard, otherTriggerCard,
+			deckCard);
 		context.Pots.Add(pot);
 		await context.SaveChangesAsync();
 
 		var sut = new ProcessBuyCardCommandHandler(context, Substitute.For<IMediator>());
 
-		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true),
+			CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.CurrentPhase.Should().Be(nameof(Phases.BuyCardOffer));
@@ -186,9 +201,11 @@ public class ProcessBuyCardCommandHandlerTests
 		var persistedGame = await context.Games.SingleAsync(savedGame => savedGame.Id == game.Id);
 		var updatedState = BaseballGameSettings.GetState(persistedGame, defaultBuyCardPrice: 0);
 		var boughtCard = await context.GameCards
-			.SingleAsync(gameCard => gameCard.GameId == game.Id && gameCard.GamePlayerId == gamePlayer.Id && gameCard.IsBuyCard);
+			.SingleAsync(gameCard =>
+				gameCard.GameId == game.Id && gameCard.GamePlayerId == gamePlayer.Id && gameCard.IsBuyCard);
 		var persistedPlayer = await context.GamePlayers.SingleAsync(savedPlayer => savedPlayer.Id == gamePlayer.Id);
-		var persistedPot = await context.Pots.Include(savedPot => savedPot.Contributions).SingleAsync(savedPot => savedPot.GameId == game.Id);
+		var persistedPot = await context.Pots.Include(savedPot => savedPot.Contributions)
+			.SingleAsync(savedPot => savedPot.GameId == game.Id);
 
 		updatedState.PendingOffers.Should().ContainSingle();
 		updatedState.PendingOffers[0].PlayerId.Should().Be(otherPlayer.Id);
@@ -212,14 +229,18 @@ public class ProcessBuyCardCommandHandlerTests
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
 			var game = CreateGame(currentPhase: nameof(Phases.BuyCardOffer), minBet: 5);
-			var firstPlayer = CreatePlayer("Rob");
+			var firstPlayer = CreatePlayer();
 			var secondPlayer = CreatePlayer("Sam");
 			var firstGamePlayer = CreateGamePlayer(game, firstPlayer, seatPosition: 0, chipStack: 100);
 			var secondGamePlayer = CreateGamePlayer(game, secondPlayer, seatPosition: 1, chipStack: 100);
-			var firstTriggerCard = CreatePlayerCard(game, firstGamePlayer, dealOrder: 2, CardLocation.Board, CardSymbol.Four, CardSuit.Hearts);
-			var secondTriggerCard = CreatePlayerCard(game, secondGamePlayer, dealOrder: 2, CardLocation.Board, CardSymbol.Four, CardSuit.Spades);
-			var firstOtherCard = CreatePlayerCard(game, firstGamePlayer, dealOrder: 3, CardLocation.Board, CardSymbol.King, CardSuit.Clubs);
-			var secondOtherCard = CreatePlayerCard(game, secondGamePlayer, dealOrder: 3, CardLocation.Board, CardSymbol.Queen, CardSuit.Diamonds);
+			var firstTriggerCard = CreatePlayerCard(game, firstGamePlayer, dealOrder: 2, CardLocation.Board,
+				CardSymbol.Four, CardSuit.Hearts);
+			var secondTriggerCard = CreatePlayerCard(game, secondGamePlayer, dealOrder: 2, CardLocation.Board,
+				CardSymbol.Four, CardSuit.Spades);
+			var firstOtherCard = CreatePlayerCard(game, firstGamePlayer, dealOrder: 3, CardLocation.Board,
+				CardSymbol.King, CardSuit.Clubs);
+			var secondOtherCard = CreatePlayerCard(game, secondGamePlayer, dealOrder: 3, CardLocation.Board,
+				CardSymbol.Queen, CardSuit.Diamonds);
 			var firstDeckCard = CreateDeckCard(game, dealOrder: 100, CardSymbol.Ten, CardSuit.Clubs);
 			var secondDeckCard = CreateDeckCard(game, dealOrder: 101, CardSymbol.Jack, CardSuit.Diamonds);
 			var pot = CreateMainPot(game);
@@ -228,8 +249,10 @@ public class ProcessBuyCardCommandHandlerTests
 				BuyCardPrice: 5,
 				PendingOffers:
 				[
-					new BaseballGameSettings.BuyCardOfferState(firstPlayer.Id, firstGamePlayer.SeatPosition, firstTriggerCard.Id, nameof(Phases.FourthStreet)),
-					new BaseballGameSettings.BuyCardOfferState(secondPlayer.Id, secondGamePlayer.SeatPosition, secondTriggerCard.Id, nameof(Phases.FourthStreet))
+					new BaseballGameSettings.BuyCardOfferState(firstPlayer.Id, firstGamePlayer.SeatPosition,
+						firstTriggerCard.Id, nameof(Phases.FourthStreet)),
+					new BaseballGameSettings.BuyCardOfferState(secondPlayer.Id, secondGamePlayer.SeatPosition,
+						secondTriggerCard.Id, nameof(Phases.FourthStreet))
 				],
 				ReturnPhase: "ResumeBuyCardsComplete",
 				ReturnActorIndex: 0));
@@ -237,7 +260,8 @@ public class ProcessBuyCardCommandHandlerTests
 			setupContext.Games.Add(game);
 			setupContext.Players.AddRange(firstPlayer, secondPlayer);
 			setupContext.GamePlayers.AddRange(firstGamePlayer, secondGamePlayer);
-			setupContext.GameCards.AddRange(firstTriggerCard, secondTriggerCard, firstOtherCard, secondOtherCard, firstDeckCard, secondDeckCard);
+			setupContext.GameCards.AddRange(firstTriggerCard, secondTriggerCard, firstOtherCard, secondOtherCard,
+				firstDeckCard, secondDeckCard);
 			setupContext.Pots.Add(pot);
 			await setupContext.SaveChangesAsync();
 
@@ -251,16 +275,18 @@ public class ProcessBuyCardCommandHandlerTests
 
 		_ = await staleContext.Games
 			.Include(game => game.GamePlayers)
-				.ThenInclude(gamePlayer => gamePlayer.Player)
+			.ThenInclude(gamePlayer => gamePlayer.Player)
 			.Include(game => game.Pots)
-				.ThenInclude(pot => pot.Contributions)
+			.ThenInclude(pot => pot.Contributions)
 			.FirstAsync(game => game.Id == gameId);
 
 		var freshSut = new ProcessBuyCardCommandHandler(freshContext, Substitute.For<IMediator>());
 		var staleSut = new ProcessBuyCardCommandHandler(staleContext, Substitute.For<IMediator>());
 
-		var firstResult = await freshSut.Handle(new ProcessBuyCardCommand(gameId, firstPlayerId, Accept: true), CancellationToken.None);
-		var secondResult = await staleSut.Handle(new ProcessBuyCardCommand(gameId, secondPlayerId, Accept: true), CancellationToken.None);
+		var firstResult = await freshSut.Handle(new ProcessBuyCardCommand(gameId, firstPlayerId, Accept: true),
+			CancellationToken.None);
+		var secondResult = await staleSut.Handle(new ProcessBuyCardCommand(gameId, secondPlayerId, Accept: true),
+			CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
 		secondResult.IsT0.Should().BeTrue();
@@ -276,7 +302,8 @@ public class ProcessBuyCardCommandHandlerTests
 			.Where(gameCard => gameCard.GameId == gameId && gameCard.IsBuyCard)
 			.OrderBy(gameCard => gameCard.GamePlayerId)
 			.ToListAsync();
-		var persistedPot = await verificationContext.Pots.Include(pot => pot.Contributions).SingleAsync(pot => pot.GameId == gameId);
+		var persistedPot = await verificationContext.Pots.Include(pot => pot.Contributions)
+			.SingleAsync(pot => pot.GameId == gameId);
 
 		updatedState.PendingOffers.Should().BeEmpty();
 		persistedGame.CurrentPhase.Should().Be("ResumeBuyCardsComplete");
@@ -298,7 +325,8 @@ public class ProcessBuyCardCommandHandlerTests
 			BuyCardPrice: 25,
 			PendingOffers:
 			[
-				new BaseballGameSettings.BuyCardOfferState(player.Id, gamePlayer.SeatPosition, Guid.NewGuid(), nameof(Phases.FourthStreet))
+				new BaseballGameSettings.BuyCardOfferState(player.Id, gamePlayer.SeatPosition, Guid.NewGuid(),
+					nameof(Phases.FourthStreet))
 			],
 			ReturnPhase: nameof(Phases.FourthStreet),
 			ReturnActorIndex: gamePlayer.SeatPosition));
@@ -310,7 +338,8 @@ public class ProcessBuyCardCommandHandlerTests
 
 		var sut = new ProcessBuyCardCommandHandler(context, Substitute.For<IMediator>());
 
-		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true), CancellationToken.None);
+		var result = await sut.Handle(new ProcessBuyCardCommand(game.Id, player.Id, Accept: true),
+			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBuyCardErrorCode.InsufficientChips);

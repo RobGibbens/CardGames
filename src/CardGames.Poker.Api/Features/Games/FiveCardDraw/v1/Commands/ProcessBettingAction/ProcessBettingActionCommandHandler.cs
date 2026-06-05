@@ -1,7 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -12,7 +11,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Handles the <see cref="ProcessBettingActionCommand"/> to process betting actions from players.
+///     Handles the <see cref="ProcessBettingActionCommand" /> to process betting actions from players.
 /// </summary>
 public class ProcessBettingActionCommandHandler(CardsDbContext context)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
@@ -27,9 +26,9 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players and active betting round
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.BettingRounds.Where(br => !br.IsComplete))
-				.ThenInclude(br => br.Actions)
+			.ThenInclude(br => br.Actions)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -142,7 +141,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		// Move to next active player
 		nextPlayerIndex = FindNextActivePlayer(activePlayers, bettingRound.CurrentActorIndex);
-		
+
 		// Check if betting round is complete
 		roundComplete = IsRoundComplete(activePlayers, bettingRound, nextPlayerIndex);
 
@@ -162,33 +161,34 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			nextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == nextPlayerIndex)?.Player.Name;
 		}
 
-			// 13. Update timestamps
-			game.UpdatedAt = now;
+		// 13. Update timestamps
+		game.UpdatedAt = now;
 
-			// 14. Persist changes
-			await context.SaveChangesAsync(cancellationToken);
+		// 14. Persist changes
+		await context.SaveChangesAsync(cancellationToken);
 
-			return new ProcessBettingActionSuccessful
+		return new ProcessBettingActionSuccessful
+		{
+			GameId = game.Id,
+			RoundComplete = roundComplete,
+			CurrentPhase = game.CurrentPhase,
+			Action = new BettingActionResult
 			{
-				GameId = game.Id,
-				RoundComplete = roundComplete,
-				CurrentPhase = game.CurrentPhase,
-				Action = new BettingActionResult
-				{
-					PlayerName = currentPlayer.Player.Name,
-					ActionType = command.ActionType,
-					Amount = actualAmount,
-					ChipStackAfter = currentPlayer.ChipStack
-				},
-				PlayerSeatIndex = currentPlayer.SeatPosition,
-				NextPlayerIndex = nextPlayerIndex,
-				NextPlayerName = nextPlayerName,
-				PotTotal = game.Pots.Sum(p => p.Amount),
-				CurrentBet = bettingRound.CurrentBet
-			};
-		}
+				PlayerName = currentPlayer.Player.Name,
+				ActionType = command.ActionType,
+				Amount = actualAmount,
+				ChipStackAfter = currentPlayer.ChipStack
+			},
+			PlayerSeatIndex = currentPlayer.SeatPosition,
+			NextPlayerIndex = nextPlayerIndex,
+			NextPlayerName = nextPlayerName,
+			PotTotal = game.Pots.Sum(p => p.Amount),
+			CurrentBet = bettingRound.CurrentBet
+		};
+	}
 
-	private string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player, BettingRound bettingRound)
+	private string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player,
+		BettingRound bettingRound)
 	{
 		var amountToCall = Math.Max(0, bettingRound.CurrentBet - player.CurrentBet);
 
@@ -206,7 +206,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 				"Cannot call - no bet to match",
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
-			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount 
+			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount
 			                             && amount < player.ChipStack + player.CurrentBet =>
 				$"Raise must be to at least {bettingRound.CurrentBet + bettingRound.LastRaiseAmount}",
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
@@ -279,7 +279,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 				var allInAmount = player.ChipStack;
 				actualAmount = allInAmount + player.CurrentBet;
 				chipsMoved = allInAmount;
-				
+
 				// If this is a raise (putting in more than current bet)
 				if (player.CurrentBet + allInAmount > bettingRound.CurrentBet)
 				{
@@ -291,9 +291,10 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 						bettingRound.LastAggressorIndex = player.SeatPosition;
 						bettingRound.RaiseCount++;
 					}
+
 					bettingRound.CurrentBet = newTotal;
 				}
-				
+
 				player.CurrentBet += allInAmount;
 				player.TotalContributedThisHand += allInAmount;
 				player.ChipStack = 0;
@@ -316,6 +317,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			{
 				return searchIndex;
 			}
+
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
@@ -330,13 +332,13 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		// Round is complete if all non-folded, non-all-in players have matched the current bet
 		var playersWhoCanAct = activePlayers.Where(p => !p.HasFolded && !p.IsAllIn).ToList();
-		
+
 		// If no players can act (all are all-in or folded), round is complete
 		if (playersWhoCanAct.Count == 0) return true;
 
 		// Check if all players have matched the current bet and have had a chance to act
 		var allMatched = playersWhoCanAct.All(p => p.CurrentBet == bettingRound.CurrentBet);
-		
+
 		// If there's a last aggressor, we need to complete the round back to them
 		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex && allMatched)
 		{
@@ -399,7 +401,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 	}
 
 	/// <summary>
-	/// Calculates and creates side pots when players are all-in for different amounts.
+	///     Calculates and creates side pots when players are all-in for different amounts.
 	/// </summary>
 	private void CalculateSidePots(Game game, List<GamePlayer> activePlayers)
 	{
@@ -597,54 +599,56 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		if (calculatedTotal != totalContributions && game.Pots.Any(p => p.HandNumber == game.CurrentHandNumber))
 		{
 			// Adjust last pot to match
-			var lastPot = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).OrderByDescending(p => p.PotOrder).First();
+			var lastPot = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber)
+				.OrderByDescending(p => p.PotOrder).First();
 			lastPot.Amount += totalContributions - calculatedTotal;
 		}
 	}
 
-		/// <summary>
-		/// Finds the first active player after the dealer for betting rounds.
-		/// Excludes folded and all-in players since they cannot participate in betting.
-		/// </summary>
-		private int FindFirstActivePlayerAfterDealerForBetting(Game game, List<GamePlayer> activePlayers)
-		{
-			var totalPlayers = activePlayers.Max(p => p.SeatPosition) + 1;
-			var searchIndex = (game.DealerPosition + 1) % totalPlayers;
+	/// <summary>
+	///     Finds the first active player after the dealer for betting rounds.
+	///     Excludes folded and all-in players since they cannot participate in betting.
+	/// </summary>
+	private int FindFirstActivePlayerAfterDealerForBetting(Game game, List<GamePlayer> activePlayers)
+	{
+		var totalPlayers = activePlayers.Max(p => p.SeatPosition) + 1;
+		var searchIndex = (game.DealerPosition + 1) % totalPlayers;
 
-			for (var i = 0; i < totalPlayers; i++)
+		for (var i = 0; i < totalPlayers; i++)
+		{
+			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
+			if (player is not null && !player.HasFolded && !player.IsAllIn)
 			{
-				var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-				if (player is not null && !player.HasFolded && !player.IsAllIn)
-				{
-					return searchIndex;
-				}
-				searchIndex = (searchIndex + 1) % totalPlayers;
+				return searchIndex;
 			}
 
-			return -1;
+			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
 
-		/// <summary>
-		/// Finds the first eligible player after the dealer for the draw phase.
-		/// Includes all-in players since they can still draw cards even though they cannot bet.
-		/// </summary>
-		private static int FindFirstEligibleDrawPlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
-		{
-			var totalPlayers = activePlayers.Max(p => p.SeatPosition) + 1;
-			var searchIndex = (game.DealerPosition + 1) % totalPlayers;
-
-			for (var i = 0; i < totalPlayers; i++)
-			{
-				var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-				// Include all-in players - they can still draw cards
-				if (player is not null && !player.HasFolded)
-				{
-					return searchIndex;
-				}
-				searchIndex = (searchIndex + 1) % totalPlayers;
-			}
-
-			return -1;
-		}
+		return -1;
 	}
 
+	/// <summary>
+	///     Finds the first eligible player after the dealer for the draw phase.
+	///     Includes all-in players since they can still draw cards even though they cannot bet.
+	/// </summary>
+	private static int FindFirstEligibleDrawPlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
+	{
+		var totalPlayers = activePlayers.Max(p => p.SeatPosition) + 1;
+		var searchIndex = (game.DealerPosition + 1) % totalPlayers;
+
+		for (var i = 0; i < totalPlayers; i++)
+		{
+			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
+			// Include all-in players - they can still draw cards
+			if (player is not null && !player.HasFolded)
+			{
+				return searchIndex;
+			}
+
+			searchIndex = (searchIndex + 1) % totalPlayers;
+		}
+
+		return -1;
+	}
+}

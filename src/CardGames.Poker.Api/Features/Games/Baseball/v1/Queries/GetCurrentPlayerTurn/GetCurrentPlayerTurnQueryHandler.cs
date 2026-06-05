@@ -9,7 +9,8 @@ namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Queries.GetCurrentPlaye
 public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCache hybridCache)
 	: IRequestHandler<GetCurrentPlayerTurnQuery, GetCurrentPlayerTurnResponse?>
 {
-	public async Task<GetCurrentPlayerTurnResponse?> Handle(GetCurrentPlayerTurnQuery request, CancellationToken cancellationToken)
+	public async Task<GetCurrentPlayerTurnResponse?> Handle(GetCurrentPlayerTurnQuery request,
+		CancellationToken cancellationToken)
 	{
 		return await hybridCache.GetOrCreateAsync(
 			$"{Feature.Version}-{request.CacheKey}",
@@ -38,9 +39,9 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 
 				var playerResponse = gamePlayer.ToCurrentPlayerResponse();
 
-				BettingRound? bettingRound = null;
-				bettingRound = await context.BettingRounds
-					.Where(br => br.GameId == request.GameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
+				var bettingRound = await context.BettingRounds
+					.Where(br =>
+						br.GameId == request.GameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
 					.AsNoTracking()
 					.FirstOrDefaultAsync(cancellationToken);
 
@@ -48,8 +49,8 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 
 				var deadCards = await context.GameCards
 					.Where(gc => gc.GamePlayer.GameId == request.GameId
-						&& gc.GamePlayer.HasFolded
-						&& !gc.IsDiscarded)
+					             && gc.GamePlayer.HasFolded
+					             && !gc.IsDiscarded)
 					.AsNoTracking()
 					.ToListAsync(cancellationToken);
 

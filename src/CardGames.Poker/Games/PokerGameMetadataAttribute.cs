@@ -1,10 +1,9 @@
+using System;
 using CardGames.Poker.Betting;
 
 namespace CardGames.Poker.Games;
 
-using System;
-
-[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class PokerGameMetadataAttribute(
 	string code,
 	string name,

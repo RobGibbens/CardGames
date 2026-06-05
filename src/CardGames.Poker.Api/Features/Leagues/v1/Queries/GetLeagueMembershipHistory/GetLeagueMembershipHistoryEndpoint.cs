@@ -13,7 +13,7 @@ public static class GetLeagueMembershipHistoryEndpoint
 					var result = await mediator.Send(new GetLeagueMembershipHistoryQuery(leagueId), cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => error.Code switch
 						{
 							GetLeagueMembershipHistoryErrorCode.Unauthorized => Results.Unauthorized(),
@@ -24,7 +24,7 @@ public static class GetLeagueMembershipHistoryEndpoint
 			.WithName("GetLeagueMembershipHistory")
 			.WithSummary("Get league membership history")
 			.WithDescription("Returns membership timeline events for active members.")
-			.Produces<IReadOnlyList<LeagueMembershipHistoryItemDto>>(StatusCodes.Status200OK)
+			.Produces<IReadOnlyList<LeagueMembershipHistoryItemDto>>()
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
 			.RequireAuthorization();

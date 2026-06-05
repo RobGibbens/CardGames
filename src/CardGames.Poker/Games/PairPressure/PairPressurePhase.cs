@@ -1,7 +1,7 @@
 namespace CardGames.Poker.Games.PairPressure;
 
 /// <summary>
-/// Represents the current phase of a Pair Pressure hand.
+///     Represents the current phase of a Pair Pressure hand.
 /// </summary>
 public enum PairPressurePhase
 {

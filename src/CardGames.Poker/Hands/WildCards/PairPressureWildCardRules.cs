@@ -5,10 +5,10 @@ using CardGames.Core.French.Cards;
 namespace CardGames.Poker.Hands.WildCards;
 
 /// <summary>
-/// Pair Pressure wild card rules.
-/// - Whenever a face-up rank appears for the second time, that rank becomes wild.
-/// - Only the two most recent paired-up ranks remain active.
-/// - When a third distinct paired rank appears, the oldest active wild rank is evicted.
+///     Pair Pressure wild card rules.
+///     - Whenever a face-up rank appears for the second time, that rank becomes wild.
+///     - Only the two most recent paired-up ranks remain active.
+///     - When a third distinct paired rank appears, the oldest active wild rank is evicted.
 /// </summary>
 public class PairPressureWildCardRules
 {

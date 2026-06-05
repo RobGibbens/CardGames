@@ -1,169 +1,168 @@
-using CardGames.IntegrationTests.Infrastructure;
-using CardGames.Poker.Api.GameFlow;
-
 namespace CardGames.IntegrationTests.GameFlow;
 
 /// <summary>
-/// Integration tests for <see cref="GameFlowHandlerFactory"/>.
-/// Tests handler resolution and registration via assembly scanning.
+///     Integration tests for <see cref="GameFlowHandlerFactory" />.
+///     Tests handler resolution and registration via assembly scanning.
 /// </summary>
 public class GameFlowHandlerFactoryTests : IntegrationTestBase
 {
-    [Theory]
-    [InlineData("FIVECARDDRAW", typeof(FiveCardDrawFlowHandler))]
-    [InlineData("SEVENCARDSTUD", typeof(SevenCardStudFlowHandler))]
-    [InlineData("KINGSANDLOWS", typeof(KingsAndLowsFlowHandler))]
-    [InlineData("TWOSJACKSMANWITHTHEAXE", typeof(TwosJacksManWithTheAxeFlowHandler))]
-    [InlineData("GOODBADUGLY", typeof(GoodBadUglyFlowHandler))]
-    public void GetHandler_ReturnsCorrectHandlerType(string gameTypeCode, Type expectedType)
-    {
-        // Act
-        var handler = FlowHandlerFactory.GetHandler(gameTypeCode);
+	[Theory]
+	[InlineData("FIVECARDDRAW", typeof(FiveCardDrawFlowHandler))]
+	[InlineData("SEVENCARDSTUD", typeof(SevenCardStudFlowHandler))]
+	[InlineData("KINGSANDLOWS", typeof(KingsAndLowsFlowHandler))]
+	[InlineData("TWOSJACKSMANWITHTHEAXE", typeof(TwosJacksManWithTheAxeFlowHandler))]
+	[InlineData("GOODBADUGLY", typeof(GoodBadUglyFlowHandler))]
+	public void GetHandler_ReturnsCorrectHandlerType(string gameTypeCode, Type expectedType)
+	{
+		// Act
+		var handler = FlowHandlerFactory.GetHandler(gameTypeCode);
 
-        // Assert
-        handler.Should().BeOfType(expectedType);
-        handler.GameTypeCode.Should().Be(gameTypeCode);
-    }
+		// Assert
+		handler.Should().BeOfType(expectedType);
+		handler.GameTypeCode.Should().Be(gameTypeCode);
+	}
 
-    [Theory]
-    [InlineData("fivecarddraw")]
-    [InlineData("FiveCardDraw")]
-    [InlineData("FIVECARDDRAW")]
-    public void GetHandler_IsCaseInsensitive(string gameTypeCode)
-    {
-        // Act
-        var handler = FlowHandlerFactory.GetHandler(gameTypeCode);
+	[Theory]
+	[InlineData("fivecarddraw")]
+	[InlineData("FiveCardDraw")]
+	[InlineData("FIVECARDDRAW")]
+	public void GetHandler_IsCaseInsensitive(string gameTypeCode)
+	{
+		// Act
+		var handler = FlowHandlerFactory.GetHandler(gameTypeCode);
 
-        // Assert
-        handler.Should().BeOfType<FiveCardDrawFlowHandler>();
-    }
+		// Assert
+		handler.Should().BeOfType<FiveCardDrawFlowHandler>();
+	}
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void GetHandler_WithNullOrEmptyGameType_ThrowsArgumentException(string gameTypeCode)
-    {
-        // Act
-        var act = () => FlowHandlerFactory.GetHandler(gameTypeCode);
+	[Theory]
+	[InlineData("")]
+	[InlineData("   ")]
+	public void GetHandler_WithNullOrEmptyGameType_ThrowsArgumentException(string gameTypeCode)
+	{
+		// Act
+		var act = () => FlowHandlerFactory.GetHandler(gameTypeCode);
 
-        // Assert
-        act.Should().Throw<ArgumentException>();
-    }
+		// Assert
+		act.Should().Throw<ArgumentException>();
+	}
 
-    [Theory]
-    [InlineData("UNKNOWNGAME")]
-    [InlineData("INVALID")]
-    public void GetHandler_WithUnknownGameType_ThrowsNotSupportedException(string gameTypeCode)
-    {
-        // Act
-        var act = () => FlowHandlerFactory.GetHandler(gameTypeCode);
+	[Theory]
+	[InlineData("UNKNOWNGAME")]
+	[InlineData("INVALID")]
+	public void GetHandler_WithUnknownGameType_ThrowsNotSupportedException(string gameTypeCode)
+	{
+		// Act
+		var act = () => FlowHandlerFactory.GetHandler(gameTypeCode);
 
-        // Assert
-        act.Should().Throw<NotSupportedException>();
-    }
+		// Assert
+		act.Should().Throw<NotSupportedException>();
+	}
 
-    [Fact]
-    public void GetHandler_WithNullGameType_ThrowsArgumentException()
-    {
-        // Act
-        var act = () => FlowHandlerFactory.GetHandler(null!);
+	[Fact]
+	public void GetHandler_WithNullGameType_ThrowsArgumentException()
+	{
+		// Act
+		var act = () => FlowHandlerFactory.GetHandler(null!);
 
-        // Assert
-        act.Should().Throw<ArgumentException>();
-    }
+		// Assert
+		act.Should().Throw<ArgumentException>();
+	}
 
-    [Theory]
-    [InlineData("FIVECARDDRAW", true)]
-    [InlineData("SEVENCARDSTUD", true)]
-    [InlineData("KINGSANDLOWS", true)]
-    [InlineData("TWOSJACKSMANWITHTHEAXE", true)]
-    [InlineData("GOODBADUGLY", true)]
-    [InlineData("UNKNOWNGAME", false)]
-    [InlineData("", false)]
-    public void TryGetHandler_ReturnsExpectedResult(string gameTypeCode, bool expectedResult)
-    {
-        // Act
-        var result = FlowHandlerFactory.TryGetHandler(gameTypeCode, out var handler);
+	[Theory]
+	[InlineData("FIVECARDDRAW", true)]
+	[InlineData("SEVENCARDSTUD", true)]
+	[InlineData("KINGSANDLOWS", true)]
+	[InlineData("TWOSJACKSMANWITHTHEAXE", true)]
+	[InlineData("GOODBADUGLY", true)]
+	[InlineData("UNKNOWNGAME", false)]
+	[InlineData("", false)]
+	public void TryGetHandler_ReturnsExpectedResult(string gameTypeCode, bool expectedResult)
+	{
+		// Act
+		var result = FlowHandlerFactory.TryGetHandler(gameTypeCode, out var handler);
 
-        // Assert
-        result.Should().Be(expectedResult);
-        if (expectedResult)
-        {
-            handler.Should().NotBeNull();
-            handler!.GameTypeCode.Should().BeEquivalentTo(gameTypeCode);
-        }
-        else
-        {
-            handler.Should().BeNull();
-        }
-    }
+		// Assert
+		result.Should().Be(expectedResult);
+		if (expectedResult)
+		{
+			handler.Should().NotBeNull();
+			handler!.GameTypeCode.Should().BeEquivalentTo(gameTypeCode);
+		}
+		else
+		{
+			handler.Should().BeNull();
+		}
+	}
 
-    [Fact]
-    public void TryGetHandler_WithNull_ReturnsFalse()
-    {
-        // Act
-        var result = FlowHandlerFactory.TryGetHandler(null!, out var handler);
+	[Fact]
+	public void TryGetHandler_WithNull_ReturnsFalse()
+	{
+		// Act
+		var result = FlowHandlerFactory.TryGetHandler(null!, out var handler);
 
-        // Assert
-        result.Should().BeFalse();
-        handler.Should().BeNull();
-    }
+		// Assert
+		result.Should().BeFalse();
+		handler.Should().BeNull();
+	}
 
-    [Fact]
-    public void AllHandlers_HaveValidGameRules()
-    {
-        // Arrange
-        var gameTypeCodes = new[] { "FIVECARDDRAW", "SEVENCARDSTUD", "KINGSANDLOWS", "TWOSJACKSMANWITHTHEAXE", "GOODBADUGLY" };
+	[Fact]
+	public void AllHandlers_HaveValidGameRules()
+	{
+		// Arrange
+		var gameTypeCodes = new[]
+			{ "FIVECARDDRAW", "SEVENCARDSTUD", "KINGSANDLOWS", "TWOSJACKSMANWITHTHEAXE", "GOODBADUGLY" };
 
-        foreach (var code in gameTypeCodes)
-        {
-            // Act
-            var handler = FlowHandlerFactory.GetHandler(code);
-            var rules = handler.GetGameRules();
+		foreach (var code in gameTypeCodes)
+		{
+			// Act
+			var handler = FlowHandlerFactory.GetHandler(code);
+			var rules = handler.GetGameRules();
 
-            // Assert
-            rules.Should().NotBeNull($"{code} should have valid rules");
-            rules.Phases.Should().NotBeEmpty($"{code} should have defined phases");
-        }
-    }
+			// Assert
+			rules.Should().NotBeNull($"{code} should have valid rules");
+			rules.Phases.Should().NotBeEmpty($"{code} should have defined phases");
+		}
+	}
 
-    [Fact]
-    public void AllHandlers_HaveValidDealingConfiguration()
-    {
-        // Arrange
-        var gameTypeCodes = new[] { "FIVECARDDRAW", "SEVENCARDSTUD", "KINGSANDLOWS", "TWOSJACKSMANWITHTHEAXE", "GOODBADUGLY" };
+	[Fact]
+	public void AllHandlers_HaveValidDealingConfiguration()
+	{
+		// Arrange
+		var gameTypeCodes = new[]
+			{ "FIVECARDDRAW", "SEVENCARDSTUD", "KINGSANDLOWS", "TWOSJACKSMANWITHTHEAXE", "GOODBADUGLY" };
 
-        foreach (var code in gameTypeCodes)
-        {
-            // Act
-            var handler = FlowHandlerFactory.GetHandler(code);
-            var config = handler.GetDealingConfiguration();
+		foreach (var code in gameTypeCodes)
+		{
+			// Act
+			var handler = FlowHandlerFactory.GetHandler(code);
+			var config = handler.GetDealingConfiguration();
 
-            // Assert
-            config.Should().NotBeNull($"{code} should have valid dealing configuration");
-            
-            if (config.PatternType == DealingPatternType.StreetBased)
-            {
-                config.DealingRounds.Should().NotBeNullOrEmpty($"{code} street-based game should have dealing rounds");
-            }
-            else
-            {
-                config.InitialCardsPerPlayer.Should().BeGreaterThan(0, 
-                    $"{code} should deal at least 1 card per player");
-            }
-        }
-    }
+			// Assert
+			config.Should().NotBeNull($"{code} should have valid dealing configuration");
 
-    [Fact]
-    public void GetHandler_ReturnsConsistentInstances()
-    {
-        // Factory may return new instances or cached - verify behavior is consistent
-        var handler1 = FlowHandlerFactory.GetHandler("FIVECARDDRAW");
-        var handler2 = FlowHandlerFactory.GetHandler("FIVECARDDRAW");
+			if (config.PatternType == DealingPatternType.StreetBased)
+			{
+				config.DealingRounds.Should().NotBeNullOrEmpty($"{code} street-based game should have dealing rounds");
+			}
+			else
+			{
+				config.InitialCardsPerPlayer.Should().BeGreaterThan(0,
+					$"{code} should deal at least 1 card per player");
+			}
+		}
+	}
 
-        // Both should have same game type code regardless of instance equality
-        handler1.GameTypeCode.Should().Be(handler2.GameTypeCode);
-        handler1.GetDealingConfiguration().PatternType.Should().Be(
-            handler2.GetDealingConfiguration().PatternType);
-    }
+	[Fact]
+	public void GetHandler_ReturnsConsistentInstances()
+	{
+		// Factory may return new instances or cached - verify behavior is consistent
+		var handler1 = FlowHandlerFactory.GetHandler("FIVECARDDRAW");
+		var handler2 = FlowHandlerFactory.GetHandler("FIVECARDDRAW");
+
+		// Both should have same game type code regardless of instance equality
+		handler1.GameTypeCode.Should().Be(handler2.GameTypeCode);
+		handler1.GetDealingConfiguration().PatternType.Should().Be(
+			handler2.GetDealingConfiguration().PatternType);
+	}
 }

@@ -12,7 +12,8 @@ public sealed class GetPendingJoinRequestsForHostQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetPendingJoinRequestsForHostQuery, IReadOnlyList<GameJoinRequestReceivedDto>>
 {
-	public async Task<IReadOnlyList<GameJoinRequestReceivedDto>> Handle(GetPendingJoinRequestsForHostQuery request, CancellationToken cancellationToken)
+	public async Task<IReadOnlyList<GameJoinRequestReceivedDto>> Handle(GetPendingJoinRequestsForHostQuery request,
+		CancellationToken cancellationToken)
 	{
 		if (string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -23,8 +24,8 @@ public sealed class GetPendingJoinRequestsForHostQueryHandler(
 
 		var expiredRequests = await context.GameJoinRequests
 			.Where(x => x.Status == GameJoinRequestStatus.Pending
-				&& x.ExpiresAt <= now
-				&& x.Game.CreatedById == currentUserService.UserId)
+			            && x.ExpiresAt <= now
+			            && x.Game.CreatedById == currentUserService.UserId)
 			.ToListAsync(cancellationToken);
 
 		if (expiredRequests.Count > 0)
@@ -45,8 +46,8 @@ public sealed class GetPendingJoinRequestsForHostQueryHandler(
 		return await context.GameJoinRequests
 			.AsNoTracking()
 			.Where(x => x.Status == GameJoinRequestStatus.Pending
-				&& x.ExpiresAt > now
-				&& x.Game.CreatedById == currentUserService.UserId)
+			            && x.ExpiresAt > now
+			            && x.Game.CreatedById == currentUserService.UserId)
 			.OrderBy(x => x.RequestedAt)
 			.Select(x => new GameJoinRequestReceivedDto
 			{

@@ -1,7 +1,7 @@
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
 
 /// <summary>
-/// Result when a player successfully leaves a game.
+///     Result when a player successfully leaves a game.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="PlayerId">The unique identifier of the player who left.</param>

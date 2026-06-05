@@ -29,7 +29,7 @@ public sealed class GetFavoriteVariantsQueryHandler(
 		{
 			var resolvedUserId = await ResolveLocalUserIdAsync(cancellationToken);
 			if (!string.IsNullOrWhiteSpace(resolvedUserId)
-				&& !string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
+			    && !string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
 			{
 				preferences = await context.UserGamePreferences
 					.AsNoTracking()
@@ -48,10 +48,13 @@ public sealed class GetFavoriteVariantsQueryHandler(
 		};
 	}
 
-	private static FavoriteVariantsDto EmptyFavorites() => new()
+	private static FavoriteVariantsDto EmptyFavorites()
 	{
-		FavoriteVariantCodes = []
-	};
+		return new FavoriteVariantsDto
+		{
+			FavoriteVariantCodes = []
+		};
+	}
 
 	private static IReadOnlyList<string> DeserializeFavoriteVariantCodes(string? favoriteVariantCodesJson)
 	{

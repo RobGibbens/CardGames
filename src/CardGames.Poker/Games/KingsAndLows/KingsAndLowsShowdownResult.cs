@@ -5,7 +5,7 @@ using CardGames.Poker.Hands.DrawHands;
 namespace CardGames.Poker.Games.KingsAndLows;
 
 /// <summary>
-/// Result of a Kings and Lows showdown.
+///     Result of a Kings and Lows showdown.
 /// </summary>
 public class KingsAndLowsShowdownResult
 {

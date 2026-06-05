@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueOneOffEventStatus = CardGames.Poker.Api.Data.Entities.LeagueOneOffEventStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueOneOffEventsPage;
 
@@ -12,23 +13,26 @@ public sealed class GetLeagueOneOffEventsPageQueryHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<GetLeagueOneOffEventsPageQuery, OneOf<LeagueOneOffEventsPageDto, GetLeagueOneOffEventsPageError>>
 {
-	public async Task<OneOf<LeagueOneOffEventsPageDto, GetLeagueOneOffEventsPageError>> Handle(GetLeagueOneOffEventsPageQuery request, CancellationToken cancellationToken)
+	public async Task<OneOf<LeagueOneOffEventsPageDto, GetLeagueOneOffEventsPageError>> Handle(
+		GetLeagueOneOffEventsPageQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
-			return new GetLeagueOneOffEventsPageError(GetLeagueOneOffEventsPageErrorCode.Unauthorized, "User is not authenticated.");
+			return new GetLeagueOneOffEventsPageError(GetLeagueOneOffEventsPageErrorCode.Unauthorized,
+				"User is not authenticated.");
 		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
 			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive,
+			               x.UserId == currentUserService.UserId &&
+			               x.IsActive,
 				cancellationToken);
 
 		if (!isMember)
 		{
-			return new GetLeagueOneOffEventsPageError(GetLeagueOneOffEventsPageErrorCode.Forbidden, "Only active members can view one-off events.");
+			return new GetLeagueOneOffEventsPageError(GetLeagueOneOffEventsPageErrorCode.Forbidden,
+				"Only active members can view one-off events.");
 		}
 
 		var pageSize = Math.Clamp(request.PageSize, 1, 100);
@@ -37,7 +41,7 @@ public sealed class GetLeagueOneOffEventsPageQueryHandler(
 		var query =
 			from oneOffEvent in context.LeagueOneOffEvents.AsNoTracking()
 			where oneOffEvent.LeagueId == request.LeagueId
-				&& (request.IncludeCompleted || oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Completed)
+			      && (request.IncludeCompleted || oneOffEvent.Status != LeagueOneOffEventStatus.Completed)
 			join gameType in context.GameTypes.AsNoTracking()
 				on oneOffEvent.GameTypeCode equals gameType.Code into gameTypes
 			from gameType in gameTypes.DefaultIfEmpty()
@@ -47,7 +51,7 @@ public sealed class GetLeagueOneOffEventsPageQueryHandler(
 				LeagueId = oneOffEvent.LeagueId,
 				Name = oneOffEvent.Name,
 				ScheduledAtUtc = oneOffEvent.ScheduledAtUtc,
-				EventType = (Contracts.LeagueOneOffEventType)oneOffEvent.EventType,
+				EventType = (LeagueOneOffEventType)oneOffEvent.EventType,
 				Status = (Contracts.LeagueOneOffEventStatus)oneOffEvent.Status,
 				Notes = oneOffEvent.Notes,
 				CreatedByUserId = oneOffEvent.CreatedByUserId,

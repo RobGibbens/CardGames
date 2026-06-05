@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using LeagueSeasonStatus = CardGames.Poker.Api.Data.Entities.LeagueSeasonStatus;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason;
 
@@ -14,7 +15,8 @@ public sealed class CreateLeagueSeasonCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<CreateLeagueSeasonCommand, OneOf<CreateLeagueSeasonResponse, CreateLeagueSeasonError>>
 {
-	public async Task<OneOf<CreateLeagueSeasonResponse, CreateLeagueSeasonError>> Handle(CreateLeagueSeasonCommand request, CancellationToken cancellationToken)
+	public async Task<OneOf<CreateLeagueSeasonResponse, CreateLeagueSeasonError>> Handle(
+		CreateLeagueSeasonCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
@@ -28,12 +30,15 @@ public sealed class CreateLeagueSeasonCommandHandler(
 
 		if (request.Request.PlannedEventCount.HasValue && request.Request.PlannedEventCount.Value <= 0)
 		{
-			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.InvalidRequest, "Planned event count must be greater than zero.");
+			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.InvalidRequest,
+				"Planned event count must be greater than zero.");
 		}
 
-		if (request.Request.StartsAtUtc.HasValue && request.Request.EndsAtUtc.HasValue && request.Request.StartsAtUtc > request.Request.EndsAtUtc)
+		if (request.Request.StartsAtUtc.HasValue && request.Request.EndsAtUtc.HasValue &&
+		    request.Request.StartsAtUtc > request.Request.EndsAtUtc)
 		{
-			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.InvalidRequest, "Season start must be before season end.");
+			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.InvalidRequest,
+				"Season start must be before season end.");
 		}
 
 		var leagueExists = await context.Leagues
@@ -53,7 +58,8 @@ public sealed class CreateLeagueSeasonCommandHandler(
 
 		if (!canManageLeague)
 		{
-			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.Forbidden, "Only league managers or admins can create seasons.");
+			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.Forbidden,
+				"Only league managers or admins can create seasons.");
 		}
 
 		var season = new LeagueSeason
@@ -64,7 +70,7 @@ public sealed class CreateLeagueSeasonCommandHandler(
 			PlannedEventCount = request.Request.PlannedEventCount,
 			StartsAtUtc = request.Request.StartsAtUtc,
 			EndsAtUtc = request.Request.EndsAtUtc,
-			Status = Data.Entities.LeagueSeasonStatus.Planned,
+			Status = LeagueSeasonStatus.Planned,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow
 		};

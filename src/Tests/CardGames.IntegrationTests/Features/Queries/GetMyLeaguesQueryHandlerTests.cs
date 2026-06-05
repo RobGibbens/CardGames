@@ -1,10 +1,8 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetMyLeagues;
 using CardGames.Poker.Api.Infrastructure;
-using Microsoft.Extensions.DependencyInjection;
 using ContractsLeagueRole = CardGames.Poker.Api.Contracts.LeagueRole;
 
 namespace CardGames.IntegrationTests.Features.Queries;
@@ -23,7 +21,7 @@ public class GetMyLeaguesQueryHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserEmail = "league-user-2@example.com";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createResult = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createResult = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Home Game League",
 			Description = "Sunday league"

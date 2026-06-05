@@ -9,7 +9,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
 
 /// <summary>
-/// Handles the DeleteGameCommand.
+///     Handles the DeleteGameCommand.
 /// </summary>
 public sealed class DeleteGameCommandHandler(
 	CardsDbContext context,
@@ -85,7 +85,7 @@ public sealed class DeleteGameCommandHandler(
 		await lobbyBroadcaster.BroadcastGameDeletedAsync(command.GameId, cancellationToken);
 
 		// 6. Invalidate cache
-		await hybridCache.RemoveByTagAsync(nameof(Features.Games.ActiveGames), cancellationToken);
+		await hybridCache.RemoveByTagAsync(nameof(ActiveGames), cancellationToken);
 
 		return new DeleteGameSuccessful
 		{
@@ -103,4 +103,3 @@ public sealed class DeleteGameCommandHandler(
 		return string.Equals(creatorId, currentUserService.UserId, StringComparison.OrdinalIgnoreCase);
 	}
 }
-

@@ -1,12 +1,12 @@
-using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
-using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague;
 using CardGames.Poker.Api.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+using LeagueJoinRequestStatus = CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus;
+using LeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -20,13 +20,13 @@ public class ApproveLeagueJoinRequestCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
-		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
 		{
 			Name = "Approval League"
 		}));
 
 		var leagueId = createLeague.AsT0.LeagueId;
-		var createInvite = await Mediator.Send(new CreateLeagueInviteCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueInviteRequest
+		var createInvite = await Mediator.Send(new CreateLeagueInviteCommand(leagueId, new CreateLeagueInviteRequest
 		{
 			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
 		}));
@@ -34,11 +34,11 @@ public class ApproveLeagueJoinRequestCommandHandlerTests : IntegrationTestBase
 		var token = createInvite.AsT0.InviteUrl.Split('/').Last();
 
 		fakeCurrentUser.UserId = "league-member";
-		var join = await Mediator.Send(new JoinLeagueCommand(new CardGames.Poker.Api.Contracts.JoinLeagueRequest { Token = token }));
+		var join = await Mediator.Send(new JoinLeagueCommand(new JoinLeagueRequest { Token = token }));
 
 		join.IsT0.Should().BeTrue();
 		join.AsT0.RequestSubmitted.Should().BeTrue();
-		join.AsT0.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Pending);
+		join.AsT0.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Pending);
 		join.AsT0.JoinRequestId.Should().NotBeNull();
 
 		var joinRequestId = join.AsT0.JoinRequestId!.Value;
@@ -47,13 +47,13 @@ public class ApproveLeagueJoinRequestCommandHandlerTests : IntegrationTestBase
 			.AsNoTracking()
 			.SingleAsync(x => x.LeagueId == leagueId && x.Id == joinRequestId);
 
-		joinRequestBefore.Status.Should().Be(LeagueJoinRequestStatus.Pending);
+		joinRequestBefore.Status.Should().Be(Poker.Api.Data.Entities.LeagueJoinRequestStatus.Pending);
 
 		fakeCurrentUser.UserId = "league-admin";
 		var approve = await Mediator.Send(new ApproveLeagueJoinRequestCommand(
 			leagueId,
 			joinRequestId,
-			new CardGames.Poker.Api.Contracts.ModerateLeagueJoinRequestRequest { Reason = "Welcome" }));
+			new ModerateLeagueJoinRequestRequest { Reason = "Welcome" }));
 
 		approve.IsT0.Should().BeTrue();
 
@@ -68,14 +68,14 @@ public class ApproveLeagueJoinRequestCommandHandlerTests : IntegrationTestBase
 			.AsNoTracking()
 			.SingleAsync(x => x.LeagueId == leagueId && x.Id == joinRequestId);
 
-		joinRequestAfter.Status.Should().Be(LeagueJoinRequestStatus.Approved);
+		joinRequestAfter.Status.Should().Be(Poker.Api.Data.Entities.LeagueJoinRequestStatus.Approved);
 
 		fakeCurrentUser.UserId = "league-member";
-		var joinAgain = await Mediator.Send(new JoinLeagueCommand(new CardGames.Poker.Api.Contracts.JoinLeagueRequest { Token = token }));
+		var joinAgain = await Mediator.Send(new JoinLeagueCommand(new JoinLeagueRequest { Token = token }));
 
 		joinAgain.IsT0.Should().BeTrue();
 		joinAgain.AsT0.AlreadyMember.Should().BeTrue();
-		joinAgain.AsT0.JoinRequestStatus.Should().Be(CardGames.Poker.Api.Contracts.LeagueJoinRequestStatus.Approved);
+		joinAgain.AsT0.JoinRequestStatus.Should().Be(LeagueJoinRequestStatus.Approved);
 		joinAgain.AsT0.RequestSubmitted.Should().BeFalse();
 	}
 }

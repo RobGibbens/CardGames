@@ -1,32 +1,32 @@
-using System;
-using System.Collections.Generic;
 using CardGames.Poker.Betting;
 
 namespace CardGames.Poker.Api.Games;
 
 /// <summary>
-/// Resolves a persisted <see cref="Data.Entities.Game.CurrentPhase"/> string back into the correct
-/// per-variant phase enum value.
+///     Resolves a persisted <see cref="Data.Entities.Game.CurrentPhase" /> string back into the correct
+///     per-variant phase enum value.
 /// </summary>
 public static class PokerGamePhaseRegistry
 {
 	/// <summary>
-	/// Attempts to parse <paramref name="currentPhase"/> into the correct phase enum, based on <paramref name="gameTypeCode"/>.
+	///     Attempts to parse <paramref name="currentPhase" /> into the correct phase enum, based on
+	///     <paramref name="gameTypeCode" />.
 	/// </summary>
 	public static bool TryResolve(string? gameTypeCode, string? currentPhase, out Enum? phase)
 	{
-		if (string.IsNullOrWhiteSpace(gameTypeCode) || 
-			string.IsNullOrWhiteSpace(currentPhase) ||
-			!PokerGameMetadataRegistry.IsRegistered(gameTypeCode))
+		if (string.IsNullOrWhiteSpace(gameTypeCode) ||
+		    string.IsNullOrWhiteSpace(currentPhase) ||
+		    !PokerGameMetadataRegistry.IsRegistered(gameTypeCode))
 		{
 			phase = null;
 			return false;
 		}
+
 		return TryResolveEnum<Phases>(currentPhase, out phase);
 	}
 
 	/// <summary>
-	/// Resolves <paramref name="currentPhase"/> into a strongly typed enum for the specified game type.
+	///     Resolves <paramref name="currentPhase" /> into a strongly typed enum for the specified game type.
 	/// </summary>
 	public static bool TryResolve<TEnum>(string? gameTypeCode, string? currentPhase, out TEnum phase)
 		where TEnum : struct, Enum
@@ -51,7 +51,7 @@ public static class PokerGamePhaseRegistry
 			return false;
 		}
 
-		phase = (Enum)(object)parsed;
+		phase = parsed;
 		return true;
 	}
 }

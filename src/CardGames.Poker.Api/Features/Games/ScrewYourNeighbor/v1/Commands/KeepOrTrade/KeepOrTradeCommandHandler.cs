@@ -11,7 +11,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
 
 /// <summary>
-/// Handles the <see cref="KeepOrTradeCommand"/> to process a player's keep or trade decision.
+///     Handles the <see cref="KeepOrTradeCommand" /> to process a player's keep or trade decision.
 /// </summary>
 public class KeepOrTradeCommandHandler(
 	CardsDbContext context,
@@ -31,7 +31,7 @@ public class KeepOrTradeCommandHandler(
 		// 1. Load the game with players, cards
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -227,13 +227,15 @@ public class KeepOrTradeCommandHandler(
 		}
 
 		return game.IsDealersChoice &&
-		       string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
+		       string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			       StringComparison.OrdinalIgnoreCase) &&
 		       showdownResult.WinnerPlayerIds.Count > 0 &&
-		       game.GamePlayers.Count(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack > 0) <= showdownResult.WinnerPlayerIds.Count;
+		       game.GamePlayers.Count(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack > 0) <=
+		       showdownResult.WinnerPlayerIds.Count;
 	}
 
 	/// <summary>
-	/// Gets eligible (active, not sitting out) players ordered by seat position.
+	///     Gets eligible (active, not sitting out) players ordered by seat position.
 	/// </summary>
 	private static List<GamePlayer> GetEligiblePlayersInOrder(Game game)
 	{
@@ -244,8 +246,8 @@ public class KeepOrTradeCommandHandler(
 	}
 
 	/// <summary>
-	/// Finds the trade target (next eligible player to the left of the current player).
-	/// Returns null if no valid target exists.
+	///     Finds the trade target (next eligible player to the left of the current player).
+	///     Returns null if no valid target exists.
 	/// </summary>
 	private static (GamePlayer Player, GameCard Card)? FindTradeTarget(
 		Game game, GamePlayer currentPlayer, List<GamePlayer> eligiblePlayers)
@@ -277,7 +279,7 @@ public class KeepOrTradeCommandHandler(
 	}
 
 	/// <summary>
-	/// Swaps cards between two players.
+	///     Swaps cards between two players.
 	/// </summary>
 	private static Task TradeCardsAsync(
 		Game game, GamePlayer playerA, GamePlayer playerB,
@@ -303,7 +305,7 @@ public class KeepOrTradeCommandHandler(
 	}
 
 	/// <summary>
-	/// Dealer trades their card with the top card of the deck.
+	///     Dealer trades their card with the top card of the deck.
 	/// </summary>
 	private async Task<bool> TradeWithDeckAsync(
 		Game game, GamePlayer dealer,
@@ -342,9 +344,9 @@ public class KeepOrTradeCommandHandler(
 	}
 
 	/// <summary>
-	/// Advances to the next player in the KeepOrTrade phase, or transitions to Reveal
-	/// if all players have acted. Auto-skips players who have Kings or whose trade target
-	/// has a King (except the dealer, who can always choose to keep).
+	///     Advances to the next player in the KeepOrTrade phase, or transitions to Reveal
+	///     if all players have acted. Auto-skips players who have Kings or whose trade target
+	///     has a King (except the dealer, who can always choose to keep).
 	/// </summary>
 	private static (string NextPhase, int NextPlayerSeat) AdvanceToNextPlayerOrPhase(
 		Game game, GamePlayer currentPlayer)
@@ -410,9 +412,9 @@ public class KeepOrTradeCommandHandler(
 	}
 
 	/// <summary>
-	/// Determines if a player has already acted in this round.
-	/// Players act in order from left of dealer, ending with the dealer.
-	/// Once we wrap around to someone who should have already acted, all have acted.
+	///     Determines if a player has already acted in this round.
+	///     Players act in order from left of dealer, ending with the dealer.
+	///     Once we wrap around to someone who should have already acted, all have acted.
 	/// </summary>
 	private static bool HasPlayerAlreadyActed(Game game, GamePlayer candidatePlayer, GamePlayer justActedPlayer)
 	{
@@ -446,7 +448,6 @@ public class KeepOrTradeCommandHandler(
 		}
 
 		// Check if candidate comes before justActed in the rotation order (meaning they already acted)
-		var firstActorRelative = 0;
 		var candidateRelative = (candidatePlayer.SeatPosition - firstActorSeat + totalSeats) % totalSeats;
 		var justActedRelative = (justActedPlayer.SeatPosition - firstActorSeat + totalSeats) % totalSeats;
 

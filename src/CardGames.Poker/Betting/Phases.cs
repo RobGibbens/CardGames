@@ -1,149 +1,114 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Text;
+﻿using System.ComponentModel;
 
 namespace CardGames.Poker.Betting;
 
 public enum Phases
 {
 	/// <summary>Waiting for hand to start.</summary>
-	[Description("Waiting to Start")]
-	WaitingToStart,
+	[Description("Waiting to Start")] WaitingToStart,
 
 	/// <summary>Collecting antes from all players.</summary>
-	[Description("Collecting Antes")]
-	CollectingAntes,
+	[Description("Collecting Antes")] CollectingAntes,
 
 	/// <summary>Collecting blinds from players.</summary>
-	[Description("Collecting Blinds")]
-	CollectingBlinds,
+	[Description("Collecting Blinds")] CollectingBlinds,
 
 	/// <summary>Dealing initial cards to players.</summary>
-	[Description("Dealing Cards")]
-	Dealing,
+	[Description("Dealing Cards")] Dealing,
 
 	/// <summary>Pre-flop betting round.</summary>
-	[Description("Pre-Flop")]
-	PreFlop,
+	[Description("Pre-Flop")] PreFlop,
 
 	/// <summary>Flop betting round (after 3 community cards).</summary>
-	[Description("Flop")]
-	Flop,
+	[Description("Flop")] Flop,
 
 	/// <summary>Drop-or-stay decision phase where players simultaneously decide to drop or stay.</summary>
-	[Description("Drop or Stay")]
-	DropOrStay,
+	[Description("Drop or Stay")] DropOrStay,
 
 	/// <summary>Turn betting round (after 4th community card).</summary>
-	[Description("Turn")]
-	Turn,
+	[Description("Turn")] Turn,
 
 	/// <summary>River betting round (after 5th community card).</summary>
-	[Description("River")]
-	River,
+	[Description("River")] River,
 
 	/// <summary>First betting round (pre-draw).</summary>
-	[Description("First Betting Round")]
-	FirstBettingRound,
+	[Description("First Betting Round")] FirstBettingRound,
 
 	/// <summary>Draw phase where players can discard and draw cards.</summary>
-	[Description("Draw Phase")]
-	DrawPhase,
+	[Description("Draw Phase")] DrawPhase,
 
 	/// <summary>
-	/// Draw complete - all players have drawn their cards.
-	/// This is a brief display phase before showdown begins.
+	///     Draw complete - all players have drawn their cards.
+	///     This is a brief display phase before showdown begins.
 	/// </summary>
-	[Description("Draw complete")]
-	DrawComplete,
+	[Description("Draw complete")] DrawComplete,
 
 	/// <summary>
-	/// Losers must match the pot. This phase handles pot matching.
+	///     Losers must match the pot. This phase handles pot matching.
 	/// </summary>
-	[Description("Pot Matching")]
-	PotMatching,
+	[Description("Pot Matching")] PotMatching,
 
 	/// <summary>
-	/// Special case: Only one player stayed - they play against the deck.
-	/// Dealer deals a dummy hand from remaining cards.
+	///     Special case: Only one player stayed - they play against the deck.
+	///     Dealer deals a dummy hand from remaining cards.
 	/// </summary>
-	[Description("Player vs Deck")]
-	PlayerVsDeck,
+	[Description("Player vs Deck")] PlayerVsDeck,
 
 	/// <summary>Second betting round (post-draw).</summary>
-	[Description("Second Betting Round")]
-	SecondBettingRound,
+	[Description("Second Betting Round")] SecondBettingRound,
 
 	/// <summary>Third street: 2 down cards and 1 up card dealt, bring-in betting round.</summary>
-	[Description("Third Street")]
-	ThirdStreet,
+	[Description("Third Street")] ThirdStreet,
 
 	/// <summary>Offering buy-card option to players who received a 4 face up.</summary>
-	[Description("Buy Card Option")]
-	BuyCardOffer,
+	[Description("Buy Card Option")] BuyCardOffer,
 
 	/// <summary>Fourth street: 1 up card dealt, betting round (small bet).</summary>
-	[Description("Fourth Street")]
-	FourthStreet,
+	[Description("Fourth Street")] FourthStreet,
 
 	/// <summary>Fifth street: 1 up card dealt, betting round (big bet).</summary>
-	[Description("Fifth Street")]
-	FifthStreet,
+	[Description("Fifth Street")] FifthStreet,
 
 	/// <summary>Sixth street: 1 up card dealt, betting round (big bet).</summary>
-	[Description("Sixth Street")]
-	SixthStreet,
+	[Description("Sixth Street")] SixthStreet,
 
 	/// <summary>Seventh street (river): 1 down card dealt, final betting round (big bet).</summary>
-	[Description("Seventh Street")]
-	SeventhStreet,
+	[Description("Seventh Street")] SeventhStreet,
 
 	/// <summary>Tollbooth offer phase where each player chooses a card from the display or deck.</summary>
-	[Description("Tollbooth Offer")]
-	TollboothOffer,
+	[Description("Tollbooth Offer")] TollboothOffer,
 
 	/// <summary>Reveal "The Good" table card — matching ranks become wild.</summary>
-	[Description("Reveal The Good")]
-	RevealTheGood,
+	[Description("Reveal The Good")] RevealTheGood,
 
 	/// <summary>Reveal "The Bad" table card — matching cards must be discarded.</summary>
-	[Description("Reveal The Bad")]
-	RevealTheBad,
+	[Description("Reveal The Bad")] RevealTheBad,
 
 	/// <summary>Reveal "The Ugly" table card — players with matching face-up cards are eliminated.</summary>
-	[Description("Reveal The Ugly")]
-	RevealTheUgly,
+	[Description("Reveal The Ugly")] RevealTheUgly,
 
 	/// <summary>Keep or Trade decision phase for Screw Your Neighbor.</summary>
-	[Description("Keep or Trade")]
-	KeepOrTrade,
+	[Description("Keep or Trade")] KeepOrTrade,
 
 	/// <summary>In-Between turn phase: boundary cards dealt, ace choice (if needed), bet/pass, resolution.</summary>
-	[Description("In-Between Turn")]
-	InBetweenTurn,
+	[Description("In-Between Turn")] InBetweenTurn,
 
 	/// <summary>Reveal phase - all cards are turned face up.</summary>
-	[Description("Reveal")]
-	Reveal,
+	[Description("Reveal")] Reveal,
 
 	/// <summary>Klondike reveal - the Klondike wild card is turned face-up before showdown.</summary>
-	[Description("Klondike Reveal")]
-	KlondikeReveal,
+	[Description("Klondike Reveal")] KlondikeReveal,
 
 	/// <summary>Showdown - comparing hands to determine winner.</summary>
-	[Description("Showdown")]
-	Showdown,
+	[Description("Showdown")] Showdown,
 
 	/// <summary>Waiting for the dealer to choose the game type (Dealer's Choice mode).</summary>
 	[Description("Waiting for Dealer's Choice")]
 	WaitingForDealerChoice,
 
 	/// <summary>Hand is complete.</summary>
-	[Description("Complete")]
-	Complete,
+	[Description("Complete")] Complete,
 
 	/// <summary>Waiting for players to join.</summary>
-	[Description("Waiting for Players")]
-	WaitingForPlayers
+	[Description("Waiting for Players")] WaitingForPlayers
 }

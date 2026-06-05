@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.PerformShowdown;
 
 /// <summary>
-/// Endpoint for performing the showdown in a Hold the Baseball game.
+///     Endpoint for performing the showdown in a Hold the Baseball game.
 /// </summary>
 public static class PerformShowdownEndpoint
 {
@@ -32,7 +32,7 @@ public static class PerformShowdownEndpoint
 				"Performs the showdown for a Hold the Baseball game. " +
 				"Evaluates hands with 3s and 9s as wild cards (including community cards), " +
 				"supporting Five of a Kind as the highest possible hand.")
-			.Produces<PerformShowdownSuccessful>(StatusCodes.Status200OK)
+			.Produces<PerformShowdownSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);
 

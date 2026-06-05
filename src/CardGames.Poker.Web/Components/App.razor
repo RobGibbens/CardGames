@@ -2,10 +2,10 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />
-    <script>
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<base href="/"/>
+	<script>
         // Synchronous theme init — must run before any CSS to prevent FOUC.
         // Also watches for Blazor enhanced navigation stripping data-theme.
         (function() {
@@ -37,23 +37,23 @@
             }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
         })();
     </script>
-    <ResourcePreloader />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
-    rel="stylesheet">
+	<ResourcePreloader/>
+	<link rel="preconnect" href="https://fonts.googleapis.com"/>
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+		rel="stylesheet">
 
-    <link rel="stylesheet" href="/assets/fontawesome/css/fontawesome.min.css" />
-    <link rel="stylesheet" href="/assets/fontawesome/css/all.min.css" />
+	<link rel="stylesheet" href="/assets/fontawesome/css/fontawesome.min.css"/>
+	<link rel="stylesheet" href="/assets/fontawesome/css/all.min.css"/>
 
 
-    <link rel="stylesheet" href="@Assets["CardGames.Poker.Web.styles.css"]" />
-    <link rel="stylesheet" href="_content/Blazor-ApexCharts/css/apexcharts.css" />
+	<link rel="stylesheet" href="@Assets["CardGames.Poker.Web.styles.css"]"/>
+	<link rel="stylesheet" href="_content/Blazor-ApexCharts/css/apexcharts.css"/>
 
-    <!-- Theme variables (customize colors, radius, etc.) -->
-    <link id="site-theme-stylesheet" href="css/astrovista.css" rel="stylesheet" />
-    <script>
+	<!-- Theme variables (customize colors, radius, etc.) -->
+	<link id="site-theme-stylesheet" href="css/astrovista.css" rel="stylesheet"/>
+	<script>
         (function() {
             var siteThemeStylesheet = document.documentElement.getAttribute("data-site-theme-stylesheet") || "astrovista.css";
             var link = document.getElementById("site-theme-stylesheet");
@@ -63,32 +63,32 @@
         })();
     </script>
 
-    <link rel="stylesheet" href="@Assets["app.css"]" />
+	<link rel="stylesheet" href="@Assets["app.css"]"/>
 
-    <!-- Pre-built BlazorBlueprint styles (includes all component styles) -->
-    <link href="_content/BlazorBlueprint.Components/blazorblueprint.css" rel="stylesheet" />
+	<!-- Pre-built BlazorBlueprint styles (includes all component styles) -->
+	<link href="_content/BlazorBlueprint.Components/blazorblueprint.css" rel="stylesheet"/>
 
-    <ImportMap />
-    <HeadOutlet />
-    <script type="module">
+	<ImportMap/>
+	<HeadOutlet/>
+	<script type="module">
         import "/themePreference.js";
     </script>
 </head>
 
 <body>
-    <Routes />
-    <ReconnectModal />
-    <script src="@Assets["_framework/blazor.web.js"]"></script>
-    <script src="@Assets["Components/Account/Shared/PasskeySubmit.razor.js"]" type="module"></script>
-    <script src="@Assets["playing-card-images.js"]"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tsparticles@3.9.1/tsparticles.bundle.min.js"></script>
-    <script src="@Assets["audio.js"]"></script>
-    <script src="@Assets["draggable.js"]"></script>
-    <script src="_content/Blazor-ApexCharts/js/apex-charts.js"></script>
-    <script src="_content/Blazor-ApexCharts/js/blazor-apexcharts.js"></script>
+<Routes/>
+<ReconnectModal/>
+<script src="@Assets["_framework/blazor.web.js"]"></script>
+<script src="@Assets["Components/Account/Shared/PasskeySubmit.razor.js"]" type="module"></script>
+<script src="@Assets["playing-card-images.js"]"></script>
+<script src="https://cdn.jsdelivr.net/npm/tsparticles@3.9.1/tsparticles.bundle.min.js"></script>
+<script src="@Assets["audio.js"]"></script>
+<script src="@Assets["draggable.js"]"></script>
+<script src="_content/Blazor-ApexCharts/js/apex-charts.js"></script>
+<script src="_content/Blazor-ApexCharts/js/blazor-apexcharts.js"></script>
 
 
-    </body>
+</body>
 
 </html>
 

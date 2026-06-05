@@ -11,9 +11,9 @@ using static CardGames.Poker.Api.Features.Games.InBetween.InBetweenVariantState;
 namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 
 /// <summary>
-/// Handles the <see cref="PlaceBetCommand"/> to process a player's bet or pass in In-Between.
-/// Deals boundary cards on first access, validates bet, deals third card, resolves outcome,
-/// and advances to the next player or completes the game.
+///     Handles the <see cref="PlaceBetCommand" /> to process a player's bet or pass in In-Between.
+///     Deals boundary cards on first access, validates bet, deals third card, resolves outcome,
+///     and advances to the next player or completes the game.
 /// </summary>
 public class PlaceBetCommandHandler(
 	CardsDbContext context,
@@ -30,7 +30,7 @@ public class PlaceBetCommandHandler(
 		// 1. Load game with all related data
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);

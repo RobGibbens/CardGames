@@ -54,10 +54,11 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 			CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
-		result.AsT0.FavoriteVariantCodes.Should().Equal(["DEALERSCHOICE", "HOLDEM"]);
+		result.AsT0.FavoriteVariantCodes.Should().Equal("DEALERSCHOICE", "HOLDEM");
 
 		await using var verificationContext = CreateContext(databaseName, databaseRoot);
-		var persistedPreferences = await verificationContext.UserGamePreferences.SingleAsync(preferences => preferences.UserId == userId);
+		var persistedPreferences =
+			await verificationContext.UserGamePreferences.SingleAsync(preferences => preferences.UserId == userId);
 		persistedPreferences.FavoriteVariantCodesJson.Should().Be("[\"DEALERSCHOICE\",\"HOLDEM\"]");
 	}
 
@@ -84,10 +85,11 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 				userId: externalUserId,
 				userName: userName));
 
-		var result = await sut.Handle(new UpdateFavoriteVariantsCommand(["holdem", "dealerschoice"]), CancellationToken.None);
+		var result = await sut.Handle(new UpdateFavoriteVariantsCommand(["holdem", "dealerschoice"]),
+			CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
-		result.AsT0.FavoriteVariantCodes.Should().Equal(["DEALERSCHOICE", "HOLDEM"]);
+		result.AsT0.FavoriteVariantCodes.Should().Equal("DEALERSCHOICE", "HOLDEM");
 
 		await using var verificationContext = CreateContext(databaseName, databaseRoot);
 		var persistedPreferences = await verificationContext.UserGamePreferences
@@ -114,7 +116,8 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 		return new CardsDbContext(options);
 	}
 
-	private static RetryOnceCardsDbContext CreateRetryOnceContext(string databaseName, InMemoryDatabaseRoot databaseRoot)
+	private static RetryOnceCardsDbContext CreateRetryOnceContext(string databaseName,
+		InMemoryDatabaseRoot databaseRoot)
 	{
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
 			.UseInMemoryDatabase(databaseName, databaseRoot)
@@ -151,7 +154,8 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 		await context.SaveChangesAsync();
 	}
 
-	private static async Task SeedPreferencesAsync(CardsDbContext context, string userId, string favoriteVariantCodesJson)
+	private static async Task SeedPreferencesAsync(CardsDbContext context, string userId,
+		string favoriteVariantCodesJson)
 	{
 		var now = DateTimeOffset.UtcNow;
 		context.UserGamePreferences.Add(new UserGamePreferences
@@ -176,10 +180,12 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 
 		public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
 		{
-			if (shouldFail && ChangeTracker.Entries<UserGamePreferences>().Any(entry => entry.State != EntityState.Unchanged))
+			if (shouldFail && ChangeTracker.Entries<UserGamePreferences>()
+				    .Any(entry => entry.State != EntityState.Unchanged))
 			{
 				shouldFail = false;
-				throw new DbUpdateException("Simulated stale user mapping conflict.", new Exception("Simulated save failure."));
+				throw new DbUpdateException("Simulated stale user mapping conflict.",
+					new Exception("Simulated save failure."));
 			}
 
 			return base.SaveChangesAsync(cancellationToken);

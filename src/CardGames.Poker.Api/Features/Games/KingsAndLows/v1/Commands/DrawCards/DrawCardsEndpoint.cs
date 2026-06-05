@@ -8,13 +8,14 @@ public static class DrawCardsEndpoint
 	public static RouteGroupBuilder MapDrawCards(this RouteGroupBuilder group)
 	{
 		group.MapPost("/{gameId:guid}/draw",
-				async (Guid gameId, DrawCardsRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, DrawCardsRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
 					var command = new DrawCardsCommand(gameId, request.PlayerId, request.DiscardIndices);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Ok(success),
+						Results.Ok,
 						error => Results.Problem(
 							title: "Draw cards error",
 							detail: error.Message,
@@ -26,7 +27,7 @@ public static class DrawCardsEndpoint
 			.WithName($"KingsAndLows{nameof(MapDrawCards).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapDrawCards).TrimPrefix("Map"))
 			.WithDescription("Process a player's draw action in Kings and Lows.")
-			.Produces<DrawCardsSuccessful>(StatusCodes.Status200OK)
+			.Produces<DrawCardsSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

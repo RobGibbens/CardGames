@@ -8,12 +8,15 @@ public static class CreateLeagueSeasonEndpoint
 	public static RouteGroupBuilder MapCreateLeagueSeason(this RouteGroupBuilder group)
 	{
 		group.MapPost("{leagueId:guid}/seasons",
-				async (Guid leagueId, CreateLeagueSeasonRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, CreateLeagueSeasonRequest request, IMediator mediator,
+					CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new CreateLeagueSeasonCommand(leagueId, request), cancellationToken);
+					var result = await mediator.Send(new CreateLeagueSeasonCommand(leagueId, request),
+						cancellationToken);
 
 					return result.Match(
-						success => Results.Created($"/api/v1/leagues/{success.LeagueId}/seasons/{success.SeasonId}", success),
+						success => Results.Created($"/api/v1/leagues/{success.LeagueId}/seasons/{success.SeasonId}",
+							success),
 						error => error.Code switch
 						{
 							CreateLeagueSeasonErrorCode.Unauthorized => Results.Unauthorized(),

@@ -6,110 +6,124 @@ namespace CardGames.Core.Extensions;
 
 public static class EnumerableExtensions
 {
-    public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
-    {
-        foreach (var item in source)
-        {
-            action(item);
-        }
-    }
+	public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
+	{
+		foreach (var item in source)
+		{
+			action(item);
+		}
+	}
 
-    public static void ForEach<T>(this IEnumerable<T> source, Action<T, int> action)
-        => source
-            .Indexed()
-            .ForEach(element => action(element.Item, element.Index));
+	public static void ForEach<T>(this IEnumerable<T> source, Action<T, int> action)
+	{
+		source
+			.Indexed()
+			.ForEach(element => action(element.Item, element.Index));
+	}
 
-    private static IEnumerable<(T Item, int Index)> Indexed<T>(this IEnumerable<T> source)
-        => source.Select((item, index) => (item, index));
+	private static IEnumerable<(T Item, int Index)> Indexed<T>(this IEnumerable<T> source)
+	{
+		return source.Select((item, index) => (item, index));
+	}
 
-    public static IEnumerable<IEnumerable<T>> Subsets<T>(this IEnumerable<T> source)
-        => source != null
-             ? SubsetsInternal(source)
-             : throw new ArgumentException(nameof(source));
+	public static IEnumerable<IEnumerable<T>> Subsets<T>(this IEnumerable<T> source)
+	{
+		return source != null
+			? SubsetsInternal(source)
+			: throw new ArgumentException(nameof(source));
+	}
 
-    public static IEnumerable<IEnumerable<T>> SubsetsOfSize<T>(this IEnumerable<T> source, int size)
-        => source != null
-            ? source
-                .ToList()
-                .SubsetsOfSizeInternal(size)
-            : throw new ArgumentNullException(nameof(source));
+	public static IEnumerable<IEnumerable<T>> SubsetsOfSize<T>(this IEnumerable<T> source, int size)
+	{
+		return source != null
+			? source
+				.ToList()
+				.SubsetsOfSizeInternal(size)
+			: throw new ArgumentNullException(nameof(source));
+	}
 
-    private static IReadOnlyCollection<IEnumerable<T>> SubsetsOfSizeInternal<T>(this IReadOnlyCollection<T> source, int size)
-    {
-        if (size == source.Count())
-        {
-            return new[] { source };
-        }
+	private static IReadOnlyCollection<IEnumerable<T>> SubsetsOfSizeInternal<T>(this IReadOnlyCollection<T> source,
+		int size)
+	{
+		if (size == source.Count())
+		{
+			return new[] { source };
+		}
 
-        if (size <= 0 || source.Count() < size)
-        {
-            return [];
-        }
+		if (size <= 0 || source.Count() < size)
+		{
+			return [];
+		}
 
-        if (size == 1)
-        {
-            return source
-                .Select(item => new[] { item })
-                .ToList();
-        }
+		if (size == 1)
+		{
+			return source
+				.Select(item => new[] { item })
+				.ToList();
+		}
 
-        var referenceElementAsSet = new[] { source.First() };
-        var remainder = source
-            .Skip(1)
-            .ToList();
+		var referenceElementAsSet = new[] { source.First() };
+		var remainder = source
+			.Skip(1)
+			.ToList();
 
-        var setsWithoutReferenceElement = SubsetsOfSizeInternal(remainder, size - 1);
-        var setsWithoutReferenceElementOfSameSize = SubsetsOfSizeInternal(remainder, size);
+		var setsWithoutReferenceElement = remainder.SubsetsOfSizeInternal(size - 1);
+		var setsWithoutReferenceElementOfSameSize = remainder.SubsetsOfSizeInternal(size);
 
-        var setsWithReferenceElement = setsWithoutReferenceElement
-            .Select(set => set.Concat(referenceElementAsSet).ToList());
+		var setsWithReferenceElement = setsWithoutReferenceElement
+			.Select(set => set.Concat(referenceElementAsSet).ToList());
 
-        return setsWithoutReferenceElementOfSameSize
-            .Concat(setsWithReferenceElement)
-            .ToList();
-    }
+		return setsWithoutReferenceElementOfSameSize
+			.Concat(setsWithReferenceElement)
+			.ToList();
+	}
 
-    
-    private static IEnumerable<IEnumerable<T>> SubsetsInternal<T>(IEnumerable<T> source)
-    {
-        if (!source.Any())
-        {
-            return [ Enumerable.Empty<T>() ];
-        }
 
-        var referenceElementAsSet = new[] { source.First() };
-        var remainder = source
-            .Skip(1)
-            .ToList();
+	private static IEnumerable<IEnumerable<T>> SubsetsInternal<T>(IEnumerable<T> source)
+	{
+		if (!source.Any())
+		{
+			return [Enumerable.Empty<T>()];
+		}
 
-        var setsWithoutReferenceElement = SubsetsInternal(remainder);
-        var setsWithReferenceElement = setsWithoutReferenceElement.Select(set => set.Concat(referenceElementAsSet));
+		var referenceElementAsSet = new[] { source.First() };
+		var remainder = source
+			.Skip(1)
+			.ToList();
 
-        return setsWithoutReferenceElement.Concat(setsWithReferenceElement);
-    }
+		var setsWithoutReferenceElement = SubsetsInternal(remainder);
+		var setsWithReferenceElement = setsWithoutReferenceElement.Select(set => set.Concat(referenceElementAsSet));
 
-    public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<T> source, IEnumerable<T> other)
-        => source.SelectMany(item => other.Select(otherItem => new[] { item, otherItem }));
+		return setsWithoutReferenceElement.Concat(setsWithReferenceElement);
+	}
 
-    public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<T> source, IEnumerable<IEnumerable<T>> other)
-        => source.SelectMany(item => other.Select(otherSequence => new[] { item }.Concat(otherSequence)));
+	public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<T> source, IEnumerable<T> other)
+	{
+		return source.SelectMany(item => other.Select(otherItem => new[] { item, otherItem }));
+	}
 
-    public static IEnumerable<IEnumerable<T>> CartesianPower<T>(this IEnumerable<T> source, int power)
-    {
-        if (power < 0)
-        {
-            throw new ArgumentException("The power of the Cartesian product cannot be negative.");
-        }
+	public static IEnumerable<IEnumerable<T>> CartesianProduct<T>(this IEnumerable<T> source,
+		IEnumerable<IEnumerable<T>> other)
+	{
+		return source.SelectMany(item => other.Select(otherSequence => new[] { item }.Concat(otherSequence)));
+	}
 
-        if (power == 0)
-        {
-            return Enumerable.Empty<IEnumerable<T>>();
-        }
+	public static IEnumerable<IEnumerable<T>> CartesianPower<T>(this IEnumerable<T> source, int power)
+	{
+		if (power < 0)
+		{
+			throw new ArgumentException("The power of the Cartesian product cannot be negative.");
+		}
 
-        var initialValue = source.Select(item => new[] { item }.AsEnumerable());
+		if (power == 0)
+		{
+			return Enumerable.Empty<IEnumerable<T>>();
+		}
 
-        return Enumerable
-            .Range(1, power - 1)
-            .Aggregate(initialValue, (acc, _) => source.CartesianProduct(acc));
-    }
+		var initialValue = source.Select(item => new[] { item }.AsEnumerable());
+
+		return Enumerable
+			.Range(1, power - 1)
+			.Aggregate(initialValue, (acc, _) => source.CartesianProduct(acc));
+	}
 }

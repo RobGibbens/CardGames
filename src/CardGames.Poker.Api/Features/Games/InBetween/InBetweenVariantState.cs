@@ -4,47 +4,11 @@ using CardGames.Poker.Api.Data.Entities;
 namespace CardGames.Poker.Api.Features.Games.InBetween;
 
 /// <summary>
-/// Manages In-Between-specific variant state stored in <see cref="Game.GameSettings"/>.
-/// Tracks per-turn sub-phase, ace choice, first-orbit completion, and deck refresh signals.
+///     Manages In-Between-specific variant state stored in <see cref="Game.GameSettings" />.
+///     Tracks per-turn sub-phase, ace choice, first-orbit completion, and deck refresh signals.
 /// </summary>
 internal static class InBetweenVariantState
 {
-	/// <summary>
-	/// Sub-phases within a single In-Between turn.
-	/// </summary>
-	internal enum TurnSubPhase
-	{
-		/// <summary>Awaiting first boundary card deal.</summary>
-		AwaitingFirstBoundary,
-
-		/// <summary>First boundary is an Ace — player must choose high or low.</summary>
-		AwaitingAceChoice,
-
-		/// <summary>Awaiting second boundary card deal.</summary>
-		AwaitingSecondBoundary,
-
-		/// <summary>Both boundaries dealt — player must bet or pass.</summary>
-		AwaitingBetOrPass,
-
-		/// <summary>Bet placed — awaiting third card reveal and resolution.</summary>
-		AwaitingResolution,
-
-		/// <summary>Turn resolved — ready to advance to next player.</summary>
-		TurnComplete
-	}
-
-	/// <summary>
-	/// The result of a resolved In-Between turn.
-	/// </summary>
-	internal enum TurnResult
-	{
-		None,
-		Win,
-		Lose,
-		Post,
-		Pass
-	}
-
 	internal static InBetweenState GetState(Game game)
 	{
 		if (string.IsNullOrWhiteSpace(game.GameSettings))
@@ -73,7 +37,43 @@ internal static class InBetweenVariantState
 	}
 
 	/// <summary>
-	/// Persistent state for an In-Between game, serialized to <see cref="Game.GameSettings"/>.
+	///     Sub-phases within a single In-Between turn.
+	/// </summary>
+	internal enum TurnSubPhase
+	{
+		/// <summary>Awaiting first boundary card deal.</summary>
+		AwaitingFirstBoundary,
+
+		/// <summary>First boundary is an Ace — player must choose high or low.</summary>
+		AwaitingAceChoice,
+
+		/// <summary>Awaiting second boundary card deal.</summary>
+		AwaitingSecondBoundary,
+
+		/// <summary>Both boundaries dealt — player must bet or pass.</summary>
+		AwaitingBetOrPass,
+
+		/// <summary>Bet placed — awaiting third card reveal and resolution.</summary>
+		AwaitingResolution,
+
+		/// <summary>Turn resolved — ready to advance to next player.</summary>
+		TurnComplete
+	}
+
+	/// <summary>
+	///     The result of a resolved In-Between turn.
+	/// </summary>
+	internal enum TurnResult
+	{
+		None,
+		Win,
+		Lose,
+		Post,
+		Pass
+	}
+
+	/// <summary>
+	///     Persistent state for an In-Between game, serialized to <see cref="Game.GameSettings" />.
 	/// </summary>
 	internal sealed class InBetweenState
 	{
@@ -90,8 +90,8 @@ internal static class InBetweenVariantState
 		public TurnResult LastTurnResult { get; set; } = TurnResult.None;
 
 		/// <summary>
-		/// Set of seat positions that have completed their first turn in this game.
-		/// While not all active players have completed their first turn, full-pot bets are disallowed.
+		///     Set of seat positions that have completed their first turn in this game.
+		///     While not all active players have completed their first turn, full-pot bets are disallowed.
 		/// </summary>
 		public HashSet<int> PlayersCompletedFirstTurn { get; set; } = [];
 

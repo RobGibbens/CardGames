@@ -1,5 +1,4 @@
 using CardGames.Poker.Api.Data;
-using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +8,7 @@ using static CardGames.Poker.Api.Features.Games.InBetween.InBetweenVariantState;
 namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.AceChoice;
 
 /// <summary>
-/// Handles the <see cref="AceChoiceCommand"/> to process a player's ace high/low declaration.
+///     Handles the <see cref="AceChoiceCommand" /> to process a player's ace high/low declaration.
 /// </summary>
 public class AceChoiceCommandHandler(CardsDbContext context)
 	: IRequestHandler<AceChoiceCommand, OneOf<AceChoiceSuccessful, AceChoiceError>>
@@ -22,7 +21,7 @@ public class AceChoiceCommandHandler(CardsDbContext context)
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
+			.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 

@@ -4,12 +4,12 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 
 /// <summary>
-/// Endpoint for collecting antes from all players in a Five Card Draw game.
+///     Endpoint for collecting antes from all players in a Five Card Draw game.
 /// </summary>
 public static class CollectAntesEndpoint
 {
 	/// <summary>
-	/// Maps the POST endpoint for collecting antes.
+	///     Maps the POST endpoint for collecting antes.
 	/// </summary>
 	public static RouteGroupBuilder MapCollectAntes(this RouteGroupBuilder group)
 	{
@@ -35,7 +35,7 @@ public static class CollectAntesEndpoint
 			                 "Each player contributes the ante amount (or their remaining chips if short-stacked). " +
 			                 "After collection, the game transitions to the Dealing phase. " +
 			                 "Players with fewer chips than the ante will contribute their entire stack (going all-in on the ante).")
-			.Produces<CollectAntesSuccessful>(StatusCodes.Status200OK)
+			.Produces<CollectAntesSuccessful>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict);
 
