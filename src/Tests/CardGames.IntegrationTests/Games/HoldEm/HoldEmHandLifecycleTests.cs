@@ -16,7 +16,7 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 	public async Task ProcessBettingAction_PreFlopCheckAround_AdvancesToFlopWith3CommunityCards()
 	{
 		// Arrange — set up a dealt game in PreFlop with a betting round
-		var setup = await CreateDealtHoldEmGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtHoldEmGameAsync(3, 0);
 		var game = setup.Game;
 
 		// The betting round was created by DealCardsAsync via the base handler.
@@ -76,7 +76,7 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 	public async Task ProcessBettingAction_AllButOneFold_HandCompletesWithFoldWin()
 	{
 		// Arrange — 3-player game dealt and in PreFlop
-		var setup = await CreateDealtHoldEmGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtHoldEmGameAsync(3, 0);
 		var game = setup.Game;
 
 		// First actor bets so others can fold (can't fold when you can check)
@@ -177,7 +177,7 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 	{
 		// Arrange
 		var handler = FlowHandlerFactory.GetHandler("HOLDEM");
-		var setup = await CreateHoldEmGameSetupAsync(playerCount: 4);
+		var setup = await CreateHoldEmGameSetupAsync(4);
 		var game = setup.Game;
 
 		// Create pot for blind collection
@@ -196,10 +196,8 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 		playerCards.Should().HaveCount(8, "4 players * 2 hole cards each");
 
 		foreach (var gp in setup.GamePlayers)
-		{
 			cards.Count(c => c.GamePlayerId == gp.Id && c.Location == CardLocation.Hand)
 				.Should().Be(2, $"player at seat {gp.SeatPosition} should have 2 hole cards");
-		}
 	}
 
 	[Fact]
@@ -207,7 +205,7 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 	{
 		// Arrange — 4 players, dealer at seat 0 → SB = seat 1, BB = seat 2
 		var handler = FlowHandlerFactory.GetHandler("HOLDEM");
-		var setup = await CreateHoldEmGameSetupAsync(playerCount: 4, dealerPosition: 0);
+		var setup = await CreateHoldEmGameSetupAsync(4, 0);
 		var game = setup.Game;
 
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
@@ -245,7 +243,7 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 	{
 		// Arrange — 2 players, dealer at seat 0 → dealer = SB, other = BB
 		var handler = FlowHandlerFactory.GetHandler("HOLDEM");
-		var setup = await CreateHoldEmGameSetupAsync(playerCount: 2, dealerPosition: 0);
+		var setup = await CreateHoldEmGameSetupAsync(2, 0);
 		var game = setup.Game;
 
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
@@ -275,8 +273,8 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 	{
 		// Arrange
 		var handler = FlowHandlerFactory.GetHandler("HOLDEM");
-		var setup = await CreateHoldEmGameSetupAsync(playerCount: 3);
-		await DatabaseSeeder.CreatePotAsync(DbContext, game: setup.Game, amount: 0);
+		var setup = await CreateHoldEmGameSetupAsync(3);
+		await DatabaseSeeder.CreatePotAsync(DbContext, setup.Game, 0);
 
 		// Act
 		await handler.DealCardsAsync(

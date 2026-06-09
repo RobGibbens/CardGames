@@ -27,7 +27,7 @@ public sealed class KingsAndLowsDrawHand : FiveCardHand
 	{
 		// Kings and Lows: Kings are always wild, plus the lowest non-King card(s)
 		// kingRequired: false means the lowest card is wild even without a King
-		_wildCardRules = new WildCardRules(kingRequired: false);
+		_wildCardRules = new WildCardRules(false);
 	}
 
 	/// <summary>
@@ -72,19 +72,16 @@ public sealed class KingsAndLowsDrawHand : FiveCardHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 
 		// Get all possible wild card sets (Ace-high and Ace-low if applicable)
 		var wildCardSets = _wildCardRules.GetAllPossibleWildCardSets(Cards);
 
-		HandType bestType = HandType.Incomplete;
+		var bestType = HandType.Incomplete;
 		long bestStrength = 0;
-		IReadOnlyCollection<Card> bestCards = Cards;
+		var bestCards = Cards;
 		IReadOnlyCollection<Card> bestWildCards = Array.Empty<Card>();
 
 		foreach (var wildCards in wildCardSets)

@@ -20,10 +20,7 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
 			.AsNoTracking()
 			.FirstOrDefaultAsync(g => g.Id == request.GameId, cancellationToken);
 
-		if (game is null)
-		{
-			return [];
-		}
+		if (game is null) return [];
 
 		var currentHandNumber = game.CurrentHandNumber;
 
@@ -61,10 +58,7 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
 
 	private static string? BuildAvatarUrl(string? userId, string? avatarUrl)
 	{
-		if (string.IsNullOrWhiteSpace(avatarUrl))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(avatarUrl)) return null;
 
 		avatarUrl = avatarUrl.Trim();
 		if (Uri.TryCreate(avatarUrl, UriKind.Absolute, out var absoluteUri))
@@ -73,15 +67,10 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
 			                  string.Equals(absoluteUri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
 			if (!isLocalHost &&
 			    string.Equals(absoluteUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-			{
 				return absoluteUri.ToString();
-			}
 		}
 
-		if (string.IsNullOrWhiteSpace(userId))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(userId)) return null;
 
 		return ProfileAvatarRoutes.BuildAvatarPath(userId);
 	}

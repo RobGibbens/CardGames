@@ -8,21 +8,20 @@ namespace CardGames.Poker.Games.CrazyPineapple;
 ///     deal 3 hole cards, deal flop, discard 1, then continue like Hold 'Em.
 /// </summary>
 [PokerGameMetadata(
-	code: "CRAZYPINEAPPLE",
-	name: "Crazy Pineapple",
-	description:
+	"CRAZYPINEAPPLE",
+	"Crazy Pineapple",
 	"Deal 3 hole cards, complete pre-flop betting, deal the flop, discard 1 card, then continue with Hold 'Em streets.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 3,
-	initialBoardCards: 0,
-	maxCommunityCards: 5,
-	maxPlayerCards: 3,
-	hasDrawPhase: true,
-	maxDiscards: 1,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "crazypineapple.png")]
+	2,
+	10,
+	3,
+	0,
+	5,
+	3,
+	true,
+	1,
+	WildCardRule.None,
+	BettingStructure.Blinds,
+	"crazypineapple.png")]
 public sealed class CrazyPineappleGame : IPokerGame
 {
 	public string Name { get; } = "Crazy Pineapple";

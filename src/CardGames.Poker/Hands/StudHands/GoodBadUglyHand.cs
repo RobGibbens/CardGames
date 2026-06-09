@@ -79,10 +79,7 @@ public class GoodBadUglyHand : StudHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 

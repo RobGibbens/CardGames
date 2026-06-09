@@ -111,7 +111,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// DEBUG: Log card data before ordering for Seven Card Stud
 		var isSevenCardStudGame = IsStudGame(game.GameType?.Code);
 		if (isSevenCardStudGame)
-		{
 			foreach (var gp in gamePlayers)
 			{
 				var cardsForHand = gp.Cards
@@ -149,7 +148,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							$"{x.Card}(Key={x.OrderKey},DO={x.DealOrder},Loc={x.Location},Phase={x.DealtAtPhase})")));
 				}
 			}
-		}
 
 		// Calculate total pot from current betting round contributions
 		var totalPot = await CalculateTotalPotAsync(game, game.CurrentHandNumber, cancellationToken);
@@ -185,7 +183,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// Get hand history for the dashboard (limited to recent hands)
 		var handHistory =
-			await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
+			await GetHandHistoryEntriesAsync(gameId, null, 25, cancellationToken);
 
 		// Get game rules for phase metadata
 		GameRules? rules = null;
@@ -331,11 +329,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.ToListAsync(cancellationToken);
 
 			foreach (var p in allPlayers)
-			{
 				_logger.LogWarning(
 					"  Player in game: Email={Email}, Name={Name}, ExternalId={ExternalId}",
 					p.Email ?? "(null)", p.Name ?? "(null)", p.ExternalId ?? "(null)");
-			}
 
 			return null;
 		}
@@ -433,10 +429,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							            && c.IsVisible)
 							.AsNoTracking()
 							.FirstOrDefaultAsync(cancellationToken);
-						if (goodCard is not null)
-						{
-							wildRank = (int)goodCard.Symbol;
-						}
+						if (goodCard is not null) wildRank = (int)goodCard.Symbol;
 
 						var gbuHand = new GoodBadUglyHand(playerCards.Concat(communityCards).ToList(), [], [], wildRank,
 							new GoodBadUglyWildCardRules());
@@ -456,10 +449,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							.FirstOrDefaultAsync(cancellationToken);
 
 						if (klondikeCardEntity is { IsVisible: true })
-						{
 							visibleKlondikeCard = new Card((Suit)klondikeCardEntity.Suit,
 								(Symbol)klondikeCardEntity.Symbol);
-						}
 					}
 
 					handEvaluationDescription = CommunityHandDescriptionEvaluator.Evaluate(
@@ -483,10 +474,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// Get game rules for metadata
 		GameRules? rules = null;
-		if (PokerGameRulesRegistry.TryGet(game.GameType?.Code, out var r))
-		{
-			rules = r;
-		}
+		if (PokerGameRulesRegistry.TryGet(game.GameType?.Code, out var r)) rules = r;
 
 		var draw = BuildDrawPrivateDto(game, gamePlayer, rules);
 		var dropOrStay = BuildDropOrStayPrivateDto(game, gamePlayer);
@@ -494,7 +482,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var tollboothOffer = await BuildTollboothOfferPrivateDto(game, gamePlayer, cancellationToken);
 
 		// Get hand history personalized for this player
-		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
+		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, 25, cancellationToken);
 
 		// Build chip history from hand history, including cashier balance
 		var cashierBalance = await _walletService.GetBalanceAsync(gamePlayer.PlayerId, cancellationToken);
@@ -542,10 +530,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				// Check if email is malformed (has more than one @ symbol)
 				var isMalformedEmail = !string.IsNullOrWhiteSpace(email) && email.Count(c => c == '@') > 1;
 
-				if (isMalformedEmail && !string.IsNullOrWhiteSpace(name))
-				{
-					return name;
-				}
+				if (isMalformedEmail && !string.IsNullOrWhiteSpace(name)) return name;
 
 				return email ?? name ?? p.ExternalId;
 			})
@@ -570,21 +555,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		if (game.CurrentHandNumber <= 0 || game.CurrentHandNumber % WinningSoundFrequencyHands != 0 ||
 		    showdown is not { IsComplete: true })
-		{
 			return null;
-		}
 
 		var hasWinner = showdown.PlayerResults.Any(result => result.IsWinner || result.AmountWon > 0);
-		if (!hasWinner)
-		{
-			return null;
-		}
+		if (!hasWinner) return null;
 
 		var source = ChooseDeterministicSoundboardSource(game.Id, game.CurrentHandNumber, "winning");
-		if (string.IsNullOrWhiteSpace(source))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(source)) return null;
 
 		return
 		[
@@ -600,10 +577,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static string? ChooseDeterministicSoundboardSource(Guid gameId, int handNumber, string eventKey)
 	{
-		if (!TableSoundboardFiles.TryGetValue(eventKey, out var files) || files.Length == 0)
-		{
-			return null;
-		}
+		if (!TableSoundboardFiles.TryGetValue(eventKey, out var files) || files.Length == 0) return null;
 
 		var seedBytes = Encoding.UTF8.GetBytes($"{gameId:N}:{handNumber}:{eventKey}");
 		var hashBytes = SHA256.HashData(seedBytes);
@@ -696,9 +670,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
 			    StringComparison.OrdinalIgnoreCase))
-		{
 			return null;
-		}
 
 		return variantState?.Trim().ToUpperInvariant() switch
 		{
@@ -714,16 +686,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Try Identity profile lookup by email
 		var email = gamePlayer.Player.Email;
 		if (string.IsNullOrWhiteSpace(email) && gamePlayer.Player.Name?.Contains('@') == true)
-		{
 			email = gamePlayer.Player.Name;
-		}
 
 		if (!string.IsNullOrWhiteSpace(email)
 		    && userProfilesByEmail.TryGetValue(email, out var profile)
 		    && !string.IsNullOrWhiteSpace(profile.FirstName))
-		{
 			return profile.FirstName.Trim();
-		}
 
 		// Fallback: derive from email local-part (TitleCase first segment)
 		var emailSource = !string.IsNullOrWhiteSpace(email) ? email : gamePlayer.Player.Name;
@@ -733,9 +701,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var localPart = emailSource![..atIndex];
 			var segments = localPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
 			if (segments.Length > 0)
-			{
 				return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(segments[0].ToLowerInvariant());
-			}
 		}
 
 		return null;
@@ -746,55 +712,36 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		var email = gamePlayer.Player.Email;
 		if (string.IsNullOrWhiteSpace(email) && gamePlayer.Player.Name?.Contains('@') == true)
-		{
 			email = gamePlayer.Player.Name;
-		}
 
 		if (!string.IsNullOrWhiteSpace(email)
 		    && userProfilesByEmail.TryGetValue(email, out var profile))
-		{
 			return BuildAvatarUrl(profile.UserId, profile.AvatarUrl);
-		}
 
-		return BuildAvatarUrl(userId: null, gamePlayer.Player.AvatarUrl);
+		return BuildAvatarUrl(null, gamePlayer.Player.AvatarUrl);
 	}
 
 	private static string? BuildAvatarUrl(string? userId, string? avatarUrl)
 	{
-		if (string.IsNullOrWhiteSpace(avatarUrl))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(avatarUrl)) return null;
 
-		if (string.IsNullOrWhiteSpace(userId))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(userId)) return null;
 
 		return ProfileAvatarRoutes.BuildAvatarPath(userId);
 	}
 
 	private static string? GetSittingOutReason(GamePlayer gamePlayer, int ante, int currentHandNumber)
 	{
-		if (gamePlayer.Status == GamePlayerStatus.Eliminated)
-		{
-			return "Observing";
-		}
+		if (gamePlayer.Status == GamePlayerStatus.Eliminated) return "Observing";
 
 		if (gamePlayer.IsSittingOut)
 		{
-			if (gamePlayer.ChipStack < ante && ante > 0)
-			{
-				return "Insufficient chips";
-			}
+			if (gamePlayer.ChipStack < ante && ante > 0) return "Insufficient chips";
 
 			return "Sitting out";
 		}
 
-		if (gamePlayer.HasFolded && gamePlayer.JoinedAtHandNumber == currentHandNumber)
-		{
-			return "Observing";
-		}
+		if (gamePlayer.HasFolded && gamePlayer.JoinedAtHandNumber == currentHandNumber) return "Observing";
 
 		return null;
 	}
@@ -859,26 +806,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			"Turn",
 			"River"
 		};
-		if (!bettingPhases.Contains(game.CurrentPhase))
-		{
-			return null;
-		}
+		if (!bettingPhases.Contains(game.CurrentPhase)) return null;
 
 		// No actions for folded or all-in players
-		if (gamePlayer.HasFolded || gamePlayer.IsAllIn)
-		{
-			return null;
-		}
+		if (gamePlayer.HasFolded || gamePlayer.IsAllIn) return null;
 
 		var bettingRound = await _context.BettingRounds
 			.Where(br => br.GameId == gameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
 
-		if (bettingRound is null)
-		{
-			return null;
-		}
+		if (bettingRound is null) return null;
 
 		var currentBet = bettingRound.CurrentBet;
 		var minBet = bettingRound.MinBet;
@@ -906,10 +844,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		GamePlayer gamePlayer,
 		GameRules? rules)
 	{
-		if (game.CurrentPhase != "DrawPhase")
-		{
-			return null;
-		}
+		if (game.CurrentPhase != "DrawPhase") return null;
 
 		// Check if player has an Ace in their current hand to allow 4 discards
 		var playerCards = gamePlayer.Cards
@@ -974,18 +909,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			isScrewYourNeighbor && string.Equals(game.CurrentPhase, "Ended", StringComparison.OrdinalIgnoreCase);
 
 		// In-Between has no traditional showdown — skip evaluation entirely
-		if (isInBetween)
-		{
-			return null;
-		}
+		if (isInBetween) return null;
 
 		if (game.CurrentPhase != "Showdown" &&
 		    game.CurrentPhase != "Complete" &&
 		    game.CurrentPhase != "PotMatching" &&
 		    !isTerminalScrewYourNeighborShowdown)
-		{
 			return null;
-		}
 
 		// Evaluate all hands for players who haven't folded
 		// Use HandBase as the base type since all hand types inherit from it
@@ -1013,10 +943,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			int? gbuWildRank = null;
 			var goodCard = gbuCommunityCards.FirstOrDefault(c =>
 				string.Equals(c.DealtAtPhase, "TheGood", StringComparison.OrdinalIgnoreCase) && c.IsVisible);
-			if (goodCard is not null)
-			{
-				gbuWildRank = (int)goodCard.Symbol;
-			}
+			if (goodCard is not null) gbuWildRank = (int)goodCard.Symbol;
 
 			var gbuWildRules = new GoodBadUglyWildCardRules();
 			var visibleCommunityCards = gbuCommunityCards
@@ -1040,15 +967,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				// Determine wild card indexes (within the player's owned cards only)
 				var wildIndexes = new List<int>();
 				if (gbuWildRank.HasValue)
-				{
-					for (int i = 0; i < ownedCoreCards.Count; i++)
-					{
+					for (var i = 0; i < ownedCoreCards.Count; i++)
 						if (ownedCoreCards[i].Value == gbuWildRank.Value)
-						{
 							wildIndexes.Add(i);
-						}
-					}
-				}
 
 				playerHandEvaluations[gp.Player.Name] = (gbuHand, null, null, null, gp, allDisplayCards, wildIndexes,
 					GetCardIndexes(allCoreCards, gbuHand.EvaluatedBestCards));
@@ -1081,10 +1002,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
 
-				if (holeCoreCards.Count < 2)
-				{
-					continue;
-				}
+				if (holeCoreCards.Count < 2) continue;
 
 				var holdemHand = new HoldemHand(holeCoreCards, communityCoreCards);
 
@@ -1127,10 +1045,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
 
-				if (holeCoreCards.Count < 2)
-				{
-					continue;
-				}
+				if (holeCoreCards.Count < 2) continue;
 
 				var holdTheBaseballHand = new HoldTheBaseballHand(holeCoreCards, communityCoreCards);
 
@@ -1140,12 +1055,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				var wildIndexes = new List<int>();
 				for (var i = 0; i < allCoreCards.Count; i++)
-				{
 					if (holdTheBaseballHand.WildCards.Contains(allCoreCards[i]))
-					{
 						wildIndexes.Add(i);
-					}
-				}
 
 				playerHandEvaluations[gp.Player.Name] = (holdTheBaseballHand, null, null, null, gp, allDisplayCards,
 					wildIndexes,
@@ -1179,10 +1090,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
 
-				if (holeCoreCards.Count < 4)
-				{
-					continue;
-				}
+				if (holeCoreCards.Count < 4) continue;
 
 				var omahaHand = new OmahaHand(holeCoreCards, communityCoreCards);
 
@@ -1229,10 +1137,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
 
-				if (holeCoreCards.Count < 4)
-				{
-					continue;
-				}
+				if (holeCoreCards.Count < 4) continue;
 
 				var bobBarkerHand = new BobBarkerHand(holeCoreCards, communityCoreCards);
 				var allDisplayCards = ownedCards.ToList();
@@ -1271,10 +1176,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
 
-				if (holeCoreCards.Count < 5)
-				{
-					continue;
-				}
+				if (holeCoreCards.Count < 5) continue;
 
 				var nebraskaHand = new NebraskaHand(holeCoreCards, communityCoreCards);
 
@@ -1315,10 +1217,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
 
-				if (holeCoreCards.Count < 2)
-				{
-					continue;
-				}
+				if (holeCoreCards.Count < 2) continue;
 
 				var holdemHand = new HoldemHand(holeCoreCards, communityCoreCards);
 
@@ -1338,10 +1237,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
 		{
 			// Skip if already evaluated (e.g., by GBU-specific handling above)
-			if (playerHandEvaluations.ContainsKey(gp.Player.Name))
-			{
-				continue;
-			}
+			if (playerHandEvaluations.ContainsKey(gp.Player.Name)) continue;
 
 			var filteredCards = gp.Cards
 				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber);
@@ -1356,13 +1252,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					var wildHand = new TwosJacksManWithTheAxeDrawHand(coreCards);
 					// Find wild card indexes
 					var wildIndexes = new List<int>();
-					for (int i = 0; i < coreCards.Count; i++)
-					{
+					for (var i = 0; i < coreCards.Count; i++)
 						if (TwosJacksManWithTheAxeWildCardRules.IsWild(coreCards[i]))
-						{
 							wildIndexes.Add(i);
-						}
-					}
 
 					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes,
 						Enumerable.Range(0, cards.Count).ToList());
@@ -1388,13 +1280,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					var baseballHand = new BaseballHand(allHoleCards, openCards, []);
 					var wildCards = baseballHand.WildCards;
 					var wildIndexes = new List<int>();
-					for (int i = 0; i < coreCards.Count; i++)
-					{
+					for (var i = 0; i < coreCards.Count; i++)
 						if (wildCards.Contains(coreCards[i]))
-						{
 							wildIndexes.Add(i);
-						}
-					}
 
 					playerHandEvaluations[gp.Player.Name] = (baseballHand, null, null, null, gp, cards, wildIndexes,
 						GetCardIndexes(coreCards, baseballHand.BestHandSourceCards));
@@ -1427,13 +1315,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						var ftqHand = new FollowTheQueenHand(initialHoleCards, openCards, downCard, faceUpCardsInOrder);
 						var wildCards = ftqHand.WildCards;
 						var wildIndexes = new List<int>();
-						for (int i = 0; i < coreCards.Count; i++)
-						{
+						for (var i = 0; i < coreCards.Count; i++)
 							if (wildCards.Contains(coreCards[i]))
-							{
 								wildIndexes.Add(i);
-							}
-						}
 
 						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes,
 							GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
@@ -1446,13 +1330,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						var ftqHand = new FollowTheQueenHand(initialHoleCards, openCards, null, faceUpCardsInOrder);
 						var wildCards = ftqHand.WildCards;
 						var wildIndexes = new List<int>();
-						for (int i = 0; i < coreCards.Count; i++)
-						{
+						for (var i = 0; i < coreCards.Count; i++)
 							if (wildCards.Contains(coreCards[i]))
-							{
 								wildIndexes.Add(i);
-							}
-						}
 
 						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes,
 							GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
@@ -1487,12 +1367,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						var wildCards = pairPressureHand.WildCards;
 						var wildIndexes = new List<int>();
 						for (var i = 0; i < coreCards.Count; i++)
-						{
 							if (wildCards.Contains(coreCards[i]))
-							{
 								wildIndexes.Add(i);
-							}
-						}
 
 						playerHandEvaluations[gp.Player.Name] = (pairPressureHand, null, null, null, gp, cards,
 							wildIndexes, GetCardIndexes(coreCards, pairPressureHand.BestHandSourceCards));
@@ -1545,13 +1421,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					// Find wild card indexes using Kings and Lows rules (Kings are wild, plus lowest non-King cards)
 					var wildCards = kingsAndLowsHand.WildCards;
 					var wildIndexes = new List<int>();
-					for (int i = 0; i < coreCards.Count; i++)
-					{
+					for (var i = 0; i < coreCards.Count; i++)
 						if (wildCards.Contains(coreCards[i]))
-						{
 							wildIndexes.Add(i);
-						}
-					}
 
 					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, null, gp, cards,
 						wildIndexes, Enumerable.Range(0, cards.Count).ToList());
@@ -1579,59 +1451,36 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		foreach (var pot in awardedHandPots)
 		{
-			if (string.IsNullOrWhiteSpace(pot.WinnerPayouts))
-			{
-				continue;
-			}
+			if (string.IsNullOrWhiteSpace(pot.WinnerPayouts)) continue;
 
 			try
 			{
 				using var doc = JsonDocument.Parse(pot.WinnerPayouts);
 				foreach (var element in doc.RootElement.EnumerateArray())
-				{
 					if (element.TryGetProperty("playerName", out var nameProp))
 					{
 						var name = nameProp.GetString();
-						if (string.IsNullOrEmpty(name))
-						{
-							continue;
-						}
+						if (string.IsNullOrEmpty(name)) continue;
 
-						int amount = 0;
-						if (element.TryGetProperty("amount", out var amountProp))
-						{
-							amount = amountProp.GetInt32();
-						}
+						var amount = 0;
+						if (element.TryGetProperty("amount", out var amountProp)) amount = amountProp.GetInt32();
 
-						int sevensAmount = 0;
-						if (element.TryGetProperty("sevensAmount", out var sProp))
-						{
-							sevensAmount = sProp.GetInt32();
-						}
+						var sevensAmount = 0;
+						if (element.TryGetProperty("sevensAmount", out var sProp)) sevensAmount = sProp.GetInt32();
 
-						int highAmount = 0;
-						if (element.TryGetProperty("highHandAmount", out var hProp))
-						{
-							highAmount = hProp.GetInt32();
-						}
+						var highAmount = 0;
+						if (element.TryGetProperty("highHandAmount", out var hProp)) highAmount = hProp.GetInt32();
 
-						int showcaseAmount = 0;
+						var showcaseAmount = 0;
 						if (element.TryGetProperty("showcaseAmount", out var showcaseProp))
-						{
 							showcaseAmount = showcaseProp.GetInt32();
-						}
 
 						if (actualPayouts.TryGetValue(name, out var existing))
-						{
 							actualPayouts[name] = (existing.Total + amount, existing.Sevens + sevensAmount,
 								existing.High + highAmount, existing.Showcase + showcaseAmount);
-						}
 						else
-						{
 							actualPayouts[name] = (amount, sevensAmount, highAmount, showcaseAmount);
-						}
 					}
-				}
 			}
 			catch (JsonException)
 			{
@@ -1653,17 +1502,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				{
 					var maxEligibleStrength = eligibleEvaluations.Values.Max(h => h.hand.Strength);
 					foreach (var kvp in eligibleEvaluations.Where(k => k.Value.hand.Strength == maxEligibleStrength))
-					{
 						highHandWinners.Add(kvp.Key);
-					}
 				}
 				else
 				{
 					// All remaining players were eliminated by The Ugly: split among all
-					foreach (var kvp in playerHandEvaluations)
-					{
-						highHandWinners.Add(kvp.Key);
-					}
+					foreach (var kvp in playerHandEvaluations) highHandWinners.Add(kvp.Key);
 				}
 			}
 			else
@@ -1671,9 +1515,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				// Determine high hand winners (highest hand strength)
 				var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
 				foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
-				{
 					highHandWinners.Add(kvp.Key);
-				}
 			}
 
 			// For Twos/Jacks/Axe, also determine sevens winners
@@ -1681,9 +1523,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			{
 				foreach (var kvp in playerHandEvaluations.Where(k =>
 					         k.Value.twosJacksHand?.HasNaturalPairOfSevens() == true))
-				{
 					sevensWinners.Add(kvp.Key);
-				}
 
 				sevensPoolRolledOver = sevensWinners.Count == 0;
 			}
@@ -1705,30 +1545,22 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var synPlayerCards = new Dictionary<Guid, GameCard>();
 			foreach (var card in synHandCards)
-			{
 				if (card.GamePlayerId.HasValue)
-				{
 					synPlayerCards[card.GamePlayerId.Value] = card;
-				}
-			}
 
 			var synPlayerValues = new List<(GamePlayer Player, int CardValue)>();
 			foreach (var player in synActivePlayers)
-			{
 				if (synPlayerCards.TryGetValue(player.Id, out var card))
 				{
 					var value = ScrewYourNeighborFlowHandler.GetScrewYourNeighborCardValue(card.Symbol);
 					synPlayerValues.Add((player, value));
 				}
-			}
 
 			if (synPlayerValues.Count > 0)
 			{
 				var lowestValue = synPlayerValues.Min(pv => pv.CardValue);
 				foreach (var pv in synPlayerValues.Where(pv => pv.CardValue != lowestValue))
-				{
 					highHandWinners.Add(pv.Player.Player.Name);
-				}
 			}
 
 			showdownPlayers = synPlayerValues
@@ -1915,10 +1747,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static int GetBobBarkerCardValue(CardSymbol symbol, bool aceHigh)
 	{
-		if (symbol == CardSymbol.Ace)
-		{
-			return aceHigh ? 14 : 1;
-		}
+		if (symbol == CardSymbol.Ace) return aceHigh ? 14 : 1;
 
 		return (int)symbol;
 	}
@@ -1926,13 +1755,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
 	{
 		if (IsInBetweenGame(game.GameType?.Code))
-		{
 			// In-Between uses a single hand with a pot that changes each turn.
 			return await _context.Pots
 				.Where(p => p.GameId == game.Id && p.HandNumber == handNumber && !p.IsAwarded)
 				.AsNoTracking()
 				.SumAsync(p => p.Amount, cancellationToken);
-		}
 
 		if (IsScrewYourNeighborGame(game.GameType?.Code))
 		{
@@ -1947,12 +1774,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.SumAsync(p => p.Amount, cancellationToken);
 
 			if (total == 0 && isWaitingForNextHand)
-			{
 				total = await _context.Pots
 					.Where(p => p.GameId == game.Id && p.HandNumber == handNumber && !p.IsAwarded)
 					.AsNoTracking()
 					.SumAsync(p => p.Amount, cancellationToken);
-			}
 
 			return total;
 		}
@@ -1978,12 +1803,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			// If no pot found for next hand yet, check for unawarded pots from current hand
 			// (e.g., if all players dropped and pot carries over)
 			if (total == 0 && isWaitingForNextHand)
-			{
 				total = await _context.Pots
 					.Where(br => br.GameId == game.Id && br.HandNumber == handNumber && !br.IsAwarded)
 					.AsNoTracking()
 					.SumAsync(br => br.Amount, cancellationToken);
-			}
 
 			_logger.LogDebug(
 				"Kings and Lows pot calculation for game {GameId}, currentHand={HandNumber}, targetHand={TargetHand}, isWaiting={IsWaiting}: {TotalPot}",
@@ -2026,10 +1849,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
-		if (deckCards.Count < 5)
-		{
-			return null;
-		}
+		if (deckCards.Count < 5) return null;
 
 		var deckCoreCards = deckCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
 		var deckHand = new KingsAndLowsDrawHand(deckCoreCards);
@@ -2037,12 +1857,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var deckWildCards = deckHand.WildCards;
 		var deckWildIndexes = new List<int>();
 		for (var i = 0; i < deckCoreCards.Count; i++)
-		{
 			if (deckWildCards.Contains(deckCoreCards[i]))
-			{
 				deckWildIndexes.Add(i);
-			}
-		}
 
 		var playerWins = playerStrength >= deckHand.Strength;
 		var deckWins = !playerWins;
@@ -2153,10 +1969,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		_logger.LogInformation("[HANDHISTORY-NAMES] Loaded {PlayerCount} player names from Players table",
 			playersByIdLookup.Count);
 		foreach (var kvp in playersByIdLookup)
-		{
 			_logger.LogInformation("[HANDHISTORY-NAMES] Player {PlayerId} -> Name: '{PlayerName}', Email: '{Email}'",
 				kvp.Key, kvp.Value.Name, kvp.Value.Email);
-		}
 
 		// Cards are now stored in HandHistoryPlayerResult.ShowdownCards (JSON)
 		// No need to query GameCards table
@@ -2197,9 +2011,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				if (!string.IsNullOrWhiteSpace(email) &&
 				    userFirstNamesByEmail.TryGetValue(email, out var firstName) &&
 				    !string.IsNullOrWhiteSpace(firstName))
-				{
 					return firstName;
-				}
 
 				return firstWinner.PlayerName;
 			}
@@ -2230,37 +2042,28 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					    !string.IsNullOrWhiteSpace(playerInfo.Email) &&
 					    userFirstNamesByEmail.TryGetValue(playerInfo.Email, out var firstName) &&
 					    !string.IsNullOrWhiteSpace(firstName))
-					{
 						playerName = firstName;
-					}
 
 					if (!foundInLookup)
-					{
 						_logger.LogWarning(
 							"[HANDHISTORY-NAMES] Player ID {PlayerId} not found in lookup, using stored name: '{StoredName}'",
 							pr.PlayerId, pr.PlayerName);
-					}
 
 					// Get cards for this player if they reached showdown
 					List<string>? visibleCards = null;
 					if (pr.ReachedShowdown && !string.IsNullOrWhiteSpace(pr.ShowdownCards))
-					{
 						try
 						{
 							visibleCards = JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
 							if (visibleCards != null && visibleCards.Any())
-							{
 								_logger.LogInformation(
 									"[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards from ShowdownCards: {Cards}",
 									h.HandNumber, playerName, pr.SeatPosition, visibleCards.Count,
 									string.Join(", ", visibleCards));
-							}
 							else
-							{
 								_logger.LogWarning(
 									"[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): ShowdownCards deserialized but empty",
 									h.HandNumber, playerName, pr.SeatPosition);
-							}
 						}
 						catch (JsonException ex)
 						{
@@ -2268,13 +2071,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 								"[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}': Failed to deserialize ShowdownCards: {Json}",
 								h.HandNumber, playerName, pr.ShowdownCards);
 						}
-					}
 					else if (pr.ReachedShowdown)
-					{
 						_logger.LogWarning(
 							"[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but ShowdownCards is null/empty",
 							h.HandNumber, playerName, pr.SeatPosition, pr.PlayerId);
-					}
 
 					return new PlayerHandResultDto
 					{
@@ -2309,10 +2109,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// </summary>
 	private static DrawingConfigDto? BuildDrawingConfigDto(GameRules? rules)
 	{
-		if (rules?.Drawing is null)
-		{
-			return null;
-		}
+		if (rules?.Drawing is null) return null;
 
 		return new DrawingConfigDto
 		{
@@ -2331,10 +2128,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		Game game,
 		CancellationToken cancellationToken)
 	{
-		if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0)
-		{
-			return null;
-		}
+		if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0) return null;
 
 		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode,
 			StringComparison.OrdinalIgnoreCase);
@@ -2348,21 +2142,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Dynamic-wild stud variants compute their active wild ranks from face-up cards.
 		IReadOnlyList<string>? dynamicWildRanks = null;
 		if (isFollowTheQueen)
-		{
 			dynamicWildRanks = await ComputeFollowTheQueenWildRanksAsync(game, cancellationToken);
-		}
 		else if (isPairPressure)
-		{
 			dynamicWildRanks = await ComputePairPressureWildRanksAsync(game, cancellationToken);
-		}
 		else if (isKlondike)
-		{
 			dynamicWildRanks = await ComputeKlondikeWildRanksAsync(game, cancellationToken);
-		}
-		else if (isGoodBadUgly)
-		{
-			dynamicWildRanks = await ComputeGoodBadUglyWildRanksAsync(game, cancellationToken);
-		}
+		else if (isGoodBadUgly) dynamicWildRanks = await ComputeGoodBadUglyWildRanksAsync(game, cancellationToken);
 
 		return new GameSpecialRulesDto
 		{
@@ -2392,28 +2177,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		int? followingWildSymbol = null;
 		for (var i = 0; i < sortedFaceUpCards.Count; i++)
-		{
 			if (sortedFaceUpCards[i].Symbol == Symbol.Queen)
 			{
 				if (i + 1 < sortedFaceUpCards.Count)
-				{
 					followingWildSymbol = (int)sortedFaceUpCards[i + 1].Symbol;
-				}
 				else
-				{
 					// Queen is the last face-up card, no following wild rank
 					followingWildSymbol = null;
-				}
 			}
-		}
 
 		if (followingWildSymbol.HasValue)
 		{
 			var followRank = MapSymbolToRank((CardSymbol)followingWildSymbol.Value);
-			if (followRank is not null)
-			{
-				wildRanks.Add(followRank);
-			}
+			if (followRank is not null) wildRanks.Add(followRank);
 		}
 
 		return wildRanks;
@@ -2450,10 +2226,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
 
-		if (klondikeCard is null)
-		{
-			return [];
-		}
+		if (klondikeCard is null) return [];
 
 		var rank = MapSymbolToRank(klondikeCard.Symbol);
 		return rank is not null ? [rank] : [];
@@ -2476,10 +2249,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
 
-		if (goodCard is null)
-		{
-			return [];
-		}
+		if (goodCard is null) return [];
 
 		var rank = MapSymbolToRank(goodCard.Symbol);
 		return rank is not null ? [rank] : [];
@@ -2490,10 +2260,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// </summary>
 	private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
 	{
-		if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0)
-		{
-			return null;
-		}
+		if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0) return null;
 
 		return new GameSpecialRulesDto
 		{
@@ -2517,10 +2284,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules,
 		IReadOnlyList<string>? dynamicWildRanks = null)
 	{
-		if (rules?.SpecialRules is null || !rules.SpecialRules.TryGetValue("WildCards", out var wildCardsValue))
-		{
-			return null;
-		}
+		if (rules?.SpecialRules is null ||
+		    !rules.SpecialRules.TryGetValue("WildCards", out var wildCardsValue)) return null;
 
 		var description = wildCardsValue?.ToString();
 		var wildRanks = new List<string>();
@@ -2555,37 +2320,24 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			// Follow the Queen: Queens are always wild, plus the dynamic "follow" rank
 			if (dynamicWildRanks is { Count: > 0 })
-			{
 				wildRanks.AddRange(dynamicWildRanks);
-			}
 			else
-			{
 				wildRanks.Add("Q"); // Fallback: at minimum Queens are always wild
-			}
 		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode,
 			         StringComparison.OrdinalIgnoreCase))
 		{
-			if (dynamicWildRanks is { Count: > 0 })
-			{
-				wildRanks.AddRange(dynamicWildRanks);
-			}
+			if (dynamicWildRanks is { Count: > 0 }) wildRanks.AddRange(dynamicWildRanks);
 		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode,
 			         StringComparison.OrdinalIgnoreCase))
 		{
-			if (dynamicWildRanks is { Count: > 0 })
-			{
-				wildRanks.AddRange(dynamicWildRanks);
-			}
+			if (dynamicWildRanks is { Count: > 0 }) wildRanks.AddRange(dynamicWildRanks);
 		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode,
 			         StringComparison.OrdinalIgnoreCase))
 		{
-			if (dynamicWildRanks is { Count: > 0 })
-			{
-				wildRanks.AddRange(dynamicWildRanks);
-			}
+			if (dynamicWildRanks is { Count: > 0 }) wildRanks.AddRange(dynamicWildRanks);
 		}
 
 		return new WildCardRulesDto
@@ -2607,10 +2359,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		CancellationToken cancellationToken)
 	{
 		// Only build for PlayerVsDeck phase
-		if (!string.Equals(game.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase))
-		{
-			return null;
-		}
+		if (!string.Equals(game.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase)) return null;
 
 		// Get deck cards (cards with no GamePlayerId in this hand, on the Board)
 		// The deck's hand is stored as cards with no GamePlayerId and Location = Board
@@ -2647,9 +2396,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		    dealer.PlayerId != stayingPlayer.PlayerId &&
 		    dealer.Status == GamePlayerStatus.Active &&
 		    !dealer.IsSittingOut)
-		{
 			decisionMaker = dealer;
-		}
 
 		// If dealer can't be the decision maker, find the first eligible player
 		// searching clockwise from the dealer position
@@ -2658,7 +2405,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var dealerIndex = orderedPlayers.FindIndex(gp => gp.SeatPosition == dealerSeatPosition);
 			if (dealerIndex < 0) dealerIndex = 0;
 
-			for (int i = 1; i <= orderedPlayers.Count; i++)
+			for (var i = 1; i <= orderedPlayers.Count; i++)
 			{
 				var nextIndex = (dealerIndex + i) % orderedPlayers.Count;
 				var candidate = orderedPlayers[nextIndex];
@@ -2679,9 +2426,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		string? decisionMakerFirstName = null;
 		if (!string.IsNullOrWhiteSpace(decisionMaker.Player?.Email) &&
 		    userProfilesByEmail.TryGetValue(decisionMaker.Player.Email, out var profile))
-		{
 			decisionMakerFirstName = profile.FirstName;
-		}
 
 		// Check if deck has drawn (by checking if any cards were dealt after the initial 5)
 		// For simplicity, we'll track this via a flag or by checking draw records
@@ -2703,7 +2448,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Evaluate the staying player's hand for the description
 		string? stayingPlayerHandDescription = null;
 		if (stayingPlayerCards.Count >= 5)
-		{
 			try
 			{
 				var cards = stayingPlayerCards
@@ -2716,12 +2460,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			{
 				// Ignore evaluation errors
 			}
-		}
 
 		// Evaluate the deck's hand for the description
 		string? deckHandDescription = null;
 		if (deckCards.Count >= 5)
-		{
 			try
 			{
 				var cards = deckCards
@@ -2734,7 +2476,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			{
 				// Ignore evaluation errors
 			}
-		}
 
 		return new PlayerVsDeckStateDto
 		{
@@ -2765,10 +2506,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		Game game,
 		GamePlayer gamePlayer)
 	{
-		if (game.CurrentPhase != "DropOrStay")
-		{
-			return null;
-		}
+		if (game.CurrentPhase != "DropOrStay") return null;
 
 		return new DropOrStayPrivateDto
 		{
@@ -2783,26 +2521,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		if (!IsBaseballGame(game.GameType?.Code) ||
 		    !string.Equals(game.CurrentPhase, nameof(Phases.BuyCardOffer), StringComparison.OrdinalIgnoreCase))
-		{
 			return null;
-		}
 
 		var buyCardState = BaseballGameSettings.GetState(game, game.MinBet ?? 0);
-		if (buyCardState.PendingOffers.Count == 0)
-		{
-			return null;
-		}
+		if (buyCardState.PendingOffers.Count == 0) return null;
 
 		var currentOffer = buyCardState.PendingOffers.First();
-		if (currentOffer.PlayerId != gamePlayer.PlayerId)
-		{
-			return null;
-		}
+		if (currentOffer.PlayerId != gamePlayer.PlayerId) return null;
 
 		var triggerCard = gamePlayer.Cards?.FirstOrDefault(c => c.Id == currentOffer.CardId);
 		CardPublicDto? triggerCardDto = null;
 		if (triggerCard is not null)
-		{
 			triggerCardDto = new CardPublicDto
 			{
 				IsFaceUp = true,
@@ -2810,7 +2539,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				Suit = triggerCard.Suit.ToString(),
 				DealOrder = triggerCard.DealOrder
 			};
-		}
 
 		return new BuyCardOfferPrivateDto
 		{
@@ -2826,9 +2554,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
 		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.TollboothCode, StringComparison.OrdinalIgnoreCase)
 		    || !string.Equals(game.CurrentPhase, nameof(Phases.TollboothOffer), StringComparison.OrdinalIgnoreCase))
-		{
 			return null;
-		}
 
 		var ante = game.Ante ?? game.BringIn ?? game.SmallBet ?? game.MinBet ?? 0;
 
@@ -2886,10 +2612,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		foreach (var hand in recentHands)
 		{
 			var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
-			if (playerResult != null)
-			{
-				totalDeltaInWindow += playerResult.NetAmount;
-			}
+			if (playerResult != null) totalDeltaInWindow += playerResult.NetAmount;
 		}
 
 		// Starting point for the history window
@@ -2952,16 +2675,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		CancellationToken cancellationToken)
 	{
 		// Only build for Showdown phase
-		if (!string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
-		{
-			return null;
-		}
+		if (!string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)) return null;
 
 		// Check if this is an all-in runout by reading from GameSettings
-		if (string.IsNullOrEmpty(game.GameSettings))
-		{
-			return null;
-		}
+		if (string.IsNullOrEmpty(game.GameSettings)) return null;
 
 		try
 		{
@@ -2971,32 +2688,21 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			// Check for allInRunout flag
 			if (!root.TryGetProperty("allInRunout", out var allInRunoutProp) ||
 			    !allInRunoutProp.GetBoolean())
-			{
 				return null;
-			}
 
 			// Verify this is for the current hand
 			if (root.TryGetProperty("runoutHandNumber", out var handNumberProp) &&
 			    handNumberProp.GetInt32() != game.CurrentHandNumber)
-			{
 				return null;
-			}
 
 			// Get the streets that were dealt during the runout
 			var runoutStreets = new List<string>();
 			if (root.TryGetProperty("runoutStreets", out var streetsProp) &&
 			    streetsProp.ValueKind == JsonValueKind.Array)
-			{
 				foreach (var street in streetsProp.EnumerateArray())
-				{
 					runoutStreets.Add(street.GetString() ?? "");
-				}
-			}
 
-			if (runoutStreets.Count == 0)
-			{
-				return null;
-			}
+			if (runoutStreets.Count == 0) return null;
 
 			// Get the timestamp when the runout occurred
 			DateTimeOffset? runoutTimestamp = null;
@@ -3005,9 +2711,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var timestampStr = timestampProp.GetString();
 				if (!string.IsNullOrEmpty(timestampStr) &&
 				    DateTimeOffset.TryParse(timestampStr, out var parsed))
-				{
 					runoutTimestamp = parsed;
-				}
 			}
 
 			// Get players who received cards (not folded)
@@ -3035,7 +2739,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					.ToListAsync(cancellationToken);
 
 				if (runoutCards.Count > 0)
-				{
 					runoutCardsBySeat[player.SeatPosition] = runoutCards.Select(c => new CardPublicDto
 					{
 						IsFaceUp = c.IsVisible,
@@ -3043,7 +2746,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						Suit = c.Suit.ToString(),
 						DealOrder = c.DealOrder
 					}).ToList();
-				}
 			}
 
 			// Map street names to friendly descriptions
@@ -3088,10 +2790,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		List<GamePlayer> gamePlayers,
 		int currentPot)
 	{
-		if (!game.IsPausedForChipCheck)
-		{
-			return null;
-		}
+		if (!game.IsPausedForChipCheck) return null;
 
 		var isRebuyGracePause = game.IsPausedForRebuyGrace;
 		var shortPlayers = isRebuyGracePause
@@ -3299,9 +2998,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static HandBase BuildDrawHandForGame(string? gameTypeCode, List<Card> playerCards)
 	{
 		if (!string.IsNullOrWhiteSpace(gameTypeCode) && DrawHandFactories.TryGetValue(gameTypeCode, out var factory))
-		{
 			return factory(playerCards);
-		}
 
 		return new DrawHand(playerCards);
 	}
@@ -3314,10 +3011,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.OrderBy(c => c.DealOrder)
 			.ToList();
 
-		if (playerCardEntities.Count < 2)
-		{
-			return null;
-		}
+		if (playerCardEntities.Count < 2) return null;
 
 		var holeCardEntities = playerCardEntities.Where(c => c.Location == CardLocation.Hole).ToList();
 		var boardCards = playerCardEntities
@@ -3329,28 +3023,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
 			.ToList();
 
-		if (initialHoleCards.Count < 2)
-		{
-			return null;
-		}
+		if (initialHoleCards.Count < 2) return null;
 
 		if (IsFollowTheQueenGame(game.GameType?.Code))
-		{
 			return await EvaluateFollowTheQueenHandDescriptionAsync(game, holeCardEntities, initialHoleCards,
 				boardCards, cancellationToken);
-		}
 
 		if (IsPairPressureGame(game.GameType?.Code))
-		{
 			return await EvaluatePairPressureHandDescriptionAsync(game, holeCardEntities, initialHoleCards, boardCards,
 				cancellationToken);
-		}
 
 		if (!string.IsNullOrWhiteSpace(game.GameType?.Code) &&
 		    StudVariantEvaluators.TryGetValue(game.GameType.Code, out var evaluator))
-		{
 			return evaluator(holeCardEntities, boardCards);
-		}
 
 		return EvaluateSevenCardStudHandDescription(holeCardEntities, initialHoleCards, boardCards);
 	}
@@ -3439,13 +3124,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static IEnumerable<GameCard> OrderCardsForDisplay(IEnumerable<GameCard> cards, bool isSevenCardStud)
 	{
 		if (isSevenCardStud)
-		{
 			return StudOrderHelper.OrderPlayerCards(
 				cards,
 				card => card.DealtAtPhase,
 				card => card.Location == CardLocation.Hole,
 				card => card.DealOrder);
-		}
 
 		// For other games: Order by DealOrder which should be sequential per player
 		return cards.OrderBy(c => c.DealOrder);
@@ -3457,7 +3140,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var usedIndexes = new HashSet<int>();
 
 		foreach (var target in targetCards)
-		{
 			for (var i = 0; i < allCards.Count; i++)
 			{
 				if (usedIndexes.Contains(i)) continue;
@@ -3469,7 +3151,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					break;
 				}
 			}
-		}
 
 		return indexes;
 	}
@@ -3480,14 +3161,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// </summary>
 	private static List<Card> FindBestFiveCardHand(List<Card> allCards)
 	{
-		if (allCards.Count <= 5)
-		{
-			return allCards;
-		}
+		if (allCards.Count <= 5) return allCards;
 
 		var ranking = HandTypeStrengthRanking.Classic;
 		List<Card>? bestCombo = null;
-		long bestStrength = long.MinValue;
+		var bestStrength = long.MinValue;
 
 		foreach (var combo in allCards.SubsetsOfSize(5))
 		{
@@ -3512,20 +3190,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		var ranking = HandTypeStrengthRanking.Classic;
 		List<Card>? bestCombo = null;
-		long bestStrength = long.MinValue;
+		var bestStrength = long.MinValue;
 
 		foreach (var holePair in holeCards.SubsetsOfSize(2))
+		foreach (var communityTriple in communityCards.SubsetsOfSize(3))
 		{
-			foreach (var communityTriple in communityCards.SubsetsOfSize(3))
+			var combo = holePair.Concat(communityTriple).ToList();
+			var handType = HandTypeDetermination.DetermineHandType(combo);
+			var strength = HandStrength.Calculate(combo, handType, ranking);
+			if (strength > bestStrength)
 			{
-				var combo = holePair.Concat(communityTriple).ToList();
-				var handType = HandTypeDetermination.DetermineHandType(combo);
-				var strength = HandStrength.Calculate(combo, handType, ranking);
-				if (strength > bestStrength)
-				{
-					bestStrength = strength;
-					bestCombo = combo;
-				}
+				bestStrength = strength;
+				bestCombo = combo;
 			}
 		}
 
@@ -3540,20 +3216,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		var ranking = HandTypeStrengthRanking.Classic;
 		List<Card>? bestCombo = null;
-		long bestStrength = long.MinValue;
+		var bestStrength = long.MinValue;
 
 		foreach (var holeTriple in holeCards.SubsetsOfSize(3))
+		foreach (var communityPair in communityCards.SubsetsOfSize(2))
 		{
-			foreach (var communityPair in communityCards.SubsetsOfSize(2))
+			var combo = holeTriple.Concat(communityPair).ToList();
+			var handType = HandTypeDetermination.DetermineHandType(combo);
+			var strength = HandStrength.Calculate(combo, handType, ranking);
+			if (strength > bestStrength)
 			{
-				var combo = holeTriple.Concat(communityPair).ToList();
-				var handType = HandTypeDetermination.DetermineHandType(combo);
-				var strength = HandStrength.Calculate(combo, handType, ranking);
-				if (strength > bestStrength)
-				{
-					bestStrength = strength;
-					bestCombo = combo;
-				}
+				bestStrength = strength;
+				bestCombo = combo;
 			}
 		}
 

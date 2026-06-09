@@ -128,8 +128,8 @@
 		var result = await SignInManager.ExternalLoginSignInAsync(
 			_externalLoginInfo.LoginProvider,
 			_externalLoginInfo.ProviderKey,
-			isPersistent: false,
-			bypassTwoFactor: true);
+			false,
+			true);
 
 		if (result.Succeeded)
 		{
@@ -215,7 +215,7 @@
 				}
 				else
 				{
-					await SignInManager.SignInAsync(user, isPersistent: false, _externalLoginInfo.LoginProvider);
+					await SignInManager.SignInAsync(user, false, _externalLoginInfo.LoginProvider);
 					RedirectManager.RedirectTo(string.IsNullOrWhiteSpace(ReturnUrl) ? "/lobby" : ReturnUrl);
 				}
 			}

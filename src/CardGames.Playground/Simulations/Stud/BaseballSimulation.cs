@@ -92,7 +92,7 @@ public class BaseballSimulation
 			var extraCards = new List<Card>();
 
 			// Deal the missing board cards, checking for 4s which grant extra cards
-			for (int i = 0; i < missingCards; i++)
+			for (var i = 0; i < missingCards; i++)
 			{
 				var card = _dealer.DealCard();
 				dealtBoardCards.Add(card);
@@ -103,9 +103,7 @@ public class BaseballSimulation
 
 			// Also deal extra cards for any given board cards that are 4s
 			foreach (var givenCard in player.GivenBoardCards.Where(c => c.Symbol == Symbol.Four))
-			{
 				DealExtraCardsForFour(givenCard, extraCards);
-			}
 
 			player.DealtBoardCards = dealtBoardCards;
 			player.ExtraBoardCards = extraCards;
@@ -118,10 +116,7 @@ public class BaseballSimulation
 	/// </summary>
 	private void DealExtraCardsForFour(Card card, List<Card> extraCards)
 	{
-		if (card.Symbol != Symbol.Four)
-		{
-			return;
-		}
+		if (card.Symbol != Symbol.Four) return;
 
 		var extraCard = _dealer.DealCard();
 		extraCards.Add(extraCard);

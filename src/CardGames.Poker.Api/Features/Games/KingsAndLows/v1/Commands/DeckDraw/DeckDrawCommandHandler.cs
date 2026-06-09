@@ -31,55 +31,45 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new DeckDrawError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = DeckDrawErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in PlayerVsDeck phase
 		if (game.CurrentPhase != nameof(Phases.PlayerVsDeck))
-		{
 			return new DeckDrawError
 			{
 				Message = $"Cannot process deck draw. Game is in '{game.CurrentPhase}' phase, " +
 				          $"but must be in '{nameof(Phases.PlayerVsDeck)}' phase.",
 				Code = DeckDrawErrorCode.InvalidPhase
 			};
-		}
 
 		// 3. Find the player
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
-		{
 			return new DeckDrawError
 			{
 				Message = $"Player with ID '{command.PlayerId}' is not in this game.",
 				Code = DeckDrawErrorCode.PlayerNotFound
 			};
-		}
 
 		// 4. Validate discard indices
 		var discardIndices = command.DiscardIndices.ToList();
 		if (discardIndices.Any(i => i < 0 || i >= 5))
-		{
 			return new DeckDrawError
 			{
 				Message = "Invalid card indices. Indices must be between 0 and 4.",
 				Code = DeckDrawErrorCode.InvalidDiscardIndices
 			};
-		}
 
 		if (discardIndices.Count > MaxDiscards)
-		{
 			return new DeckDrawError
 			{
 				Message = $"Too many cards to discard. Maximum is {MaxDiscards}.",
 				Code = DeckDrawErrorCode.TooManyDiscards
 			};
-		}
 
 		// 5. Get the deck's hand cards (Location = Board with no GamePlayerId)
 		var deckCards = game.GameCards
@@ -97,7 +87,7 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 				.Take(5)
 				.ToList();
 
-			for (int i = 0; i < cardsInDeck.Count; i++)
+			for (var i = 0; i < cardsInDeck.Count; i++)
 			{
 				var card = cardsInDeck[i];
 				card.GamePlayerId = null; // Deck hand cards have no player
@@ -114,7 +104,6 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 		var discardedCards = new List<GameCard>();
 		var discardedCardInfos = new List<DeckCardInfo>();
 		foreach (var index in discardIndices.OrderByDescending(i => i))
-		{
 			if (index < deckCards.Count)
 			{
 				var card = deckCards[index];
@@ -131,7 +120,6 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 				card.Location = CardLocation.Discarded;
 				deckCards.RemoveAt(index);
 			}
-		}
 
 		// Reverse to maintain original order
 		discardedCardInfos.Reverse();
@@ -152,7 +140,7 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 			.ToListAsync(cancellationToken);
 
 		// Deal cards from the deck to the deck's hand
-		for (int i = 0; i < remainingDeckCards.Count; i++)
+		for (var i = 0; i < remainingDeckCards.Count; i++)
 		{
 			var cardFromDeck = remainingDeckCards[i];
 

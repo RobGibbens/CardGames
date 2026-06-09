@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -33,7 +31,7 @@ public class DeckDrawCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInPlayerVsDeckPhase_ReturnsInvalidPhase()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.Showdown));
+		var game = await SeedGameAsync(context, nameof(Phases.Showdown));
 		var playerId = await context.GamePlayers.Select(gp => gp.PlayerId).FirstAsync();
 		var sut = new DeckDrawCommandHandler(context);
 

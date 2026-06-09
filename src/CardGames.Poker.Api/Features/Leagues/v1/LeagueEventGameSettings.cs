@@ -55,34 +55,23 @@ internal static class LeagueEventGameSettings
 			var resolvedBlinds = ResolveBlindLevels(minBet, smallBlind, bigBlind);
 
 			if (!resolvedBlinds.SmallBlind.HasValue || resolvedBlinds.SmallBlind.Value <= 0)
-			{
 				return "Small blind must be greater than 0 for blind-based games.";
-			}
 
 			if (!resolvedBlinds.BigBlind.HasValue || resolvedBlinds.BigBlind.Value <= 0)
-			{
 				return "Big blind must be greater than 0 for blind-based games.";
-			}
 
 			if (resolvedBlinds.BigBlind.Value <= resolvedBlinds.SmallBlind.Value)
-			{
 				return "Big blind must be greater than small blind.";
-			}
 
 			return null;
 		}
 
 		if (rules.Betting.HasAntes)
 		{
-			if (!ante.HasValue || ante.Value <= 0)
-			{
-				return "Ante must be greater than 0 for ante-based games.";
-			}
+			if (!ante.HasValue || ante.Value <= 0) return "Ante must be greater than 0 for ante-based games.";
 
 			if (!minBet.HasValue || minBet.Value <= 0)
-			{
 				return "Minimum bet must be greater than 0 for ante-based games.";
-			}
 		}
 
 		return null;
@@ -95,10 +84,7 @@ internal static class LeagueEventGameSettings
 
 	public static int NormalizeMinBet(GameRules rules, int? minBet, int? bigBlind)
 	{
-		if (!rules.Betting.HasBlinds)
-		{
-			return minBet ?? 0;
-		}
+		if (!rules.Betting.HasBlinds) return minBet ?? 0;
 
 		return ResolveBlindLevels(minBet, null, bigBlind).BigBlind ?? 0;
 	}
@@ -115,20 +101,14 @@ internal static class LeagueEventGameSettings
 
 	public static int? NormalizeSmallBlind(GameRules rules, int? minBet, int? smallBlind, int? bigBlind)
 	{
-		if (!rules.Betting.HasBlinds)
-		{
-			return null;
-		}
+		if (!rules.Betting.HasBlinds) return null;
 
 		return ResolveBlindLevels(minBet, smallBlind, bigBlind).SmallBlind;
 	}
 
 	public static int? NormalizeBigBlind(GameRules rules, int? minBet, int? bigBlind)
 	{
-		if (!rules.Betting.HasBlinds)
-		{
-			return null;
-		}
+		if (!rules.Betting.HasBlinds) return null;
 
 		return ResolveBlindLevels(minBet, null, bigBlind).BigBlind;
 	}

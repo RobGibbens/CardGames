@@ -16,7 +16,7 @@ public static class SeedDevelopmentUsersEndpoint
 						error => error.Code switch
 						{
 							SeedDevelopmentUsersErrorCode.NoUsersConfigured =>
-								Results.Problem(detail: error.Message, statusCode: StatusCodes.Status400BadRequest),
+								Results.Problem(error.Message, statusCode: StatusCodes.Status400BadRequest),
 							_ => Results.Problem(error.Message)
 						});
 				})

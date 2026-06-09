@@ -26,10 +26,7 @@ public class Dealer<TCardKind> where TCardKind : class
 	public TCardKind DealCard()
 	{
 		var cardsLeft = Deck.NumberOfCardsLeft();
-		if (cardsLeft < 1)
-		{
-			throw new InvalidOperationException("There are no more cards in the deck to deal.");
-		}
+		if (cardsLeft < 1) throw new InvalidOperationException("There are no more cards in the deck to deal.");
 
 		var nextCardPosition = NumberGenerator.Next(cardsLeft);
 		return Deck.GetFromRemaining(nextCardPosition);

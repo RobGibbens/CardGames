@@ -14,7 +14,7 @@ public static class ServiceBusExtensions
 		var serviceBus = builder
 			.AddAzureServiceBus("messaging")
 			.RunAsEmulator();
-		IReadOnlyList<string> topics = TopicNames.GetTopics(typeof(TopicNames));
+		var topics = TopicNames.GetTopics(typeof(TopicNames));
 
 		foreach (var topic in topics)
 		{
@@ -25,12 +25,8 @@ public static class ServiceBusExtensions
 				var serviceBusTopic = serviceBus.AddServiceBusTopic(topic);
 
 				foreach (var subscription in subscriptions)
-				{
 					if (!string.IsNullOrWhiteSpace(subscription))
-					{
 						serviceBusTopic.AddServiceBusSubscription(subscription);
-					}
-				}
 			}
 		}
 

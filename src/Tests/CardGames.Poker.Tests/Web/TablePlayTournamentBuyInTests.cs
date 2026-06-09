@@ -12,7 +12,7 @@ public class TablePlayTournamentBuyInTests
 	[Fact]
 	public void CreateLocalGameResponse_PreservesTournamentBuyIn()
 	{
-		var source = CreateGameResponse(tournamentBuyIn: 250, maxBuyIn: 1_000, requiresJoinApproval: true);
+		var source = CreateGameResponse(250, 1_000, true);
 
 		var mapped = InvokeCreateLocalGameResponse(source);
 
@@ -25,7 +25,7 @@ public class TablePlayTournamentBuyInTests
 	public void InitializeJoinBuyInFromTable_UsesFixedTournamentBuyIn()
 	{
 		var tablePlay = new TablePlay();
-		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: 250));
+		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(250));
 
 		InvokeInstanceMethod(tablePlay, "InitializeJoinBuyInFromTable");
 
@@ -36,7 +36,7 @@ public class TablePlayTournamentBuyInTests
 	public void IsLeagueTournament_ReturnsTrue_WhenTournamentBuyInIsSet()
 	{
 		var tablePlay = new TablePlay();
-		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: 250));
+		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(250));
 
 		GetPrivateProperty<bool>(tablePlay, "IsLeagueTournament").Should().BeTrue();
 	}
@@ -45,7 +45,7 @@ public class TablePlayTournamentBuyInTests
 	public void IsLeagueTournament_ReturnsFalse_WhenTournamentBuyInIsMissing()
 	{
 		var tablePlay = new TablePlay();
-		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: null));
+		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(null));
 
 		GetPrivateProperty<bool>(tablePlay, "IsLeagueTournament").Should().BeFalse();
 	}
@@ -54,7 +54,7 @@ public class TablePlayTournamentBuyInTests
 	public void ShouldStartHoldEmFamilyGameViaGenericEndpoint_ReturnsTrue_ForHoldEmLeagueTournament()
 	{
 		var tablePlay = new TablePlay();
-		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: 250));
+		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(250));
 		SetPrivateField(tablePlay, "_gameTypeCode", "HOLDEM");
 
 		InvokeBooleanInstanceMethod(tablePlay, "ShouldStartHoldEmFamilyGameViaGenericEndpoint").Should().BeTrue();
@@ -64,7 +64,7 @@ public class TablePlayTournamentBuyInTests
 	public void ShouldStartHoldEmFamilyGameViaGenericEndpoint_ReturnsFalse_ForNonTournamentHoldEmTable()
 	{
 		var tablePlay = new TablePlay();
-		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: null));
+		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(null));
 		SetPrivateField(tablePlay, "_gameTypeCode", "HOLDEM");
 
 		InvokeBooleanInstanceMethod(tablePlay, "ShouldStartHoldEmFamilyGameViaGenericEndpoint").Should().BeFalse();
@@ -74,7 +74,7 @@ public class TablePlayTournamentBuyInTests
 	public void ShouldStartHoldEmFamilyGameViaGenericEndpoint_ReturnsTrue_ForRedRiverLeagueTournament()
 	{
 		var tablePlay = new TablePlay();
-		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: 250));
+		SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(250));
 		SetPrivateField(tablePlay, "_gameTypeCode", "REDRIVER");
 
 		InvokeBooleanInstanceMethod(tablePlay, "ShouldStartHoldEmFamilyGameViaGenericEndpoint").Should().BeTrue();
@@ -139,38 +139,38 @@ public class TablePlayTournamentBuyInTests
 		bool requiresJoinApproval = false)
 	{
 		return new GetGameResponse(
-			ante: 10,
-			bigBet: 20,
-			bigBlind: 0,
-			bringIn: 0,
-			bringInPlayerIndex: -1,
-			canContinue: true,
-			createdAt: DateTimeOffset.Parse("2026-04-06T00:00:00+00:00"),
-			createdById: "host-id",
-			createdByName: "host@example.com",
-			currentDrawPlayerIndex: -1,
-			currentHandNumber: 0,
-			currentPhase: "WaitingForPlayers",
-			currentPhaseDescription: "Waiting for players",
-			currentPlayerIndex: -1,
-			dealerPosition: 0,
-			endedAt: null,
-			gameSettings: "{}",
-			gameTypeCode: "FIVECARDDRAW",
-			gameTypeId: Guid.Parse("11111111-1111-1111-1111-111111111111"),
-			gameTypeName: "Five Card Draw",
-			id: Guid.Parse("22222222-2222-2222-2222-222222222222"),
-			maximumNumberOfPlayers: 8,
-			minBet: 20,
-			minimumNumberOfPlayers: 2,
-			name: "Tournament Table",
-			randomSeed: 123,
-			rowVersion: "rv",
-			smallBet: 10,
-			smallBlind: 0,
-			startedAt: null,
-			status: GameStatus.WaitingForPlayers,
-			updatedAt: DateTimeOffset.Parse("2026-04-06T00:00:00+00:00"))
+			10,
+			20,
+			0,
+			0,
+			-1,
+			true,
+			DateTimeOffset.Parse("2026-04-06T00:00:00+00:00"),
+			"host-id",
+			"host@example.com",
+			-1,
+			0,
+			"WaitingForPlayers",
+			"Waiting for players",
+			-1,
+			0,
+			null,
+			"{}",
+			"FIVECARDDRAW",
+			Guid.Parse("11111111-1111-1111-1111-111111111111"),
+			"Five Card Draw",
+			Guid.Parse("22222222-2222-2222-2222-222222222222"),
+			8,
+			20,
+			2,
+			"Tournament Table",
+			123,
+			"rv",
+			10,
+			0,
+			null,
+			GameStatus.WaitingForPlayers,
+			DateTimeOffset.Parse("2026-04-06T00:00:00+00:00"))
 		{
 			TournamentBuyIn = tournamentBuyIn,
 			MaxBuyIn = maxBuyIn,

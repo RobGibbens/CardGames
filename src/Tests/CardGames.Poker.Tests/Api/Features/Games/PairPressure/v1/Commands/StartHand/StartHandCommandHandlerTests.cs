@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -35,7 +33,7 @@ public class StartHandCommandHandlerTests
 	public async Task Handle_WhenGameIsInInvalidPhase_ReturnsInvalidGameState()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.ThirdStreet));
+		var game = await SeedGameAsync(context, nameof(Phases.ThirdStreet));
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new StartHandCommand(game.Id), CancellationToken.None);
@@ -158,9 +156,7 @@ public class StartHandCommandHandlerTests
 		}
 
 		if (includeExistingCards)
-		{
 			for (var dealOrder = 0; dealOrder < 4; dealOrder++)
-			{
 				context.GameCards.Add(new GameCard
 				{
 					Id = Guid.NewGuid(),
@@ -175,8 +171,6 @@ public class StartHandCommandHandlerTests
 					DealtAt = now,
 					DealtAtPhase = nameof(Phases.Dealing)
 				});
-			}
-		}
 
 		await context.SaveChangesAsync();
 		return game;

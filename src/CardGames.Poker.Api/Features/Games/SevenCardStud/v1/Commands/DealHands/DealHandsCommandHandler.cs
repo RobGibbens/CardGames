@@ -35,26 +35,22 @@ public class DealHandsCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new DealHandsError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = DealHandsErrorCode.GameNotFound
 			};
-		}
 
 		logger.LogDebug(
 			"Game loaded for dealing: Phase {Phase}, Hand {HandNumber}, Players {PlayerCount}",
 			game.CurrentPhase, game.CurrentHandNumber, game.GamePlayers.Count);
 
 		if (string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
-		{
 			return new DealHandsError
 			{
 				Message = "Good Bad Ugly dealing is handled by the GoodBadUgly endpoint.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
-		}
 
 		// 2. Validate game state
 		var validPhases = new[]
@@ -100,13 +96,11 @@ public class DealHandsCommandHandler(
 			.ToListAsync(cancellationToken);
 
 		if (deckCards.Count == 0)
-		{
 			return new DealHandsError
 			{
 				Message = "No deck cards available. The deck may not have been created when the hand started.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
-		}
 
 		var deckIndex = 0;
 
@@ -150,12 +144,8 @@ public class DealHandsCommandHandler(
 					             !gc.IsDiscarded)
 					.ToListAsync(cancellationToken);
 
-				if (staleCards.Count > 0)
-				{
-					context.GameCards.RemoveRange(staleCards);
-					// Note: We don't SaveChanges here - it will be done at the end of the deal
-				}
-
+				if (staleCards.Count > 0) context.GameCards.RemoveRange(staleCards);
+				// Note: We don't SaveChanges here - it will be done at the end of the deal
 				// Reset the count so DealOrder starts at 1
 				existingCardCount = 0;
 			}
@@ -177,16 +167,14 @@ public class DealHandsCommandHandler(
 			if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 			{
 				// Deal 2 hole + 1 board
-				for (int i = 0; i < 2; i++)
+				for (var i = 0; i < 2; i++)
 				{
 					if (deckIndex >= deckCards.Count)
-					{
 						return new DealHandsError
 						{
 							Message = "Not enough cards in deck to complete dealing.",
 							Code = DealHandsErrorCode.InvalidGameState
 						};
-					}
 
 					var gameCard = deckCards[deckIndex++];
 					AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false,
@@ -196,13 +184,11 @@ public class DealHandsCommandHandler(
 				}
 
 				if (deckIndex >= deckCards.Count)
-				{
 					return new DealHandsError
 					{
 						Message = "Not enough cards in deck to complete dealing.",
 						Code = DealHandsErrorCode.InvalidGameState
 					};
-				}
 
 				var boardGameCard = deckCards[deckIndex++];
 				AssignCardToPlayer(boardGameCard, gamePlayer, CardLocation.Board, playerDealOrder++, true,
@@ -214,13 +200,11 @@ public class DealHandsCommandHandler(
 			{
 				// Deal 1 hole card
 				if (deckIndex >= deckCards.Count)
-				{
 					return new DealHandsError
 					{
 						Message = "Not enough cards in deck to complete dealing.",
 						Code = DealHandsErrorCode.InvalidGameState
 					};
-				}
 
 				var gameCard = deckCards[deckIndex++];
 				AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false, game.CurrentPhase,
@@ -232,13 +216,11 @@ public class DealHandsCommandHandler(
 			{
 				// Deal 1 board card (4th, 5th, 6th streets)
 				if (deckIndex >= deckCards.Count)
-				{
 					return new DealHandsError
 					{
 						Message = "Not enough cards in deck to complete dealing.",
 						Code = DealHandsErrorCode.InvalidGameState
 					};
-				}
 
 				var gameCard = deckCards[deckIndex++];
 				AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, game.CurrentPhase,
@@ -261,10 +243,7 @@ public class DealHandsCommandHandler(
 		}
 
 		// 6. Reset current bets for all players before betting round
-		foreach (var gamePlayer in game.GamePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in game.GamePlayers) gamePlayer.CurrentBet = 0;
 
 		// Persist dealt cards before determining first actor so visible-hand evaluation
 		// includes newly dealt up-cards on this street.
@@ -272,7 +251,7 @@ public class DealHandsCommandHandler(
 
 		// 7. Determine first player to act based on street
 		int firstActorSeatPosition;
-		int currentBet = 0;
+		var currentBet = 0;
 
 		if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 		{
@@ -300,9 +279,7 @@ public class DealHandsCommandHandler(
 		}
 
 		if (firstActorSeatPosition < 0)
-		{
 			firstActorSeatPosition = GetPlayerLeftOfDealerSeatPosition(activePlayers, game.DealerPosition);
-		}
 
 		// 8. Determine min bet based on street (small bet for 3rd/4th, big bet for 5th/6th/7th)
 		var isSmallBetStreet = game.CurrentPhase == nameof(Phases.ThirdStreet) ||
@@ -384,17 +361,14 @@ public class DealHandsCommandHandler(
 	/// </summary>
 	private static int FindBringInPlayer(List<GamePlayer> activePlayers, List<PlayerDealtCards> playerHands)
 	{
-		int lowestSeatPosition = -1;
+		var lowestSeatPosition = -1;
 		DealtCard? lowestCard = null;
 
 		foreach (var playerHand in playerHands)
 		{
 			// The last card dealt on Third Street is the up card (board card)
 			var upCard = playerHand.Cards.LastOrDefault();
-			if (upCard is null)
-			{
-				continue;
-			}
+			if (upCard is null) continue;
 
 			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
 			{
@@ -415,10 +389,7 @@ public class DealHandsCommandHandler(
 		var aValue = GetCardValue(a.Symbol);
 		var bValue = GetCardValue(b.Symbol);
 
-		if (aValue != bValue)
-		{
-			return aValue.CompareTo(bValue);
-		}
+		if (aValue != bValue) return aValue.CompareTo(bValue);
 
 		// Suit order for ties: Clubs (0) < Diamonds (1) < Hearts (2) < Spades (3)
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
@@ -464,7 +435,7 @@ public class DealHandsCommandHandler(
 	private static int FindBestVisibleHandPlayer(List<GamePlayer> activePlayers, Guid gameId, int handNumber,
 		CardsDbContext context)
 	{
-		int bestSeatPosition = -1;
+		var bestSeatPosition = -1;
 		long bestStrength = -1;
 
 		foreach (var player in activePlayers)
@@ -492,10 +463,7 @@ public class DealHandsCommandHandler(
 
 	private static int GetPlayerLeftOfDealerSeatPosition(List<GamePlayer> activePlayers, int dealerSeatPosition)
 	{
-		if (activePlayers.Count == 0)
-		{
-			return -1;
-		}
+		if (activePlayers.Count == 0) return -1;
 
 		var maxSeatPosition = activePlayers.Max(p => p.SeatPosition);
 		var totalSeats = maxSeatPosition + 1;
@@ -539,15 +507,11 @@ public class DealHandsCommandHandler(
 		{
 			var pairs = valueCounts.Where(g => g.Count() >= 2).ToList();
 			if (pairs.Count >= 2)
-			{
 				// Two pair
 				strength = 3_000_000 + pairs[0].Key * 1000 + pairs[1].Key * 10;
-			}
 			else
-			{
 				// One pair
 				strength = 2_000_000 + pairs[0].Key * 1000;
-			}
 		}
 		else
 		{
@@ -556,16 +520,10 @@ public class DealHandsCommandHandler(
 		}
 
 		// Add kicker values for tie-breaking
-		foreach (var card in cards.Take(4))
-		{
-			strength = strength * 15 + GetCardValue(card.Symbol);
-		}
+		foreach (var card in cards.Take(4)) strength = strength * 15 + GetCardValue(card.Symbol);
 
 		// Add suit rank for final tie-breaking (highest suit of the best card wins)
-		if (cards.Count > 0)
-		{
-			strength = strength * 4 + GetSuitRank(cards[0].Suit);
-		}
+		if (cards.Count > 0) strength = strength * 4 + GetSuitRank(cards[0].Suit);
 
 		return strength;
 	}

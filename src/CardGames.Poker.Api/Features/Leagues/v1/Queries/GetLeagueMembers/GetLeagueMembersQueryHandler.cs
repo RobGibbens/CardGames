@@ -16,9 +16,7 @@ public sealed class GetLeagueMembersQueryHandler(
 		GetLeagueMembersQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueMembersError(GetLeagueMembersErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var isActiveMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -26,10 +24,8 @@ public sealed class GetLeagueMembersQueryHandler(
 				cancellationToken);
 
 		if (!isActiveMember)
-		{
 			return new GetLeagueMembersError(GetLeagueMembersErrorCode.Forbidden,
 				"Only active members can view league members.");
-		}
 
 		var members = await context.LeagueMembersCurrent
 			.AsNoTracking()

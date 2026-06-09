@@ -11,10 +11,7 @@ public class OmahaPlayer : CommunityCardGamePlayer
 	{
 		Name = name;
 
-		if (holeCards.Count > 4)
-		{
-			throw new ArgumentException($"{name} has too many hole cards to play Omaha.");
-		}
+		if (holeCards.Count > 4) throw new ArgumentException($"{name} has too many hole cards to play Omaha.");
 
 		GivenHoleCards = holeCards;
 	}

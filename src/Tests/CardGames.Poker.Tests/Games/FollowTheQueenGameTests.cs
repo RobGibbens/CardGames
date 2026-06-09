@@ -25,7 +25,7 @@ public class FollowTheQueenGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		var act = () => new FollowTheQueenGame(players, 5, 5, 10, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -36,7 +36,7 @@ public class FollowTheQueenGameTests
 	{
 		var players = Enumerable.Range(1, 8).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		var act = () => new FollowTheQueenGame(players, 5, 5, 10, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 7 players*");
@@ -326,7 +326,7 @@ public class FollowTheQueenGameTests
 			("Alice", 1000),
 			("Bob", 0)
 		};
-		var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		var game = new FollowTheQueenGame(players, 5, 5, 10, 20);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -393,7 +393,7 @@ public class FollowTheQueenGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new FollowTheQueenGame(players, 5, 5, 10, 20, false);
 
 		game.UseBringIn.Should().BeFalse();
 	}
@@ -406,7 +406,7 @@ public class FollowTheQueenGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new FollowTheQueenGame(players, 5, 5, 10, 20, false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -424,7 +424,7 @@ public class FollowTheQueenGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new FollowTheQueenGame(players, 5, 5, 10, 20, false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -443,7 +443,7 @@ public class FollowTheQueenGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new FollowTheQueenGame(players, 5, 5, 10, 20, false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -463,7 +463,7 @@ public class FollowTheQueenGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new FollowTheQueenGame(players, 5, 5, 10, 20, false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -476,13 +476,8 @@ public class FollowTheQueenGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 
 		// Verify game progressed to fourth street
@@ -496,7 +491,7 @@ public class FollowTheQueenGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		return new FollowTheQueenGame(players, 5, 5, 10, 20);
 	}
 
 	private static void SetupToFourthStreet(FollowTheQueenGame game)
@@ -512,13 +507,8 @@ public class FollowTheQueenGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -533,13 +523,8 @@ public class FollowTheQueenGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -554,13 +539,8 @@ public class FollowTheQueenGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 
 		// Sixth street
@@ -570,13 +550,8 @@ public class FollowTheQueenGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -591,13 +566,8 @@ public class FollowTheQueenGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 }

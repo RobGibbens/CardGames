@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -28,7 +26,7 @@ public class PlaceBetCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(Guid.NewGuid(), Guid.NewGuid(), Amount: 10),
+		var result = await sut.Handle(new PlaceBetCommand(Guid.NewGuid(), Guid.NewGuid(), 10),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -39,11 +37,11 @@ public class PlaceBetCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInInBetweenTurnPhase_ReturnsInvalidPhase()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.PreFlop));
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var game = await SeedGameAsync(context, nameof(Phases.PreFlop));
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, Amount: 10), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, 10), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.InvalidPhase);
@@ -57,7 +55,7 @@ public class PlaceBetCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, Guid.NewGuid(), Amount: 10), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, Guid.NewGuid(), 10), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.PlayerNotFound);
@@ -68,10 +66,10 @@ public class PlaceBetCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, currentPlayerIndex: 1);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, Amount: 10), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, 10), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.NotPlayersTurn);
@@ -82,10 +80,10 @@ public class PlaceBetCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, subPhase: TurnSubPhase.AwaitingAceChoice);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, Amount: 10), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, 10), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.AceChoiceRequired);
@@ -96,10 +94,10 @@ public class PlaceBetCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, Amount: -1), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, -1), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.InvalidBetAmount);
@@ -111,10 +109,10 @@ public class PlaceBetCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, potAmount: 25, playerChips: 100);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, Amount: 30), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, 30), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.BetExceedsPot);
@@ -125,10 +123,10 @@ public class PlaceBetCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, potAmount: 100, playerChips: 40);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, Amount: 50), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, 50), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.BetExceedsChips);
@@ -139,10 +137,10 @@ public class PlaceBetCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, potAmount: 100, playerChips: 0);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, Amount: 1), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, 1), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.InvalidBetAmount);
@@ -154,10 +152,10 @@ public class PlaceBetCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, potAmount: 60, playersCompletedFirstTurn: [1]);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, Amount: 60), CancellationToken.None);
+		var result = await sut.Handle(new PlaceBetCommand(game.Id, playerId, 60), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(PlaceBetErrorCode.FullPotNotAllowedFirstOrbit);
@@ -184,7 +182,7 @@ public class PlaceBetCommandHandlerTests
 					(CardSuit.Diamonds, CardSymbol.Ten)
 				]);
 			gameId = game.Id;
-			playerId = await GetPlayerIdAsync(setupContext, game.Id, seatPosition: 0);
+			playerId = await GetPlayerIdAsync(setupContext, game.Id, 0);
 		}
 
 		await using var staleContext = CreateContext(databaseName, databaseRoot);
@@ -201,9 +199,9 @@ public class PlaceBetCommandHandlerTests
 		var staleSut = CreateSut(staleContext);
 
 		var firstResult =
-			await freshSut.Handle(new PlaceBetCommand(gameId, playerId, Amount: 10), CancellationToken.None);
+			await freshSut.Handle(new PlaceBetCommand(gameId, playerId, 10), CancellationToken.None);
 		var secondResult =
-			await staleSut.Handle(new PlaceBetCommand(gameId, playerId, Amount: 10), CancellationToken.None);
+			await staleSut.Handle(new PlaceBetCommand(gameId, playerId, 10), CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
 		secondResult.IsT0.Should().BeTrue();
@@ -302,8 +300,8 @@ public class PlaceBetCommandHandlerTests
 		var alice = CreatePlayer("Alice", now);
 		var bob = CreatePlayer("Bob", now);
 
-		var aliceGamePlayer = CreateGamePlayer(game, alice, seatPosition: 0, chipStack: playerChips, now);
-		var bobGamePlayer = CreateGamePlayer(game, bob, seatPosition: 1, chipStack: 100, now);
+		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, playerChips, now);
+		var bobGamePlayer = CreateGamePlayer(game, bob, 1, 100, now);
 
 		context.GameTypes.Add(gameType);
 		context.Games.Add(game);

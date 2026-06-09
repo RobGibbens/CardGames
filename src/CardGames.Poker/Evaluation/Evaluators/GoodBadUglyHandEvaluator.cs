@@ -51,21 +51,14 @@ public sealed class GoodBadUglyHandEvaluator : IHandEvaluator
 	/// <inheritdoc />
 	public IReadOnlyCollection<int> GetWildCardIndexes(IReadOnlyCollection<Card> cards)
 	{
-		if (!WildRank.HasValue)
-		{
-			return [];
-		}
+		if (!WildRank.HasValue) return [];
 
 		var cardList = cards.ToList();
 		var wildIndexes = new List<int>();
 
 		for (var i = 0; i < cardList.Count; i++)
-		{
 			if (cardList[i].Value == WildRank.Value)
-			{
 				wildIndexes.Add(i);
-			}
-		}
 
 		return wildIndexes;
 	}

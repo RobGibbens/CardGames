@@ -148,10 +148,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 			.Where(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber)
 			.ToListAsync(cancellationToken);
 
-		if (existingCards.Count == 0)
-		{
-			await CreateFreshDeckAsync(context, game, now, cancellationToken);
-		}
+		if (existingCards.Count == 0) await CreateFreshDeckAsync(context, game, now, cancellationToken);
 
 		// Set the first player (left of dealer)
 		game.CurrentPhase = nameof(Phases.InBetweenTurn);
@@ -284,7 +281,9 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		secondCard.DealtAt = now;
 
 		// Check if first card is an Ace — requires player to choose high or low
-		state.SubPhase = firstCard.Symbol == CardSymbol.Ace ? TurnSubPhase.AwaitingAceChoice : TurnSubPhase.AwaitingBetOrPass;
+		state.SubPhase = firstCard.Symbol == CardSymbol.Ace
+			? TurnSubPhase.AwaitingAceChoice
+			: TurnSubPhase.AwaitingBetOrPass;
 
 		state.AceIsHigh = null;
 		state.BetAmount = 0;
@@ -342,10 +341,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		var high = GetEffectiveValue(boundaryCards[1].Symbol, true); // second boundary
 
 		// If ace choice was made, apply it to the first card
-		if (boundaryCards[0].Symbol == CardSymbol.Ace && state.AceIsHigh.HasValue)
-		{
-			low = state.AceIsHigh.Value ? 14 : 1;
-		}
+		if (boundaryCards[0].Symbol == CardSymbol.Ace && state.AceIsHigh.HasValue) low = state.AceIsHigh.Value ? 14 : 1;
 
 		// Ensure low < high
 		if (low > high)
@@ -543,7 +539,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	///     Ace value depends on player choice: high (14) or low (1).
 	///     Non-ace cards use their enum value.
 	/// </summary>
-	internal static int GetEffectiveValue(CardSymbol symbol, bool? aceIsHigh)
+	private static int GetEffectiveValue(CardSymbol symbol, bool? aceIsHigh)
 	{
 		if (symbol == CardSymbol.Ace)
 			return aceIsHigh == true ? 14 : 1;
@@ -688,7 +684,6 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		mainPot.IsAwarded = true;
 		mainPot.AwardedAt = now;
 		if (winner is not null)
-		{
 			mainPot.WinnerPayouts = JsonSerializer.Serialize(new[]
 			{
 				new
@@ -698,7 +693,6 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 					amount = 0 // pot is already empty — winnings were already transferred
 				}
 			});
-		}
 
 		game.CurrentPhase = nameof(Phases.Complete);
 		game.HandCompletedAt = now;

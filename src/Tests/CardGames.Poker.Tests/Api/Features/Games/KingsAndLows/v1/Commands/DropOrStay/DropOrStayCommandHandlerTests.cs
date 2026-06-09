@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -36,7 +34,7 @@ public class DropOrStayCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInDropOrStayPhase_ReturnsInvalidPhase()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.DrawPhase));
+		var game = await SeedGameAsync(context, nameof(Phases.DrawPhase));
 		var playerId = await context.GamePlayers.Where(gp => gp.GameId == game.Id).Select(gp => gp.PlayerId)
 			.FirstAsync();
 		var sut = CreateSut(context);

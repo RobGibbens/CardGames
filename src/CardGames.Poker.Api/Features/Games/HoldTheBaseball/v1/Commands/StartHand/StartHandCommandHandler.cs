@@ -30,13 +30,11 @@ public class StartHandCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new StartHandError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = StartHandErrorCode.GameNotFound
 			};
-		}
 
 		var validPhases = new[]
 		{
@@ -45,7 +43,6 @@ public class StartHandCommandHandler(
 		};
 
 		if (!validPhases.Contains(game.CurrentPhase))
-		{
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
@@ -53,7 +50,6 @@ public class StartHandCommandHandler(
 				          $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
-		}
 
 		ProcessPendingLeaveRequests(game, now);
 		ApplyPendingChips(game);
@@ -65,14 +61,12 @@ public class StartHandCommandHandler(
 			.ToList();
 
 		if (eligiblePlayers.Count < 2)
-		{
 			return new StartHandError
 			{
 				Message =
 					"Not enough eligible players to start a new hand. At least 2 players with chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
-		}
 
 		ResetPlayerStates(game);
 		await RemovePreviousHandCardsAsync(game, cancellationToken);
@@ -160,10 +154,7 @@ public class StartHandCommandHandler(
 			             gp.ChipStack <= 0)
 			.ToList();
 
-		foreach (var player in playersWithNoChips)
-		{
-			player.IsSittingOut = true;
-		}
+		foreach (var player in playersWithNoChips) player.IsSittingOut = true;
 	}
 
 	private static void ResetPlayerStates(Game game)
@@ -185,10 +176,7 @@ public class StartHandCommandHandler(
 			.Where(gc => gc.GameId == game.Id)
 			.ToListAsync(cancellationToken);
 
-		if (existingCards.Count > 0)
-		{
-			context.GameCards.RemoveRange(existingCards);
-		}
+		if (existingCards.Count > 0) context.GameCards.RemoveRange(existingCards);
 	}
 
 	private async Task CompleteOpenBettingRoundsAsync(Game game, DateTimeOffset now,

@@ -353,16 +353,10 @@ public class PotManagerTests
 		var payouts = potManager.AwardPots(eligiblePlayers =>
 		{
 			// Lynne has best hand, but she's only eligible for pots she contributed to
-			if (eligiblePlayers.Contains("Lynne"))
-			{
-				return new[] { "Lynne" };
-			}
+			if (eligiblePlayers.Contains("Lynne")) return new[] { "Lynne" };
 
 			// For pots where Lynne isn't eligible, Dean wins
-			if (eligiblePlayers.Contains("Dean"))
-			{
-				return new[] { "Dean" };
-			}
+			if (eligiblePlayers.Contains("Dean")) return new[] { "Dean" };
 
 			// Rob wins any pot where he's the only eligible player
 			return new[] { "Rob" };

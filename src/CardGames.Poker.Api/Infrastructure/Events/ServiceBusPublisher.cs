@@ -47,9 +47,6 @@ public class ServiceBusPublisher : IServiceBusPublisher, IAsyncDisposable
 
 	private async Task EnsureQueueExistsAsync(string queueName)
 	{
-		if (!await _adminClient.QueueExistsAsync(queueName))
-		{
-			await _adminClient.CreateQueueAsync(queueName);
-		}
+		if (!await _adminClient.QueueExistsAsync(queueName)) await _adminClient.CreateQueueAsync(queueName);
 	}
 }

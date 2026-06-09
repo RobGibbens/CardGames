@@ -83,7 +83,7 @@
 
 			if (!response.IsSuccessStatusCode)
 			{
-				string errorMessage = string.Empty;
+				var errorMessage = string.Empty;
 				if (response?.Error is ApiException apiException)
 				{
 					errorMessage = apiException.Content ?? string.Empty;

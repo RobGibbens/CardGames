@@ -44,17 +44,13 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
 				if (type == typeof(DbContextOptions<CardsDbContext>) ||
 				    type == typeof(DbContextOptions) ||
 				    type == typeof(CardsDbContext))
-				{
 					return true;
-				}
 
 				// Generic Infrastructure (Pools, Leases)
 				if (type.FullName != null &&
 				    (type.FullName.Contains("Microsoft.EntityFrameworkCore.Internal.IDbContextPool") ||
 				     type.FullName.Contains("Microsoft.EntityFrameworkCore.Internal.IScopedDbContextLease")))
-				{
 					return true;
-				}
 
 				// Configuration Options (IConfigureOptions<>, IPostConfigureOptions<>, etc.)
 				// These are where UseSqlServer calls are hiding
@@ -72,19 +68,14 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
 							    arg == typeof(DbContextOptions) ||
 							    arg == typeof(CardsDbContext)
 						    ))
-						{
 							return true;
-						}
 					}
 				}
 
 				return false;
 			}).ToList();
 
-			foreach (var d in descriptorsToRemove)
-			{
-				services.Remove(d);
-			}
+			foreach (var d in descriptorsToRemove) services.Remove(d);
 
 			// Register HybridCache for tests
 #pragma warning disable EXTEXP0018
@@ -116,10 +107,7 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
 					.Where(r => r.Name != "self")
 					.ToList();
 
-				foreach (var check in checksToRemove)
-				{
-					options.Registrations.Remove(check);
-				}
+				foreach (var check in checksToRemove) options.Registrations.Remove(check);
 			});
 
 			// If we need to bypass authentication, we can add a custom handler here.

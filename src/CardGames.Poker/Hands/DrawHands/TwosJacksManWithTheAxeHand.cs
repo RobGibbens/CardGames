@@ -66,10 +66,7 @@ public sealed class TwosJacksManWithTheAxeDrawHand : FiveCardHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 

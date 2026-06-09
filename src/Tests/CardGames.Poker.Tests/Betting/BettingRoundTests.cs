@@ -12,7 +12,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 
 		var available = round.GetAvailableActions();
 
@@ -27,7 +27,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 
 		var result = round.ProcessAction(BettingActionType.Check);
 
@@ -41,7 +41,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 
 		var result = round.ProcessAction(BettingActionType.Bet, 20);
 
@@ -55,7 +55,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 		round.ProcessAction(BettingActionType.Bet, 20);
 
 		var available = round.GetAvailableActions();
@@ -73,7 +73,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 		round.ProcessAction(BettingActionType.Bet, 20);
 
 		var result = round.ProcessAction(BettingActionType.Call);
@@ -88,7 +88,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 		round.ProcessAction(BettingActionType.Bet, 20);
 
 		var result = round.ProcessAction(BettingActionType.Fold);
@@ -101,9 +101,9 @@ public class BettingRoundTests
 	[Fact]
 	public void ProcessAction_AllIn_BetsAllChips()
 	{
-		var players = CreateTwoPlayers(chipStack: 50);
+		var players = CreateTwoPlayers(50);
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 
 		var result = round.ProcessAction(BettingActionType.AllIn);
 
@@ -118,7 +118,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 
 		round.ProcessAction(BettingActionType.Check);
 		var result = round.ProcessAction(BettingActionType.Check);
@@ -132,7 +132,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 
 		round.ProcessAction(BettingActionType.Bet, 20);
 		var result = round.ProcessAction(BettingActionType.Call);
@@ -146,7 +146,7 @@ public class BettingRoundTests
 	{
 		var players = CreateTwoPlayers();
 		var potManager = new PotManager();
-		var round = new BettingRound(players, potManager, dealerPosition: 0, minBet: 10);
+		var round = new BettingRound(players, potManager, 0, 10);
 
 		round.ProcessAction(BettingActionType.Bet, 20);
 		var result = round.ProcessAction(BettingActionType.Raise, 40);

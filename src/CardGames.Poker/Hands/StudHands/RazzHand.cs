@@ -32,10 +32,7 @@ public sealed class RazzHand : HandBase
 
 	protected override IEnumerable<IReadOnlyCollection<Card>> PossibleHands()
 	{
-		if (Cards.Count < 5)
-		{
-			return [Cards];
-		}
+		if (Cards.Count < 5) return [Cards];
 
 		return Cards
 			.SubsetsOfSize(5)
@@ -117,10 +114,7 @@ public sealed class RazzHand : HandBase
 	private static long EncodeBaseN(IEnumerable<int> values, int @base)
 	{
 		long result = 0;
-		foreach (var value in values)
-		{
-			result = result * @base + value;
-		}
+		foreach (var value in values) result = result * @base + value;
 
 		return result;
 	}

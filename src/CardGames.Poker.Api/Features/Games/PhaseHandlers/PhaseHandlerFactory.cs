@@ -40,7 +40,6 @@ public sealed class PhaseHandlerFactory : IPhaseHandlerFactory
 			.Where(t => t is { IsClass: true, IsAbstract: false } && handlerInterface.IsAssignableFrom(t));
 
 		foreach (var handlerType in handlerTypes)
-		{
 			try
 			{
 				if (Activator.CreateInstance(handlerType) is IPhaseHandler handler)
@@ -60,7 +59,6 @@ public sealed class PhaseHandlerFactory : IPhaseHandlerFactory
 			{
 				// Skip handlers that can't be instantiated
 			}
-		}
 
 		_allHandlers = handlers.AsReadOnly();
 		_handlersByPhase = handlersByPhase.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
@@ -100,10 +98,8 @@ public sealed class PhaseHandlerFactory : IPhaseHandlerFactory
 	public IPhaseHandler GetHandler(string phaseId, string gameTypeCode)
 	{
 		if (!TryGetHandler(phaseId, gameTypeCode, out var handler))
-		{
 			throw new InvalidOperationException(
 				$"No phase handler found for phase '{phaseId}' and game type '{gameTypeCode}'.");
-		}
 
 		return handler!;
 	}
@@ -113,15 +109,9 @@ public sealed class PhaseHandlerFactory : IPhaseHandlerFactory
 	{
 		handler = null;
 
-		if (string.IsNullOrWhiteSpace(phaseId))
-		{
-			return false;
-		}
+		if (string.IsNullOrWhiteSpace(phaseId)) return false;
 
-		if (!_handlersByPhase.TryGetValue(phaseId, out var phaseHandlers))
-		{
-			return false;
-		}
+		if (!_handlersByPhase.TryGetValue(phaseId, out var phaseHandlers)) return false;
 
 		// First, try to find a handler specific to this game type
 		handler = phaseHandlers.FirstOrDefault(h =>
@@ -143,10 +133,7 @@ public sealed class PhaseHandlerFactory : IPhaseHandlerFactory
 	/// <inheritdoc />
 	public IReadOnlyCollection<IPhaseHandler> GetHandlersForGameType(string gameTypeCode)
 	{
-		if (string.IsNullOrWhiteSpace(gameTypeCode))
-		{
-			return [];
-		}
+		if (string.IsNullOrWhiteSpace(gameTypeCode)) return [];
 
 		var applicableHandlers = new List<IPhaseHandler>();
 
@@ -159,10 +146,7 @@ public sealed class PhaseHandlerFactory : IPhaseHandlerFactory
 
 			handler ??= handlers.FirstOrDefault(h => h.ApplicableGameTypes.Count == 0);
 
-			if (handler is not null)
-			{
-				applicableHandlers.Add(handler);
-			}
+			if (handler is not null) applicableHandlers.Add(handler);
 		}
 
 		return applicableHandlers.AsReadOnly();

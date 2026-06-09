@@ -133,11 +133,11 @@
 
 	[Parameter] public bool CanManageLeague { get; set; }
 
-	[Parameter, EditorRequired] public List<LeagueSeasonDto> Seasons { get; set; } = [];
+	[Parameter] [EditorRequired] public List<LeagueSeasonDto> Seasons { get; set; } = [];
 
 	[Parameter] public Guid? SelectedSeasonId { get; set; }
 
-	[Parameter, EditorRequired] public LeagueOneOffEventsPageDto OneOffEventsPage { get; set; } = EmptyOneOffEventsPage();
+	[Parameter] [EditorRequired] public LeagueOneOffEventsPageDto OneOffEventsPage { get; set; } = EmptyOneOffEventsPage();
 
 	[Parameter] public bool IsLoadingOneOffEventsPage { get; set; }
 

@@ -76,15 +76,15 @@ public class IrishHoldEmSmokeTests : IntegrationTestBase
 	public async Task Smoke_DealersChoice_IrishHoldEmSelection_AppliesBlinds()
 	{
 		// Arrange — Dealer's Choice game with "Test User" as the current DC dealer
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0, playerCount: 3);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0, 3);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.IrishHoldEmCode,
-			Ante: 0,
-			MinBet: 10,
-			SmallBlind: 5,
-			BigBlind: 10);
+			0,
+			10,
+			5,
+			10);
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -138,7 +138,7 @@ public class IrishHoldEmSmokeTests : IntegrationTestBase
 	public async Task Smoke_FullIrishHoldEmHandLifecycle_CompletesSuccessfully()
 	{
 		// Step 1: Create game, join 3 players, configure blinds (SB=5, BB=10)
-		var setup = await CreateIrishHoldEmGameSetupAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateIrishHoldEmGameSetupAsync(3, 0);
 		var game = setup.Game;
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
 
@@ -426,10 +426,7 @@ public class IrishHoldEmSmokeTests : IntegrationTestBase
 		game.CurrentDrawPlayerIndex = firstPlayerSeat;
 		game.CurrentPlayerIndex = firstPlayerSeat;
 
-		foreach (var gp in activePlayers)
-		{
-			gp.HasDrawnThisRound = false;
-		}
+		foreach (var gp in activePlayers) gp.HasDrawnThisRound = false;
 
 		await DbContext.SaveChangesAsync();
 	}

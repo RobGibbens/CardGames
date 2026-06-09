@@ -31,14 +31,10 @@ public class PairPressureHand : StudHand
 		: base(holeCards, openCards, downCard != null ? [downCard] : Array.Empty<Card>())
 	{
 		if (holeCards.Count != 2)
-		{
 			throw new ArgumentException("Pair Pressure needs exactly two hole cards", nameof(holeCards));
-		}
 
 		if (openCards.Count > 4)
-		{
 			throw new ArgumentException("Pair Pressure has at most four open cards", nameof(openCards));
-		}
 
 		_wildCardRules = new PairPressureWildCardRules();
 		_faceUpCardsInOrder = faceUpCardsInOrder;
@@ -83,10 +79,7 @@ public class PairPressureHand : StudHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 

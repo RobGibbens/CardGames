@@ -39,10 +39,7 @@ public sealed class SevenCardStudHandEvaluator : IHandEvaluator
 		var open = cardList.Skip(2).Take(4).ToList();
 		var down = cardList.Skip(6).Take(1).ToList();
 
-		if (hole.Count == 2 && open.Count <= 4 && down.Count == 1)
-		{
-			return new SevenCardStudHand(hole, open, down[0]);
-		}
+		if (hole.Count == 2 && open.Count <= 4 && down.Count == 1) return new SevenCardStudHand(hole, open, down[0]);
 
 		return new StudHand(hole, open, down);
 	}
@@ -78,10 +75,7 @@ public sealed class SevenCardStudHandEvaluator : IHandEvaluator
 	/// <inheritdoc />
 	public IReadOnlyCollection<Card> GetEvaluatedBestCards(HandBase hand)
 	{
-		if (hand is StudHand studHand)
-		{
-			return studHand.GetBestHand();
-		}
+		if (hand is StudHand studHand) return studHand.GetBestHand();
 
 		return hand.Cards.ToList();
 	}

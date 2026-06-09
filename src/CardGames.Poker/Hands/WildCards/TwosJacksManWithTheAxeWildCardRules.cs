@@ -32,22 +32,13 @@ public class TwosJacksManWithTheAxeWildCardRules
 	public static bool IsWild(Card card)
 	{
 		// All 2s are wild
-		if (card.Symbol == Symbol.Deuce)
-		{
-			return true;
-		}
+		if (card.Symbol == Symbol.Deuce) return true;
 
 		// All Jacks are wild
-		if (card.Symbol == Symbol.Jack)
-		{
-			return true;
-		}
+		if (card.Symbol == Symbol.Jack) return true;
 
 		// King of Diamonds ("Man with the Axe") is wild
-		if (card.Symbol == Symbol.King && card.Suit == Suit.Diamonds)
-		{
-			return true;
-		}
+		if (card.Symbol == Symbol.King && card.Suit == Suit.Diamonds) return true;
 
 		return false;
 	}

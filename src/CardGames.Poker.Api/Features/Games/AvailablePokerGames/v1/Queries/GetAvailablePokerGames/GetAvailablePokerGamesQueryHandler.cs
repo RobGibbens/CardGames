@@ -104,17 +104,11 @@ public class GetAvailablePokerGamesQueryHandler(
 	{
 		// Try parameterless constructor first
 		var parameterlessCtor = gameType.GetConstructor(Type.EmptyTypes);
-		if (parameterlessCtor is not null)
-		{
-			return Activator.CreateInstance(gameType) as IPokerGame;
-		}
+		if (parameterlessCtor is not null) return Activator.CreateInstance(gameType) as IPokerGame;
 
 		// Try to find a constructor and provide default values
 		var constructors = gameType.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-		if (constructors.Length == 0)
-		{
-			return null;
-		}
+		if (constructors.Length == 0) return null;
 
 		var ctor = constructors[0];
 		var parameters = ctor.GetParameters();

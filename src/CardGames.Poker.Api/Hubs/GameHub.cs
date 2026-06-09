@@ -88,16 +88,12 @@ public sealed class GameHub : Hub
 		var userId = GetUserIdentifier();
 
 		if (exception is not null)
-		{
 			_logger.LogWarning(exception,
 				"User {UserId} disconnected with error (connection {ConnectionId})",
 				userId ?? "unknown", Context.ConnectionId);
-		}
 		else
-		{
 			_logger.LogInformation("User {UserId} disconnected (connection {ConnectionId})",
 				userId ?? "unknown", Context.ConnectionId);
-		}
 
 		await base.OnDisconnectedAsync(exception);
 	}
@@ -115,19 +111,13 @@ public sealed class GameHub : Hub
 
 			// Build and send public state
 			var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId);
-			if (publicState is not null)
-			{
-				await Clients.Caller.SendAsync("TableStateUpdated", publicState);
-			}
+			if (publicState is not null) await Clients.Caller.SendAsync("TableStateUpdated", publicState);
 
 			// Build and send private state for this user.
 			// Prefer SignalR's stable user id, but fall back to email/name matching for legacy connections.
 			var privateStateUserId = Context.UserIdentifier ?? userId;
 			var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, privateStateUserId);
-			if (privateState is not null)
-			{
-				await Clients.Caller.SendAsync("PrivateStateUpdated", privateState);
-			}
+			if (privateState is not null) await Clients.Caller.SendAsync("PrivateStateUpdated", privateState);
 		}
 		catch (Exception ex)
 		{

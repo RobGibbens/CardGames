@@ -14,10 +14,7 @@ internal static class TollboothVariantState
 	/// </summary>
 	public static string? GetPreviousBettingStreet(Game game)
 	{
-		if (string.IsNullOrWhiteSpace(game.GameSettings))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(game.GameSettings)) return null;
 
 		try
 		{
@@ -43,10 +40,7 @@ internal static class TollboothVariantState
 
 	private static GameState? TryDeserializeGameState(Game game)
 	{
-		if (string.IsNullOrWhiteSpace(game.GameSettings))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(game.GameSettings)) return null;
 
 		try
 		{

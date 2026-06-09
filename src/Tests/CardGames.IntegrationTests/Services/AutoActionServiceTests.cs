@@ -633,10 +633,8 @@ public class AutoActionServiceTests : IDisposable
 			if (request is DrawCardsCommand drawCardsCmd)
 			{
 				if (ForceError)
-				{
 					return (TResponse)(object)OneOf<DrawCardsSuccessful, DrawCardsError>.FromT1(new DrawCardsError
 						{ Message = "Simulated Error", Code = default });
-				}
 
 				var success = new DrawCardsSuccessful
 				{
@@ -671,10 +669,8 @@ public class AutoActionServiceTests : IDisposable
 			if (request is SelectShowcaseCommand showcaseCmd)
 			{
 				if (ForceError)
-				{
 					return (TResponse)(object)OneOf<SelectShowcaseSuccessful, SelectShowcaseError>.FromT1(
 						new SelectShowcaseError { Message = "Simulated Error", Code = default });
-				}
 
 				var success = new SelectShowcaseSuccessful
 				{

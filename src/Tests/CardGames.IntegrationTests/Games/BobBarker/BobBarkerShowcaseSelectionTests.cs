@@ -7,7 +7,7 @@ public class BobBarkerShowcaseSelectionTests : IntegrationTestBase
 	[Fact]
 	public async Task SelectShowcase_AllowsOutOfOrderSelection_BySeatIndex()
 	{
-		var setup = await CreateBobBarkerGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateBobBarkerGameInDrawPhaseAsync(3, 0);
 		var game = setup.Game;
 
 		var freshDb = GetFreshDbContext();
@@ -24,8 +24,8 @@ public class BobBarkerShowcaseSelectionTests : IntegrationTestBase
 			.First();
 
 		var selectResult =
-			await Mediator.Send(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 1,
-				PlayerSeatIndex: nonCurrentSeat));
+			await Mediator.Send(new SelectShowcaseCommand(game.Id, 1,
+				nonCurrentSeat));
 
 		selectResult.IsT0.Should()
 			.BeTrue(
@@ -40,11 +40,11 @@ public class BobBarkerShowcaseSelectionTests : IntegrationTestBase
 	[Fact]
 	public async Task SelectShowcase_PartialCompletion_StaysInDrawPhaseUntilAllPlayersAct()
 	{
-		var setup = await CreateBobBarkerGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateBobBarkerGameInDrawPhaseAsync(3, 0);
 		var game = setup.Game;
 
 		var firstResult =
-			await Mediator.Send(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 2));
+			await Mediator.Send(new SelectShowcaseCommand(game.Id, 0, 2));
 		firstResult.IsT0.Should().BeTrue();
 
 		var afterOneSelection = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
@@ -55,7 +55,7 @@ public class BobBarkerShowcaseSelectionTests : IntegrationTestBase
 	private async Task<GameSetup> CreateBobBarkerGameInDrawPhaseAsync(int playerCount, int dealerPosition)
 	{
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", playerCount,
-			startingChips: 1000, ante: 0);
+			1000, 0);
 		var game = setup.Game;
 		var now = DateTimeOffset.UtcNow;
 
@@ -76,7 +76,6 @@ public class BobBarkerShowcaseSelectionTests : IntegrationTestBase
 			gamePlayer.HasDrawnThisRound = false;
 
 			for (var cardIndex = 0; cardIndex < 5; cardIndex++)
-			{
 				DbContext.GameCards.Add(new GameCard
 				{
 					Id = Guid.CreateVersion7(),
@@ -92,7 +91,6 @@ public class BobBarkerShowcaseSelectionTests : IntegrationTestBase
 					DealtAt = now,
 					DealtAtPhase = nameof(Phases.Dealing)
 				});
-			}
 		}
 
 		DbContext.GameCards.Add(new GameCard

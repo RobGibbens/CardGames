@@ -28,10 +28,7 @@ public class StudHand : HandBase
 
 	protected override IEnumerable<IReadOnlyCollection<Card>> PossibleHands()
 	{
-		if (Cards.Count < 5)
-		{
-			return new[] { Cards };
-		}
+		if (Cards.Count < 5) return new[] { Cards };
 
 		return Cards
 			.SubsetsOfSize(5)

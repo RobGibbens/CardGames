@@ -184,15 +184,15 @@ public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 			DbContext,
 			"SCREWYOURNEIGHBOR",
 			2,
-			startingChips: 100,
-			ante: 25);
+			100,
+			25);
 
 		var game = setup.Game;
 		game.CurrentHandNumber = 1;
 		game.CurrentPhase = nameof(Phases.Showdown);
 		game.Status = GameStatus.InProgress;
 
-		await DatabaseSeeder.CreatePotAsync(DbContext, game, amount: 0, potType: PotType.Main);
+		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0, PotType.Main);
 
 		var rob = setup.GamePlayers[0];
 		var lynne = setup.GamePlayers[1];
@@ -266,15 +266,15 @@ public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 			DbContext,
 			"SCREWYOURNEIGHBOR",
 			2,
-			startingChips: 100,
-			ante: 0);
+			100,
+			0);
 
 		var game = setup.Game;
 		game.CurrentHandNumber = 1;
 		game.CurrentPhase = nameof(Phases.Showdown);
 		game.Status = GameStatus.InProgress;
 
-		await DatabaseSeeder.CreatePotAsync(DbContext, game, amount: 0, potType: PotType.Main);
+		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0, PotType.Main);
 
 		var winner = setup.GamePlayers[0];
 		var loser = setup.GamePlayers[1];
@@ -382,8 +382,8 @@ public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 			DbContext,
 			"SCREWYOURNEIGHBOR",
 			2,
-			startingChips: 25,
-			ante: 25);
+			25,
+			25);
 
 		var game = setup.Game;
 		game.IsDealersChoice = true;
@@ -394,7 +394,7 @@ public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 		game.CurrentPhase = nameof(Phases.Showdown);
 		game.Status = GameStatus.InProgress;
 
-		await DatabaseSeeder.CreatePotAsync(DbContext, game, amount: 0, potType: PotType.Main);
+		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0, PotType.Main);
 
 		var winner = setup.GamePlayers[0];
 		var loser = setup.GamePlayers[1];

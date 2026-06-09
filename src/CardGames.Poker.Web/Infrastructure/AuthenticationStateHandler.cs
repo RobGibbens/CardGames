@@ -42,25 +42,15 @@ public class AuthenticationStateHandler(
 			                  ?? user.FindFirstValue("name")
 			                  ?? userName;
 
-			if (!string.IsNullOrWhiteSpace(userId))
-			{
-				request.Headers.TryAddWithoutValidation("X-User-Id", userId);
-			}
+			if (!string.IsNullOrWhiteSpace(userId)) request.Headers.TryAddWithoutValidation("X-User-Id", userId);
 
-			if (!string.IsNullOrWhiteSpace(userName))
-			{
-				request.Headers.TryAddWithoutValidation("X-User-Name", userName);
-			}
+			if (!string.IsNullOrWhiteSpace(userName)) request.Headers.TryAddWithoutValidation("X-User-Name", userName);
 
 			if (!string.IsNullOrWhiteSpace(userEmail))
-			{
 				request.Headers.TryAddWithoutValidation("X-User-Email", userEmail);
-			}
 
 			if (!string.IsNullOrWhiteSpace(displayName))
-			{
 				request.Headers.TryAddWithoutValidation("X-User-DisplayName", displayName);
-			}
 
 			// Add authentication provider indicator
 			request.Headers.TryAddWithoutValidation("X-Auth-Provider", authProvider);

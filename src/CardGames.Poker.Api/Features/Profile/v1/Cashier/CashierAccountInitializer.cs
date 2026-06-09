@@ -8,7 +8,7 @@ internal static class CashierAccountInitializer
 {
 	public const int StartingChipAmount = 100_000;
 	public const string RegistrationReferenceType = "Registration";
-	public const string RegistrationReason = "Initial registration chips";
+	private const string RegistrationReason = "Initial registration chips";
 
 	public static Task<PlayerChipAccount> EnsureRegistrationCreditAsync(
 		CardsDbContext context,
@@ -36,18 +36,12 @@ internal static class CashierAccountInitializer
 		CancellationToken cancellationToken)
 	{
 		var trackedAccount = context.PlayerChipAccounts.Local.FirstOrDefault(x => x.PlayerId == playerId);
-		if (trackedAccount is not null)
-		{
-			return trackedAccount;
-		}
+		if (trackedAccount is not null) return trackedAccount;
 
 		var existingAccount = await context.PlayerChipAccounts
 			.FirstOrDefaultAsync(x => x.PlayerId == playerId, cancellationToken);
 
-		if (existingAccount is not null)
-		{
-			return existingAccount;
-		}
+		if (existingAccount is not null) return existingAccount;
 
 		var now = DateTimeOffset.UtcNow;
 		var account = new PlayerChipAccount
@@ -61,7 +55,6 @@ internal static class CashierAccountInitializer
 		context.PlayerChipAccounts.Add(account);
 
 		if (openingBalance != 0)
-		{
 			context.PlayerChipLedgerEntries.Add(new PlayerChipLedgerEntry
 			{
 				Id = Guid.CreateVersion7(),
@@ -74,7 +67,6 @@ internal static class CashierAccountInitializer
 				Reason = reason,
 				ActorUserId = actorUserId
 			});
-		}
 
 		return account;
 	}

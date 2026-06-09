@@ -48,10 +48,7 @@ public class IrishHoldEmGamePlayer
 			throw new ArgumentException("Card index out of range.", nameof(indices));
 
 		// Remove in descending order to preserve indices
-		foreach (var index in indices.OrderByDescending(i => i))
-		{
-			HoleCards.RemoveAt(index);
-		}
+		foreach (var index in indices.OrderByDescending(i => i)) HoleCards.RemoveAt(index);
 
 		HasDiscarded = true;
 	}

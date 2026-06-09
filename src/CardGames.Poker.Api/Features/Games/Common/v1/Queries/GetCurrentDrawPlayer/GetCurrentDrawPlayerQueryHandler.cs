@@ -23,10 +23,7 @@ public class GetCurrentDrawPlayerQueryHandler(CardsDbContext context, HybridCach
 					.FirstOrDefaultAsync(g => g.Id == request.GameId, cancellationToken);
 
 				// Return null if game not found or not in draw phase
-				if (game is null || game.CurrentPhase != "DrawPhase" || game.CurrentDrawPlayerIndex < 0)
-				{
-					return null;
-				}
+				if (game is null || game.CurrentPhase != "DrawPhase" || game.CurrentDrawPlayerIndex < 0) return null;
 
 				var gamePlayer = await context.GamePlayers
 					.Where(gp => gp.GameId == request.GameId && gp.SeatPosition == game.CurrentDrawPlayerIndex)

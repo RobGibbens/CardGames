@@ -26,7 +26,7 @@ public class IrishHoldEmGameTests
 	{
 		var players = Enumerable.Range(1, 10).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var game = new IrishHoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		var game = new IrishHoldEmGame(players, 5, 10);
 
 		game.Players.Should().HaveCount(10);
 	}
@@ -36,7 +36,7 @@ public class IrishHoldEmGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new IrishHoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		var act = () => new IrishHoldEmGame(players, 5, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -47,7 +47,7 @@ public class IrishHoldEmGameTests
 	{
 		var players = Enumerable.Range(1, 11).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new IrishHoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		var act = () => new IrishHoldEmGame(players, 5, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 10 players*");
@@ -240,9 +240,7 @@ public class IrishHoldEmGameTests
 
 		// All players discard exactly 2 cards
 		foreach (var player in game.GamePlayers.Where(p => !p.HasFolded))
-		{
 			game.DiscardCards(player.Player.Name, new List<int> { 0, 1 });
-		}
 
 		game.IsDiscardingComplete().Should().BeTrue();
 	}
@@ -269,9 +267,7 @@ public class IrishHoldEmGameTests
 		// DrawPhase (discard) — critical Irish-specific phase
 		game.CurrentPhase.Should().Be(Phases.DrawPhase);
 		foreach (var player in game.GamePlayers.Where(p => !p.HasFolded))
-		{
 			game.DiscardCards(player.Player.Name, new List<int> { 0, 1 });
-		}
 
 		// Turn
 		game.DealTurn();
@@ -389,9 +385,7 @@ public class IrishHoldEmGameTests
 		SetupToDrawPhase(game);
 
 		foreach (var player in game.GamePlayers.Where(p => !p.HasFolded))
-		{
 			game.DiscardCards(player.Player.Name, new List<int> { 0, 1 });
-		}
 
 		game.IsDiscardingComplete().Should().BeTrue();
 	}
@@ -418,9 +412,7 @@ public class IrishHoldEmGameTests
 
 		// Both remaining active players discard
 		foreach (var player in game.GamePlayers.Where(p => !p.HasFolded))
-		{
 			game.DiscardCards(player.Player.Name, new List<int> { 0, 1 });
-		}
 
 		game.IsDiscardingComplete().Should().BeTrue();
 	}
@@ -476,10 +468,8 @@ public class IrishHoldEmGameTests
 
 		// Verify post-discard players have 2 hole cards in the showdown hand data
 		foreach (var (_, handData) in result.PlayerHands)
-		{
 			handData.holeCards.Should().HaveCount(2,
 				"Irish Hold 'Em players should have exactly 2 hole cards at showdown after discarding");
-		}
 	}
 
 	[Fact]
@@ -523,7 +513,7 @@ public class IrishHoldEmGameTests
 			("Alice", 1000),
 			("Bob", 0)
 		};
-		var game = new IrishHoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		var game = new IrishHoldEmGame(players, 5, 10);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -600,7 +590,7 @@ public class IrishHoldEmGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new IrishHoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		return new IrishHoldEmGame(players, 5, 10);
 	}
 
 	private static IrishHoldEmGame CreateThreePlayerGame()
@@ -611,7 +601,7 @@ public class IrishHoldEmGameTests
 			("Bob", 1000),
 			("Charlie", 1000)
 		};
-		return new IrishHoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		return new IrishHoldEmGame(players, 5, 10);
 	}
 
 	private static void CompleteBettingRound(IrishHoldEmGame game)
@@ -620,13 +610,8 @@ public class IrishHoldEmGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -657,9 +642,7 @@ public class IrishHoldEmGameTests
 
 		// Discard phase — all active players discard 2 cards
 		foreach (var player in game.GamePlayers.Where(p => !p.HasFolded))
-		{
 			game.DiscardCards(player.Player.Name, new List<int> { 0, 1 });
-		}
 	}
 
 	private static void SetupToRiver(IrishHoldEmGame game)

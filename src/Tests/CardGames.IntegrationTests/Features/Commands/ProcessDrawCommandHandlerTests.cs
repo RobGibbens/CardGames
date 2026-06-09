@@ -27,10 +27,8 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		await Mediator.Send(new DealHandsCommand(setup.Game.Id));
 
 		// Complete first betting round (everyone checks)
-		for (int i = 0; i < 4; i++)
-		{
+		for (var i = 0; i < 4; i++)
 			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check));
-		}
 
 		// Reload game
 		var game = await DbContext.Games
@@ -264,10 +262,7 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var success = result.AsT0;
 
 		// Next player should be different
-		if (!success.DrawComplete)
-		{
-			success.NextDrawPlayerIndex.Should().NotBe(initialDrawIndex);
-		}
+		if (!success.DrawComplete) success.NextDrawPlayerIndex.Should().NotBe(initialDrawIndex);
 	}
 
 	[Fact]
@@ -277,7 +272,7 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var (setup, game, _) = await CreateGameInDrawPhaseAsync();
 
 		// Process draws for all players
-		for (int i = 0; i < 4; i++)
+		for (var i = 0; i < 4; i++)
 		{
 			var freshGame = await DbContext.Games
 				.Include(g => g.GamePlayers)

@@ -45,7 +45,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 	{
 		// Arrange — DC game that just completed a hand (no carried-forward pot)
 		var now = DateTimeOffset.UtcNow;
-		var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+		var game = CreateDCGame(now, "Complete", 0, 0);
 		AddActivePlayers(game, 3);
 
 		_dbContext.Games.Add(game);
@@ -72,7 +72,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 	{
 		// Arrange — dealer at seat 0, should advance to seat 1
 		var now = DateTimeOffset.UtcNow;
-		var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+		var game = CreateDCGame(now, "Complete", 0, 0);
 		AddActivePlayers(game, 3);
 
 		_dbContext.Games.Add(game);
@@ -91,7 +91,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 	{
 		// Arrange — dealer at last seat (2), should wrap to seat 0
 		var now = DateTimeOffset.UtcNow;
-		var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 2, dcDealerPosition: 2);
+		var game = CreateDCGame(now, "Complete", 2, 2);
 		AddActivePlayers(game, 3);
 
 		_dbContext.Games.Add(game);
@@ -110,7 +110,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 	{
 		// Arrange — dealer at seat 0, seat 1 has left, should skip to seat 2
 		var now = DateTimeOffset.UtcNow;
-		var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+		var game = CreateDCGame(now, "Complete", 0, 0);
 
 		game.GamePlayers.Add(new GamePlayer
 		{
@@ -144,7 +144,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 	{
 		// Arrange — DC game with a carried-forward pot (multi-hand continuation)
 		var now = DateTimeOffset.UtcNow;
-		var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+		var game = CreateDCGame(now, "Complete", 0, 0);
 		AddActivePlayers(game, 3);
 
 		_dbContext.Games.Add(game);
@@ -185,7 +185,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 		// With IsMultiHandVariant = true, the background service detects that the
 		// current hand had no funded pot and continues the variant.
 		var now = DateTimeOffset.UtcNow;
-		var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+		var game = CreateDCGame(now, "Complete", 0, 0);
 		game.Ante = 10;
 		AddActivePlayers(game, 3);
 
@@ -239,7 +239,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 		// but no next-hand pot was created (player beat the deck, or losers couldn't match).
 		// The variant should END and transition to WaitingForDealerChoice.
 		var now = DateTimeOffset.UtcNow;
-		var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+		var game = CreateDCGame(now, "Complete", 0, 0);
 		game.Ante = 10;
 		AddActivePlayers(game, 3);
 
@@ -348,7 +348,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 	public async Task ReadyForNextHand_DCGame_BroadcastsGameState()
 	{
 		var now = DateTimeOffset.UtcNow;
-		var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+		var game = CreateDCGame(now, "Complete", 0, 0);
 		AddActivePlayers(game, 3);
 
 		_dbContext.Games.Add(game);
@@ -595,7 +595,6 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 	private static void AddActivePlayers(Game game, int count)
 	{
 		for (var i = 0; i < count; i++)
-		{
 			game.GamePlayers.Add(new GamePlayer
 			{
 				GameId = game.Id,
@@ -605,7 +604,6 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 				ChipStack = 1000,
 				LeftAtHandNumber = -1
 			});
-		}
 	}
 
 	#endregion

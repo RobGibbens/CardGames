@@ -28,24 +28,20 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new CollectAntesError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = CollectAntesErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game state allows collecting antes
 		if (game.CurrentPhase != nameof(Phases.CollectingAntes))
-		{
 			return new CollectAntesError
 			{
 				Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Antes can only be collected when the game is in '{nameof(Phases.CollectingAntes)}' phase.",
 				Code = CollectAntesErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Get the main pot for this hand
 		var mainPot = await context.Pots
@@ -94,10 +90,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 
 				// Check if player is now all-in
 				var wentAllIn = gamePlayer.ChipStack == 0;
-				if (wentAllIn)
-				{
-					gamePlayer.IsAllIn = true;
-				}
+				if (wentAllIn) gamePlayer.IsAllIn = true;
 
 				// Add to pot
 				mainPot.Amount += anteAmount;
@@ -131,10 +124,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		game.UpdatedAt = now;
 
 		// 6. Reset current bets for all players (antes don't count toward betting rounds)
-		foreach (var gamePlayer in game.GamePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in game.GamePlayers) gamePlayer.CurrentBet = 0;
 
 		// 7. Persist changes
 		await context.SaveChangesAsync(cancellationToken);

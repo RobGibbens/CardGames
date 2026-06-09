@@ -20,10 +20,7 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 			                  ?? User?.FindFirstValue("oid")
 			                  ?? User?.FindFirstValue("sub");
 
-			if (!string.IsNullOrWhiteSpace(claimUserId))
-			{
-				return claimUserId;
-			}
+			if (!string.IsNullOrWhiteSpace(claimUserId)) return claimUserId;
 
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Id", out var headerUserId) == true)
 			{
@@ -45,10 +42,7 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 			                    ?? User?.FindFirstValue("preferred_username")
 			                    ?? User?.Identity?.Name;
 
-			if (!string.IsNullOrWhiteSpace(claimUserName))
-			{
-				return claimUserName;
-			}
+			if (!string.IsNullOrWhiteSpace(claimUserName)) return claimUserName;
 
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Name", out var headerUserName) == true)
 			{
@@ -68,10 +62,7 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 			var claimEmail = User?.FindFirstValue(ClaimTypes.Email)
 			                 ?? User?.FindFirstValue("email");
 
-			if (!string.IsNullOrWhiteSpace(claimEmail))
-			{
-				return claimEmail;
-			}
+			if (!string.IsNullOrWhiteSpace(claimEmail)) return claimEmail;
 
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Email", out var headerEmail) == true)
 			{
@@ -88,15 +79,10 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 	{
 		get
 		{
-			if (User?.Identity?.IsAuthenticated == true)
-			{
-				return true;
-			}
+			if (User?.Identity?.IsAuthenticated == true) return true;
 
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Authenticated", out var headerAuth) == true)
-			{
 				return string.Equals(headerAuth.ToString(), "true", StringComparison.OrdinalIgnoreCase);
-			}
 
 			return false;
 		}

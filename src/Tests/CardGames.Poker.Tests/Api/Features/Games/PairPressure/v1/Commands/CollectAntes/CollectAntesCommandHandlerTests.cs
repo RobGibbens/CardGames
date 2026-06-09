@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -33,7 +31,7 @@ public class CollectAntesCommandHandlerTests
 	public async Task Handle_WhenGameIsInInvalidPhase_ReturnsInvalidGameState()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.ThirdStreet));
+		var game = await SeedGameAsync(context, nameof(Phases.ThirdStreet));
 		var sut = new CollectAntesCommandHandler(context);
 
 		var result = await sut.Handle(new CollectAntesCommand(game.Id), CancellationToken.None);

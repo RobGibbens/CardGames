@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,7 +21,7 @@ public class GetFavoriteVariantsQueryHandlerTests
 		await using var context = CreateContext();
 		var sut = new GetFavoriteVariantsQueryHandler(
 			context,
-			CreateCurrentUserService(isAuthenticated: true, userId: "favorite-user"));
+			CreateCurrentUserService(true, "favorite-user"));
 
 		var result = await sut.Handle(new GetFavoriteVariantsQuery(), CancellationToken.None);
 
@@ -39,15 +37,15 @@ public class GetFavoriteVariantsQueryHandlerTests
 
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
-			await SeedUserAsync(setupContext, userId, userName: "favorite-json-user",
-				email: "favorite-json@example.com");
+			await SeedUserAsync(setupContext, userId, "favorite-json-user",
+				"favorite-json@example.com");
 			await SeedPreferencesAsync(setupContext, userId, "not valid json");
 		}
 
 		await using var context = CreateContext(databaseName, databaseRoot);
 		var sut = new GetFavoriteVariantsQueryHandler(
 			context,
-			CreateCurrentUserService(isAuthenticated: true, userId: userId));
+			CreateCurrentUserService(true, userId));
 
 		var result = await sut.Handle(new GetFavoriteVariantsQuery(), CancellationToken.None);
 
@@ -65,7 +63,7 @@ public class GetFavoriteVariantsQueryHandlerTests
 
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
-			await SeedUserAsync(setupContext, localUserId, userName, email: "favorite-query@example.com");
+			await SeedUserAsync(setupContext, localUserId, userName, "favorite-query@example.com");
 			await SeedPreferencesAsync(setupContext, localUserId, "[\" holdem \",\"DEALERSCHOICE\",\"HoldEm\"]");
 		}
 
@@ -73,9 +71,9 @@ public class GetFavoriteVariantsQueryHandlerTests
 		var sut = new GetFavoriteVariantsQueryHandler(
 			context,
 			CreateCurrentUserService(
-				isAuthenticated: true,
-				userId: externalUserId,
-				userName: userName));
+				true,
+				externalUserId,
+				userName));
 
 		var result = await sut.Handle(new GetFavoriteVariantsQuery(), CancellationToken.None);
 

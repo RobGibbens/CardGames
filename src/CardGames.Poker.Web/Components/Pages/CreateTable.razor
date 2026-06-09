@@ -195,7 +195,7 @@ else
 											<i class="fa-regular fa-users"></i>
 											@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
 										</span>
-										<button class="@GetFavoriteButtonClasses(game.Code, isListButton: true)"
+										<button class="@GetFavoriteButtonClasses(game.Code, true)"
 										        type="button"
 										        aria-label="@GetFavoriteButtonLabel(game)"
 										        aria-pressed="@IsFavoriteVariant(game.Code)"
@@ -321,7 +321,7 @@ else
 											<i class="fa-regular fa-users"></i>
 											@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
 										</span>
-										<button class="@GetFavoriteButtonClasses(game.Code, isListButton: true)"
+										<button class="@GetFavoriteButtonClasses(game.Code, true)"
 										        type="button"
 										        aria-label="@GetFavoriteButtonLabel(game)"
 										        aria-pressed="@IsFavoriteVariant(game.Code)"
@@ -1180,14 +1180,14 @@ else
 	private const string OtherVariantsTitle = "Other variants";
 
 	private static readonly VariantCard DealersChoiceCard = new(
-		Code: DealersChoiceCode,
-		Name: "Dealer's Choice",
-		Description: "The dealer picks the game variant each hand — a different game every deal!",
-		MinimumNumberOfPlayers: 2,
-		MaximumNumberOfPlayers: 8,
-		ImageName: "",
-		GroupTitle: DealersChoiceGroupTitle,
-		Source: null
+		DealersChoiceCode,
+		"Dealer's Choice",
+		"The dealer picks the game variant each hand — a different game every deal!",
+		2,
+		8,
+		"",
+		DealersChoiceGroupTitle,
+		null
 	);
 
 	private IEnumerable<VariantCard> FilteredVariantCards
@@ -1444,14 +1444,14 @@ else
 	{
 		var groupTitle = GetGroupTitle(game.VariantType);
 		return new VariantCard(
-			Code: game.Code,
-			Name: game.Name,
-			Description: game.Description,
-			MinimumNumberOfPlayers: game.MinimumNumberOfPlayers,
-			MaximumNumberOfPlayers: game.MaximumNumberOfPlayers,
-			ImageName: game.ImageName,
-			GroupTitle: groupTitle,
-			Source: game
+			game.Code,
+			game.Name,
+			game.Description,
+			game.MinimumNumberOfPlayers,
+			game.MaximumNumberOfPlayers,
+			game.ImageName,
+			groupTitle,
+			game
 		);
 	}
 
@@ -1629,13 +1629,13 @@ else
 		}
 
 		_selectedVariant = variant.Source ?? new GetAvailablePokerGamesResponse(
-			code: DealersChoiceCode,
-			description: variant.Description,
-			imageName: variant.ImageName ?? string.Empty,
-			maximumNumberOfPlayers: variant.MaximumNumberOfPlayers,
-			minimumNumberOfPlayers: variant.MinimumNumberOfPlayers,
-			name: variant.Name,
-			variantType: VariantType.Other
+			DealersChoiceCode,
+			variant.Description,
+			variant.ImageName ?? string.Empty,
+			variant.MaximumNumberOfPlayers,
+			variant.MinimumNumberOfPlayers,
+			variant.Name,
+			VariantType.Other
 		);
 		_isDealersChoice = GameVariantHelper.IsDealersChoice(variant.Code);
 		_hasBlinds = GameVariantHelper.HasBlinds(_selectedVariant);

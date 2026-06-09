@@ -31,7 +31,7 @@ public class TablePlayCountdownTests
 		var nextHandStartsAtUtc = handCompletedAtUtc.AddSeconds(10);
 		var state = CreateTableState(handCompletedAtUtc, nextHandStartsAtUtc);
 
-		var result = InvokeResolveCountdownDeadlineUtc(state, isEndedPhase: true, isGameCompleted: true);
+		var result = InvokeResolveCountdownDeadlineUtc(state, true, true);
 
 		result.Should().Be(nextHandStartsAtUtc);
 	}
@@ -40,9 +40,9 @@ public class TablePlayCountdownTests
 	public void ResolveCountdownDeadlineUtc_UsesCompletedHandTimeForEndedGames()
 	{
 		var handCompletedAtUtc = new DateTimeOffset(2026, 4, 5, 12, 0, 0, TimeSpan.Zero);
-		var state = CreateTableState(handCompletedAtUtc, nextHandStartsAtUtc: null);
+		var state = CreateTableState(handCompletedAtUtc, null);
 
-		var result = InvokeResolveCountdownDeadlineUtc(state, isEndedPhase: true, isGameCompleted: false);
+		var result = InvokeResolveCountdownDeadlineUtc(state, true, false);
 
 		result.Should().Be(handCompletedAtUtc.AddSeconds(10));
 	}
@@ -58,7 +58,7 @@ public class TablePlayCountdownTests
 			DealOrder = 7
 		};
 
-		var result = InvokeCreateRunoutCardInfo(runoutCard, initialCardCount: 6, runoutCardIndex: 0);
+		var result = InvokeCreateRunoutCardInfo(runoutCard, 6, 0);
 
 		result.IsFaceUp.Should().BeFalse();
 		result.IsPubliclyVisible.Should().BeFalse();
@@ -79,7 +79,7 @@ public class TablePlayCountdownTests
 			DealOrder = 5
 		};
 
-		var result = InvokeCreateRunoutCardInfo(runoutCard, initialCardCount: 3, runoutCardIndex: 1);
+		var result = InvokeCreateRunoutCardInfo(runoutCard, 3, 1);
 
 		result.IsFaceUp.Should().BeTrue();
 		result.IsPubliclyVisible.Should().BeTrue();
@@ -129,7 +129,7 @@ public class TablePlayCountdownTests
 
 		SetPrivateField(tablePlay, "_runoutInitialCardCounts", new Dictionary<int, int> { [0] = 3 });
 
-		InvokeUpdateSeatWithRunoutCards(tablePlay, seatIndex: 0, visibleRunoutCards: 4);
+		InvokeUpdateSeatWithRunoutCards(tablePlay, 0, 4);
 
 		var seats = GetPrivateField<List<SeatInfo>>(tablePlay, "_seats");
 		seats[0].Cards.Should().HaveCount(7);

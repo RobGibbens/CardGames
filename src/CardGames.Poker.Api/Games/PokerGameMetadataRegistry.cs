@@ -55,7 +55,7 @@ public static class PokerGameMetadataRegistry
 
 		foreach (var gameType in gameTypes)
 		{
-			var attribute = gameType.GetCustomAttribute<PokerGameMetadataAttribute>(inherit: false);
+			var attribute = gameType.GetCustomAttribute<PokerGameMetadataAttribute>(false);
 			if (attribute is not null)
 			{
 				metadataDict[attribute.Code] = attribute;

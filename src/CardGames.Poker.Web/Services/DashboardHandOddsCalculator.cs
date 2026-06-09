@@ -18,31 +18,21 @@ public static class DashboardHandOddsCalculator
 		int? dealerSeatIndex = null,
 		Card? klondikeCard = null)
 	{
-		if (playerCards.Count == 0)
-		{
-			return null;
-		}
+		if (playerCards.Count == 0) return null;
 
 		deadCards ??= Array.Empty<Card>();
 		faceUpCardsInOrder ??= Array.Empty<Card>();
 
 		if (string.Equals(gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
-		{
 			return OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(playerCards, deadCards);
-		}
 
 		if (string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase))
-		{
 			return OddsCalculator.CalculateStudOdds(playerCards, Array.Empty<Card>(), deadCards: deadCards);
-		}
 
 		if (string.Equals(gameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase))
-		{
 			return OddsCalculator.CalculateStudOdds(playerCards, Array.Empty<Card>(), deadCards: deadCards);
-		}
 
 		if (string.Equals(gameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase))
-		{
 			return CalculatePairPressureOdds(
 				playerCards,
 				deadCards,
@@ -50,12 +40,9 @@ public static class DashboardHandOddsCalculator
 				pairPressurePlayers,
 				heroSeatIndex,
 				dealerSeatIndex);
-		}
 
 		if (string.Equals(gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase))
-		{
 			return OddsCalculator.CalculateRazzOdds(playerCards, Array.Empty<Card>(), deadCards: deadCards);
-		}
 
 		if (string.Equals(gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
 		{
@@ -66,17 +53,12 @@ public static class DashboardHandOddsCalculator
 		}
 
 		if (string.Equals(gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
-		{
 			return OddsCalculator.CalculateKingsAndLowsDrawOdds(playerCards, deadCards);
-		}
 
 		if (string.Equals(gameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase))
 		{
 			var holeCards = playerCards.Take(2).ToList();
-			if (holeCards.Count < 2)
-			{
-				return null;
-			}
+			if (holeCards.Count < 2) return null;
 
 			return OddsCalculator.CalculateHoldemOdds(holeCards, communityCards, deadCards);
 		}
@@ -84,10 +66,7 @@ public static class DashboardHandOddsCalculator
 		if (string.Equals(gameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase))
 		{
 			var holeCards = playerCards.Take(2).ToList();
-			if (holeCards.Count < 2)
-			{
-				return null;
-			}
+			if (holeCards.Count < 2) return null;
 
 			return OddsCalculator.CalculateKlondikeOdds(holeCards, communityCards, klondikeCard, deadCards);
 		}
@@ -95,10 +74,7 @@ public static class DashboardHandOddsCalculator
 		if (string.Equals(gameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase))
 		{
 			var holeCards = playerCards.Take(4).ToList();
-			if (holeCards.Count < 4)
-			{
-				return null;
-			}
+			if (holeCards.Count < 4) return null;
 
 			return OddsCalculator.CalculateOmahaOdds(holeCards, communityCards, deadCards);
 		}
@@ -106,10 +82,7 @@ public static class DashboardHandOddsCalculator
 		if (string.Equals(gameTypeCode, "NEBRASKA", StringComparison.OrdinalIgnoreCase))
 		{
 			var holeCards = playerCards.Take(5).ToList();
-			if (holeCards.Count < 3)
-			{
-				return null;
-			}
+			if (holeCards.Count < 3) return null;
 
 			return OddsCalculator.CalculateNebraskaOdds(holeCards, communityCards, deadCards);
 		}
@@ -117,10 +90,7 @@ public static class DashboardHandOddsCalculator
 		if (string.Equals(gameTypeCode, "SOUTHDAKOTA", StringComparison.OrdinalIgnoreCase))
 		{
 			var holeCards = playerCards.Take(5).ToList();
-			if (holeCards.Count < 3)
-			{
-				return null;
-			}
+			if (holeCards.Count < 3) return null;
 
 			return OddsCalculator.CalculateSouthDakotaOdds(holeCards, communityCards, deadCards);
 		}
@@ -130,23 +100,17 @@ public static class DashboardHandOddsCalculator
 			// Pre-discard (4 hole cards): use Omaha-style odds calculation
 			// Post-discard (2 hole cards): use Hold'Em-style odds calculation
 			if (playerCards.Count >= 4)
-			{
 				return OddsCalculator.CalculateOmahaOdds(playerCards.Take(4).ToList(), communityCards, deadCards);
-			}
 
 			if (playerCards.Count >= 2)
-			{
 				return OddsCalculator.CalculateHoldemOdds(playerCards.Take(2).ToList(), communityCards, deadCards);
-			}
 
 			return null;
 		}
 
 		if (string.Equals(gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
-		{
-			return OddsCalculator.CalculateStudOdds(playerCards, communityCards, totalCardsPerPlayer: 7,
-				deadCards: deadCards);
-		}
+			return OddsCalculator.CalculateStudOdds(playerCards, communityCards, 7,
+				deadCards);
 
 		return OddsCalculator.CalculateDrawOdds(playerCards, deadCards);
 	}
@@ -160,20 +124,15 @@ public static class DashboardHandOddsCalculator
 		int? dealerSeatIndex)
 	{
 		var orderedCards = playerCards.ToList();
-		if (orderedCards.Count < 2)
-		{
-			return null;
-		}
+		if (orderedCards.Count < 2) return null;
 
 		if (pairPressurePlayers is { Count: > 0 } && heroSeatIndex.HasValue && dealerSeatIndex.HasValue)
-		{
 			return OddsCalculator.CalculatePairPressureTableOdds(
 				orderedCards,
 				heroSeatIndex.Value,
 				dealerSeatIndex.Value,
 				pairPressurePlayers,
-				deadCards: deadCards);
-		}
+				deadCards);
 
 		if (orderedCards.Count >= 7)
 		{

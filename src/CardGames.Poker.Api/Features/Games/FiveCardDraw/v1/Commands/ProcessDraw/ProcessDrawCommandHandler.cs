@@ -36,24 +36,20 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ProcessDrawError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = ProcessDrawErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in draw phase
 		if (game.CurrentPhase != nameof(Phases.DrawPhase))
-		{
 			return new ProcessDrawError
 			{
 				Message = $"Cannot process draw. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Draw is only allowed during '{nameof(Phases.DrawPhase)}' phase.",
 				Code = ProcessDrawErrorCode.NotInDrawPhase
 			};
-		}
 
 		// 3. Get the current draw player
 		var activePlayers = game.GamePlayers
@@ -62,33 +58,27 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (game.CurrentDrawPlayerIndex < 0)
-		{
 			return new ProcessDrawError
 			{
 				Message = "No eligible players to draw.",
 				Code = ProcessDrawErrorCode.NoEligiblePlayers
 			};
-		}
 
 		var currentDrawPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == game.CurrentDrawPlayerIndex);
 		if (currentDrawPlayer is null)
-		{
 			return new ProcessDrawError
 			{
 				Message = "Current draw player not found.",
 				Code = ProcessDrawErrorCode.NotPlayerTurn
 			};
-		}
 
 		// 4. Validate card indices are within bounds
 		if (command.DiscardIndices.Any(i => i < 0 || i >= HandSize))
-		{
 			return new ProcessDrawError
 			{
 				Message = $"Invalid card index. Indices must be between 0 and {HandSize - 1}.",
 				Code = ProcessDrawErrorCode.InvalidCardIndex
 			};
-		}
 
 		// 5. Get the player's current hand cards (not discarded)
 		var playerCards = game.GameCards
@@ -97,31 +87,26 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (playerCards.Count < HandSize)
-		{
 			return new ProcessDrawError
 			{
 				Message = $"Player does not have enough cards. Expected {HandSize}, found {playerCards.Count}.",
 				Code = ProcessDrawErrorCode.InvalidCardIndex
 			};
-		}
 
 		// 6. Validate discard count - allow 4 discards if player has an Ace
 		var hasAce = playerCards.Any(c => c.Symbol == CardSymbol.Ace);
 		var maxDiscards = hasAce ? 4 : 3;
 
 		if (command.DiscardIndices.Count > maxDiscards)
-		{
 			return new ProcessDrawError
 			{
 				Message = $"Cannot discard more than {maxDiscards} cards.",
 				Code = ProcessDrawErrorCode.TooManyDiscards
 			};
-		}
 
 		// 7. Process discards - mark cards as discarded
 		var discardedCards = new List<CardInfo>();
 		foreach (var index in command.DiscardIndices.Distinct().OrderByDescending(i => i))
-		{
 			if (index < playerCards.Count)
 			{
 				var cardToDiscard = playerCards[index];
@@ -135,7 +120,6 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 					Display = FormatCard(cardToDiscard.Symbol, cardToDiscard.Suit)
 				});
 			}
-		}
 
 		// Mark that the current player has drawn this round
 		currentDrawPlayer.HasDrawnThisRound = true;
@@ -161,7 +145,6 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			var maxDealOrder = playerCards.Max(c => c.DealOrder);
 
 			if (availableDeckCards.Count >= command.DiscardIndices.Count)
-			{
 				// Use pre-shuffled deck cards - assign them to the current player
 				foreach (var deckCard in availableDeckCards)
 				{
@@ -180,9 +163,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 						Display = FormatCard(deckCard.Symbol, deckCard.Suit)
 					});
 				}
-			}
 			else
-			{
 				// No pre-shuffled deck cards available — this indicates an inconsistent deck state.
 				// All hands should have a persisted deck generated via FrenchDeckDealer at hand start.
 				return new ProcessDrawError
@@ -192,7 +173,6 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 						$"Available: {availableDeckCards.Count}. This indicates an inconsistent deck state.",
 					Code = ProcessDrawErrorCode.InsufficientDeckCards
 				};
-			}
 		}
 
 		// 9. Move to next draw player or advance phase
@@ -241,17 +221,11 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			.OrderBy(p => p.SeatPosition)
 			.ToList();
 
-		if (!eligiblePlayers.Any())
-		{
-			return -1; // All players have drawn
-		}
+		if (!eligiblePlayers.Any()) return -1; // All players have drawn
 
 		// Find the next eligible player after currentIndex
 		var next = eligiblePlayers.FirstOrDefault(p => p.SeatPosition > currentIndex);
-		if (next != null)
-		{
-			return next.SeatPosition;
-		}
+		if (next != null) return next.SeatPosition;
 
 		// If none found after currentIndex, wrap around to the first eligible
 		return eligiblePlayers.First().SeatPosition;
@@ -260,10 +234,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 	private void StartSecondBettingRound(Game game, List<GamePlayer> activePlayers, DateTimeOffset now)
 	{
 		// Reset current bets for new betting round
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
 		// Find first active player after dealer who can bet (not folded, not all-in)
 		var firstActorIndex = FindFirstActivePlayerAfterDealerForBetting(game, activePlayers);
@@ -317,10 +288,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}

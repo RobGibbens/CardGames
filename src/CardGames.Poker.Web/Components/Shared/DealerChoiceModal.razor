@@ -205,15 +205,15 @@
 </div>
 
 @code {
-	[Parameter, EditorRequired] public IReadOnlyList<GetAvailablePokerGamesResponse> AvailableGames { get; set; } = [];
+	[Parameter] [EditorRequired] public IReadOnlyList<GetAvailablePokerGamesResponse> AvailableGames { get; set; } = [];
 
-	[Parameter, EditorRequired] public bool IsLoading { get; set; }
+	[Parameter] [EditorRequired] public bool IsLoading { get; set; }
 
-	[Parameter, EditorRequired] public int CurrentActivePlayerCount { get; set; }
+	[Parameter] [EditorRequired] public int CurrentActivePlayerCount { get; set; }
 
 	[Parameter] public IReadOnlyCollection<string>? AllowedGameCodes { get; set; }
 
-	[Parameter, EditorRequired] public EventCallback<DealerChoiceSelection> OnGameChosen { get; set; }
+	[Parameter] [EditorRequired] public EventCallback<DealerChoiceSelection> OnGameChosen { get; set; }
 
 	private string? _selectedCode;
 	private string? _selectedName;

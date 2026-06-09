@@ -19,7 +19,6 @@ public sealed class GetCashierLedgerQueryHandler(
 
 		var player = await CashierPlayerResolver.ResolveOrCreateAsync(context, currentUserService, cancellationToken);
 		if (player is null)
-		{
 			return new CashierLedgerPageDto
 			{
 				Entries = [],
@@ -29,7 +28,6 @@ public sealed class GetCashierLedgerQueryHandler(
 				PageSize = pageSize,
 				TotalPages = 1
 			};
-		}
 
 		await CashierAccountInitializer.EnsureRegistrationCreditAsync(
 			context,
@@ -37,10 +35,7 @@ public sealed class GetCashierLedgerQueryHandler(
 			currentUserService.UserId,
 			cancellationToken);
 
-		if (context.ChangeTracker.HasChanges())
-		{
-			await context.SaveChangesAsync(cancellationToken);
-		}
+		if (context.ChangeTracker.HasChanges()) await context.SaveChangesAsync(cancellationToken);
 
 		var totalCount = await context.PlayerChipLedgerEntries
 			.AsNoTracking()
@@ -48,10 +43,7 @@ public sealed class GetCashierLedgerQueryHandler(
 			.CountAsync(cancellationToken);
 
 		var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
-		if (pageNumber > totalPages)
-		{
-			pageNumber = totalPages;
-		}
+		if (pageNumber > totalPages) pageNumber = totalPages;
 
 		var skip = (pageNumber - 1) * pageSize;
 

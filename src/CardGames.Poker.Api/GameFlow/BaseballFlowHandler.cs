@@ -77,10 +77,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 	/// <inheritdoc />
 	public override string? GetNextPhase(Game game, string currentPhase)
 	{
-		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase))
-		{
-			return nameof(Phases.Showdown);
-		}
+		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase)) return nameof(Phases.Showdown);
 
 		if (string.Equals(currentPhase, nameof(Phases.BuyCardOffer), StringComparison.OrdinalIgnoreCase))
 		{
@@ -223,10 +220,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 			return;
 		}
 
-		foreach (var player in game.GamePlayers)
-		{
-			player.CurrentBet = 0;
-		}
+		foreach (var player in game.GamePlayers) player.CurrentBet = 0;
 
 		var bringInPlayer = FindBringInPlayer(playerUpCards);
 		var bringInSeatPosition = bringInPlayer?.SeatPosition ??
@@ -247,10 +241,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 				                          p.HandNumber == game.CurrentHandNumber &&
 				                          p.PotType == PotType.Main,
 					cancellationToken);
-			if (pot is not null)
-			{
-				pot.Amount += actualBringIn;
-			}
+			if (pot is not null) pot.Amount += actualBringIn;
 		}
 
 		var minBet = game.SmallBet ?? game.MinBet ?? 0;
@@ -303,10 +294,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		    context.PlayerSeatIndex >= 0)
 		{
 			var player = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
-			if (player is null)
-			{
-				return;
-			}
+			if (player is null) return;
 
 			await context.Mediator.Send(
 				new ProcessBuyCardCommand(context.GameId, player.PlayerId, false),
@@ -319,22 +307,17 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 
 	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
 	{
-		if (playerUpCards.Count == 0)
-		{
-			return null;
-		}
+		if (playerUpCards.Count == 0) return null;
 
 		GamePlayer? lowestPlayer = null;
 		GameCard? lowestCard = null;
 
 		foreach (var (player, upCard) in playerUpCards)
-		{
 			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
 			{
 				lowestCard = upCard;
 				lowestPlayer = player;
 			}
-		}
 
 		return lowestPlayer;
 	}
@@ -344,10 +327,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		var aValue = GetCardValue(a.Symbol);
 		var bValue = GetCardValue(b.Symbol);
 
-		if (aValue != bValue)
-		{
-			return aValue.CompareTo(bValue);
-		}
+		if (aValue != bValue) return aValue.CompareTo(bValue);
 
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}

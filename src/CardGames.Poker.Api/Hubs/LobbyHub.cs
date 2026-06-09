@@ -70,16 +70,12 @@ public sealed class LobbyHub : Hub
 		var userId = GetUserIdentifier();
 
 		if (exception is not null)
-		{
 			_logger.LogWarning(exception,
 				"User {UserId} disconnected from lobby hub with error (connection {ConnectionId})",
 				userId ?? "unknown", Context.ConnectionId);
-		}
 		else
-		{
 			_logger.LogInformation("User {UserId} disconnected from lobby hub (connection {ConnectionId})",
 				userId ?? "unknown", Context.ConnectionId);
-		}
 
 		await base.OnDisconnectedAsync(exception);
 	}

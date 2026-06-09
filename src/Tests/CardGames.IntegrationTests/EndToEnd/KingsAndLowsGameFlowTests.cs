@@ -31,10 +31,7 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
 
 		// Simulate previous hand with decisions
-		foreach (var gp in setup.GamePlayers)
-		{
-			gp.DropOrStayDecision = DropOrStayDecision.Stay;
-		}
+		foreach (var gp in setup.GamePlayers) gp.DropOrStayDecision = DropOrStayDecision.Stay;
 
 		await DbContext.SaveChangesAsync();
 
@@ -226,10 +223,7 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
 		var handler = FlowHandlerFactory.GetHandler("KINGSANDLOWS");
 
 		// Simulate all players staying
-		foreach (var gp in setup.GamePlayers)
-		{
-			gp.DropOrStayDecision = DropOrStayDecision.Stay;
-		}
+		foreach (var gp in setup.GamePlayers) gp.DropOrStayDecision = DropOrStayDecision.Stay;
 
 		await DbContext.SaveChangesAsync();
 

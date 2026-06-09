@@ -25,10 +25,7 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 		await base.SeedBaseDataAsync();
 
 		var exists = await DbContext.GameTypes.AnyAsync(gt => gt.Code == GameTypeCode);
-		if (exists)
-		{
-			return;
-		}
+		if (exists) return;
 
 		await DbContext.GameTypes.AddAsync(new GameType
 		{
@@ -50,7 +47,7 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task DealCards_DealsFourHoleCardsPerPlayer()
 	{
-		var setup = await CreatePhilsMomGameSetupAsync(playerCount: 4, dealerPosition: 0);
+		var setup = await CreatePhilsMomGameSetupAsync(4, 0);
 		var game = setup.Game;
 
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
@@ -74,7 +71,7 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task Lifecycle_OneDiscardBeforeFlop_OneDiscardAfterFlop_ThenTurnRiverShowdown()
 	{
-		var setup = await CreateDealtPhilsMomGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtPhilsMomGameAsync(3, 0);
 		var game = setup.Game;
 
 		// Complete PreFlop betting first.
@@ -124,7 +121,7 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessDiscard_DiscardingTwoCardsInOneAction_ShouldFail()
 	{
-		var setup = await CreateDealtPhilsMomGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtPhilsMomGameAsync(3, 0);
 		var game = setup.Game;
 
 		await CheckAllPlayersThrough(game.Id);
@@ -139,7 +136,7 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 	public async Task BuildPrivateState_AfterFlopBeforeSecondDiscard_IncludesCommunityCardsInEvaluation()
 	{
 		// Arrange
-		var setup = await CreateDealtPhilsMomGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtPhilsMomGameAsync(3, 0);
 		var game = setup.Game;
 		var hero = setup.GamePlayers[0];
 		var heroEmail = setup.Players[0].Email!;
@@ -228,19 +225,13 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 	{
 		var targetRound = await GetFreshDbContext().BettingRounds
 			.FirstOrDefaultAsync(br => br.GameId == gameId && !br.IsComplete);
-		if (targetRound is null)
-		{
-			return;
-		}
+		if (targetRound is null) return;
 
 		for (var i = 0; i < 12; i++)
 		{
 			var currentTargetRound = await GetFreshDbContext().BettingRounds
 				.FirstOrDefaultAsync(br => br.Id == targetRound.Id);
-			if (currentTargetRound is null || currentTargetRound.IsComplete)
-			{
-				break;
-			}
+			if (currentTargetRound is null || currentTargetRound.IsComplete) break;
 
 			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.Check));
 			result.IsT0.Should().BeTrue($"check at iteration {i} should succeed");

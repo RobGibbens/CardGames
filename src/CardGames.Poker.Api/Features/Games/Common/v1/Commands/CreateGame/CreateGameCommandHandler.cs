@@ -19,57 +19,47 @@ public class CreateGameCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (command.GameId == Guid.Empty)
-		{
 			return new CreateGameConflict
 			{
 				GameId = command.GameId,
 				Reason = "GameId must be a non-empty GUID."
 			};
-		}
 
 		var existingGame = await context.Games
 			.AsNoTracking()
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (existingGame is not null)
-		{
 			return new CreateGameConflict
 			{
 				GameId = command.GameId,
 				Reason = "A game with the supplied GameId already exists."
 			};
-		}
 
 		if (command is { SmallBlind: not null, BigBlind: not null } && command.BigBlind <= command.SmallBlind)
-		{
 			return new CreateGameConflict
 			{
 				GameId = command.GameId,
 				Reason = "Big blind must be greater than small blind."
 			};
-		}
 
 		if (command.MaxBuyIn.HasValue)
 		{
 			var minimumAllowedBuyIn = GetMinimumAllowedBuyIn(command);
 			if (command.MaxBuyIn.Value < minimumAllowedBuyIn)
-			{
 				return new CreateGameConflict
 				{
 					GameId = command.GameId,
 					Reason = $"Max buy-in must be at least {minimumAllowedBuyIn}."
 				};
-			}
 		}
 
 		if (command.TournamentBuyIn.HasValue && command.TournamentBuyIn.Value <= 0)
-		{
 			return new CreateGameConflict
 			{
 				GameId = command.GameId,
 				Reason = "Tournament buy-in must be greater than 0."
 			};
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		var allowedDealerChoiceGameCodes =
@@ -77,28 +67,20 @@ public class CreateGameCommandHandler(
 
 		if (command is { IsDealersChoice: true, AllowedDealerChoiceGameCodes: not null } &&
 		    allowedDealerChoiceGameCodes.Count == 0)
-		{
 			return new CreateGameConflict
 			{
 				GameId = command.GameId,
 				Reason = "Dealer's Choice tables must allow at least one game variant."
 			};
-		}
 
 		if (command.IsDealersChoice)
-		{
 			foreach (var allowedGameCode in allowedDealerChoiceGameCodes)
-			{
 				if (!PokerGameMetadataRegistry.TryGet(allowedGameCode, out _))
-				{
 					return new CreateGameConflict
 					{
 						GameId = command.GameId,
 						Reason = $"Unknown Dealer's Choice game code '{allowedGameCode}'."
 					};
-				}
-			}
-		}
 
 		// 1. For Dealer's Choice tables, skip game type lookup; for standard tables, resolve game type
 		GameType? gameType = null;
@@ -106,13 +88,11 @@ public class CreateGameCommandHandler(
 		{
 			gameType = await GetOrCreateGameTypeAsync(command.GameCode, cancellationToken);
 			if (gameType is null)
-			{
 				return new CreateGameConflict
 				{
 					GameId = command.GameId,
 					Reason = $"Unknown game code '{command.GameCode}'."
 				};
-			}
 		}
 
 		// 2. Create the game session
@@ -143,9 +123,7 @@ public class CreateGameCommandHandler(
 		};
 
 		if (command.IsDealersChoice && allowedDealerChoiceGameCodes.Count > 0)
-		{
 			DealersChoiceGameSettings.SaveAllowedGameCodes(game, allowedDealerChoiceGameCodes);
-		}
 
 		context.Games.Add(game);
 
@@ -208,18 +186,12 @@ public class CreateGameCommandHandler(
 
 	private async Task<GameType?> GetOrCreateGameTypeAsync(string gameCode, CancellationToken cancellationToken)
 	{
-		if (!PokerGameMetadataRegistry.TryGet(gameCode, out var metadata) || metadata is null)
-		{
-			return null;
-		}
+		if (!PokerGameMetadataRegistry.TryGet(gameCode, out var metadata) || metadata is null) return null;
 
 		var gameType = await context.GameTypes
 			.FirstOrDefaultAsync(gt => gt.Code == gameCode, cancellationToken);
 
-		if (gameType is not null)
-		{
-			return gameType;
-		}
+		if (gameType is not null) return gameType;
 
 		// Create the game type definition
 		var now = DateTimeOffset.UtcNow;
@@ -252,10 +224,7 @@ public class CreateGameCommandHandler(
 		var player = await context.Players
 			.FirstOrDefaultAsync(p => p.Name == name, cancellationToken);
 
-		if (player is not null)
-		{
-			return player;
-		}
+		if (player is not null) return player;
 
 		var now = DateTimeOffset.UtcNow;
 		player = new Player
@@ -278,16 +247,11 @@ public class CreateGameCommandHandler(
 
 	private static int GetMinimumAllowedBuyIn(CreateGameCommand command)
 	{
-		if (command.IsDealersChoice)
-		{
-			return 1;
-		}
+		if (command.IsDealersChoice) return 1;
 
 		if (string.Equals(command.GameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
 			    StringComparison.OrdinalIgnoreCase))
-		{
 			return Math.Max(1, command.Ante * 3);
-		}
 
 		var baseMinimum = Math.Max(command.Ante, command.BigBlind ?? command.MinBet);
 		return Math.Max(1, baseMinimum);

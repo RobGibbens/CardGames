@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -37,7 +35,7 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 	{
 		var databaseName = Guid.NewGuid().ToString();
 		var databaseRoot = new InMemoryDatabaseRoot();
-		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot, currentPlayerIndex: -1);
+		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot, -1);
 		await using var serviceProvider = CreateServiceProvider();
 
 		await using var context = CreateContext(databaseName, databaseRoot);
@@ -53,7 +51,7 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 	{
 		var databaseName = Guid.NewGuid().ToString();
 		var databaseRoot = new InMemoryDatabaseRoot();
-		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot, currentPlayerIndex: 4);
+		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot, 4);
 		await using var serviceProvider = CreateServiceProvider();
 
 		await using var context = CreateContext(databaseName, databaseRoot);

@@ -554,7 +554,7 @@
 					.DistinctBy(option => option.Id)
 					.ToList();
 
-				EnsureSelectedCalendarDate(forceReevaluate: true);
+				EnsureSelectedCalendarDate(true);
 				StateHasChanged();
 			}
 			catch (InvalidOperationException)

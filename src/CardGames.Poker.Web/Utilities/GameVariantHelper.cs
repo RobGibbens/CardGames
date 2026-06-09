@@ -27,10 +27,7 @@ public static class GameVariantHelper
 	{
 		if (game is not null)
 		{
-			if (IsDealersChoice(game.Code) || IsScrewYourNeighbor(game.Code))
-			{
-				return false;
-			}
+			if (IsDealersChoice(game.Code) || IsScrewYourNeighbor(game.Code)) return false;
 
 			return game.VariantType == VariantType.HoldEm;
 		}

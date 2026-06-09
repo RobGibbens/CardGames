@@ -16,7 +16,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "Kh 2d".ToCards();
 		var openCards = "5c 8s Ts Jc".ToCards();
 		var downCard = "Qd".ToCard();
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -31,7 +31,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "Kh 2d".ToCards();
 		var openCards = "As Ah Ad".ToCards();
 		var downCard = "Ac".ToCard();
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -44,7 +44,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "As Ah".ToCards();
 		var openCards = "3c 5s 7h 9d".ToCards();
 		var downCard = "Jc".ToCard();
-		var rules = new WildCardRules(kingRequired: true);
+		var rules = new WildCardRules(true);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -58,7 +58,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "2h 3d".ToCards();
 		var openCards = "5c 8s Ts Jc".ToCards();
 		var downCard = "Qd".ToCard();
-		var rules = new WildCardRules(kingRequired: true);
+		var rules = new WildCardRules(true);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -71,7 +71,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "Kh 2d".ToCards();
 		var openCards = "5c 8s Ts Jc".ToCards();
 		var downCard = "Qd".ToCard();
-		var rules = new WildCardRules(kingRequired: true);
+		var rules = new WildCardRules(true);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -85,7 +85,7 @@ public class KingsAndLowsHandTests
 		var naturalHoleCards = "9h 9s".ToCards();
 		var openCards = "5c 5s 5h".ToCards();
 		var downCard = "8d".ToCard();
-		var rules = new WildCardRules(kingRequired: true);
+		var rules = new WildCardRules(true);
 
 		var wildHand = new KingsAndLowsHand(wildHoleCards, openCards, downCard, rules);
 		var naturalHand = new KingsAndLowsHand(naturalHoleCards, openCards, downCard, rules);
@@ -99,7 +99,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "2h 2d".ToCards();
 		var openCards = "5c 8s Ts Jc".ToCards();
 		var downCard = "Qd".ToCard();
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -116,7 +116,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "6h 7d".ToCards();
 		var openCards = "8c 9s".ToCards();
 		var downCard = "Ah".ToCard();
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -133,7 +133,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "Ah Ad".ToCards();
 		var openCards = "Ac As 2h 3s".ToCards();
 		var downCard = "4c".ToCard();
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -150,7 +150,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "5h 6d".ToCards();
 		var openCards = "7c 8s".ToCards();
 		var downCard = "Ac".ToCard();
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 
@@ -167,7 +167,7 @@ public class KingsAndLowsHandTests
 		var holeCards = "2s Jd".ToCards();
 		var openCards = "Qh Kc".ToCards();
 		var downCard = "As".ToCard();
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 
 		var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
 

@@ -29,20 +29,16 @@ public class StartHandCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new StartHandError
 				{ Message = $"Game with ID '{command.GameId}' was not found.", Code = StartHandErrorCode.GameNotFound };
-		}
 
 		var validPhases = new[] { nameof(Phases.WaitingToStart), nameof(Phases.Complete) };
 		if (!validPhases.Contains(game.CurrentPhase))
-		{
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
-		}
 
 		var playersWithPendingChips = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.PendingChipsToAdd > 0)
@@ -61,10 +57,7 @@ public class StartHandCommandHandler(
 				(gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)))
 			.ToList();
 
-		foreach (var player in playersWithInsufficientChips)
-		{
-			player.IsSittingOut = true;
-		}
+		foreach (var player in playersWithInsufficientChips) player.IsSittingOut = true;
 
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp =>
@@ -72,14 +65,12 @@ public class StartHandCommandHandler(
 			.ToList();
 
 		if (eligiblePlayers.Count < 2)
-		{
 			return new StartHandError
 			{
 				Message =
 					"Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
-		}
 
 		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 		{
@@ -108,7 +99,6 @@ public class StartHandCommandHandler(
 		var dealOrder = 1;
 
 		foreach (var card in dealer.DealCards(52))
-		{
 			context.GameCards.Add(new GameCard
 			{
 				GameId = game.Id,
@@ -126,7 +116,6 @@ public class StartHandCommandHandler(
 				IsBuyCard = false,
 				DealtAt = now
 			});
-		}
 
 		context.Pots.Add(new Pot
 		{

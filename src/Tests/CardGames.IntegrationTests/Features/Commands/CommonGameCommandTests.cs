@@ -153,7 +153,7 @@ public class CommonGameCommandTests : IntegrationTestBase
 	{
 		// Arrange
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4,
-			startingChips: 1000);
+			1000);
 		var player = setup.GamePlayers[0];
 
 		// Set final chip count and leave

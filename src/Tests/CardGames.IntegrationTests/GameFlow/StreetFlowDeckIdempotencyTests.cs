@@ -71,24 +71,20 @@ public class StreetFlowDeckIdempotencyTests : IntegrationTestBase
 		var dealOrder = 0;
 
 		foreach (var suit in Enum.GetValues<CardSuit>())
-		{
-			foreach (var symbol in Enum.GetValues<CardSymbol>())
+		foreach (var symbol in Enum.GetValues<CardSymbol>())
+			deckCards.Add(new GameCard
 			{
-				deckCards.Add(new GameCard
-				{
-					GameId = gameId,
-					GamePlayerId = null,
-					HandNumber = handNumber,
-					Suit = suit,
-					Symbol = symbol,
-					Location = CardLocation.Deck,
-					DealOrder = dealOrder++,
-					IsVisible = false,
-					IsDiscarded = false,
-					DealtAt = DateTimeOffset.UtcNow
-				});
-			}
-		}
+				GameId = gameId,
+				GamePlayerId = null,
+				HandNumber = handNumber,
+				Suit = suit,
+				Symbol = symbol,
+				Location = CardLocation.Deck,
+				DealOrder = dealOrder++,
+				IsVisible = false,
+				IsDiscarded = false,
+				DealtAt = DateTimeOffset.UtcNow
+			});
 
 		DbContext.GameCards.AddRange(deckCards);
 		await DbContext.SaveChangesAsync();

@@ -77,10 +77,7 @@ public class BaseballHand : StudHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 

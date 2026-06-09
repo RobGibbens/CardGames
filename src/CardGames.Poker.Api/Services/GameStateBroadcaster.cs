@@ -83,10 +83,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 				"Broadcasting private state to {PlayerCount} players: [{PlayerIds}]",
 				playerUserIds.Count, string.Join(", ", playerUserIds));
 
-			foreach (var userId in playerUserIds)
-			{
-				await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
-			}
+			foreach (var userId in playerUserIds) await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
 		}
 		catch (Exception ex)
 		{
@@ -106,10 +103,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 			// Send public state to the user
 			var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
 			if (publicState is not null)
-			{
 				await _hubContext.Clients.User(userId)
 					.SendAsync("TableStateUpdated", publicState, cancellationToken);
-			}
 
 			// Send private state to the user
 			await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
@@ -287,10 +282,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
 		if (state.ChipCheckPause?.IsPaused == true)
 		{
-			if (existingTimer is not null && existingTimer.TimerType == ActionTimerType.ChipCheckPause)
-			{
-				return;
-			}
+			if (existingTimer is not null && existingTimer.TimerType == ActionTimerType.ChipCheckPause) return;
 
 			if (existingTimer is not null)
 			{
@@ -356,14 +348,12 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		    (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.InBetweenCode,
 			     StringComparison.OrdinalIgnoreCase) &&
 		     string.Equals(state.CurrentPhase, "InBetweenTurn", StringComparison.OrdinalIgnoreCase)))
-		{
 			durationSeconds = 30;
-		}
 
 		_actionTimerService.StartTimer(
 			gameId,
 			effectiveActorSeatIndex,
-			durationSeconds: durationSeconds,
+			durationSeconds,
 			startDelay: startDelay,
 			onExpired: async (gId, seatIndex) =>
 			{
@@ -379,9 +369,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		if (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode,
 			    StringComparison.OrdinalIgnoreCase) &&
 		    string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
-		{
 			return CalculateKingsAndLowsDropOrStayStartDelay(state);
-		}
 
 		return TimeSpan.Zero;
 	}
@@ -389,10 +377,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 	private static TimeSpan CalculateKingsAndLowsDropOrStayStartDelay(TableStatePublicDto state)
 	{
 		var activeSeatCount = state.Seats.Count(static seat => seat.IsOccupied && !seat.IsSittingOut && !seat.IsFolded);
-		if (activeSeatCount == 0)
-		{
-			return TimeSpan.Zero;
-		}
+		if (activeSeatCount == 0) return TimeSpan.Zero;
 
 		var cardsPerSeat = state.Seats
 			.Where(static seat => seat.IsOccupied && !seat.IsSittingOut && !seat.IsFolded)
@@ -400,10 +385,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 			.DefaultIfEmpty(0)
 			.Max();
 
-		if (cardsPerSeat == 0)
-		{
-			return TimeSpan.Zero;
-		}
+		if (cardsPerSeat == 0) return TimeSpan.Zero;
 
 		var animationSteps = activeSeatCount * cardsPerSeat + 1;
 		var totalDelayMs = ClientDealAnimationInitialDelayMs + animationSteps * ClientDealAnimationStepDelayMs;

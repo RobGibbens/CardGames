@@ -104,15 +104,11 @@ public static class GetTableSettingsMapper
 		ArgumentNullException.ThrowIfNull(game);
 
 		if (game.GameType is not null)
-		{
 			return (game.GameType.Code, game.GameType.Name, game.GameType.MinPlayers, game.GameType.MaxPlayers);
-		}
 
 		if (game.IsDealersChoice)
-		{
 			return (DealersChoiceGameTypeCode, DealersChoiceGameTypeName, DealersChoiceMinPlayers,
 				DealersChoiceMaxPlayers);
-		}
 
 		return (string.Empty, "Unknown Game", 0, 0);
 	}

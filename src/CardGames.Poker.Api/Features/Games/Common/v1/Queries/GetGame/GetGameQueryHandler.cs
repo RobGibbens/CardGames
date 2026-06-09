@@ -22,17 +22,11 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 			.FirstOrDefaultAsync(cancellationToken);
 
 		int minPlayers = 2, maxPlayers = 8;
-		if (gameInfo is null)
-		{
-			return null;
-		}
+		if (gameInfo is null) return null;
 
 		if (!gameInfo.IsDealersChoice)
 		{
-			if (!PokerGameMetadataRegistry.TryGet(gameInfo.Code, out var metadata) || metadata is null)
-			{
-				return null;
-			}
+			if (!PokerGameMetadataRegistry.TryGet(gameInfo.Code, out var metadata) || metadata is null) return null;
 
 			minPlayers = metadata.MinimumNumberOfPlayers;
 			maxPlayers = metadata.MaximumNumberOfPlayers;
@@ -49,10 +43,7 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 					.ProjectToResponse(minPlayers, maxPlayers)
 					.FirstOrDefaultAsync(cancellationToken);
 
-				if (response is null)
-				{
-					return null;
-				}
+				if (response is null) return null;
 
 				var leagueId = await ResolveLeagueIdAsync(request.GameId, cancellationToken);
 				return response with { LeagueId = leagueId };
@@ -70,10 +61,7 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 			.Select(x => (Guid?)x.LeagueId)
 			.FirstOrDefaultAsync(cancellationToken);
 
-		if (seasonEventLeagueId.HasValue)
-		{
-			return seasonEventLeagueId;
-		}
+		if (seasonEventLeagueId.HasValue) return seasonEventLeagueId;
 
 		return await context.LeagueOneOffEvents
 			.AsNoTracking()

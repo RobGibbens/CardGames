@@ -41,13 +41,11 @@ public class PerformShowdownCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new PerformShowdownError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = PerformShowdownErrorCode.GameNotFound
 			};
-		}
 
 		// Filter pots to current hand
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
@@ -55,14 +53,12 @@ public class PerformShowdownCommandHandler(
 
 		// 2. Validate game is in showdown phase
 		if (game.CurrentPhase != "Showdown" && !isAlreadyAwarded)
-		{
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase. " +
 				          "Showdown can only be performed when the game is in 'Showdown' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Get players who have not folded
 		var playersInHand = game.GamePlayers
@@ -149,11 +145,11 @@ public class PerformShowdownCommandHandler(
 					game.GamePlayers.ToList(),
 					now,
 					totalPot,
-					wonByFold: true,
-					winners: [(winner.PlayerId, winner.Player.Name, totalPot)],
-					winnerNames: [winner.Player.Name],
-					winningHandDescription: null,
-					playerHandEvaluations: null,
+					true,
+					[(winner.PlayerId, winner.Player.Name, totalPot)],
+					[winner.Player.Name],
+					null,
+					null,
 					cancellationToken);
 			}
 
@@ -197,15 +193,9 @@ public class PerformShowdownCommandHandler(
 
 		foreach (var gamePlayer in playersInHand)
 		{
-			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var holeCardEntities))
-			{
-				continue;
-			}
+			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var holeCardEntities)) continue;
 
-			if (holeCardEntities.Count < 2)
-			{
-				continue;
-			}
+			if (holeCardEntities.Count < 2) continue;
 
 			var holeCoreCards = holeCardEntities
 				.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
@@ -221,13 +211,11 @@ public class PerformShowdownCommandHandler(
 		}
 
 		if (playerHandEvaluations.Count == 0)
-		{
 			return new PerformShowdownError
 			{
 				Message = "No eligible hands could be evaluated at showdown.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
-		}
 
 		// 10. Determine winners (highest strength)
 		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
@@ -237,28 +225,20 @@ public class PerformShowdownCommandHandler(
 			.ToList();
 
 		if (winners.Count == 0)
-		{
 			return new PerformShowdownError
 			{
 				Message = "No eligible winning hand could be determined at showdown.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
-		}
 
 		// 11. Calculate payouts (split pot if multiple winners)
 		var payoutPerWinner = totalPot / winners.Count;
 		var remainder = totalPot % winners.Count;
 		var payouts = new Dictionary<string, int>();
 
-		foreach (var winner in winners)
-		{
-			payouts[winner] = payoutPerWinner;
-		}
+		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
 
-		if (remainder > 0 && winners.Count > 0)
-		{
-			payouts[winners[0]] += remainder;
-		}
+		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
 
 		// 12. Update player chip stacks and mark pots as awarded
 		if (!isAlreadyAwarded)
@@ -311,11 +291,11 @@ public class PerformShowdownCommandHandler(
 				game.GamePlayers.ToList(),
 				now,
 				totalPot,
-				wonByFold: false,
-				winners: winnerInfos,
-				winnerNames: winners,
-				winningHandDescription: winReason,
-				playerHandEvaluations: playerHandEvaluations,
+				false,
+				winnerInfos,
+				winners,
+				winReason,
+				playerHandEvaluations,
 				cancellationToken);
 		}
 
@@ -332,9 +312,7 @@ public class PerformShowdownCommandHandler(
 			var usedIndexes = new HashSet<int>();
 
 			foreach (var bestCard in bestHand)
-			{
 				for (var i = 0; i < cardsList.Count; i++)
-				{
 					if (!usedIndexes.Contains(i) &&
 					    cardsList[i].Suit == (CardSuit)bestCard.Suit &&
 					    cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
@@ -343,8 +321,6 @@ public class PerformShowdownCommandHandler(
 						usedIndexes.Add(i);
 						break;
 					}
-				}
-			}
 
 			return new ShowdownPlayerHand
 			{
@@ -384,10 +360,7 @@ public class PerformShowdownCommandHandler(
 			.Select(gp => gp.SeatPosition)
 			.ToList();
 
-		if (occupiedSeats.Count == 0)
-		{
-			return;
-		}
+		if (occupiedSeats.Count == 0) return;
 
 		var currentPosition = game.DealerPosition;
 		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
@@ -509,14 +482,11 @@ public class PerformShowdownCommandHandler(
 	{
 		var allCards = hand.HoleCards.Concat(hand.CommunityCards).ToList();
 
-		if (allCards.Count <= 5)
-		{
-			return allCards;
-		}
+		if (allCards.Count <= 5) return allCards;
 
 		var ranking = HandTypeStrengthRanking.Classic;
 		List<Card>? bestCombo = null;
-		long bestStrength = long.MinValue;
+		var bestStrength = long.MinValue;
 
 		foreach (var combo in allCards.SubsetsOfSize(5))
 		{

@@ -7,15 +7,9 @@ internal static class PhaseDescriptionResolver
 {
 	public static string? TryResolve(string? gameTypeCode, string? currentPhase)
 	{
-		if (string.IsNullOrWhiteSpace(currentPhase))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(currentPhase)) return null;
 
-		if (string.IsNullOrWhiteSpace(gameTypeCode))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(gameTypeCode)) return null;
 
 		return TryResolveEnumDescription<Phases>(currentPhase);
 	}
@@ -23,7 +17,7 @@ internal static class PhaseDescriptionResolver
 	private static string? TryResolveEnumDescription<TEnum>(string currentPhase)
 		where TEnum : struct, Enum
 	{
-		return Enum.TryParse<TEnum>(currentPhase, ignoreCase: true, out var parsed)
+		return Enum.TryParse<TEnum>(currentPhase, true, out var parsed)
 			? parsed.GetDescriptionOrName()
 			: null;
 	}

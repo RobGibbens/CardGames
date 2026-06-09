@@ -42,13 +42,11 @@ public class PerformShowdownCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new PerformShowdownError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = PerformShowdownErrorCode.GameNotFound
 			};
-		}
 
 		// Filter pots to current hand (in case there are old unawarded pots from edge cases)
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
@@ -56,14 +54,12 @@ public class PerformShowdownCommandHandler(
 
 		// 2. Validate game is in showdown phase
 		if (game.CurrentPhase != nameof(Phases.Showdown) && !isAlreadyAwarded)
-		{
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Showdown can only be performed when the game is in '{nameof(Phases.Showdown)}' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Get players who have not folded
 		var playersInHand = game.GamePlayers
@@ -145,11 +141,11 @@ public class PerformShowdownCommandHandler(
 					game.GamePlayers.ToList(),
 					now,
 					totalPot,
-					wonByFold: true,
-					winners: [(winner.PlayerId, winner.Player.Name, totalPot)],
-					winnerNames: [winner.Player.Name],
-					winningHandDescription: null,
-					playerCardGroups: playerCardGroups,
+					true,
+					[(winner.PlayerId, winner.Player.Name, totalPot)],
+					[winner.Player.Name],
+					null,
+					playerCardGroups,
 					cancellationToken);
 			}
 
@@ -191,10 +187,8 @@ public class PerformShowdownCommandHandler(
 
 		foreach (var gamePlayer in playersInHand)
 		{
-			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards) || cards.Count < 5)
-			{
-				continue; // Skip players without valid hands
-			}
+			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards) ||
+			    cards.Count < 5) continue; // Skip players without valid hands
 
 			if (isRazz)
 			{
@@ -215,10 +209,7 @@ public class PerformShowdownCommandHandler(
 					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
 					.ToList();
 
-				if (allCardsByDealOrder.Count < 5)
-				{
-					continue;
-				}
+				if (allCardsByDealOrder.Count < 5) continue;
 
 				// Prefer canonical stud positional cards, but fall back to all dealt cards if card locations are inconsistent.
 				var razzHand = holeCards.Count >= 3
@@ -240,10 +231,7 @@ public class PerformShowdownCommandHandler(
 					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
 					.ToList();
 
-				if (holeCards.Count + boardCards.Count < 5)
-				{
-					continue;
-				}
+				if (holeCards.Count + boardCards.Count < 5) continue;
 
 				var downCards = cards
 					.Where(c => c.Location == CardLocation.Hole)
@@ -275,10 +263,7 @@ public class PerformShowdownCommandHandler(
 
 			foreach (var pot in orderedPots)
 			{
-				if (pot.Amount == 0)
-				{
-					continue;
-				}
+				if (pot.Amount == 0) continue;
 
 				// Get eligible players for this pot from contributions
 				var eligiblePlayerIds = pot.Contributions
@@ -288,20 +273,14 @@ public class PerformShowdownCommandHandler(
 
 				// If no contribution records exist, fall back to all players in hand
 				// (handles legacy data or pots created before side pot calculation)
-				if (eligiblePlayerIds.Count == 0)
-				{
-					eligiblePlayerIds = playersInHand.Select(p => p.Id).ToHashSet();
-				}
+				if (eligiblePlayerIds.Count == 0) eligiblePlayerIds = playersInHand.Select(p => p.Id).ToHashSet();
 
 				// Filter hand evaluations to only eligible players
 				var eligibleHands = playerHandEvaluations
 					.Where(kvp => eligiblePlayerIds.Contains(kvp.Value.gamePlayer.Id))
 					.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-				if (eligibleHands.Count == 0)
-				{
-					continue; // No eligible players for this pot (shouldn't happen)
-				}
+				if (eligibleHands.Count == 0) continue; // No eligible players for this pot (shouldn't happen)
 
 				// Determine winner(s) for this pot
 				var maxStrength = eligibleHands.Values.Max(h => h.hand.Strength);
@@ -326,13 +305,9 @@ public class PerformShowdownCommandHandler(
 
 					// Add to total payouts
 					if (payouts.TryGetValue(winner, out var existingPayout))
-					{
 						payouts[winner] = existingPayout + payout;
-					}
 					else
-					{
 						payouts[winner] = payout;
-					}
 
 					allWinners.Add(winner);
 
@@ -355,10 +330,7 @@ public class PerformShowdownCommandHandler(
 				pot.WinnerPayouts = JsonSerializer.Serialize(potPayoutsList);
 
 				// Track overall win reason (use main pot's reason)
-				if (pot.PotOrder == 0)
-				{
-					overallWinReason = winReason;
-				}
+				if (pot.PotOrder == 0) overallWinReason = winReason;
 			}
 
 			// Update player chip stacks
@@ -393,49 +365,39 @@ public class PerformShowdownCommandHandler(
 				game.GamePlayers.ToList(),
 				now,
 				totalPot,
-				wonByFold: false,
-				winners: winnerInfos,
-				winnerNames: allWinners.ToList(),
-				winningHandDescription: overallWinReason,
-				playerCardGroups: playerCardGroups,
+				false,
+				winnerInfos,
+				allWinners.ToList(),
+				overallWinReason,
+				playerCardGroups,
 				cancellationToken);
 		}
 		else
 		{
 			// Pots already awarded - just build payouts for response
 			foreach (var pot in currentHandPots.Where(p => p.WinnerPayouts != null))
-			{
 				try
 				{
 					var potPayouts = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(pot.WinnerPayouts!);
 					if (potPayouts != null)
-					{
 						foreach (var potPayout in potPayouts)
-						{
 							if (potPayout.TryGetValue("playerName", out var nameObj) &&
 							    potPayout.TryGetValue("amount", out var amountObj))
 							{
 								var name = nameObj.ToString()!;
 								var amount = Convert.ToInt32(((JsonElement)amountObj).GetInt32());
 								if (payouts.TryGetValue(name, out var existing))
-								{
 									payouts[name] = existing + amount;
-								}
 								else
-								{
 									payouts[name] = amount;
-								}
 
 								allWinners.Add(name);
 							}
-						}
-					}
 				}
 				catch
 				{
 					// Ignore parsing errors for legacy data
 				}
-			}
 		}
 
 		// 13. Build response
@@ -477,13 +439,11 @@ public class PerformShowdownCommandHandler(
 	private static void UpdateSitOutStatus(Game game)
 	{
 		foreach (var player in game.GamePlayers)
-		{
 			if (player.ChipStack <= 0 && player.Status == GamePlayerStatus.Active)
 			{
 				player.IsSittingOut = true;
 				player.Status = GamePlayerStatus.SittingOut;
 			}
-		}
 	}
 
 	/// <summary>
@@ -498,10 +458,7 @@ public class PerformShowdownCommandHandler(
 			.Select(gp => gp.SeatPosition)
 			.ToList();
 
-		if (occupiedSeats.Count == 0)
-		{
-			return;
-		}
+		if (occupiedSeats.Count == 0) return;
 
 		var currentPosition = game.DealerPosition;
 
@@ -510,7 +467,9 @@ public class PerformShowdownCommandHandler(
 		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
 
 		// Found a seat after the current dealer position
-		game.DealerPosition = seatsAfterCurrent.Count > 0 ? seatsAfterCurrent.First() :
+		game.DealerPosition = seatsAfterCurrent.Count > 0
+			? seatsAfterCurrent.First()
+			:
 			// No seats after current position, wrap around to first occupied seat
 			occupiedSeats.First();
 	}
@@ -584,12 +543,10 @@ public class PerformShowdownCommandHandler(
 			List<string>? showdownCards = null;
 			var reachedShowdown = !gp.HasFolded && !wonByFold;
 			if (reachedShowdown && playerCardGroups.TryGetValue(gp.Id, out var cards) && cards.Any())
-			{
 				showdownCards = cards
 					.OrderBy(c => c.DealOrder)
 					.Select(c => FormatCard(c.Symbol, c.Suit))
 					.ToList();
-			}
 
 			return new PlayerResultInfo
 			{

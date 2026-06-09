@@ -64,16 +64,12 @@ public sealed class HandEvaluatorFactory : IHandEvaluatorFactory
 		{
 			var attributes = type.GetCustomAttributes<HandEvaluatorAttribute>();
 			foreach (var attribute in attributes)
-			{
 				// Only create instance if not already created for this type to save resources? 
 				// But we need one instance per code probably or one instance shared?
 				// Shared instance for multiple codes if same type?
 				// For simplicity, create new instance. They are stateless mostly.
 				if (Activator.CreateInstance(type) is IHandEvaluator instance)
-				{
 					evaluators[attribute.GameTypeCode] = instance;
-				}
-			}
 		}
 
 		EvaluatorsByGameCode = evaluators.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
@@ -82,10 +78,7 @@ public sealed class HandEvaluatorFactory : IHandEvaluatorFactory
 	/// <inheritdoc />
 	public IHandEvaluator GetEvaluator(string? gameTypeCode)
 	{
-		if (string.IsNullOrWhiteSpace(gameTypeCode))
-		{
-			return DefaultEvaluator;
-		}
+		if (string.IsNullOrWhiteSpace(gameTypeCode)) return DefaultEvaluator;
 
 		return EvaluatorsByGameCode.GetValueOrDefault(gameTypeCode, DefaultEvaluator);
 	}

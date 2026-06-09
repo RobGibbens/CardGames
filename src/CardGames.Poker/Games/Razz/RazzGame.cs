@@ -4,21 +4,20 @@ using CardGames.Poker.Games.GameFlow;
 namespace CardGames.Poker.Games.Razz;
 
 [PokerGameMetadata(
-	code: "RAZZ",
-	name: "Razz",
-	description:
+	"RAZZ",
+	"Razz",
 	"Seven Card Stud lowball where the lowest five-card hand wins. Aces are low, and straights and flushes do not count against low.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 7,
-	initialHoleCards: 2,
-	initialBoardCards: 1,
-	maxCommunityCards: 0,
-	maxPlayerCards: 7,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.AnteBringIn,
-	imageName: "razz.png")]
+	2,
+	7,
+	2,
+	1,
+	0,
+	7,
+	false,
+	0,
+	WildCardRule.None,
+	BettingStructure.AnteBringIn,
+	"razz.png")]
 public sealed class RazzGame : IPokerGame
 {
 	public string Name { get; } = "Razz";

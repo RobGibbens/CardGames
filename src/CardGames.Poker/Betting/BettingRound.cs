@@ -96,14 +96,12 @@ public class BettingRound
 		// Validate the action
 		var validationError = ValidateAction(actionType, amount, available, player);
 		if (validationError != null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = validationError,
 				RoundComplete = false
 			};
-		}
 
 		// Execute the action
 		var actualAmount = ExecuteAction(player, actionType, amount, available);
@@ -148,7 +146,7 @@ public class BettingRound
 
 	private int ExecuteAction(PokerPlayer player, BettingActionType actionType, int amount, AvailableActions available)
 	{
-		int actualAmount = 0;
+		var actualAmount = 0;
 
 		switch (actionType)
 		{
@@ -219,10 +217,7 @@ public class BettingRound
 		var count = 0;
 		while (count < _players.Count)
 		{
-			if (_players[index].CanAct)
-			{
-				return index;
-			}
+			if (_players[index].CanAct) return index;
 
 			index = (index + 1) % _players.Count;
 			count++;

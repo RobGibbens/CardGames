@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,7 +21,7 @@ public class GetGamePreferencesQueryHandlerTests
 		await using var context = CreateContext();
 		var sut = new GetGamePreferencesQueryHandler(
 			context,
-			CreateCurrentUserService(isAuthenticated: true, userId: "profile-user"));
+			CreateCurrentUserService(true, "profile-user"));
 
 		var result = await sut.Handle(new GetGamePreferencesQuery(), CancellationToken.None);
 
@@ -44,7 +42,7 @@ public class GetGamePreferencesQueryHandlerTests
 
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
-			await SeedUserAsync(setupContext, localUserId, userName: "query-user", email);
+			await SeedUserAsync(setupContext, localUserId, "query-user", email);
 			await SeedPreferencesAsync(setupContext, localUserId, 10, 20, 5, 20);
 		}
 
@@ -52,8 +50,8 @@ public class GetGamePreferencesQueryHandlerTests
 		var sut = new GetGamePreferencesQueryHandler(
 			context,
 			CreateCurrentUserService(
-				isAuthenticated: true,
-				userId: externalUserId,
+				true,
+				externalUserId,
 				userEmail: email));
 
 		var result = await sut.Handle(new GetGamePreferencesQuery(), CancellationToken.None);

@@ -14,20 +14,11 @@ public sealed class OptionalPhoneAttribute : ValidationAttribute
 
 	public override bool IsValid(object? value)
 	{
-		if (value is null)
-		{
-			return true;
-		}
+		if (value is null) return true;
 
-		if (value is not string phoneNumber)
-		{
-			return false;
-		}
+		if (value is not string phoneNumber) return false;
 
-		if (string.IsNullOrWhiteSpace(phoneNumber))
-		{
-			return true;
-		}
+		if (string.IsNullOrWhiteSpace(phoneNumber)) return true;
 
 		return PhoneValidator.IsValid(phoneNumber);
 	}

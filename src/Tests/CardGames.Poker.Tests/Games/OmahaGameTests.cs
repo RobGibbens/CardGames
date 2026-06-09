@@ -24,7 +24,7 @@ public class OmahaGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new OmahaGame(players, smallBlind: 5, bigBlind: 10);
+		var act = () => new OmahaGame(players, 5, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -35,7 +35,7 @@ public class OmahaGameTests
 	{
 		var players = Enumerable.Range(1, 11).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new OmahaGame(players, smallBlind: 5, bigBlind: 10);
+		var act = () => new OmahaGame(players, 5, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 10 players*");
@@ -241,7 +241,7 @@ public class OmahaGameTests
 			("Alice", 1000),
 			("Bob", 0)
 		};
-		var game = new OmahaGame(players, smallBlind: 5, bigBlind: 10);
+		var game = new OmahaGame(players, 5, 10);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -314,7 +314,7 @@ public class OmahaGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new OmahaGame(players, smallBlind: 5, bigBlind: 10);
+		return new OmahaGame(players, 5, 10);
 	}
 
 	private static OmahaGame CreateThreePlayerGame()
@@ -325,7 +325,7 @@ public class OmahaGameTests
 			("Bob", 1000),
 			("Charlie", 1000)
 		};
-		return new OmahaGame(players, smallBlind: 5, bigBlind: 10);
+		return new OmahaGame(players, 5, 10);
 	}
 
 	private static void SetupToFlop(OmahaGame game)
@@ -340,13 +340,8 @@ public class OmahaGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -361,13 +356,8 @@ public class OmahaGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -382,13 +372,8 @@ public class OmahaGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -403,13 +388,8 @@ public class OmahaGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 }

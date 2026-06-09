@@ -77,31 +77,20 @@ public class RouterResponse<T>
 		if (!response.IsSuccessStatusCode)
 		{
 			string? errorMessage = null;
-			if (response?.Error is ApiException apiException)
-			{
-				errorMessage = apiException.Content;
-			}
+			if (response?.Error is ApiException apiException) errorMessage = apiException.Content;
 
 			return Failure(errorMessage ?? string.Empty, response.StatusCode ?? HttpStatusCode.BadRequest);
 		}
 
 		T content;
 		if (mapper != null)
-		{
 			content = mapper(response.Content!);
-		}
 		else if (response.Content is T t)
-		{
 			content = t;
-		}
 		else if (typeof(T) == typeof(Unit))
-		{
 			content = (T)(object)default(Unit);
-		}
 		else
-		{
 			throw new InvalidOperationException($"Cannot map {typeof(TRefit).Name} to {typeof(T).Name}");
-		}
 
 		return Success(content, response.StatusCode ?? HttpStatusCode.OK);
 	}
@@ -111,10 +100,7 @@ public class RouterResponse<T>
 		if (!response.IsSuccessStatusCode)
 		{
 			string? errorMessage = null;
-			if (response?.Error is ApiException apiException)
-			{
-				errorMessage = apiException.Content;
-			}
+			if (response?.Error is ApiException apiException) errorMessage = apiException.Content;
 
 			return Failure(errorMessage ?? response?.Error?.Message, response?.StatusCode ?? HttpStatusCode.BadRequest);
 		}
@@ -283,10 +269,7 @@ public class GameApiRouter : IGameApiRouter
 		Guid gameId,
 		ProcessBettingActionRequest request)
 	{
-		if (_bettingActionRoutes.TryGetValue(gameCode, out var route))
-		{
-			return await route(gameId, request);
-		}
+		if (_bettingActionRoutes.TryGetValue(gameCode, out var route)) return await route(gameId, request);
 
 		throw new NotSupportedException(
 			$"No betting action route configured for game type '{gameCode}'. " +
@@ -301,9 +284,7 @@ public class GameApiRouter : IGameApiRouter
 		List<int> discardIndices)
 	{
 		if (_drawRoutes.TryGetValue(gameCode, out var route))
-		{
 			return await route(gameId, playerId, playerSeatIndex, discardIndices);
-		}
 
 		throw new NotSupportedException(
 			$"No draw route configured for game type '{gameCode}'. " +
@@ -312,20 +293,14 @@ public class GameApiRouter : IGameApiRouter
 
 	public async Task<RouterResponse<Unit>> DropOrStayAsync(string gameCode, Guid gameId, DropOrStayRequest request)
 	{
-		if (_dropOrStayRoutes.TryGetValue(gameCode, out var route))
-		{
-			return await route(gameId, request);
-		}
+		if (_dropOrStayRoutes.TryGetValue(gameCode, out var route)) return await route(gameId, request);
 
 		return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
 	}
 
 	public async Task<RouterResponse<Unit>> KeepOrTradeAsync(string gameCode, Guid gameId, KeepOrTradeRequest request)
 	{
-		if (_keepOrTradeRoutes.TryGetValue(gameCode, out var route))
-		{
-			return await route(gameId, request);
-		}
+		if (_keepOrTradeRoutes.TryGetValue(gameCode, out var route)) return await route(gameId, request);
 
 		return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
 	}
@@ -333,20 +308,14 @@ public class GameApiRouter : IGameApiRouter
 	public async Task<RouterResponse<Unit>> ProcessBuyCardAsync(string gameCode, Guid gameId,
 		ProcessBuyCardRequest request)
 	{
-		if (_buyCardRoutes.TryGetValue(gameCode, out var route))
-		{
-			return await route(gameId, request);
-		}
+		if (_buyCardRoutes.TryGetValue(gameCode, out var route)) return await route(gameId, request);
 
 		return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
 	}
 
 	public async Task<RouterResponse<Unit>> AcknowledgePotMatchAsync(string gameCode, Guid gameId)
 	{
-		if (_acknowledgePotMatchRoutes.TryGetValue(gameCode, out var route))
-		{
-			return await route(gameId);
-		}
+		if (_acknowledgePotMatchRoutes.TryGetValue(gameCode, out var route)) return await route(gameId);
 
 		return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
 	}
@@ -534,26 +503,19 @@ public class GameApiRouter : IGameApiRouter
 		int playerSeatIndex, List<int> discardIndices)
 	{
 		if (playerSeatIndex < 0)
-		{
 			return RouterResponse<ProcessDrawResult>.Failure(
 				"Player seat is required for Bob Barker showcase selection.", HttpStatusCode.BadRequest);
-		}
 
 		if (discardIndices.Count != 1)
-		{
 			return RouterResponse<ProcessDrawResult>.Failure("Select exactly one showcase card.",
 				HttpStatusCode.BadRequest);
-		}
 
 		var request = new BobBarkerSelectShowcaseRequest(discardIndices[0], playerSeatIndex);
 		var response = await _gamesApi.BobBarkerSelectShowcaseAsync(gameId, request);
 		if (!response.IsSuccessStatusCode)
 		{
 			string? errorMessage = null;
-			if (response?.Error is ApiException apiException)
-			{
-				errorMessage = apiException.Content;
-			}
+			if (response?.Error is ApiException apiException) errorMessage = apiException.Content;
 
 			return RouterResponse<ProcessDrawResult>.Failure(errorMessage ?? response?.Error?.Message,
 				response?.StatusCode ?? HttpStatusCode.BadRequest);
@@ -562,15 +524,15 @@ public class GameApiRouter : IGameApiRouter
 		return RouterResponse<ProcessDrawResult>.Success(new ProcessDrawResult
 		{
 			Original = new ProcessDrawSuccessful(
-				currentPhase: "DrawPhase",
-				discardedCards: [],
-				drawComplete: false,
-				gameId: gameId,
-				newCards: [],
-				nextDrawPlayerIndex: null,
-				nextDrawPlayerName: string.Empty,
-				playerName: string.Empty,
-				playerSeatIndex: playerSeatIndex)
+				"DrawPhase",
+				[],
+				false,
+				gameId,
+				[],
+				null,
+				string.Empty,
+				string.Empty,
+				playerSeatIndex)
 		}, response?.StatusCode ?? HttpStatusCode.OK);
 	}
 
@@ -578,10 +540,8 @@ public class GameApiRouter : IGameApiRouter
 		int playerSeatIndex, List<int> discardIndices)
 	{
 		if (playerSeatIndex < 0)
-		{
 			return RouterResponse<ProcessDrawResult>.Failure("Player seat is required for Irish Hold 'Em discards.",
 				HttpStatusCode.BadRequest);
-		}
 
 		var request = new IrishHoldEmDiscardRequest(discardIndices, playerSeatIndex);
 		return RouterResponse<ProcessDrawResult>.FromRefit(
@@ -593,10 +553,8 @@ public class GameApiRouter : IGameApiRouter
 		int playerSeatIndex, List<int> discardIndices)
 	{
 		if (playerSeatIndex < 0)
-		{
 			return RouterResponse<ProcessDrawResult>.Failure("Player seat is required for Phil's Mom discards.",
 				HttpStatusCode.BadRequest);
-		}
 
 		var request = new IrishHoldEmDiscardRequest(discardIndices, playerSeatIndex);
 		return RouterResponse<ProcessDrawResult>.FromRefit(
@@ -608,10 +566,8 @@ public class GameApiRouter : IGameApiRouter
 		int playerSeatIndex, List<int> discardIndices)
 	{
 		if (playerSeatIndex < 0)
-		{
 			return RouterResponse<ProcessDrawResult>.Failure("Player seat is required for Crazy Pineapple discards.",
 				HttpStatusCode.BadRequest);
-		}
 
 		var request = new IrishHoldEmDiscardRequest(discardIndices, playerSeatIndex);
 		return RouterResponse<ProcessDrawResult>.FromRefit(
@@ -637,15 +593,15 @@ public class GameApiRouter : IGameApiRouter
 		return RouterResponse<ProcessDrawResult>.FromRefit(response, content => new ProcessDrawResult
 		{
 			Original = new ProcessDrawSuccessful(
-				currentPhase: content.NextPhase ?? "DrawPhase",
-				discardedCards: content.DiscardedCards,
-				drawComplete: content.DrawPhaseComplete,
-				gameId: content.GameId,
-				newCards: content.NewCards ?? [],
-				nextDrawPlayerIndex: -1,
-				nextDrawPlayerName: content.NextPlayerName,
-				playerName: content.PlayerName ?? "",
-				playerSeatIndex: content.PlayerSeatIndex
+				content.NextPhase ?? "DrawPhase",
+				content.DiscardedCards,
+				content.DrawPhaseComplete,
+				content.GameId,
+				content.NewCards ?? [],
+				-1,
+				content.NextPlayerName,
+				content.PlayerName ?? "",
+				content.PlayerSeatIndex
 			),
 			NewHandDescription = content.NewHandDescription
 		});

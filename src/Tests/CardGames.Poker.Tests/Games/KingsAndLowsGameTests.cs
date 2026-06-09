@@ -24,7 +24,7 @@ public class KingsAndLowsGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new KingsAndLowsGame(players, ante: 10);
+		var act = () => new KingsAndLowsGame(players, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -35,7 +35,7 @@ public class KingsAndLowsGameTests
 	{
 		var players = Enumerable.Range(1, 6).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new KingsAndLowsGame(players, ante: 10);
+		var act = () => new KingsAndLowsGame(players, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 5 players*");
@@ -338,7 +338,7 @@ public class KingsAndLowsGameTests
 			("Alice", 1000),
 			("Bob", 0)
 		};
-		var game = new KingsAndLowsGame(players, ante: 10);
+		var game = new KingsAndLowsGame(players, 10);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -346,7 +346,7 @@ public class KingsAndLowsGameTests
 	[Fact]
 	public void AnteEveryHand_WhenTrue_CollectsAnteOnEachHand()
 	{
-		var game = CreateTwoPlayerGame(anteEveryHand: true);
+		var game = CreateTwoPlayerGame(true);
 
 		// First hand
 		game.StartHand();
@@ -365,7 +365,7 @@ public class KingsAndLowsGameTests
 	[Fact]
 	public void SingleAnte_WhenFalse_SkipsAnteOnSubsequentHands()
 	{
-		var game = CreateTwoPlayerGame(anteEveryHand: false);
+		var game = CreateTwoPlayerGame(false);
 
 		// First hand
 		game.StartHand();
@@ -388,7 +388,7 @@ public class KingsAndLowsGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new KingsAndLowsGame(players, ante: 10, kingRequired: false, anteEveryHand: anteEveryHand);
+		return new KingsAndLowsGame(players, 10, false, anteEveryHand);
 	}
 
 	private static void SetupDrawPhase(KingsAndLowsGame game)

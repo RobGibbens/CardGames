@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -24,7 +22,7 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new UpdateFavoriteVariantsCommandHandler(
 			context,
-			CreateCurrentUserService(isAuthenticated: false, userId: null));
+			CreateCurrentUserService(false, null));
 
 		var result = await sut.Handle(new UpdateFavoriteVariantsCommand(["holdem"]), CancellationToken.None);
 
@@ -41,13 +39,13 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
-			await SeedUserAsync(setupContext, userId, userName: "favorite-user", email: "favorite@example.com");
+			await SeedUserAsync(setupContext, userId, "favorite-user", "favorite@example.com");
 		}
 
 		await using var context = CreateContext(databaseName, databaseRoot);
 		var sut = new UpdateFavoriteVariantsCommandHandler(
 			context,
-			CreateCurrentUserService(isAuthenticated: true, userId: userId));
+			CreateCurrentUserService(true, userId));
 
 		var result = await sut.Handle(
 			new UpdateFavoriteVariantsCommand([" holdem ", "", "DEALERSCHOICE", "HoldEm", "  "]),
@@ -73,7 +71,7 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
-			await SeedUserAsync(setupContext, localUserId, userName, email: "favorite-profile@example.com");
+			await SeedUserAsync(setupContext, localUserId, userName, "favorite-profile@example.com");
 			await SeedPreferencesAsync(setupContext, localUserId, "[\"SEVENCARDSTUD\"]");
 		}
 
@@ -81,9 +79,9 @@ public class UpdateFavoriteVariantsCommandHandlerTests
 		var sut = new UpdateFavoriteVariantsCommandHandler(
 			context,
 			CreateCurrentUserService(
-				isAuthenticated: true,
-				userId: externalUserId,
-				userName: userName));
+				true,
+				externalUserId,
+				userName));
 
 		var result = await sut.Handle(new UpdateFavoriteVariantsCommand(["holdem", "dealerschoice"]),
 			CancellationToken.None);

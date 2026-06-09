@@ -142,14 +142,10 @@ public class GameFlowHandlerFactoryTests : IntegrationTestBase
 			config.Should().NotBeNull($"{code} should have valid dealing configuration");
 
 			if (config.PatternType == DealingPatternType.StreetBased)
-			{
 				config.DealingRounds.Should().NotBeNullOrEmpty($"{code} street-based game should have dealing rounds");
-			}
 			else
-			{
 				config.InitialCardsPerPlayer.Should().BeGreaterThan(0,
 					$"{code} should deal at least 1 card per player");
-			}
 		}
 	}
 

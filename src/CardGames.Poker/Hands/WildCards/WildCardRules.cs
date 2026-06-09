@@ -18,7 +18,7 @@ public class WildCardRules
 	/// </summary>
 	public IReadOnlyCollection<Card> DetermineWildCards(IReadOnlyCollection<Card> hand)
 	{
-		return DetermineWildCardsCore(hand, aceAsLow: false);
+		return DetermineWildCardsCore(hand, false);
 	}
 
 	/// <summary>
@@ -27,7 +27,7 @@ public class WildCardRules
 	/// </summary>
 	public IReadOnlyCollection<Card> DetermineWildCardsWithAceLow(IReadOnlyCollection<Card> hand)
 	{
-		return DetermineWildCardsCore(hand, aceAsLow: true);
+		return DetermineWildCardsCore(hand, true);
 	}
 
 	/// <summary>
@@ -39,19 +39,14 @@ public class WildCardRules
 		var aceHighWilds = DetermineWildCards(hand);
 
 		var hasAce = hand.Any(c => c.Symbol == Symbol.Ace);
-		if (!hasAce)
-		{
-			return new[] { aceHighWilds };
-		}
+		if (!hasAce) return new[] { aceHighWilds };
 
 		var aceLowWilds = DetermineWildCardsWithAceLow(hand);
 
 		// If both sets are identical, return just one
 		if (aceHighWilds.Count == aceLowWilds.Count &&
 		    aceHighWilds.All(aceLowWilds.Contains))
-		{
 			return [aceHighWilds];
-		}
 
 		return [aceHighWilds, aceLowWilds];
 	}
@@ -79,10 +74,7 @@ public class WildCardRules
 
 	private static int GetCardValue(Card card, bool aceAsLow)
 	{
-		if (aceAsLow && card.Symbol == Symbol.Ace)
-		{
-			return 1;
-		}
+		if (aceAsLow && card.Symbol == Symbol.Ace) return 1;
 
 		return card.Value;
 	}

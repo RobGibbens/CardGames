@@ -101,17 +101,12 @@ public class FollowTheQueenSimulation
 		var faceUpCardsInOrder = new List<Card>();
 
 		// Initialize dealt board cards lists for each player
-		foreach (var player in _players)
-		{
-			player.DealtBoardCards = new List<Card>();
-		}
+		foreach (var player in _players) player.DealtBoardCards = new List<Card>();
 
 		// Deal board cards street by street (4 streets total for face-up cards)
 		// Cards are dealt round-robin: each player gets one card per street
-		for (int street = 0; street < 4; street++)
-		{
+		for (var street = 0; street < 4; street++)
 			foreach (var player in _players)
-			{
 				// Check if player already has a given card for this street
 				if (player.GivenBoardCards.Count > street)
 				{
@@ -125,8 +120,6 @@ public class FollowTheQueenSimulation
 					((List<Card>)player.DealtBoardCards).Add(card);
 					faceUpCardsInOrder.Add(card);
 				}
-			}
-		}
 
 		return faceUpCardsInOrder;
 	}

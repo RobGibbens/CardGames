@@ -14,15 +14,10 @@ internal static class CommunityHandDescriptionEvaluator
 		IReadOnlyCollection<Card> communityCards,
 		Card? klondikeCard = null)
 	{
-		if (playerCards.Count == 0)
-		{
-			return null;
-		}
+		if (playerCards.Count == 0) return null;
 
 		if (IsHoldTheBaseballGame(gameTypeCode) && playerCards.Count == 2)
-		{
 			return HandDescriptionFormatter.GetHandDescription(new HoldTheBaseballHand(playerCards, communityCards));
-		}
 
 		if (IsKlondikeGame(gameTypeCode) && playerCards.Count == 2)
 		{
@@ -34,19 +29,13 @@ internal static class CommunityHandDescriptionEvaluator
 		}
 
 		if (playerCards.Count == 2 && IsHoldEmGame(gameTypeCode))
-		{
 			return HandDescriptionFormatter.GetHandDescription(new HoldemHand(playerCards, communityCards));
-		}
 
 		if (playerCards.Count >= 2 && playerCards.Count <= 4 && IsIrishHoldEmFamilyGame(gameTypeCode))
-		{
 			return HandDescriptionFormatter.GetHandDescription(new HoldemHand(playerCards, communityCards));
-		}
 
 		if (playerCards.Count == 4 && IsBobBarkerGame(gameTypeCode))
-		{
 			return HandDescriptionFormatter.GetHandDescription(new BobBarkerHand(playerCards, communityCards));
-		}
 
 		if (playerCards.Count == 5 && IsBobBarkerGame(gameTypeCode))
 		{
@@ -55,10 +44,7 @@ internal static class CommunityHandDescriptionEvaluator
 			foreach (var candidateCards in playerCards.SubsetsOfSize(4))
 			{
 				var candidateHand = new BobBarkerHand(candidateCards.ToList(), communityCards);
-				if (bestHand is null || candidateHand > bestHand)
-				{
-					bestHand = candidateHand;
-				}
+				if (bestHand is null || candidateHand > bestHand) bestHand = candidateHand;
 			}
 
 			return bestHand is null
@@ -67,14 +53,10 @@ internal static class CommunityHandDescriptionEvaluator
 		}
 
 		if (playerCards.Count == 4 && IsOmahaGame(gameTypeCode))
-		{
 			return HandDescriptionFormatter.GetHandDescription(new OmahaHand(playerCards, communityCards));
-		}
 
 		if (playerCards.Count == 5 && (IsNebraskaGame(gameTypeCode) || IsSouthDakotaGame(gameTypeCode)))
-		{
 			return HandDescriptionFormatter.GetHandDescription(new NebraskaHand(playerCards, communityCards));
-		}
 
 		return null;
 	}

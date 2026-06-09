@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +34,7 @@ public class DealHandsCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInStreetPhase_ReturnsInvalidGameState()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.FirstBettingRound));
+		var game = await SeedGameAsync(context, nameof(Phases.FirstBettingRound));
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new DealHandsCommand(game.Id), CancellationToken.None);
@@ -182,8 +180,8 @@ public class DealHandsCommandHandlerTests
 		var alice = CreatePlayer("Alice", now);
 		var bob = CreatePlayer("Bob", now);
 
-		var aliceGamePlayer = CreateGamePlayer(game, alice, seatPosition: 0, now);
-		var bobGamePlayer = CreateGamePlayer(game, bob, seatPosition: 1, now);
+		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, now);
+		var bobGamePlayer = CreateGamePlayer(game, bob, 1, now);
 
 		context.Games.Add(game);
 		context.GameTypes.Add(gameType);
@@ -191,14 +189,9 @@ public class DealHandsCommandHandlerTests
 		context.GamePlayers.AddRange(aliceGamePlayer, bobGamePlayer);
 
 		for (var cardIndex = 0; cardIndex < deckCardCount; cardIndex++)
-		{
 			context.GameCards.Add(CreateDeckCard(game, cardIndex, now));
-		}
 
-		if (addStaleCards)
-		{
-			context.GameCards.AddRange(CreateStaleCards(game, aliceGamePlayer, now));
-		}
+		if (addStaleCards) context.GameCards.AddRange(CreateStaleCards(game, aliceGamePlayer, now));
 
 		await context.SaveChangesAsync();
 		return game;

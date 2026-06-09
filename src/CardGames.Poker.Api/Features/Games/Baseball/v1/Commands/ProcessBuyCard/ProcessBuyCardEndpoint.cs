@@ -12,9 +12,7 @@ public static class ProcessBuyCardEndpoint
 					CancellationToken cancellationToken) =>
 				{
 					if (request.PlayerId == Guid.Empty)
-					{
 						return Results.BadRequest(new { Message = "PlayerId is required." });
-					}
 
 					var command = new ProcessBuyCardCommand(gameId, request.PlayerId, request.Accept);
 					var result = await mediator.Send(command, cancellationToken);

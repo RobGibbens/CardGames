@@ -17,10 +17,7 @@ public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IO
 		await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob, cancellationToken: cancellationToken);
 
 		var extension = Path.GetExtension(fileName);
-		if (string.IsNullOrWhiteSpace(extension))
-		{
-			extension = ".bin";
-		}
+		if (string.IsNullOrWhiteSpace(extension)) extension = ".bin";
 
 		var blobName = $"avatars/{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
 		var blobClient = containerClient.GetBlobClient(blobName);
@@ -38,26 +35,17 @@ public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IO
 
 	public async Task<AvatarStorageFile?> TryGetAsync(string avatarReference, CancellationToken cancellationToken)
 	{
-		if (string.IsNullOrWhiteSpace(avatarReference))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(avatarReference)) return null;
 
 		var blobName = ResolveBlobName(avatarReference);
-		if (string.IsNullOrWhiteSpace(blobName))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(blobName)) return null;
 
 		var containerClient = blobServiceClient.GetBlobContainerClient(_options.ContainerName);
 		var blobClient = containerClient.GetBlobClient(blobName);
 
 		try
 		{
-			if (!await blobClient.ExistsAsync(cancellationToken))
-			{
-				return null;
-			}
+			if (!await blobClient.ExistsAsync(cancellationToken)) return null;
 
 			var response = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken);
 			await using var content = response.Value.Content;
@@ -65,10 +53,7 @@ public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IO
 			await content.CopyToAsync(memoryStream, cancellationToken);
 
 			var contentType = response.Value.Details.ContentType;
-			if (string.IsNullOrWhiteSpace(contentType))
-			{
-				contentType = "application/octet-stream";
-			}
+			if (string.IsNullOrWhiteSpace(contentType)) contentType = "application/octet-stream";
 
 			return new AvatarStorageFile(memoryStream.ToArray(), contentType);
 		}
@@ -85,32 +70,24 @@ public sealed class AvatarStorageService(BlobServiceClient blobServiceClient, IO
 		if (!Uri.TryCreate(avatarReference, UriKind.Absolute, out var absoluteUri))
 		{
 			if (avatarReference.StartsWith($"{_options.ContainerName}/", StringComparison.OrdinalIgnoreCase))
-			{
 				return avatarReference[(_options.ContainerName.Length + 1)..];
-			}
 
 			return avatarReference.TrimStart('/');
 		}
 
 		var absolutePath = absoluteUri.AbsolutePath.Trim('/');
 		if (absolutePath.StartsWith($"{_options.ContainerName}/", StringComparison.OrdinalIgnoreCase))
-		{
 			return absolutePath[(_options.ContainerName.Length + 1)..];
-		}
 
 		var pathSegments = absolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 		if (pathSegments.Length >= 2 &&
 		    string.Equals(pathSegments[0], _options.ContainerName, StringComparison.OrdinalIgnoreCase))
-		{
 			return string.Join('/', pathSegments.Skip(1));
-		}
 
 		var containerSegmentIndex = Array.FindIndex(pathSegments,
 			segment => string.Equals(segment, _options.ContainerName, StringComparison.OrdinalIgnoreCase));
 		if (containerSegmentIndex >= 0 && containerSegmentIndex < pathSegments.Length - 1)
-		{
 			return string.Join('/', pathSegments.Skip(containerSegmentIndex + 1));
-		}
 
 		return null;
 	}

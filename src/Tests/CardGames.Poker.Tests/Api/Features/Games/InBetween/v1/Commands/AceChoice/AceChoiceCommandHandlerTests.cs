@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -25,7 +23,7 @@ public class AceChoiceCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(Guid.NewGuid(), Guid.NewGuid(), AceIsHigh: true),
+		var result = await sut.Handle(new AceChoiceCommand(Guid.NewGuid(), Guid.NewGuid(), true),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -36,14 +34,14 @@ public class AceChoiceCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInInBetweenTurnPhase_ReturnsInvalidPhase()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.PreFlop));
+		var game = await SeedGameAsync(context, nameof(Phases.PreFlop));
 		var playerId = await context.GamePlayers
 			.Where(gamePlayer => gamePlayer.GameId == game.Id && gamePlayer.SeatPosition == 0)
 			.Select(gamePlayer => gamePlayer.PlayerId)
 			.SingleAsync();
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, AceIsHigh: true), CancellationToken.None);
+		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, true), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(AceChoiceErrorCode.InvalidPhase);
@@ -57,7 +55,7 @@ public class AceChoiceCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(game.Id, Guid.NewGuid(), AceIsHigh: true),
+		var result = await sut.Handle(new AceChoiceCommand(game.Id, Guid.NewGuid(), true),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -75,7 +73,7 @@ public class AceChoiceCommandHandlerTests
 			.SingleAsync();
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, AceIsHigh: true), CancellationToken.None);
+		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, true), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(AceChoiceErrorCode.NotPlayersTurn);
@@ -92,7 +90,7 @@ public class AceChoiceCommandHandlerTests
 			.SingleAsync();
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, AceIsHigh: true), CancellationToken.None);
+		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, true), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(AceChoiceErrorCode.AceChoiceNotRequired);
@@ -109,7 +107,7 @@ public class AceChoiceCommandHandlerTests
 			.SingleAsync();
 		var sut = new AceChoiceCommandHandler(context);
 
-		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, AceIsHigh: false),
+		var result = await sut.Handle(new AceChoiceCommand(game.Id, playerId, false),
 			CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
@@ -183,8 +181,8 @@ public class AceChoiceCommandHandlerTests
 		context.Games.Add(game);
 		context.Players.AddRange(alice, bob);
 		context.GamePlayers.AddRange(
-			CreateGamePlayer(game, alice, seatPosition: 0, now),
-			CreateGamePlayer(game, bob, seatPosition: 1, now));
+			CreateGamePlayer(game, alice, 0, now),
+			CreateGamePlayer(game, bob, 1, now));
 		context.Pots.Add(new PotEntity
 		{
 			GameId = game.Id,

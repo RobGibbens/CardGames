@@ -22,9 +22,7 @@ public static class GetLeagueOneOffEventsPageEndpoint
 					var resolvedPageNumber = pageNumber ?? 1;
 
 					if (!pageNumber.HasValue && skip.HasValue)
-					{
 						resolvedPageNumber = Math.Max(1, skip.Value / resolvedPageSize + 1);
-					}
 
 					var result = await mediator.Send(
 						new GetLeagueOneOffEventsPageQuery(leagueId, resolvedPageSize, resolvedPageNumber,

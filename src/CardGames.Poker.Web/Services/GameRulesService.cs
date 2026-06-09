@@ -35,17 +35,11 @@ public sealed class GameRulesService
 	/// <returns>The game rules response, or null if not found.</returns>
 	public async Task<GetGameRulesResponse?> GetGameRulesAsync(string gameTypeCode)
 	{
-		if (string.IsNullOrWhiteSpace(gameTypeCode))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(gameTypeCode)) return null;
 
 		var cacheKey = $"GameRules:{gameTypeCode.ToUpperInvariant()}";
 
-		if (_cache.TryGetValue(cacheKey, out GetGameRulesResponse? cached))
-		{
-			return cached;
-		}
+		if (_cache.TryGetValue(cacheKey, out GetGameRulesResponse? cached)) return cached;
 
 		try
 		{
@@ -82,10 +76,7 @@ public sealed class GameRulesService
 	/// <param name="gameTypeCode">The game type code to invalidate.</param>
 	public void InvalidateCache(string gameTypeCode)
 	{
-		if (string.IsNullOrWhiteSpace(gameTypeCode))
-		{
-			return;
-		}
+		if (string.IsNullOrWhiteSpace(gameTypeCode)) return;
 
 		var cacheKey = $"GameRules:{gameTypeCode.ToUpperInvariant()}";
 		_cache.Remove(cacheKey);

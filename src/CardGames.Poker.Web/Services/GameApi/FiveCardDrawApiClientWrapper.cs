@@ -32,10 +32,7 @@ public class FiveCardDrawApiClientWrapper(IFiveCardDrawApi client) : IGameApiCli
 		var response = await client.FiveCardDrawProcessDrawAsync(gameId, request);
 
 		string? errorMessage = null;
-		if (response?.Error is ApiException apiException)
-		{
-			errorMessage = apiException.Content;
-		}
+		if (response?.Error is ApiException apiException) errorMessage = apiException.Content;
 
 		return new ProcessDrawResult
 		{

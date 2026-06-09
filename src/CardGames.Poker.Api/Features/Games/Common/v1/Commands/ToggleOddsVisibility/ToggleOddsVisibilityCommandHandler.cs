@@ -31,13 +31,11 @@ public sealed class ToggleOddsVisibilityCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ToggleOddsVisibilityError
 			{
 				Code = ToggleOddsVisibilityErrorCode.GameNotFound,
 				Message = $"Game with ID {command.GameId} not found."
 			};
-		}
 
 		if (!IsAuthorized(game))
 		{
@@ -54,13 +52,11 @@ public sealed class ToggleOddsVisibilityCommandHandler(
 		}
 
 		if (game.Status is GameStatus.Completed or GameStatus.Cancelled)
-		{
 			return new ToggleOddsVisibilityError
 			{
 				Code = ToggleOddsVisibilityErrorCode.GameEnded,
 				Message = "This game has ended and odds visibility can no longer be changed."
 			};
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		game.AreOddsVisibleToAllPlayers = command.AreOddsVisibleToAllPlayers;
@@ -114,16 +110,11 @@ public sealed class ToggleOddsVisibilityCommandHandler(
 
 	private bool IsAuthorized(Game game)
 	{
-		if (!currentUserService.IsAuthenticated)
-		{
-			return false;
-		}
+		if (!currentUserService.IsAuthenticated) return false;
 
 		if (!string.IsNullOrEmpty(game.CreatedById) &&
 		    string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.OrdinalIgnoreCase))
-		{
 			return true;
-		}
 
 		if (!string.IsNullOrEmpty(game.CreatedByName))
 		{
@@ -132,9 +123,7 @@ public sealed class ToggleOddsVisibilityCommandHandler(
 
 			if (string.Equals(game.CreatedByName, userName, StringComparison.OrdinalIgnoreCase) ||
 			    string.Equals(game.CreatedByName, userEmail, StringComparison.OrdinalIgnoreCase))
-			{
 				return true;
-			}
 		}
 
 		return false;

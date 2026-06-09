@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,7 +36,7 @@ public class ChooseCardCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInTollboothOffer_ReturnsNotInTollboothPhase()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.ThirdStreet));
+		var game = await SeedGameAsync(context, nameof(Phases.ThirdStreet));
 		var sut = new ChooseCardCommandHandler(context);
 
 		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest), CancellationToken.None);
@@ -88,7 +86,7 @@ public class ChooseCardCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ChooseCardCommandHandler(context);
 
-		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, PlayerSeatIndex: 99),
+		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, 99),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -108,7 +106,7 @@ public class ChooseCardCommandHandlerTests
 			});
 		var sut = new ChooseCardCommandHandler(context);
 
-		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, PlayerSeatIndex: 0),
+		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Furthest, 0),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -128,7 +126,7 @@ public class ChooseCardCommandHandlerTests
 			});
 		var sut = new ChooseCardCommandHandler(context);
 
-		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Nearest, PlayerSeatIndex: 0),
+		var result = await sut.Handle(new ChooseCardCommand(game.Id, TollboothChoice.Nearest, 0),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -191,10 +189,10 @@ public class ChooseCardCommandHandlerTests
 		var staleSut = new ChooseCardCommandHandler(staleContext);
 
 		var firstResult = await freshSut.Handle(
-			new ChooseCardCommand(gameId, TollboothChoice.Furthest, PlayerSeatIndex: 0),
+			new ChooseCardCommand(gameId, TollboothChoice.Furthest, 0),
 			CancellationToken.None);
 		var secondResult = await staleSut.Handle(
-			new ChooseCardCommand(gameId, TollboothChoice.Furthest, PlayerSeatIndex: 1),
+			new ChooseCardCommand(gameId, TollboothChoice.Furthest, 1),
 			CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
@@ -324,12 +322,9 @@ public class ChooseCardCommandHandlerTests
 		});
 
 		for (var seatPosition = 0; seatPosition < gamePlayers.Length; seatPosition++)
-		{
 			SeedStudCards(context, game, gamePlayers[seatPosition], seatPosition, now);
-		}
 
 		for (var cardIndex = 0; cardIndex < communityCardCount; cardIndex++)
-		{
 			context.GameCards.Add(new GameCard
 			{
 				Id = Guid.NewGuid(),
@@ -345,10 +340,8 @@ public class ChooseCardCommandHandlerTests
 				DealtAt = now,
 				DealtAtPhase = nameof(Phases.TollboothOffer)
 			});
-		}
 
 		for (var cardIndex = 0; cardIndex < deckCardCount; cardIndex++)
-		{
 			context.GameCards.Add(new GameCard
 			{
 				Id = Guid.NewGuid(),
@@ -364,7 +357,6 @@ public class ChooseCardCommandHandlerTests
 				DealtAt = now,
 				DealtAtPhase = nameof(Phases.Dealing)
 			});
-		}
 
 		context.BettingRounds.Add(new BettingRoundEntity
 		{

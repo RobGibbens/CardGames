@@ -28,7 +28,6 @@ public abstract class ThemeToggleComponentBase : ComponentBase, IAsyncDisposable
 	public async ValueTask DisposeAsync()
 	{
 		if (_themeModule is not null)
-		{
 			try
 			{
 				await _themeModule.DisposeAsync();
@@ -37,15 +36,11 @@ public abstract class ThemeToggleComponentBase : ComponentBase, IAsyncDisposable
 			{
 				// Ignore circuit disconnects during teardown.
 			}
-		}
 	}
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
-		if (!firstRender)
-		{
-			return;
-		}
+		if (!firstRender) return;
 
 		try
 		{
@@ -79,10 +74,7 @@ public abstract class ThemeToggleComponentBase : ComponentBase, IAsyncDisposable
 
 	private async Task ApplyThemePreferenceAsync()
 	{
-		if (_themeModule is null)
-		{
-			return;
-		}
+		if (_themeModule is null) return;
 
 		await _themeModule.InvokeVoidAsync("applyThemePreference", ThemePreference.ToStorageValue());
 	}

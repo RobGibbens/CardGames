@@ -93,7 +93,6 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
 
 		// Add winners
 		foreach (var winner in parameters.Winners)
-		{
 			handHistory.Winners.Add(new HandHistoryWinner
 			{
 				Id = Guid.CreateVersion7(),
@@ -102,7 +101,6 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
 				PlayerName = winner.PlayerName,
 				AmountWon = winner.AmountWon
 			});
-		}
 
 		// Add player results
 		foreach (var playerResult in parameters.PlayerResults)
@@ -134,25 +132,16 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
 
 	private static PlayerResultType DetermineResultType(PlayerResultInfo playerResult)
 	{
-		if (playerResult.HasFolded)
-		{
-			return PlayerResultType.Folded;
-		}
+		if (playerResult.HasFolded) return PlayerResultType.Folded;
 
-		if (playerResult.IsWinner)
-		{
-			return playerResult.IsSplitPot ? PlayerResultType.SplitPotWon : PlayerResultType.Won;
-		}
+		if (playerResult.IsWinner) return playerResult.IsSplitPot ? PlayerResultType.SplitPotWon : PlayerResultType.Won;
 
 		return PlayerResultType.Lost;
 	}
 
 	private static FoldStreet? ParseFoldStreet(string? foldStreetName)
 	{
-		if (string.IsNullOrEmpty(foldStreetName))
-		{
-			return null;
-		}
+		if (string.IsNullOrEmpty(foldStreetName)) return null;
 
 		// Map phase names to FoldStreet enum values
 		return foldStreetName.ToUpperInvariant() switch

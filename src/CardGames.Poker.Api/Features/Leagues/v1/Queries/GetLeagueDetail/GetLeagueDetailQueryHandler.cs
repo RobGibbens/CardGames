@@ -17,9 +17,7 @@ public sealed class GetLeagueDetailQueryHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueDetailError(GetLeagueDetailErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var currentUserId = currentUserService.UserId;
 
@@ -35,20 +33,15 @@ public sealed class GetLeagueDetailQueryHandler(
 				.AnyAsync(x => x.Id == request.LeagueId && x.CreatedByUserId == currentUserId, cancellationToken);
 
 			if (!isLeagueCreator)
-			{
 				return new GetLeagueDetailError(GetLeagueDetailErrorCode.Forbidden,
 					"Only active members can view league details.");
-			}
 		}
 
 		var league = await context.Leagues
 			.AsNoTracking()
 			.FirstOrDefaultAsync(x => x.Id == request.LeagueId, cancellationToken);
 
-		if (league is null)
-		{
-			return new GetLeagueDetailError(GetLeagueDetailErrorCode.NotFound, "League not found.");
-		}
+		if (league is null) return new GetLeagueDetailError(GetLeagueDetailErrorCode.NotFound, "League not found.");
 
 		var activeMemberCount = await context.LeagueMembersCurrent
 			.AsNoTracking()

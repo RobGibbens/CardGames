@@ -21,21 +21,20 @@ namespace CardGames.Poker.Games.KingsAndLows;
 ///     - Losers match the pot after showdown
 /// </summary>
 [PokerGameMetadata(
-	code: "KINGSANDLOWS",
-	name: "Kings and Lows",
-	description:
+	"KINGSANDLOWS",
+	"Kings and Lows",
 	"A five-card draw poker variant where kings and the lowest card are wild. Players ante, decide to drop or stay, draw cards, and losers match the pot.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 6,
-	initialHoleCards: 5,
-	initialBoardCards: 0,
-	maxCommunityCards: 0,
-	maxPlayerCards: 5,
-	hasDrawPhase: true,
-	maxDiscards: 5,
-	wildCardRule: WildCardRule.LowestCard,
-	bettingStructure: BettingStructure.AntePotMatch,
-	imageName: "kingsandlows.png")]
+	2,
+	6,
+	5,
+	0,
+	0,
+	5,
+	true,
+	5,
+	WildCardRule.LowestCard,
+	BettingStructure.AntePotMatch,
+	"kingsandlows.png")]
 public class KingsAndLowsGame : IPokerGame
 {
 	private readonly bool _anteEveryHand;
@@ -60,7 +59,7 @@ public class KingsAndLowsGame : IPokerGame
 	public KingsAndLowsGame()
 		: this(
 			[("P1", 100), ("P2", 100)],
-			ante: 0)
+			0)
 	{
 	}
 
@@ -72,14 +71,10 @@ public class KingsAndLowsGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Kings and Lows requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Kings and Lows supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new KingsAndLowsGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -157,14 +152,10 @@ public class KingsAndLowsGame : IPokerGame
 
 		// Determine if we need to collect antes
 		if (!_initialAntePaid || _anteEveryHand)
-		{
 			CurrentPhase = Phases.CollectingAntes;
-		}
 		else
-		{
 			// Skip ante collection, go straight to dealing
 			CurrentPhase = Phases.Dealing;
-		}
 	}
 
 	/// <summary>
@@ -173,9 +164,7 @@ public class KingsAndLowsGame : IPokerGame
 	public List<BettingAction> CollectAntes()
 	{
 		if (CurrentPhase != Phases.CollectingAntes)
-		{
 			throw new InvalidOperationException("Cannot collect antes in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -202,10 +191,7 @@ public class KingsAndLowsGame : IPokerGame
 	/// </summary>
 	public void DealHands()
 	{
-		if (CurrentPhase != Phases.Dealing)
-		{
-			throw new InvalidOperationException("Cannot deal in current phase");
-		}
+		if (CurrentPhase != Phases.Dealing) throw new InvalidOperationException("Cannot deal in current phase");
 
 		// Deal 5 cards to each player
 		foreach (var gamePlayer in _gamePlayers)
@@ -223,15 +209,10 @@ public class KingsAndLowsGame : IPokerGame
 	public void SetPlayerDecision(string playerName, DropOrStayDecision decision)
 	{
 		if (CurrentPhase != Phases.DropOrStay)
-		{
 			throw new InvalidOperationException("Cannot set decision in current phase");
-		}
 
 		var gamePlayer = _gamePlayers.FirstOrDefault(gp => gp.Player.Name == playerName);
-		if (gamePlayer == null)
-		{
-			throw new ArgumentException($"Player '{playerName}' not found");
-		}
+		if (gamePlayer == null) throw new ArgumentException($"Player '{playerName}' not found");
 
 		gamePlayer.SetDecision(decision);
 	}
@@ -250,28 +231,21 @@ public class KingsAndLowsGame : IPokerGame
 	public DropOrStayResult FinalizeDropOrStay()
 	{
 		if (CurrentPhase != Phases.DropOrStay)
-		{
 			throw new InvalidOperationException("Cannot finalize drop/stay in current phase");
-		}
 
 		// Check if all players have decided
 		if (_gamePlayers.Any(gp => gp.Decision == DropOrStayDecision.Undecided))
-		{
 			return new DropOrStayResult
 			{
 				Success = false,
 				ErrorMessage = "Not all players have made their decision"
 			};
-		}
 
 		var stayingPlayers = _gamePlayers.Where(gp => gp.HasStayed).ToList();
 		var droppedPlayers = _gamePlayers.Where(gp => gp.HasDropped).ToList();
 
 		// Mark dropped players as folded
-		foreach (var player in droppedPlayers)
-		{
-			player.Player.Fold();
-		}
+		foreach (var player in droppedPlayers) player.Player.Fold();
 
 		// Handle edge cases
 		if (stayingPlayers.Count == 0)
@@ -322,10 +296,7 @@ public class KingsAndLowsGame : IPokerGame
 		var count = 0;
 		while (count < _gamePlayers.Count)
 		{
-			if (_gamePlayers[index].HasStayed)
-			{
-				return index;
-			}
+			if (_gamePlayers[index].HasStayed) return index;
 
 			index = (index + 1) % _gamePlayers.Count;
 			count++;
@@ -339,10 +310,7 @@ public class KingsAndLowsGame : IPokerGame
 	/// </summary>
 	public KingsAndLowsGamePlayer GetCurrentDrawPlayer()
 	{
-		if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0)
-		{
-			return null;
-		}
+		if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0) return null;
 
 		return _gamePlayers[_currentDrawPlayerIndex];
 	}
@@ -354,33 +322,27 @@ public class KingsAndLowsGame : IPokerGame
 	public DrawResult ProcessDraw(IReadOnlyCollection<int> discardIndices)
 	{
 		if (CurrentPhase != Phases.DrawPhase)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Not in draw phase"
 			};
-		}
 
 		var gamePlayer = _gamePlayers[_currentDrawPlayerIndex];
 
 		if (discardIndices.Count > 5)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Cannot discard more than 5 cards"
 			};
-		}
 
 		if (discardIndices.Any(i => i < 0 || i >= 5))
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Invalid card index (must be 0-4)"
 			};
-		}
 
 		// Deal new cards
 		var newCards = _dealer.DealCards(discardIndices.Count);
@@ -415,10 +377,7 @@ public class KingsAndLowsGame : IPokerGame
 			var player = _gamePlayers[_currentDrawPlayerIndex];
 
 			// Check if this player has stayed and hasn't drawn yet
-			if (player.HasStayed && !_playersWhoHaveDrawn.Contains(_currentDrawPlayerIndex))
-			{
-				return;
-			}
+			if (player.HasStayed && !_playersWhoHaveDrawn.Contains(_currentDrawPlayerIndex)) return;
 
 			_currentDrawPlayerIndex = (_currentDrawPlayerIndex + 1) % _gamePlayers.Count;
 			checkedCount++;
@@ -453,10 +412,7 @@ public class KingsAndLowsGame : IPokerGame
 	/// </summary>
 	public IReadOnlyCollection<Card> GetDeckHandWildCards()
 	{
-		if (_deckHand == null)
-		{
-			return [];
-		}
+		if (_deckHand == null) return [];
 
 		return WildCardRules.DetermineWildCards(_deckHand);
 	}
@@ -468,50 +424,39 @@ public class KingsAndLowsGame : IPokerGame
 	public DrawResult ProcessDeckDrawManual(IReadOnlyCollection<int> discardIndices)
 	{
 		if (CurrentPhase != Phases.PlayerVsDeck)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Not in player vs deck phase"
 			};
-		}
 
 		if (_deckHandDrawComplete)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Deck has already drawn"
 			};
-		}
 
 		if (discardIndices.Count > 5)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Cannot discard more than 5 cards"
 			};
-		}
 
 		if (discardIndices.Any(i => i < 0 || i >= 5))
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Invalid card index (must be 0-4)"
 			};
-		}
 
 		// Draw replacements
 		var newCards = _dealer.DealCards(discardIndices.Count);
 		var discardedCards = discardIndices.Select(i => _deckHand[i]).ToList();
 
 		// Remove in descending order
-		foreach (var index in discardIndices.OrderByDescending(i => i))
-		{
-			_deckHand.RemoveAt(index);
-		}
+		foreach (var index in discardIndices.OrderByDescending(i => i)) _deckHand.RemoveAt(index);
 
 		_deckHand.AddRange(newCards);
 
@@ -535,22 +480,18 @@ public class KingsAndLowsGame : IPokerGame
 	public DrawResult ProcessDeckDraw()
 	{
 		if (CurrentPhase != Phases.PlayerVsDeck)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Not in player vs deck phase"
 			};
-		}
 
 		if (_deckHandDrawComplete)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Deck has already drawn"
 			};
-		}
 
 		// Simple draw strategy: keep wild cards and pairs, discard rest
 		var wildCards = WildCardRules.DetermineWildCards(_deckHand);
@@ -561,20 +502,14 @@ public class KingsAndLowsGame : IPokerGame
 		var valueCounts = nonWildCards.GroupBy(c => c.Value)
 			.ToDictionary(g => g.Key, g => g.Count());
 
-		for (int i = 0; i < _deckHand.Count; i++)
+		for (var i = 0; i < _deckHand.Count; i++)
 		{
 			var card = _deckHand[i];
 			// Keep wild cards
-			if (wildCards.Contains(card))
-			{
-				continue;
-			}
+			if (wildCards.Contains(card)) continue;
 
 			// Keep pairs or better
-			if (valueCounts.TryGetValue(card.Value, out var count) && count >= 2)
-			{
-				continue;
-			}
+			if (valueCounts.TryGetValue(card.Value, out var count) && count >= 2) continue;
 
 			// Discard the rest
 			discardIndices.Add(i);
@@ -585,10 +520,7 @@ public class KingsAndLowsGame : IPokerGame
 		var discardedCards = discardIndices.Select(i => _deckHand[i]).ToList();
 
 		// Remove in descending order
-		foreach (var index in discardIndices.OrderByDescending(i => i))
-		{
-			_deckHand.RemoveAt(index);
-		}
+		foreach (var index in discardIndices.OrderByDescending(i => i)) _deckHand.RemoveAt(index);
 
 		_deckHand.AddRange(newCards);
 
@@ -612,13 +544,11 @@ public class KingsAndLowsGame : IPokerGame
 	public KingsAndLowsShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new KingsAndLowsShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var stayingPlayers = _gamePlayers.Where(gp => gp.HasStayed).ToList();
 		var isPlayerVsDeck = stayingPlayers.Count == 1 && _deckHand != null;
@@ -630,10 +560,7 @@ public class KingsAndLowsGame : IPokerGame
 		);
 
 		// Add deck hand if player vs deck
-		if (isPlayerVsDeck)
-		{
-			playerHands["Deck"] = EvaluateHandWithWildCards(_deckHand);
-		}
+		if (isPlayerVsDeck) playerHands["Deck"] = EvaluateHandWithWildCards(_deckHand);
 
 		// Find the winner
 		var maxStrength = playerHands.Values.Max(h => h.strength);
@@ -748,13 +675,11 @@ public class KingsAndLowsGame : IPokerGame
 	public PotMatchResult ProcessPotMatching()
 	{
 		if (CurrentPhase != Phases.PotMatching)
-		{
 			return new PotMatchResult
 			{
 				Success = false,
 				ErrorMessage = "Not in pot matching phase"
 			};
-		}
 
 		var matchActions = new List<BettingAction>();
 		var totalMatched = 0;
@@ -763,14 +688,12 @@ public class KingsAndLowsGame : IPokerGame
 		{
 			var loserPlayer = _gamePlayers.FirstOrDefault(gp => gp.Player.Name == loser);
 			if (loserPlayer != null && _potMatchAmounts.TryGetValue(loser, out var matchAmount))
-			{
 				if (matchAmount > 0)
 				{
 					var actualAmount = loserPlayer.Player.PlaceBet(matchAmount);
 					totalMatched += actualAmount;
 					matchActions.Add(new BettingAction(loser, BettingActionType.Post, actualAmount));
 				}
-			}
 		}
 
 		// The matched amounts form the new pot for the next hand
@@ -793,7 +716,6 @@ public class KingsAndLowsGame : IPokerGame
 	public void SkipPotMatching()
 	{
 		if (CurrentPhase == Phases.PotMatching)
-		{
 			// In player vs deck loss, the pot stays and loser matches
 			if (_losers != null && _losers.Count == 1)
 			{
@@ -804,7 +726,6 @@ public class KingsAndLowsGame : IPokerGame
 					CurrentPot += actualAmount;
 				}
 			}
-		}
 
 		CurrentPhase = Phases.Complete;
 		MoveDealer();
@@ -837,10 +758,7 @@ public class KingsAndLowsGame : IPokerGame
 	public IReadOnlyCollection<Card> GetPlayerWildCards(string playerName)
 	{
 		var gamePlayer = _gamePlayers.FirstOrDefault(gp => gp.Player.Name == playerName);
-		if (gamePlayer == null || !gamePlayer.Hand.Any())
-		{
-			return [];
-		}
+		if (gamePlayer == null || !gamePlayer.Hand.Any()) return [];
 
 		return WildCardRules.DetermineWildCards(gamePlayer.Hand);
 	}

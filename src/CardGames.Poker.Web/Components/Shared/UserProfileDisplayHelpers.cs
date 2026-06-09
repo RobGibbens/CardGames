@@ -21,10 +21,7 @@ internal static class UserProfileDisplayHelpers
 
 	public static string GetUserInitial(string? name)
 	{
-		if (string.IsNullOrWhiteSpace(name))
-		{
-			return "?";
-		}
+		if (string.IsNullOrWhiteSpace(name)) return "?";
 
 		return name[0].ToString().ToUpperInvariant();
 	}
@@ -34,10 +31,7 @@ internal static class UserProfileDisplayHelpers
 		foreach (var claimType in claimTypes)
 		{
 			var value = principal.FindFirstValue(claimType);
-			if (!string.IsNullOrWhiteSpace(value))
-			{
-				return value;
-			}
+			if (!string.IsNullOrWhiteSpace(value)) return value;
 		}
 
 		return null;
@@ -45,43 +39,26 @@ internal static class UserProfileDisplayHelpers
 
 	public static string? NormalizeAvatarUrl(string? url)
 	{
-		if (string.IsNullOrWhiteSpace(url))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(url)) return null;
 
 		url = url.Trim();
 
-		if (url.StartsWith("/", StringComparison.Ordinal))
-		{
-			return url;
-		}
+		if (url.StartsWith("/", StringComparison.Ordinal)) return url;
 
-		if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-		{
-			return null;
-		}
+		if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
 
-		if (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-		{
-			return uri.ToString();
-		}
+		if (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) return uri.ToString();
 
 		if (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
 		    && (uri.IsLoopback || string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)))
-		{
 			return uri.ToString();
-		}
 
 		return null;
 	}
 
 	public static string? PreferFirstName(string? firstName)
 	{
-		if (string.IsNullOrWhiteSpace(firstName))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(firstName)) return null;
 
 		return firstName.Trim();
 	}
@@ -90,10 +67,7 @@ internal static class UserProfileDisplayHelpers
 	{
 		var relativePath = $"/api/v1/profile/avatar/{Uri.EscapeDataString(userId)}";
 		var apiBaseUrl = ResolveApiBaseUrl();
-		if (string.IsNullOrWhiteSpace(apiBaseUrl))
-		{
-			return relativePath;
-		}
+		if (string.IsNullOrWhiteSpace(apiBaseUrl)) return relativePath;
 
 		var normalizedBaseUrl = apiBaseUrl.EndsWith("/", StringComparison.Ordinal)
 			? apiBaseUrl
@@ -105,23 +79,15 @@ internal static class UserProfileDisplayHelpers
 	public static string? BuildPreferredAvatarUrl(string? userId, string? avatarUrl)
 	{
 		var normalizedAvatarUrl = NormalizeAvatarUrl(avatarUrl);
-		if (string.IsNullOrWhiteSpace(normalizedAvatarUrl))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(normalizedAvatarUrl)) return null;
 
 		if (string.IsNullOrWhiteSpace(userId))
-		{
 			return normalizedAvatarUrl.StartsWith("/", StringComparison.Ordinal) ? normalizedAvatarUrl : null;
-		}
 
 		if (normalizedAvatarUrl.StartsWith("/api/v1/profile/avatar/", StringComparison.OrdinalIgnoreCase))
 		{
 			var apiBaseUrl = ResolveApiBaseUrl();
-			if (string.IsNullOrWhiteSpace(apiBaseUrl))
-			{
-				return normalizedAvatarUrl;
-			}
+			if (string.IsNullOrWhiteSpace(apiBaseUrl)) return normalizedAvatarUrl;
 
 			var normalizedBaseUrl = apiBaseUrl.EndsWith("/", StringComparison.Ordinal)
 				? apiBaseUrl
@@ -138,21 +104,13 @@ internal static class UserProfileDisplayHelpers
 		foreach (var key in ApiBaseUrlEnvironmentKeys)
 		{
 			var value = Environment.GetEnvironmentVariable(key);
-			if (string.IsNullOrWhiteSpace(value))
-			{
-				continue;
-			}
+			if (string.IsNullOrWhiteSpace(value)) continue;
 
-			if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
-			{
-				continue;
-			}
+			if (!Uri.TryCreate(value, UriKind.Absolute, out var uri)) continue;
 
 			if (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
 			    || string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-			{
 				return uri.AbsoluteUri;
-			}
 		}
 
 		return null;

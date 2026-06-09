@@ -101,7 +101,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessBettingAction_WhenNotInBettingPhase_ReturnsInvalidGameState()
 	{
-		var setup = await CreateKlondikeGameSetupAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateKlondikeGameSetupAsync(3, 0);
 		setup.Game.CurrentPhase = "CollectingBlinds";
 		await DbContext.SaveChangesAsync();
 
@@ -118,7 +118,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task AllInRunout_DealsAllCommunityCardsIncludingKlondikeCard()
 	{
-		var setup = await CreateDealtKlondikeGameAsync(playerCount: 2, dealerPosition: 0);
+		var setup = await CreateDealtKlondikeGameAsync(2, 0);
 
 		// Advance to Flop
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "Flop");
@@ -170,7 +170,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task InitialDeal_DealsKlondikeCardFaceDown()
 	{
-		var setup = await CreateDealtKlondikeGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtKlondikeGameAsync(3, 0);
 
 		// Klondike card should already be dealt face-down during initial deal (before any betting)
 		var fresh = GetFreshDbContext();
@@ -191,7 +191,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task FlopPhase_DealsThreeCommunityCards()
 	{
-		var setup = await CreateDealtKlondikeGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtKlondikeGameAsync(3, 0);
 
 		// Complete PreFlop to deal Flop
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "Flop");
@@ -213,7 +213,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task FullDealSequence_ProducesSixCommunityCards_WithCorrectDealOrders()
 	{
-		var setup = await CreateDealtKlondikeGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtKlondikeGameAsync(3, 0);
 
 		// Advance all the way to Showdown
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "Showdown");
@@ -258,7 +258,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task PerformShowdown_AfterRiver_ReturnsValidShowdownResult()
 	{
-		var setup = await CreateDealtKlondikeGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtKlondikeGameAsync(3, 0);
 
 		// Advance to Showdown phase
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "Showdown");
@@ -320,7 +320,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task PerformShowdown_IsIdempotent_ReturnsValidResultOnSecondCall()
 	{
-		var setup = await CreateDealtKlondikeGameAsync(playerCount: 2, dealerPosition: 0);
+		var setup = await CreateDealtKlondikeGameAsync(2, 0);
 
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "Showdown");
 

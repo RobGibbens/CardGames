@@ -17,25 +17,19 @@ public sealed class UpdateGamePreferencesCommandHandler(
 		UpdateGamePreferencesCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		if (request.DefaultSmallBlind < 0
 		    || request.DefaultBigBlind < 0
 		    || request.DefaultAnte < 0
 		    || request.DefaultMinimumBet < 0)
-		{
 			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.InvalidPreferences,
 				"Preference values must be greater than or equal to 0.");
-		}
 
 		if (request.DefaultBigBlind < request.DefaultSmallBlind)
-		{
 			return new UpdateGamePreferencesError(UpdateGamePreferencesErrorCode.InvalidPreferences,
 				"Big blind must be greater than or equal to small blind.");
-		}
 
 		var userId = currentUserService.UserId;
 		var now = DateTimeOffset.UtcNow;
@@ -51,9 +45,7 @@ public sealed class UpdateGamePreferencesCommandHandler(
 			var resolvedUserId = await ResolveLocalUserIdAsync(cancellationToken);
 			if (string.IsNullOrWhiteSpace(resolvedUserId)
 			    || string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
-			{
 				throw;
-			}
 
 			context.ChangeTracker.Clear();
 			preferences = await UpsertAsync(resolvedUserId, request, now, cancellationToken);
@@ -116,10 +108,7 @@ public sealed class UpdateGamePreferencesCommandHandler(
 				.Select(u => u.Id)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (!string.IsNullOrWhiteSpace(byEmail))
-			{
-				return byEmail;
-			}
+			if (!string.IsNullOrWhiteSpace(byEmail)) return byEmail;
 		}
 
 		if (!string.IsNullOrWhiteSpace(currentUserService.UserName))
@@ -131,10 +120,7 @@ public sealed class UpdateGamePreferencesCommandHandler(
 				.Select(u => u.Id)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (!string.IsNullOrWhiteSpace(byUserName))
-			{
-				return byUserName;
-			}
+			if (!string.IsNullOrWhiteSpace(byUserName)) return byUserName;
 		}
 
 		return null;

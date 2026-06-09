@@ -45,10 +45,7 @@ public sealed class HoldTheBaseballHandEvaluator : IHandEvaluator
 		for (var i = 0; i < cardList.Count; i++)
 		{
 			var symbol = cardList[i].Symbol;
-			if (symbol == Symbol.Three || symbol == Symbol.Nine)
-			{
-				wildIndexes.Add(i);
-			}
+			if (symbol == Symbol.Three || symbol == Symbol.Nine) wildIndexes.Add(i);
 		}
 
 		return wildIndexes;

@@ -43,10 +43,7 @@ public class BaseballGamePlayer
 		BoardCards.Add(card);
 
 		// Track if this is a 4 that could trigger a buy-card offer
-		if (card.Symbol == Symbol.Four)
-		{
-			_pendingFourOffers.Add(BoardCards.Count - 1);
-		}
+		if (card.Symbol == Symbol.Four) _pendingFourOffers.Add(BoardCards.Count - 1);
 	}
 
 	/// <summary>

@@ -25,7 +25,7 @@ public class HoldTheBaseballGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new HoldTheBaseballGame(players, smallBlind: 5, bigBlind: 10);
+		var act = () => new HoldTheBaseballGame(players, 5, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -36,7 +36,7 @@ public class HoldTheBaseballGameTests
 	{
 		var players = Enumerable.Range(1, 11).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new HoldTheBaseballGame(players, smallBlind: 5, bigBlind: 10);
+		var act = () => new HoldTheBaseballGame(players, 5, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 10 players*");
@@ -163,7 +163,7 @@ public class HoldTheBaseballGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new HoldTheBaseballGame(players, smallBlind: 5, bigBlind: 10);
+		return new HoldTheBaseballGame(players, 5, 10);
 	}
 
 	private static HoldTheBaseballGame CreateThreePlayerGame()
@@ -174,7 +174,7 @@ public class HoldTheBaseballGameTests
 			("Bob", 1000),
 			("Charlie", 1000)
 		};
-		return new HoldTheBaseballGame(players, smallBlind: 5, bigBlind: 10);
+		return new HoldTheBaseballGame(players, 5, 10);
 	}
 
 	/// <summary>

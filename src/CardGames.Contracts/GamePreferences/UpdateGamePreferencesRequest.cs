@@ -19,10 +19,8 @@ public sealed record UpdateGamePreferencesRequest : IValidatableObject
 	public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
 	{
 		if (DefaultBigBlind < DefaultSmallBlind)
-		{
 			yield return new ValidationResult(
 				"Big blind must be greater than or equal to small blind.",
 				[nameof(DefaultBigBlind), nameof(DefaultSmallBlind)]);
-		}
 	}
 }

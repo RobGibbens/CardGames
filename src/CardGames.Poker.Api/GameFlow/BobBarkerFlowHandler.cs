@@ -119,10 +119,7 @@ public sealed class BobBarkerFlowHandler : BaseGameFlowHandler
 				.Select(gp => gp.SeatPosition)
 				.ToListAsync(context.CancellationToken);
 
-			foreach (var seatPosition in pendingPlayers)
-			{
-				await AutoSelectShowcaseCardAsync(context, seatPosition);
-			}
+			foreach (var seatPosition in pendingPlayers) await AutoSelectShowcaseCardAsync(context, seatPosition);
 
 			return;
 		}
@@ -140,10 +137,7 @@ public sealed class BobBarkerFlowHandler : BaseGameFlowHandler
 				      && gp.Status == GamePlayerStatus.Active,
 				context.CancellationToken);
 
-		if (currentPlayer is null || currentPlayer.HasFolded || currentPlayer.HasDrawnThisRound)
-		{
-			return;
-		}
+		if (currentPlayer is null || currentPlayer.HasFolded || currentPlayer.HasDrawnThisRound) return;
 
 		var playerCards = await context.DbContext.GameCards
 			.AsNoTracking()
@@ -156,10 +150,7 @@ public sealed class BobBarkerFlowHandler : BaseGameFlowHandler
 			.ToListAsync(context.CancellationToken);
 
 		var showcaseCardIndex = GetAutoShowcaseCardIndex(playerCards);
-		if (showcaseCardIndex < 0)
-		{
-			return;
-		}
+		if (showcaseCardIndex < 0) return;
 
 		context.Logger.LogInformation(
 			"Bob Barker auto-action: selecting showcase card index {CardIndex} for seat {SeatIndex} in game {GameId}",
@@ -182,10 +173,7 @@ public sealed class BobBarkerFlowHandler : BaseGameFlowHandler
 
 	private static int GetAutoShowcaseCardIndex(IReadOnlyList<GameCard> cards)
 	{
-		if (cards.Count == 0)
-		{
-			return -1;
-		}
+		if (cards.Count == 0) return -1;
 
 		var groups = cards
 			.Select((card, index) => new AutoShowcaseCard(index, GetAutoShowcaseRankValue(card.Symbol)))
@@ -199,10 +187,7 @@ public sealed class BobBarkerFlowHandler : BaseGameFlowHandler
 			.ToList();
 
 		var singleton = groups.FirstOrDefault(group => group.Count == 1);
-		if (singleton is not null)
-		{
-			return singleton.LowestIndex;
-		}
+		if (singleton is not null) return singleton.LowestIndex;
 
 		return groups
 			.OrderBy(group => group.Count)

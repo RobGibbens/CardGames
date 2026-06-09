@@ -41,13 +41,11 @@ public class PerformShowdownCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new PerformShowdownError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = PerformShowdownErrorCode.GameNotFound
 			};
-		}
 
 		// Filter pots to current hand (in case there are old unawarded pots from edge cases)
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
@@ -56,14 +54,12 @@ public class PerformShowdownCommandHandler(
 		// 2. Validate game is in showdown phase or pots are already awarded
 		if (game.CurrentPhase != nameof(Phases.Showdown) &&
 		    !isAlreadyAwarded)
-		{
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Showdown can only be performed when the game is in '{nameof(Phases.Showdown)}' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Get players who have not folded (stayed in the hand)
 		var playersInHand = game.GamePlayers
@@ -149,10 +145,10 @@ public class PerformShowdownCommandHandler(
 					playerCardGroups,
 					now,
 					totalPot,
-					wonByFold: false,
-					winners: [],
-					winnerNames: [],
-					winningHandDescription: "Everyone dropped",
+					false,
+					[],
+					[],
+					"Everyone dropped",
 					cancellationToken);
 			}
 
@@ -195,24 +191,16 @@ public class PerformShowdownCommandHandler(
 				// Determine wild card indexes for player
 				var playerWildCards = playerHand.WildCards;
 				var playerWildIndexes = new List<int>();
-				for (int i = 0; i < playerCoreCards.Count; i++)
-				{
+				for (var i = 0; i < playerCoreCards.Count; i++)
 					if (playerWildCards.Contains(playerCoreCards[i]))
-					{
 						playerWildIndexes.Add(i);
-					}
-				}
 
 				// Determine wild card indexes for deck
 				var deckWildCards = deckHand.WildCards;
 				var deckWildIndexes = new List<int>();
-				for (int i = 0; i < deckCoreCards.Count; i++)
-				{
+				for (var i = 0; i < deckCoreCards.Count; i++)
 					if (deckWildCards.Contains(deckCoreCards[i]))
-					{
 						deckWildIndexes.Add(i);
-					}
-				}
 
 				var playerHandDescription = HandDescriptionFormatter.GetHandDescription(playerHand);
 				var deckHandDescription = HandDescriptionFormatter.GetHandDescription(deckHand);
@@ -318,10 +306,10 @@ public class PerformShowdownCommandHandler(
 						playerCardGroups,
 						now,
 						isWinner ? totalPot : 0,
-						wonByFold: false,
-						winners: isWinner ? [(player.PlayerId, player.Player.Name, totalPot)] : [],
-						winnerNames: isWinner ? [player.Player.Name] : [],
-						winningHandDescription: isWinner ? playerHandDescription : deckHandDescription,
+						false,
+						isWinner ? [(player.PlayerId, player.Player.Name, totalPot)] : [],
+						isWinner ? [player.Player.Name] : [],
+						isWinner ? playerHandDescription : deckHandDescription,
 						cancellationToken);
 				}
 
@@ -421,10 +409,10 @@ public class PerformShowdownCommandHandler(
 					playerCardGroups,
 					now,
 					totalPot,
-					wonByFold: true,
-					winners: [(player.PlayerId, player.Player.Name, totalPot)],
-					winnerNames: [player.Player.Name],
-					winningHandDescription: null,
+					true,
+					[(player.PlayerId, player.Player.Name, totalPot)],
+					[player.Player.Name],
+					null,
 					cancellationToken);
 			}
 
@@ -457,17 +445,15 @@ public class PerformShowdownCommandHandler(
 		}
 
 		// 7. Evaluate all hands using Kings and Lows wild card rules
-		var wildCardRules = new WildCardRules(kingRequired: false);
+		var wildCardRules = new WildCardRules();
 		var playerHandEvaluations =
 			new Dictionary<string, (KingsAndLowsDrawHand hand, List<GameCard> cards, GamePlayer gamePlayer, List<int>
 				wildIndexes)>();
 
 		foreach (var gamePlayer in playersInHand)
 		{
-			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards) || cards.Count < 5)
-			{
-				continue; // Skip players without valid hands
-			}
+			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards) ||
+			    cards.Count < 5) continue; // Skip players without valid hands
 
 			var coreCards = cards.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol))).ToList();
 			var wildHand = new KingsAndLowsDrawHand(coreCards);
@@ -475,25 +461,19 @@ public class PerformShowdownCommandHandler(
 			// Determine wild card indexes for UI display
 			var wildCards = wildHand.WildCards;
 			var wildIndexes = new List<int>();
-			for (int i = 0; i < coreCards.Count; i++)
-			{
+			for (var i = 0; i < coreCards.Count; i++)
 				if (wildCards.Contains(coreCards[i]))
-				{
 					wildIndexes.Add(i);
-				}
-			}
 
 			playerHandEvaluations[gamePlayer.Player.Name] = (wildHand, cards, gamePlayer, wildIndexes);
 		}
 
 		if (playerHandEvaluations.Count == 0)
-		{
 			return new PerformShowdownError
 			{
 				Message = "No eligible winning hand could be determined at showdown.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
-		}
 
 		// 8. Determine winners (highest strength)
 		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
@@ -510,16 +490,10 @@ public class PerformShowdownCommandHandler(
 		var remainder = totalPot % winners.Count;
 		var payouts = new Dictionary<string, int>();
 
-		foreach (var winner in winners)
-		{
-			payouts[winner] = payoutPerWinner;
-		}
+		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
 
 		// Add remainder to first winner (closest to dealer's left)
-		if (remainder > 0 && winners.Count > 0)
-		{
-			payouts[winners[0]] += remainder;
-		}
+		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
 
 		// 10. Update player chip stacks
 		if (!isAlreadyAwarded)
@@ -609,10 +583,10 @@ public class PerformShowdownCommandHandler(
 				playerCardGroups,
 				now,
 				totalPot,
-				wonByFold: false,
-				winners: winnerInfos,
-				winnerNames: winners,
-				winningHandDescription: winReason,
+				false,
+				winnerInfos,
+				winners,
+				winReason,
 				cancellationToken);
 		}
 
@@ -665,18 +639,13 @@ public class PerformShowdownCommandHandler(
 			.ToList();
 
 		if (activePlayers.Count == 0)
-		{
 			activePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active)
 				.OrderBy(gp => gp.SeatPosition)
 				.Select(gp => gp.SeatPosition)
 				.ToList();
-		}
 
-		if (activePlayers.Count == 0)
-		{
-			return;
-		}
+		if (activePlayers.Count == 0) return;
 
 		var currentPosition = game.DealerPosition;
 		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
@@ -755,12 +724,10 @@ public class PerformShowdownCommandHandler(
 			List<string>? showdownCards = null;
 			var reachedShowdown = !gp.HasFolded && !wonByFold;
 			if (reachedShowdown && playerCardGroups.TryGetValue(gp.Id, out var cards) && cards.Any())
-			{
 				showdownCards = cards
 					.OrderBy(c => c.DealOrder)
 					.Select(c => FormatCard(c.Symbol, c.Suit))
 					.ToList();
-			}
 
 			return new PlayerResultInfo
 			{

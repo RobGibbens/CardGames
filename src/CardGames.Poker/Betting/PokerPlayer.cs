@@ -9,10 +9,7 @@ public class PokerPlayer
 {
 	public PokerPlayer(string name, int initialChips)
 	{
-		if (initialChips < 0)
-		{
-			throw new ArgumentException("Initial chips cannot be negative", nameof(initialChips));
-		}
+		if (initialChips < 0) throw new ArgumentException("Initial chips cannot be negative", nameof(initialChips));
 
 		Name = name;
 		ChipStack = initialChips;
@@ -49,10 +46,7 @@ public class PokerPlayer
 	/// </summary>
 	public void AddChips(int amount)
 	{
-		if (amount < 0)
-		{
-			throw new ArgumentException("Cannot add negative chips", nameof(amount));
-		}
+		if (amount < 0) throw new ArgumentException("Cannot add negative chips", nameof(amount));
 
 		ChipStack += amount;
 	}

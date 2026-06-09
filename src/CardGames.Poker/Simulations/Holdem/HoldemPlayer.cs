@@ -10,10 +10,7 @@ public class HoldemPlayer : CommunityCardGamePlayer
 	{
 		Name = name;
 
-		if (holeCards.Count > 2)
-		{
-			throw new ArgumentException($"{name} has too many hole cards to play Holdem.");
-		}
+		if (holeCards.Count > 2) throw new ArgumentException($"{name} has too many hole cards to play Holdem.");
 
 		GivenHoleCards = holeCards;
 	}

@@ -31,13 +31,11 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		await Mediator.Send(new DealHandsCommand(setup.Game.Id));
 
 		// First betting round - everyone checks
-		for (int i = 0; i < numPlayers; i++)
-		{
+		for (var i = 0; i < numPlayers; i++)
 			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
-		}
 
 		// Draw phase - everyone stands pat
-		for (int i = 0; i < numPlayers; i++)
+		for (var i = 0; i < numPlayers; i++)
 		{
 			var game = await DbContext.Games
 				.Include(g => g.GamePlayers)
@@ -47,10 +45,8 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		}
 
 		// Second betting round - everyone checks
-		for (int i = 0; i < numPlayers; i++)
-		{
+		for (var i = 0; i < numPlayers; i++)
 			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
-		}
 
 		// Reload game
 		var finalGame = await DbContext.Games
@@ -167,8 +163,7 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_WinnerChipsUpdated()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 1000,
-			ante: 10);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2);
 
 		// Start and go through game phases
 		await Mediator.Send(new StartHandCommand(setup.Game.Id));
@@ -180,10 +175,7 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
 
 		// Draw phase
-		for (int i = 0; i < 2; i++)
-		{
-			await Mediator.Send(new ProcessDrawCommand(setup.Game.Id, new List<int>()));
-		}
+		for (var i = 0; i < 2; i++) await Mediator.Send(new ProcessDrawCommand(setup.Game.Id, new List<int>()));
 
 		// Second betting
 		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
@@ -400,7 +392,7 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_BobBarker_SplitsPotBetweenMainHandAndShowcaseWinner()
 	{
-		var (game, players) = await CreateBobBarkerShowdownGameAsync(playerCount: 2, potAmount: 100);
+		var (game, players) = await CreateBobBarkerShowdownGameAsync(2, 100);
 		var playerOne = players[0];
 		var playerTwo = players[1];
 		var now = DateTimeOffset.UtcNow;
@@ -422,17 +414,17 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		BobBarkerVariantState.SetSelectedShowcaseDealOrder(playerOne, 5);
 		BobBarkerVariantState.SetSelectedShowcaseDealOrder(playerTwo, 5);
 
-		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Spades, CardSymbol.Jack, isVisible: false,
+		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Spades, CardSymbol.Jack, false,
 			nameof(Phases.Dealing), now);
-		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Clubs, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Clubs, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Hearts, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Hearts, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Diamonds, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Diamonds, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Clubs, CardSymbol.Five, isVisible: true, nameof(Phases.Turn),
+		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Clubs, CardSymbol.Five, true, nameof(Phases.Turn),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Hearts, CardSymbol.Six, isVisible: true, nameof(Phases.River),
+		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Hearts, CardSymbol.Six, true, nameof(Phases.River),
 			now);
 
 		await DbContext.SaveChangesAsync();
@@ -457,7 +449,7 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_BobBarker_HandDescription_UsesExactlyTwoHoleCards()
 	{
-		var (game, players) = await CreateBobBarkerShowdownGameAsync(playerCount: 2, potAmount: 100);
+		var (game, players) = await CreateBobBarkerShowdownGameAsync(2, 100);
 		var hero = players[0];
 		var villain = players[1];
 		var now = DateTimeOffset.UtcNow;
@@ -477,17 +469,17 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		BobBarkerVariantState.SetSelectedShowcaseDealOrder(hero, 5);
 		BobBarkerVariantState.SetSelectedShowcaseDealOrder(villain, 5);
 
-		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Spades, CardSymbol.Ace, isVisible: false, nameof(Phases.Dealing),
+		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Spades, CardSymbol.Ace, false, nameof(Phases.Dealing),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Hearts, CardSymbol.Six, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Hearts, CardSymbol.Six, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Clubs, CardSymbol.Ten, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Clubs, CardSymbol.Ten, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Hearts, CardSymbol.Four, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Hearts, CardSymbol.Four, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Diamonds, CardSymbol.Deuce, isVisible: true, nameof(Phases.Turn),
+		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Diamonds, CardSymbol.Deuce, true, nameof(Phases.Turn),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Clubs, CardSymbol.Six, isVisible: true, nameof(Phases.River),
+		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Clubs, CardSymbol.Six, true, nameof(Phases.River),
 			now);
 
 		await DbContext.SaveChangesAsync();
@@ -503,7 +495,7 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_BobBarker_ShowcaseTie_SplitsShowcaseHalfAmongAllShowcaseWinners()
 	{
-		var (game, players) = await CreateBobBarkerShowdownGameAsync(playerCount: 3, potAmount: 100);
+		var (game, players) = await CreateBobBarkerShowdownGameAsync(3, 100);
 		var playerOne = players[0];
 		var playerTwo = players[1];
 		var playerThree = players[2];
@@ -533,17 +525,17 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		BobBarkerVariantState.SetSelectedShowcaseDealOrder(playerTwo, 5);
 		BobBarkerVariantState.SetSelectedShowcaseDealOrder(playerThree, 5);
 
-		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Spades, CardSymbol.Jack, isVisible: false,
+		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Spades, CardSymbol.Jack, false,
 			nameof(Phases.Dealing), now);
-		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Clubs, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Clubs, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Hearts, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Hearts, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Diamonds, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Diamonds, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Clubs, CardSymbol.Five, isVisible: true, nameof(Phases.Turn),
+		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Clubs, CardSymbol.Five, true, nameof(Phases.Turn),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Hearts, CardSymbol.Six, isVisible: true, nameof(Phases.River),
+		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Hearts, CardSymbol.Six, true, nameof(Phases.River),
 			now);
 
 		await DbContext.SaveChangesAsync();
@@ -569,7 +561,7 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_BobBarker_DealerAce_TreatsAceShowcaseAsHigh()
 	{
-		var (game, players) = await CreateBobBarkerShowdownGameAsync(playerCount: 2, potAmount: 100);
+		var (game, players) = await CreateBobBarkerShowdownGameAsync(2, 100);
 		var playerOne = players[0];
 		var playerTwo = players[1];
 		var now = DateTimeOffset.UtcNow;
@@ -590,17 +582,17 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		BobBarkerVariantState.SetSelectedShowcaseDealOrder(playerOne, 5);
 		BobBarkerVariantState.SetSelectedShowcaseDealOrder(playerTwo, 5);
 
-		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Diamonds, CardSymbol.Ace, isVisible: false,
+		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Diamonds, CardSymbol.Ace, false,
 			nameof(Phases.Dealing), now);
-		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Clubs, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Clubs, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Hearts, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Hearts, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Diamonds, CardSymbol.King, isVisible: true, nameof(Phases.Flop),
+		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Diamonds, CardSymbol.King, true, nameof(Phases.Flop),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Clubs, CardSymbol.Five, isVisible: true, nameof(Phases.Turn),
+		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Clubs, CardSymbol.Five, true, nameof(Phases.Turn),
 			now);
-		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Hearts, CardSymbol.Six, isVisible: true, nameof(Phases.River),
+		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Hearts, CardSymbol.Six, true, nameof(Phases.River),
 			now);
 
 		await DbContext.SaveChangesAsync();
@@ -619,7 +611,7 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		int potAmount)
 	{
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", playerCount,
-			startingChips: 1000, ante: 0);
+			1000, 0);
 		var game = await DbContext.Games
 			.Include(g => g.GamePlayers)
 			.ThenInclude(gp => gp.Player)

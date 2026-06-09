@@ -12,7 +12,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void Kings_Are_Always_Wild()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "Kh 5d 8c 9s Ts Jc Qd".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -25,7 +25,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void Multiple_Kings_Are_All_Wild()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "Kh Kd 5c 8s Ts Jc Qd".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -39,7 +39,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void Lowest_Card_Is_Wild()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "2h 5d 8c 9s Ts Jc Qd".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -51,7 +51,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void Multiple_Lowest_Cards_Are_All_Wild()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "2h 2d 5c 8s Kh Jc Qd".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -65,7 +65,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void King_And_Lowest_Card_Are_Both_Wild()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "Kh 2d 5c 8s Ts Jc Qd".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -78,7 +78,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void KingRequired_LowCards_Not_Wild_Without_King()
 	{
-		var rules = new WildCardRules(kingRequired: true);
+		var rules = new WildCardRules(true);
 		var hand = "2h 5d 8c 9s Ts Jc Qd".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -89,7 +89,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void KingRequired_LowCards_Are_Wild_With_King()
 	{
-		var rules = new WildCardRules(kingRequired: true);
+		var rules = new WildCardRules(true);
 		var hand = "Kh 2d 5c 8s Ts Jc Qd".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -102,7 +102,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void King_Is_Not_Counted_As_Lowest_Card()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "Kh Kd 5c 8s Ts Jc Qd".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -116,7 +116,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void DetermineWildCardsWithAceLow_Treats_Ace_As_Lowest()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "Ah 6d 7c 8s 9h".ToCards();
 
 		var wildCards = rules.DetermineWildCardsWithAceLow(hand);
@@ -128,7 +128,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void DetermineWildCards_Treats_Ace_As_High()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "Ah 6d 7c 8s 9h".ToCards();
 
 		var wildCards = rules.DetermineWildCards(hand);
@@ -140,7 +140,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void GetAllPossibleWildCardSets_Returns_Both_When_Ace_Present()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "Ah 6d 7c 8s 9h".ToCards();
 
 		var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
@@ -153,7 +153,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void GetAllPossibleWildCardSets_Returns_One_When_No_Ace()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "2h 6d 7c 8s 9h".ToCards();
 
 		var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
@@ -166,7 +166,7 @@ public class WildCardRulesTests
 	public void GetAllPossibleWildCardSets_Returns_One_When_Ace_And_Low_Are_Same()
 	{
 		// When only Ace is in hand and no other low cards differ between scenarios
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "Ah Ad 7c 8s 9h".ToCards();
 
 		var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
@@ -178,7 +178,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void GetAllPossibleWildCardSets_Includes_Five_And_Ace_For_Five_To_Ace_Example()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "5h 6d 7c 8s Ac".ToCards();
 
 		var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
@@ -191,7 +191,7 @@ public class WildCardRulesTests
 	[Fact]
 	public void GetAllPossibleWildCardSets_Includes_Deuce_And_Ace_For_Broadway_Example()
 	{
-		var rules = new WildCardRules(kingRequired: false);
+		var rules = new WildCardRules(false);
 		var hand = "2s Jd Qh Kc As".ToCards();
 
 		var wildCardSets = rules.GetAllPossibleWildCardSets(hand);

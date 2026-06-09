@@ -15,7 +15,7 @@ public static partial class GetActiveGamesMapper
 			model.Id,
 			model.GameTypeId ?? Guid.Empty,
 			model.GameType?.Code,
-			model.GameType?.Name,
+			model.GameType?.Name ?? string.Empty,
 			null,
 			model.GameType?.Description,
 			null,

@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -24,7 +22,7 @@ public class UpdateGamePreferencesCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new UpdateGamePreferencesCommandHandler(
 			context,
-			CreateCurrentUserService(isAuthenticated: false, userId: null));
+			CreateCurrentUserService(false, null));
 
 		var result = await sut.Handle(new UpdateGamePreferencesCommand(1, 2, 5, 10), CancellationToken.None);
 
@@ -38,7 +36,7 @@ public class UpdateGamePreferencesCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new UpdateGamePreferencesCommandHandler(
 			context,
-			CreateCurrentUserService(isAuthenticated: true, userId: "profile-user"));
+			CreateCurrentUserService(true, "profile-user"));
 
 		var result = await sut.Handle(new UpdateGamePreferencesCommand(-1, 2, 5, 10), CancellationToken.None);
 
@@ -53,7 +51,7 @@ public class UpdateGamePreferencesCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new UpdateGamePreferencesCommandHandler(
 			context,
-			CreateCurrentUserService(isAuthenticated: true, userId: "profile-user"));
+			CreateCurrentUserService(true, "profile-user"));
 
 		var result = await sut.Handle(new UpdateGamePreferencesCommand(20, 10, 5, 20), CancellationToken.None);
 
@@ -73,7 +71,7 @@ public class UpdateGamePreferencesCommandHandlerTests
 
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
-			await SeedUserAsync(setupContext, localUserId, userName: "profile-user", email);
+			await SeedUserAsync(setupContext, localUserId, "profile-user", email);
 			await SeedPreferencesAsync(setupContext, localUserId, 1, 2, 5, 10);
 		}
 
@@ -81,8 +79,8 @@ public class UpdateGamePreferencesCommandHandlerTests
 		var sut = new UpdateGamePreferencesCommandHandler(
 			context,
 			CreateCurrentUserService(
-				isAuthenticated: true,
-				userId: externalUserId,
+				true,
+				externalUserId,
 				userEmail: email));
 
 		var result = await sut.Handle(new UpdateGamePreferencesCommand(15, 30, 6, 30), CancellationToken.None);

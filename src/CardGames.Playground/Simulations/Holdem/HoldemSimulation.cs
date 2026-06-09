@@ -29,10 +29,7 @@ public class HoldemSimulation
 
 	public HoldemSimulation WithFlop(IReadOnlyCollection<Card> flopCards)
 	{
-		if (flopCards.Count != 3)
-		{
-			throw new ArgumentException("A flop needs to have exactly three cards.");
-		}
+		if (flopCards.Count != 3) throw new ArgumentException("A flop needs to have exactly three cards.");
 
 		_flop = flopCards;
 		return this;

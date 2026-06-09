@@ -15,20 +15,20 @@ namespace CardGames.Poker.Games.HoldTheBaseball;
 ///     except that 3s and 9s are wild (including community cards).
 /// </summary>
 [PokerGameMetadata(
-	code: "HOLDTHEBASEBALL",
-	name: "Hold the Baseball",
-	description: "A Texas Hold 'Em variant where 3s and 9s are wild, including community cards.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 2,
-	initialBoardCards: 0,
-	maxCommunityCards: 5,
-	maxPlayerCards: 2,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.FixedRanks,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "holdthebaseball.png")]
+	"HOLDTHEBASEBALL",
+	"Hold the Baseball",
+	"A Texas Hold 'Em variant where 3s and 9s are wild, including community cards.",
+	2,
+	10,
+	2,
+	0,
+	5,
+	2,
+	false,
+	0,
+	WildCardRule.FixedRanks,
+	BettingStructure.Blinds,
+	"holdthebaseball.png")]
 public class HoldTheBaseballGame : IPokerGame
 {
 	private readonly FrenchDeckDealer _dealer;
@@ -42,8 +42,8 @@ public class HoldTheBaseballGame : IPokerGame
 	public HoldTheBaseballGame()
 		: this(
 			new[] { ("P1", 100), ("P2", 100) },
-			smallBlind: 0,
-			bigBlind: 0)
+			0,
+			0)
 	{
 	}
 
@@ -54,14 +54,10 @@ public class HoldTheBaseballGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Hold the Baseball requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Hold the Baseball supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new HoldTheBaseballGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -121,30 +117,21 @@ public class HoldTheBaseballGame : IPokerGame
 
 	public int GetSmallBlindPosition()
 	{
-		if (_gamePlayers.Count == 2)
-		{
-			return DealerPosition;
-		}
+		if (_gamePlayers.Count == 2) return DealerPosition;
 
 		return (DealerPosition + 1) % _gamePlayers.Count;
 	}
 
 	public int GetBigBlindPosition()
 	{
-		if (_gamePlayers.Count == 2)
-		{
-			return (DealerPosition + 1) % _gamePlayers.Count;
-		}
+		if (_gamePlayers.Count == 2) return (DealerPosition + 1) % _gamePlayers.Count;
 
 		return (DealerPosition + 2) % _gamePlayers.Count;
 	}
 
 	private int GetFirstToActPreFlop()
 	{
-		if (_gamePlayers.Count == 2)
-		{
-			return DealerPosition;
-		}
+		if (_gamePlayers.Count == 2) return DealerPosition;
 
 		return (GetBigBlindPosition() + 1) % _gamePlayers.Count;
 	}
@@ -155,10 +142,7 @@ public class HoldTheBaseballGame : IPokerGame
 		var count = 0;
 		while (count < _gamePlayers.Count)
 		{
-			if (!_gamePlayers[position].Player.HasFolded)
-			{
-				return position;
-			}
+			if (!_gamePlayers[position].Player.HasFolded) return position;
 
 			position = (position + 1) % _gamePlayers.Count;
 			count++;
@@ -170,9 +154,7 @@ public class HoldTheBaseballGame : IPokerGame
 	public List<BettingAction> CollectBlinds()
 	{
 		if (CurrentPhase != Phases.CollectingBlinds)
-		{
 			throw new InvalidOperationException("Cannot collect blinds in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -202,19 +184,14 @@ public class HoldTheBaseballGame : IPokerGame
 
 	public void DealHoleCards()
 	{
-		if (CurrentPhase != Phases.Dealing)
-		{
-			throw new InvalidOperationException("Cannot deal in current phase");
-		}
+		if (CurrentPhase != Phases.Dealing) throw new InvalidOperationException("Cannot deal in current phase");
 
 		foreach (var gamePlayer in _gamePlayers)
-		{
 			if (!gamePlayer.Player.HasFolded)
 			{
 				var cards = _dealer.DealCards(2);
 				gamePlayer.SetHoleCards(cards);
 			}
-		}
 
 		CurrentPhase = Phases.PreFlop;
 	}
@@ -222,9 +199,7 @@ public class HoldTheBaseballGame : IPokerGame
 	public void StartPreFlopBettingRound()
 	{
 		if (CurrentPhase != Phases.PreFlop)
-		{
 			throw new InvalidOperationException("Cannot start pre-flop betting in current phase");
-		}
 
 		var activePlayers = _gamePlayers.Select(gp => gp.Player).ToList();
 		var firstToAct = GetFirstToActPreFlop();
@@ -243,10 +218,7 @@ public class HoldTheBaseballGame : IPokerGame
 
 	public void DealFlop()
 	{
-		if (CurrentPhase != Phases.Flop)
-		{
-			throw new InvalidOperationException("Cannot deal flop in current phase");
-		}
+		if (CurrentPhase != Phases.Flop) throw new InvalidOperationException("Cannot deal flop in current phase");
 
 		var flopCards = _dealer.DealCards(3);
 		_communityCards.AddRange(flopCards);
@@ -254,10 +226,7 @@ public class HoldTheBaseballGame : IPokerGame
 
 	public void DealTurn()
 	{
-		if (CurrentPhase != Phases.Turn)
-		{
-			throw new InvalidOperationException("Cannot deal turn in current phase");
-		}
+		if (CurrentPhase != Phases.Turn) throw new InvalidOperationException("Cannot deal turn in current phase");
 
 		var turnCard = _dealer.DealCard();
 		_communityCards.Add(turnCard);
@@ -265,10 +234,7 @@ public class HoldTheBaseballGame : IPokerGame
 
 	public void DealRiver()
 	{
-		if (CurrentPhase != Phases.River)
-		{
-			throw new InvalidOperationException("Cannot deal river in current phase");
-		}
+		if (CurrentPhase != Phases.River) throw new InvalidOperationException("Cannot deal river in current phase");
 
 		var riverCard = _dealer.DealCard();
 		_communityCards.Add(riverCard);
@@ -277,14 +243,9 @@ public class HoldTheBaseballGame : IPokerGame
 	public void StartPostFlopBettingRound()
 	{
 		if (CurrentPhase is not (Phases.Flop or Phases.Turn or Phases.River))
-		{
 			throw new InvalidOperationException("Cannot start post-flop betting in current phase");
-		}
 
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		var activePlayers = _gamePlayers.Select(gp => gp.Player).ToList();
 		var firstToAct = GetFirstToActPostFlop();
@@ -310,20 +271,15 @@ public class HoldTheBaseballGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -338,10 +294,7 @@ public class HoldTheBaseballGame : IPokerGame
 		}
 
 		var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
-		if (hasAllIn)
-		{
-			PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-		}
+		if (hasAllIn) PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 
 		var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
 		if (activePlayersWhoCanAct == 0)
@@ -350,10 +303,7 @@ public class HoldTheBaseballGame : IPokerGame
 			return;
 		}
 
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		switch (CurrentPhase)
 		{
@@ -375,13 +325,11 @@ public class HoldTheBaseballGame : IPokerGame
 	public HoldTheBaseballShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new HoldTheBaseballShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 
@@ -406,10 +354,7 @@ public class HoldTheBaseballGame : IPokerGame
 			};
 		}
 
-		while (_communityCards.Count < 5)
-		{
-			_communityCards.Add(_dealer.DealCard());
-		}
+		while (_communityCards.Count < 5) _communityCards.Add(_dealer.DealCard());
 
 		var playerHands = playersInHand.ToDictionary(
 			gp => gp.Player.Name,

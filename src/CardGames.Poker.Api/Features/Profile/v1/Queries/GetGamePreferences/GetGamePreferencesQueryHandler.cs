@@ -14,9 +14,7 @@ public sealed class GetGamePreferencesQueryHandler(
 	public async Task<GamePreferencesDto> Handle(GetGamePreferencesQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return DefaultPreferences();
-		}
 
 		var userId = currentUserService.UserId;
 
@@ -29,17 +27,12 @@ public sealed class GetGamePreferencesQueryHandler(
 			var resolvedUserId = await ResolveLocalUserIdAsync(cancellationToken);
 			if (!string.IsNullOrWhiteSpace(resolvedUserId)
 			    && !string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
-			{
 				preferences = await context.UserGamePreferences
 					.AsNoTracking()
 					.FirstOrDefaultAsync(x => x.UserId == resolvedUserId, cancellationToken);
-			}
 		}
 
-		if (preferences is null)
-		{
-			return DefaultPreferences();
-		}
+		if (preferences is null) return DefaultPreferences();
 
 		return new GamePreferencesDto
 		{
@@ -72,10 +65,7 @@ public sealed class GetGamePreferencesQueryHandler(
 				.Select(u => u.Id)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (!string.IsNullOrWhiteSpace(byEmail))
-			{
-				return byEmail;
-			}
+			if (!string.IsNullOrWhiteSpace(byEmail)) return byEmail;
 		}
 
 		if (!string.IsNullOrWhiteSpace(currentUserService.UserName))
@@ -87,10 +77,7 @@ public sealed class GetGamePreferencesQueryHandler(
 				.Select(u => u.Id)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (!string.IsNullOrWhiteSpace(byUserName))
-			{
-				return byUserName;
-			}
+			if (!string.IsNullOrWhiteSpace(byUserName)) return byUserName;
 		}
 
 		return null;

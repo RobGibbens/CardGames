@@ -18,14 +18,10 @@ public sealed class CreateLeagueCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new CreateLeagueError(CreateLeagueErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.Name))
-		{
 			return new CreateLeagueError(CreateLeagueErrorCode.InvalidRequest, "League name is required.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		var trimmedName = request.Request.Name.Trim();

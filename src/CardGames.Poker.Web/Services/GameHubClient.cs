@@ -110,10 +110,7 @@ public sealed class GameHubClient : IAsyncDisposable
 		if (_hubConnection is not null)
 		{
 			_logger.LogDebug("Hub connection already exists, state: {State}", _hubConnection.State);
-			if (_hubConnection.State == HubConnectionState.Connected)
-			{
-				return;
-			}
+			if (_hubConnection.State == HubConnectionState.Connected) return;
 		}
 
 		// Get user info for authentication
@@ -129,19 +126,13 @@ public sealed class GameHubClient : IAsyncDisposable
 				{
 					options.Headers["X-User-Authenticated"] = "true";
 					if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-					{
 						options.Headers["X-User-Id"] = userInfo.Value.UserId;
-					}
 
 					if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-					{
 						options.Headers["X-User-Name"] = userInfo.Value.UserName;
-					}
 
 					if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
-					{
 						options.Headers["X-User-Email"] = userInfo.Value.UserEmail;
-					}
 				}
 			})
 			.AddJsonProtocol(options =>
@@ -198,9 +189,7 @@ public sealed class GameHubClient : IAsyncDisposable
 
 		// Leave current game if different
 		if (_currentGameId.HasValue && _currentGameId.Value != gameId)
-		{
 			await LeaveGameAsync(_currentGameId.Value, cancellationToken);
-		}
 
 		_logger.LogInformation("Joining game {GameId}", gameId);
 		await _hubConnection.InvokeAsync("JoinGame", gameId, cancellationToken);
@@ -231,10 +220,7 @@ public sealed class GameHubClient : IAsyncDisposable
 			_logger.LogWarning(ex, "Error leaving game {GameId}", gameId);
 		}
 
-		if (_currentGameId == gameId)
-		{
-			_currentGameId = null;
-		}
+		if (_currentGameId == gameId) _currentGameId = null;
 	}
 
 	/// <summary>
@@ -242,18 +228,12 @@ public sealed class GameHubClient : IAsyncDisposable
 	/// </summary>
 	public async Task DisconnectAsync(CancellationToken cancellationToken = default)
 	{
-		if (_hubConnection is null)
-		{
-			return;
-		}
+		if (_hubConnection is null) return;
 
 		_logger.LogInformation("Disconnecting from game hub");
 
 		// Leave current game first
-		if (_currentGameId.HasValue)
-		{
-			await LeaveGameAsync(_currentGameId.Value, cancellationToken);
-		}
+		if (_currentGameId.HasValue) await LeaveGameAsync(_currentGameId.Value, cancellationToken);
 
 		try
 		{
@@ -283,19 +263,13 @@ public sealed class GameHubClient : IAsyncDisposable
 		{
 			var queryParams = new List<string> { "authenticated=true" };
 			if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-			{
 				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
-			}
 
 			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-			{
 				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
-			}
 
 			if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
-			{
 				queryParams.Add($"userEmail={HttpUtility.UrlEncode(userInfo.Value.UserEmail)}");
-			}
 
 			url = $"{url}?{string.Join("&", queryParams)}";
 		}
@@ -310,10 +284,7 @@ public sealed class GameHubClient : IAsyncDisposable
 			var authState = await _authStateProvider.GetAuthenticationStateAsync();
 			var user = authState.User;
 
-			if (user.Identity?.IsAuthenticated != true)
-			{
-				return null;
-			}
+			if (user.Identity?.IsAuthenticated != true) return null;
 
 			var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
 			             ?? user.FindFirstValue("sub");
@@ -344,13 +315,9 @@ public sealed class GameHubClient : IAsyncDisposable
 	private Task OnReconnecting(Exception? exception)
 	{
 		if (exception is not null)
-		{
 			_logger.LogWarning(exception, "Hub connection lost, attempting to reconnect...");
-		}
 		else
-		{
 			_logger.LogInformation("Hub connection reconnecting...");
-		}
 
 		OnConnectionStateChanged?.Invoke(HubConnectionState.Reconnecting);
 		return Task.CompletedTask;
@@ -379,13 +346,9 @@ public sealed class GameHubClient : IAsyncDisposable
 	private Task OnClosed(Exception? exception)
 	{
 		if (exception is not null)
-		{
 			_logger.LogError(exception, "Hub connection closed with error");
-		}
 		else
-		{
 			_logger.LogInformation("Hub connection closed");
-		}
 
 		OnConnectionStateChanged?.Invoke(HubConnectionState.Disconnected);
 		return Task.CompletedTask;
@@ -395,10 +358,7 @@ public sealed class GameHubClient : IAsyncDisposable
 	{
 		_logger.LogDebug("Received TableStateUpdated for game {GameId}", state.GameId);
 
-		if (OnTableStateUpdated is not null)
-		{
-			await OnTableStateUpdated(state);
-		}
+		if (OnTableStateUpdated is not null) await OnTableStateUpdated(state);
 	}
 
 	private async Task HandlePrivateStateUpdated(PrivateStateDto state)
@@ -406,10 +366,7 @@ public sealed class GameHubClient : IAsyncDisposable
 		_logger.LogDebug("Received PrivateStateUpdated for game {GameId}, player {PlayerName}",
 			state.GameId, state.PlayerName);
 
-		if (OnPrivateStateUpdated is not null)
-		{
-			await OnPrivateStateUpdated(state);
-		}
+		if (OnPrivateStateUpdated is not null) await OnPrivateStateUpdated(state);
 	}
 
 	private async Task HandlePlayerJoined(PlayerJoinedDto notification)
@@ -417,10 +374,7 @@ public sealed class GameHubClient : IAsyncDisposable
 		_logger.LogDebug("Received PlayerJoined for game {GameId}, player {PlayerName} at seat {SeatIndex}",
 			notification.GameId, notification.PlayerName, notification.SeatIndex);
 
-		if (OnPlayerJoined is not null)
-		{
-			await OnPlayerJoined(notification);
-		}
+		if (OnPlayerJoined is not null) await OnPlayerJoined(notification);
 	}
 
 	private async Task HandleTableSettingsUpdated(TableSettingsUpdatedDto notification)
@@ -428,10 +382,7 @@ public sealed class GameHubClient : IAsyncDisposable
 		_logger.LogDebug("Received TableSettingsUpdated for game {GameId}, updated by {UpdatedByName}",
 			notification.GameId, notification.UpdatedByName);
 
-		if (OnTableSettingsUpdated is not null)
-		{
-			await OnTableSettingsUpdated(notification);
-		}
+		if (OnTableSettingsUpdated is not null) await OnTableSettingsUpdated(notification);
 	}
 
 	private async Task HandleTableToastNotification(TableToastNotificationDto notification)
@@ -439,10 +390,7 @@ public sealed class GameHubClient : IAsyncDisposable
 		_logger.LogDebug("Received TableToastNotification for game {GameId}: {Message}",
 			notification.GameId, notification.Message);
 
-		if (OnTableToastNotification is not null)
-		{
-			await OnTableToastNotification(notification);
-		}
+		if (OnTableToastNotification is not null) await OnTableToastNotification(notification);
 	}
 
 	private async Task HandleActionTimerUpdated(ActionTimerStateDto timerState)
@@ -451,10 +399,7 @@ public sealed class GameHubClient : IAsyncDisposable
 			"Received ActionTimerUpdated: {SecondsRemaining}s remaining, seat {SeatIndex}, active: {IsActive}",
 			timerState.SecondsRemaining, timerState.PlayerSeatIndex, timerState.IsActive);
 
-		if (OnActionTimerUpdated is not null)
-		{
-			await OnActionTimerUpdated(timerState);
-		}
+		if (OnActionTimerUpdated is not null) await OnActionTimerUpdated(timerState);
 	}
 
 	private async Task HandlePlayerActionPerformed(PlayerActionPerformedDto notification)
@@ -462,9 +407,6 @@ public sealed class GameHubClient : IAsyncDisposable
 		_logger.LogDebug("Received PlayerActionPerformed for game {GameId}, seat {SeatIndex}: {Action}",
 			notification.GameId, notification.SeatIndex, notification.ActionDescription);
 
-		if (OnPlayerActionPerformed is not null)
-		{
-			await OnPlayerActionPerformed(notification);
-		}
+		if (OnPlayerActionPerformed is not null) await OnPlayerActionPerformed(notification);
 	}
 }

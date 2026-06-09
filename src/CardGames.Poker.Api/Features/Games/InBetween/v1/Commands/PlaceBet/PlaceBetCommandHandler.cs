@@ -36,44 +36,36 @@ public class PlaceBetCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new PlaceBetError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = PlaceBetErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in InBetweenTurn phase
 		if (!string.Equals(game.CurrentPhase, nameof(Phases.InBetweenTurn), StringComparison.OrdinalIgnoreCase))
-		{
 			return new PlaceBetError
 			{
 				Message = $"Cannot place bet. Game is in '{game.CurrentPhase}' phase.",
 				Code = PlaceBetErrorCode.InvalidPhase
 			};
-		}
 
 		// 3. Find the player
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
-		{
 			return new PlaceBetError
 			{
 				Message = $"Player with ID '{command.PlayerId}' is not in this game.",
 				Code = PlaceBetErrorCode.PlayerNotFound
 			};
-		}
 
 		// 4. Validate it's this player's turn
 		if (gamePlayer.SeatPosition != game.CurrentPlayerIndex)
-		{
 			return new PlaceBetError
 			{
 				Message = "It's not this player's turn.",
 				Code = PlaceBetErrorCode.NotPlayersTurn
 			};
-		}
 
 		var state = GetState(game);
 
@@ -85,13 +77,11 @@ public class PlaceBetCommandHandler(
 
 			// If ace choice is required, tell client to make that choice first
 			if (state.SubPhase == TurnSubPhase.AwaitingAceChoice)
-			{
 				return new PlaceBetError
 				{
 					Message = "First boundary card is an Ace. Player must declare high or low before betting.",
 					Code = PlaceBetErrorCode.AceChoiceRequired
 				};
-			}
 
 			// Boundary cards dealt — return early so the player can view cards and decide
 			var pot = game.Pots.FirstOrDefault(p => p.PotType == PotType.Main
@@ -109,22 +99,18 @@ public class PlaceBetCommandHandler(
 
 		// 6. Ensure we're in the right sub-phase for betting
 		if (state.SubPhase == TurnSubPhase.AwaitingAceChoice)
-		{
 			return new PlaceBetError
 			{
 				Message = "Ace choice must be made before placing a bet.",
 				Code = PlaceBetErrorCode.AceChoiceRequired
 			};
-		}
 
 		if (state.SubPhase != TurnSubPhase.AwaitingBetOrPass)
-		{
 			return new PlaceBetError
 			{
 				Message = $"Cannot place bet in current sub-phase: {state.SubPhase}.",
 				Code = PlaceBetErrorCode.InvalidPhase
 			};
-		}
 
 		// 7. Validate bet amount
 		var mainPot = game.Pots.FirstOrDefault(p => p.PotType == PotType.Main
@@ -134,51 +120,41 @@ public class PlaceBetCommandHandler(
 
 		// Zero-chip players forced to pass
 		if (gamePlayer.ChipStack <= 0 && betAmount > 0)
-		{
 			return new PlaceBetError
 			{
 				Message = "Player has no chips and must pass.",
 				Code = PlaceBetErrorCode.InvalidBetAmount
 			};
-		}
 
 		if (betAmount < 0)
-		{
 			return new PlaceBetError
 			{
 				Message = "Bet amount cannot be negative.",
 				Code = PlaceBetErrorCode.InvalidBetAmount
 			};
-		}
 
 		if (betAmount > potAmount)
-		{
 			return new PlaceBetError
 			{
 				Message = $"Bet amount ({betAmount}) exceeds the pot ({potAmount}).",
 				Code = PlaceBetErrorCode.BetExceedsPot
 			};
-		}
 
 		if (betAmount > gamePlayer.ChipStack)
-		{
 			return new PlaceBetError
 			{
 				Message = $"Bet amount ({betAmount}) exceeds player's chip stack ({gamePlayer.ChipStack}).",
 				Code = PlaceBetErrorCode.BetExceedsChips
 			};
-		}
 
 		// First-orbit restriction: cannot bet the full pot
 		var isFirstOrbit = !InBetweenFlowHandler.AllPlayersCompletedFirstTurn(game, state);
 		if (isFirstOrbit && betAmount > 0 && betAmount == potAmount)
-		{
 			return new PlaceBetError
 			{
 				Message = "Full-pot bets are not allowed during the first orbit.",
 				Code = PlaceBetErrorCode.FullPotNotAllowedFirstOrbit
 			};
-		}
 
 		// 8. Process the bet
 		string turnResultStr;
@@ -216,10 +192,8 @@ public class PlaceBetCommandHandler(
 
 		// 9. Advance to next player or complete game (only for pass; bets wait for reveal display)
 		if (betAmount == 0)
-		{
 			await InBetweenFlowHandler.AdvanceToNextPlayerOrCompleteAsync(
 				context, game, handHistoryRecorder, now, cancellationToken);
-		}
 
 		// Re-read pot amount after resolution
 		var finalPot = await context.Pots

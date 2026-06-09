@@ -268,7 +268,7 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_RoundComplete_AdvancesToNextPhase()
 	{
 		// Arrange - Create 2-player game for simpler round completion
-		var (setup, game) = await CreateGameInBettingPhaseAsync(numPlayers: 2);
+		var (setup, game) = await CreateGameInBettingPhaseAsync(2);
 
 		// Both players check - round should complete
 		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
@@ -354,7 +354,7 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_AllButOneFold_EndsRoundEarly()
 	{
 		// Arrange
-		var (setup, game) = await CreateGameInBettingPhaseAsync(numPlayers: 3);
+		var (setup, game) = await CreateGameInBettingPhaseAsync(3);
 
 		// Player 1 bets (to allow others to fold)
 		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 10));

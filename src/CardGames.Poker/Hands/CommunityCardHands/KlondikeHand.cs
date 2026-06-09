@@ -90,10 +90,7 @@ public sealed class KlondikeHand : CommunityCardsHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 

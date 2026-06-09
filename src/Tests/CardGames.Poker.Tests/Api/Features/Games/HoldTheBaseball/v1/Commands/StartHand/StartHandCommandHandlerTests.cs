@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -38,7 +36,7 @@ public class StartHandCommandHandlerTests
 	public async Task Handle_WhenGameIsInInvalidPhase_ReturnsInvalidGameState()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.PreFlop));
+		var game = await SeedGameAsync(context, nameof(Phases.PreFlop));
 		var sut = CreateSut(context, out _);
 
 		var result = await sut.Handle(new StartHandCommand(game.Id), CancellationToken.None);

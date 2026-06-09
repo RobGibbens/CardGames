@@ -811,17 +811,17 @@
 			await LoadStandingsAsync();
 			await LoadSeasonsAsync();
 			await LoadAvailableLeagueGamesAsync();
-			await LoadLobbySectionsAsync(resetPages: true);
+			await LoadLobbySectionsAsync(true);
 
 			if (_activeTab == LeagueDetailTab.Results)
 			{
-				await EnsureSeasonEventsLoadedAsync(forceReload: true);
+				await EnsureSeasonEventsLoadedAsync(true);
 			}
 
 			if (_activeTab == LeagueDetailTab.Schedule)
 			{
-				await EnsureScheduleSeasonEventsPageLoadedAsync(forceReload: true);
-				await EnsureScheduleOneOffEventsPageLoadedAsync(forceReload: true);
+				await EnsureScheduleSeasonEventsPageLoadedAsync(true);
+				await EnsureScheduleOneOffEventsPageLoadedAsync(true);
 			}
 
 			await LoadPendingJoinRequestsAsync();
@@ -951,22 +951,22 @@
 
 		if (_hasLoadedSeasonEvents)
 		{
-			await EnsureSeasonEventsLoadedAsync(forceReload: true);
+			await EnsureSeasonEventsLoadedAsync(true);
 		}
 
 		if (_hasLoadedOneOffEvents)
 		{
-			await EnsureOneOffEventsLoadedAsync(forceReload: true);
+			await EnsureOneOffEventsLoadedAsync(true);
 		}
 
 		if (_hasLoadedScheduleSeasonEventsPage)
 		{
-			await EnsureScheduleSeasonEventsPageLoadedAsync(forceReload: true);
+			await EnsureScheduleSeasonEventsPageLoadedAsync(true);
 		}
 
 		if (_hasLoadedScheduleOneOffEventsPage)
 		{
-			await EnsureScheduleOneOffEventsPageLoadedAsync(forceReload: true);
+			await EnsureScheduleOneOffEventsPageLoadedAsync(true);
 		}
 	}
 
@@ -1176,7 +1176,7 @@
 		_isLoadingScheduleOneOffEventsPage = true;
 		try
 		{
-			var response = await LeaguesApi.GetOneOffEventsPageAsync(LeagueId, SchedulePageSize, pageNumber, includeCompleted: false);
+			var response = await LeaguesApi.GetOneOffEventsPageAsync(LeagueId, SchedulePageSize, pageNumber, false);
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
 				_scheduleOneOffEventsPage = response.Content;
@@ -1240,7 +1240,7 @@
 
 	private async Task LoadRecentCompletedSeasonEventsAsync(Guid seasonId)
 	{
-		var response = await LeaguesApi.GetRecentCompletedSeasonEventsAsync(LeagueId, seasonId, take: 5);
+		var response = await LeaguesApi.GetRecentCompletedSeasonEventsAsync(LeagueId, seasonId, 5);
 		_recentCompletedEvents = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
 	}
 
@@ -1747,7 +1747,7 @@
 		await ModerateJoinRequestAsync(
 			joinRequestId,
 			(joinRequestIdValue, request) => LeaguesApi.ApproveJoinRequestAsync(LeagueId, joinRequestIdValue, request),
-			moderationReason: null,
+			null,
 			"Join request approved.",
 			"Failed to approve join request.");
 	}
@@ -1757,7 +1757,7 @@
 		await ModerateJoinRequestAsync(
 			joinRequestId,
 			(joinRequestIdValue, request) => LeaguesApi.DenyJoinRequestAsync(LeagueId, joinRequestIdValue, request),
-			moderationReason: reason,
+			reason,
 			"Join request denied.",
 			"Failed to deny join request.");
 	}
@@ -2483,7 +2483,7 @@
 		_isDeletingEvent = true;
 		try
 		{
-			IApiResponse response = _pendingEventDeletion.Kind switch
+			var response = _pendingEventDeletion.Kind switch
 			{
 				LeagueEventDeletionKind.SeasonEvent when _pendingEventDeletion.SeasonId.HasValue
 					=> await LeaguesApi.DeleteSeasonEventAsync(LeagueId, _pendingEventDeletion.SeasonId.Value, _pendingEventDeletion.EventId),

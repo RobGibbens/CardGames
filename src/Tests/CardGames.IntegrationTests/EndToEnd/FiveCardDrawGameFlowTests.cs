@@ -38,7 +38,7 @@ public class FiveCardDrawGameFlowTests : IntegrationTestBase
 	{
 		// Arrange - Create game with mixed chip stacks
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
-			DbContext, gameTypeCode: "FIVECARDDRAW", numberOfPlayers: 4, startingChips: 100, ante: 20);
+			DbContext, "FIVECARDDRAW", 4, 100, 20);
 
 		// Player 3 has chips less than ante
 		setup.GamePlayers[3].ChipStack = 15;
@@ -83,10 +83,7 @@ public class FiveCardDrawGameFlowTests : IntegrationTestBase
 			.Include(g => g.GamePlayers)
 			.FirstAsync(g => g.Id == setup.Game.Id);
 
-		foreach (var gp in game.GamePlayers.Skip(1))
-		{
-			gp.HasFolded = true;
-		}
+		foreach (var gp in game.GamePlayers.Skip(1)) gp.HasFolded = true;
 
 		await freshContext.SaveChangesAsync();
 

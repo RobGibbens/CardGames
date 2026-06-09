@@ -36,15 +36,9 @@ public static class DealersChoiceGameSettings
 	public static bool IsGameCodeAllowed(Game game, string? gameCode)
 	{
 		var allowedGameCodes = GetAllowedGameCodes(game);
-		if (allowedGameCodes is null)
-		{
-			return true;
-		}
+		if (allowedGameCodes is null) return true;
 
-		if (string.IsNullOrWhiteSpace(gameCode))
-		{
-			return false;
-		}
+		if (string.IsNullOrWhiteSpace(gameCode)) return false;
 
 		return allowedGameCodes.Contains(gameCode, StringComparer.OrdinalIgnoreCase);
 	}
@@ -55,23 +49,16 @@ public static class DealersChoiceGameSettings
 		var normalizedCodes = NormalizeGameCodes(gameCodes);
 
 		if (normalizedCodes.Count == 0)
-		{
 			settings.Remove(AllowedGameCodesKey);
-		}
 		else
-		{
 			settings[AllowedGameCodesKey] = JsonSerializer.SerializeToNode(normalizedCodes);
-		}
 
 		game.GameSettings = settings.Count > 0 ? settings.ToJsonString() : null;
 	}
 
 	private static JsonObject ParseSettings(string? json)
 	{
-		if (string.IsNullOrWhiteSpace(json))
-		{
-			return new JsonObject();
-		}
+		if (string.IsNullOrWhiteSpace(json)) return new JsonObject();
 
 		try
 		{

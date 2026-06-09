@@ -40,26 +40,20 @@ public sealed class JoinGameCommandHandler(
 	{
 		var playerName = currentUserService.UserName;
 		if (string.IsNullOrWhiteSpace(playerName))
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.GameNotFound,
 				"User is not authenticated.");
-		}
 
 		// Validate seat index
 		if (command.SeatIndex < 0 || command.SeatIndex > MaxSeatIndex)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.InvalidSeatIndex,
 				$"Seat index must be between 0 and {MaxSeatIndex}.");
-		}
 
 		if (command.StartingChips <= 0)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.InvalidStartingChips,
 				"Starting chips must be greater than 0.");
-		}
 
 		// Load the game with game type and current players
 		var game = await context.Games
@@ -69,11 +63,9 @@ public sealed class JoinGameCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.GameNotFound,
 				$"Game with ID {command.GameId} was not found.");
-		}
 
 		var linkedLeagueId = await context.LeagueSeasonEvents
 			.AsNoTracking()
@@ -82,13 +74,11 @@ public sealed class JoinGameCommandHandler(
 			.FirstOrDefaultAsync(cancellationToken);
 
 		if (!linkedLeagueId.HasValue)
-		{
 			linkedLeagueId = await context.LeagueOneOffEvents
 				.AsNoTracking()
 				.Where(x => x.LaunchedGameId == game.Id)
 				.Select(x => (Guid?)x.LeagueId)
 				.FirstOrDefaultAsync(cancellationToken);
-		}
 
 		if (linkedLeagueId.HasValue)
 		{
@@ -102,20 +92,16 @@ public sealed class JoinGameCommandHandler(
 					                           cancellationToken);
 
 			if (!isActiveLeagueMember)
-			{
 				return new JoinGameError(
 					JoinGameErrorCode.LeagueMembershipRequired,
 					"Only active league members can join this league event table.");
-			}
 		}
 
 		// Check if game has ended
 		if (game.Status == GameStatus.Completed || game.Status == GameStatus.Cancelled)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.GameEnded,
 				"This game has ended and is no longer accepting players.");
-		}
 
 		var lateJoinAllowed = (!string.Equals(
 			                       game.GameType?.Code,
@@ -146,11 +132,9 @@ public sealed class JoinGameCommandHandler(
 			gp.Status == GamePlayerStatus.Eliminated);
 
 		if (activePlayerCount >= maxPlayers)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.MaxPlayersReached,
 				$"This game has reached the maximum of {maxPlayers} players.");
-		}
 
 		// Check if player is already seated in this game
 		var existingGamePlayer = game.GamePlayers.FirstOrDefault(gp =>
@@ -159,11 +143,9 @@ public sealed class JoinGameCommandHandler(
 			 gp.Status == GamePlayerStatus.Eliminated));
 
 		if (existingGamePlayer is not null)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.AlreadySeated,
 				$"You are already seated at position {existingGamePlayer.SeatPosition}.");
-		}
 
 		// Check if player previously left this game and still has unreturned chips (rejoin scenario).
 		// ChipStack > 0 on a Left record means the chips were never credited back to the wallet
@@ -176,9 +158,7 @@ public sealed class JoinGameCommandHandler(
 			.FirstOrDefault();
 
 		if (previousGamePlayer is not null && previousGamePlayer.ChipStack > 0)
-		{
 			return await HandleRejoinAsync(game, previousGamePlayer, command, cancellationToken);
-		}
 
 		// Check if the seat is already occupied
 		var seatOccupied = game.GamePlayers.Any(gp =>
@@ -187,11 +167,9 @@ public sealed class JoinGameCommandHandler(
 			 gp.Status == GamePlayerStatus.Eliminated));
 
 		if (seatOccupied)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.SeatOccupied,
 				$"Seat {command.SeatIndex} is already occupied.");
-		}
 
 		// Determine if player can play the current hand
 		// They can only play if game is in WaitingToStart or WaitingForPlayers phase
@@ -210,11 +188,9 @@ public sealed class JoinGameCommandHandler(
 		// Check if the player has any chips at all
 		var accountBalance = await playerChipWalletService.GetBalanceAsync(player.Id, cancellationToken);
 		if (accountBalance <= 0)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.ZeroAccountBalance,
 				"You have no chips in your account. Visit the Cashier to add chips before joining a table.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 
@@ -228,39 +204,31 @@ public sealed class JoinGameCommandHandler(
 				cancellationToken);
 
 		if (existingPendingRequest)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.JoinApprovalPending,
 				"You already have a pending approval request for this table.");
-		}
 
 		var startingChips = command.StartingChips;
 		if (string.Equals(game.GameType?.Code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase))
 		{
 			var stackSize = game.Ante ?? 0;
 			if (stackSize <= 0)
-			{
 				return new JoinGameError(
 					JoinGameErrorCode.InvalidStartingChips,
 					"Screw Your Neighbor requires an ante greater than 0.");
-			}
 
 			startingChips = stackSize * 3;
 		}
 
 		if (game.MaxBuyIn.HasValue && startingChips > game.MaxBuyIn.Value)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.BuyInExceedsTableMaximum,
 				$"Buy-in exceeds the table maximum of {game.MaxBuyIn.Value:N0}.");
-		}
 
 		if (game.TournamentBuyIn.HasValue && startingChips != game.TournamentBuyIn.Value)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.InvalidStartingChips,
 				$"This tournament requires a fixed buy-in of {game.TournamentBuyIn.Value:N0}.");
-		}
 
 		var requiresApproval = game.RequiresJoinApproval
 		                       && !string.IsNullOrWhiteSpace(game.CreatedById)
@@ -336,11 +304,9 @@ public sealed class JoinGameCommandHandler(
 			cancellationToken);
 
 		if (!debitResult.Succeeded)
-		{
 			return new JoinGameError(
 				JoinGameErrorCode.InsufficientAccountChips,
 				debitResult.ErrorMessage ?? "Insufficient chips in your account.");
-		}
 
 		// Create the game participation record
 		var gamePlayer = new GamePlayer
@@ -382,13 +348,13 @@ public sealed class JoinGameCommandHandler(
 			cancellationToken);
 
 		return new JoinGameSuccessful(
-			GameId: game.Id,
-			SeatIndex: command.SeatIndex,
-			PlayerId: player.Id,
-			PlayerName: playerName,
-			PlayerAvatarUrl: userProfile?.AvatarUrl ?? player.AvatarUrl,
-			PlayerFirstName: userProfile?.FirstName,
-			CanPlayCurrentHand: canPlayCurrentHand);
+			game.Id,
+			command.SeatIndex,
+			player.Id,
+			playerName,
+			userProfile?.AvatarUrl ?? player.AvatarUrl,
+			userProfile?.FirstName,
+			canPlayCurrentHand);
 	}
 
 	private async Task<OneOf<JoinGameSuccessful, JoinGameError, JoinGamePendingApproval>> HandleRejoinAsync(
@@ -413,11 +379,9 @@ public sealed class JoinGameCommandHandler(
 				.FirstOrDefault(s => !occupiedSeats.Contains(s), -1);
 
 			if (rejoinSeatIndex < 0)
-			{
 				return new JoinGameError(
 					JoinGameErrorCode.MaxPlayersReached,
 					"No seats are available to rejoin.");
-			}
 		}
 
 		var canPlayCurrentHand = game.CurrentPhase == nameof(Phases.WaitingToStart) ||
@@ -466,13 +430,13 @@ public sealed class JoinGameCommandHandler(
 			cancellationToken);
 
 		return new JoinGameSuccessful(
-			GameId: game.Id,
-			SeatIndex: rejoinSeatIndex,
-			PlayerId: previousGamePlayer.PlayerId,
-			PlayerName: previousGamePlayer.Player.Name,
-			PlayerAvatarUrl: userProfile?.AvatarUrl ?? previousGamePlayer.Player.AvatarUrl,
-			PlayerFirstName: userProfile?.FirstName,
-			CanPlayCurrentHand: canPlayCurrentHand);
+			game.Id,
+			rejoinSeatIndex,
+			previousGamePlayer.PlayerId,
+			previousGamePlayer.Player.Name,
+			userProfile?.AvatarUrl ?? previousGamePlayer.Player.AvatarUrl,
+			userProfile?.FirstName,
+			canPlayCurrentHand);
 	}
 
 	private async Task<Player> GetOrCreatePlayerAsync(string name, string? email, CancellationToken cancellationToken)
@@ -483,10 +447,7 @@ public sealed class JoinGameCommandHandler(
 		if (player is not null)
 		{
 			// Update email if not previously set (supports existing players before email tracking)
-			if (string.IsNullOrWhiteSpace(player.Email) && !string.IsNullOrWhiteSpace(email))
-			{
-				player.Email = email;
-			}
+			if (string.IsNullOrWhiteSpace(player.Email) && !string.IsNullOrWhiteSpace(email)) player.Email = email;
 
 			return player;
 		}

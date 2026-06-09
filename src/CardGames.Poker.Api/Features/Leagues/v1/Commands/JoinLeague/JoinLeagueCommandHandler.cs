@@ -26,14 +26,10 @@ public sealed class JoinLeagueCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new JoinLeagueError(JoinLeagueErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.Token))
-		{
 			return new JoinLeagueError(JoinLeagueErrorCode.InvalidInvite, "Invite token is required.");
-		}
 
 		var tokenHash = ComputeSha256(request.Request.Token.Trim());
 		var now = DateTimeOffset.UtcNow;
@@ -41,32 +37,22 @@ public sealed class JoinLeagueCommandHandler(
 		var invite = await context.LeagueInvites
 			.FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
 
-		if (invite is null)
-		{
-			return new JoinLeagueError(JoinLeagueErrorCode.InvalidInvite, "Invite token is invalid.");
-		}
+		if (invite is null) return new JoinLeagueError(JoinLeagueErrorCode.InvalidInvite, "Invite token is invalid.");
 
 		if (invite.Status == LeagueInviteStatus.Revoked)
-		{
 			return new JoinLeagueError(JoinLeagueErrorCode.InviteRevoked, "Invite has been revoked.");
-		}
 
 		if (invite.ExpiresAtUtc <= now)
-		{
 			return new JoinLeagueError(JoinLeagueErrorCode.InviteExpired, "Invite has expired.");
-		}
 
 		if (invite.Status != LeagueInviteStatus.Active)
-		{
 			return new JoinLeagueError(JoinLeagueErrorCode.InvalidInvite, "Invite token is invalid.");
-		}
 
 		var membership = await context.LeagueMembersCurrent
 			.FirstOrDefaultAsync(x => x.LeagueId == invite.LeagueId && x.UserId == currentUserService.UserId,
 				cancellationToken);
 
 		if (membership is not null && membership.IsActive)
-		{
 			return new JoinLeagueResponse
 			{
 				LeagueId = invite.LeagueId,
@@ -76,7 +62,6 @@ public sealed class JoinLeagueCommandHandler(
 				Joined = false,
 				AlreadyMember = true
 			};
-		}
 
 		var existingPendingRequest = await context.LeagueJoinRequests
 			.FirstOrDefaultAsync(x =>
@@ -136,10 +121,7 @@ public sealed class JoinLeagueCommandHandler(
 						x.Status == Data.Entities.LeagueJoinRequestStatus.Pending,
 					cancellationToken);
 
-			if (existingPendingRequest is null)
-			{
-				throw;
-			}
+			if (existingPendingRequest is null) throw;
 		}
 
 		var response = new JoinLeagueResponse

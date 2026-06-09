@@ -25,7 +25,7 @@ public class SevenCardStudGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		var act = () => new SevenCardStudGame(players, 5, 5, 10, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -36,7 +36,7 @@ public class SevenCardStudGameTests
 	{
 		var players = Enumerable.Range(1, 8).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		var act = () => new SevenCardStudGame(players, 5, 5, 10, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 7 players*");
@@ -287,7 +287,7 @@ public class SevenCardStudGameTests
 			("Alice", 1000),
 			("Bob", 0)
 		};
-		var game = new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		var game = new SevenCardStudGame(players, 5, 5, 10, 20);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -318,7 +318,7 @@ public class SevenCardStudGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new SevenCardStudGame(players, 5, 5, 10, 20, false);
 
 		game.UseBringIn.Should().BeFalse();
 	}
@@ -331,7 +331,7 @@ public class SevenCardStudGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new SevenCardStudGame(players, 5, 5, 10, 20, false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -349,7 +349,7 @@ public class SevenCardStudGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new SevenCardStudGame(players, 5, 5, 10, 20, false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -368,7 +368,7 @@ public class SevenCardStudGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new SevenCardStudGame(players, 5, 5, 10, 20, false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -388,7 +388,7 @@ public class SevenCardStudGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+		var game = new SevenCardStudGame(players, 5, 5, 10, 20, false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -401,13 +401,8 @@ public class SevenCardStudGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 
 		// Verify game progressed to fourth street
@@ -421,7 +416,7 @@ public class SevenCardStudGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: true);
+		return new SevenCardStudGame(players, 5, 5, 10, 20, true);
 	}
 
 	private static void SetupToFourthStreet(SevenCardStudGame game)
@@ -437,13 +432,8 @@ public class SevenCardStudGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -458,13 +448,8 @@ public class SevenCardStudGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -479,13 +464,8 @@ public class SevenCardStudGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 
 		// Sixth street
@@ -495,13 +475,8 @@ public class SevenCardStudGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -516,13 +491,8 @@ public class SevenCardStudGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 }

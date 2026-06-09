@@ -19,36 +19,26 @@ public sealed class CreateLeagueSeasonCommandHandler(
 		CreateLeagueSeasonCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.Name))
-		{
 			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.InvalidRequest, "Season name is required.");
-		}
 
 		if (request.Request.PlannedEventCount.HasValue && request.Request.PlannedEventCount.Value <= 0)
-		{
 			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.InvalidRequest,
 				"Planned event count must be greater than zero.");
-		}
 
 		if (request.Request.StartsAtUtc.HasValue && request.Request.EndsAtUtc.HasValue &&
 		    request.Request.StartsAtUtc > request.Request.EndsAtUtc)
-		{
 			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.InvalidRequest,
 				"Season start must be before season end.");
-		}
 
 		var leagueExists = await context.Leagues
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.LeagueId, cancellationToken);
 
 		if (!leagueExists)
-		{
 			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.LeagueNotFound, "League not found.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -57,10 +47,8 @@ public sealed class CreateLeagueSeasonCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new CreateLeagueSeasonError(CreateLeagueSeasonErrorCode.Forbidden,
 				"Only league managers or admins can create seasons.");
-		}
 
 		var season = new LeagueSeason
 		{

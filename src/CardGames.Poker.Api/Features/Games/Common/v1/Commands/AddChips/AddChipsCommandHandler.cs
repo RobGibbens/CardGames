@@ -27,11 +27,9 @@ public sealed class AddChipsCommandHandler(
 	{
 		// Validate amount
 		if (command.Amount <= 0)
-		{
 			return new AddChipsError(
 				AddChipsErrorCode.InvalidAmount,
 				"Amount must be greater than 0.");
-		}
 
 		// Load the game with game type and players
 		var game = await context.Games
@@ -41,62 +39,49 @@ public sealed class AddChipsCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new AddChipsError(
 				AddChipsErrorCode.GameNotFound,
 				$"Game with ID {command.GameId} was not found.");
-		}
 
 		// Check if game has ended
 		if (game.Status == GameStatus.Completed || game.Status == GameStatus.Cancelled)
-		{
 			return new AddChipsError(
 				AddChipsErrorCode.GameEnded,
 				"This game has ended and chips cannot be added.");
-		}
 
 		if (game.TournamentBuyIn.HasValue)
-		{
 			return new AddChipsError(
 				AddChipsErrorCode.TournamentRebuyNotAllowed,
 				"Tournament tables do not allow rebuys after play begins.");
-		}
 
 		// Find the game player
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
-		{
 			return new AddChipsError(
 				AddChipsErrorCode.PlayerNotInGame,
 				"Player is not part of this game.");
-		}
 
 		if (gamePlayer.Status == GamePlayerStatus.Left)
-		{
 			return new AddChipsError(
 				AddChipsErrorCode.PlayerNotInGame,
 				"Player has already left this game.");
-		}
 
 		// Determine if chips should be applied immediately.
 		// During chip-related pauses and between-hands waiting states, apply immediately so play can resume.
-		bool applyImmediately = string.Equals(game.GameType.Code, PokerGameMetadataRegistry.KingsAndLowsCode,
-			                        StringComparison.OrdinalIgnoreCase)
-		                        || game.IsPausedForChipCheck
-		                        || game.IsPausedForRebuyGrace
-		                        || string.Equals(game.CurrentPhase, "BetweenHands", StringComparison.OrdinalIgnoreCase)
-		                        || string.Equals(game.CurrentPhase, "WaitingForPlayers",
-			                        StringComparison.OrdinalIgnoreCase);
+		var applyImmediately = string.Equals(game.GameType.Code, PokerGameMetadataRegistry.KingsAndLowsCode,
+			                       StringComparison.OrdinalIgnoreCase)
+		                       || game.IsPausedForChipCheck
+		                       || game.IsPausedForRebuyGrace
+		                       || string.Equals(game.CurrentPhase, "BetweenHands", StringComparison.OrdinalIgnoreCase)
+		                       || string.Equals(game.CurrentPhase, "WaitingForPlayers",
+			                       StringComparison.OrdinalIgnoreCase);
 
 		string message;
 		if (applyImmediately)
 		{
 			gamePlayer.ChipStack += command.Amount;
 			gamePlayer.IsSittingOut = false;
-			if (gamePlayer.Status == GamePlayerStatus.SittingOut)
-			{
-				gamePlayer.Status = GamePlayerStatus.Active;
-			}
+			if (gamePlayer.Status == GamePlayerStatus.SittingOut) gamePlayer.Status = GamePlayerStatus.Active;
 
 			message = $"{command.Amount} chips added to your stack.";
 			logger.LogInformation(

@@ -15,10 +15,7 @@ internal static class LeagueUserDisplayNameResolver
 			.Distinct(StringComparer.Ordinal)
 			.ToArray();
 
-		if (distinctUserIds.Length == 0)
-		{
-			return new Dictionary<string, string>(StringComparer.Ordinal);
-		}
+		if (distinctUserIds.Length == 0) return new Dictionary<string, string>(StringComparer.Ordinal);
 
 		var users = await context.Users
 			.AsNoTracking()
@@ -43,9 +40,7 @@ internal static class LeagueUserDisplayNameResolver
 	{
 		if (!string.IsNullOrWhiteSpace(userId) && displayNamesByUserId.TryGetValue(userId, out var displayName) &&
 		    !string.IsNullOrWhiteSpace(displayName))
-		{
 			return displayName;
-		}
 
 		return userId;
 	}
@@ -56,24 +51,13 @@ internal static class LeagueUserDisplayNameResolver
 		var trimmedLastName = string.IsNullOrWhiteSpace(lastName) ? null : lastName.Trim();
 
 		if (!string.IsNullOrWhiteSpace(trimmedFirstName) && !string.IsNullOrWhiteSpace(trimmedLastName))
-		{
 			return $"{trimmedFirstName} {trimmedLastName}";
-		}
 
-		if (!string.IsNullOrWhiteSpace(trimmedFirstName))
-		{
-			return trimmedFirstName;
-		}
+		if (!string.IsNullOrWhiteSpace(trimmedFirstName)) return trimmedFirstName;
 
-		if (!string.IsNullOrWhiteSpace(trimmedLastName))
-		{
-			return trimmedLastName;
-		}
+		if (!string.IsNullOrWhiteSpace(trimmedLastName)) return trimmedLastName;
 
-		if (!string.IsNullOrWhiteSpace(userName))
-		{
-			return userName.Trim();
-		}
+		if (!string.IsNullOrWhiteSpace(userName)) return userName.Trim();
 
 		return fallbackUserId;
 	}

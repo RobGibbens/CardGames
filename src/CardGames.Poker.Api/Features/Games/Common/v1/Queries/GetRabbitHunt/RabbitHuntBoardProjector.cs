@@ -53,9 +53,7 @@ internal static class RabbitHuntBoardProjector
 
 		if (string.Equals(gameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase)
 		    && projectedCards.All(card => !card.IsKlondikeCard))
-		{
-			AddNextCard(projectedCards, remainingDeckCards, ref deckIndex, 0, "KlondikeCard", isKlondikeCard: true);
-		}
+			AddNextCard(projectedCards, remainingDeckCards, ref deckIndex, 0, "KlondikeCard", true);
 
 		if (string.Equals(gameTypeCode, PokerGameMetadataRegistry.SouthDakotaCode, StringComparison.OrdinalIgnoreCase))
 		{
@@ -72,9 +70,7 @@ internal static class RabbitHuntBoardProjector
 			{
 				var riverCard = projectedCards.FirstOrDefault(card => card.DealOrder == 5);
 				if (riverCard is not null && IsRedSuit(riverCard.Card.Suit))
-				{
 					EnsureSequentialBoard(projectedCards, remainingDeckCards, ref deckIndex, 6, 1, "RedRiverBonus");
-				}
 			}
 		}
 
@@ -94,12 +90,9 @@ internal static class RabbitHuntBoardProjector
 		for (var offset = 0; offset < count; offset++)
 		{
 			var dealOrder = startDealOrder + offset;
-			if (projectedCards.Any(card => card.DealOrder == dealOrder))
-			{
-				continue;
-			}
+			if (projectedCards.Any(card => card.DealOrder == dealOrder)) continue;
 
-			AddNextCard(projectedCards, remainingDeckCards, ref deckIndex, dealOrder, phase, isKlondikeCard: false);
+			AddNextCard(projectedCards, remainingDeckCards, ref deckIndex, dealOrder, phase, false);
 		}
 	}
 
@@ -111,10 +104,7 @@ internal static class RabbitHuntBoardProjector
 		string phase,
 		bool isKlondikeCard)
 	{
-		if (deckIndex >= remainingDeckCards.Count)
-		{
-			return;
-		}
+		if (deckIndex >= remainingDeckCards.Count) return;
 
 		var nextCard = remainingDeckCards[deckIndex++];
 		projectedCards.Add(new RabbitHuntCardDto

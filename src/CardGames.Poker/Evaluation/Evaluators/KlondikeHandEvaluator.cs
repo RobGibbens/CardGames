@@ -56,12 +56,8 @@ public sealed class KlondikeHandEvaluator : IHandEvaluator
 		var klondikeCard = cardList[2];
 		var wildIndexes = new List<int>();
 		for (var i = 0; i < cardList.Count; i++)
-		{
 			if (cardList[i].Symbol == klondikeCard.Symbol)
-			{
 				wildIndexes.Add(i);
-			}
-		}
 
 		return wildIndexes;
 	}

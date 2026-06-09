@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,7 +29,7 @@ public class ProcessDrawCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInDrawPhase_ReturnsNotInDrawPhase()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.FirstBettingRound));
+		var game = await SeedGameAsync(context, nameof(Phases.FirstBettingRound));
 		var sut = new ProcessDrawCommandHandler(context);
 
 		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0]), CancellationToken.None);
@@ -154,8 +152,8 @@ public class ProcessDrawCommandHandlerTests
 		var firstPlayer = CreatePlayer("Alice", now);
 		var secondPlayer = CreatePlayer("Bob", now);
 
-		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, seatPosition: 0, now);
-		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, seatPosition: 1, now);
+		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, 0, now);
+		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, 1, now);
 
 		context.Games.Add(game);
 		context.Players.AddRange(firstPlayer, secondPlayer);
@@ -166,21 +164,15 @@ public class ProcessDrawCommandHandlerTests
 			: new[] { CardSymbol.Deuce, CardSymbol.Three, CardSymbol.Four, CardSymbol.Five, CardSymbol.Six };
 
 		for (var cardIndex = 0; cardIndex < currentPlayerCardCount; cardIndex++)
-		{
 			context.GameCards.Add(
 				CreatePlayerCard(game, firstGamePlayer, cardIndex, firstPlayerSymbols[cardIndex], now));
-		}
 
 		for (var cardIndex = 0; cardIndex < 5; cardIndex++)
-		{
 			context.GameCards.Add(CreatePlayerCard(game, secondGamePlayer, cardIndex, (CardSymbol)(cardIndex + 8),
 				now));
-		}
 
 		for (var cardIndex = 0; cardIndex < deckCardCount; cardIndex++)
-		{
 			context.GameCards.Add(CreateDeckCard(game, cardIndex, now));
-		}
 
 		await context.SaveChangesAsync();
 		return game;

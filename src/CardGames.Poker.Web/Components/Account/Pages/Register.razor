@@ -205,7 +205,7 @@
 		}
 		else
 		{
-			await SignInManager.SignInAsync(user, isPersistent: false);
+			await SignInManager.SignInAsync(user, false);
 			RedirectManager.RedirectTo(RegistrationDestination);
 		}
 	}

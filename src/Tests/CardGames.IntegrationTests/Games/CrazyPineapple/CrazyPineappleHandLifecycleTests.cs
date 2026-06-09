@@ -19,10 +19,7 @@ public class CrazyPineappleHandLifecycleTests : IntegrationTestBase
 		await base.SeedBaseDataAsync();
 
 		var exists = await DbContext.GameTypes.AnyAsync(gt => gt.Code == GameTypeCode);
-		if (exists)
-		{
-			return;
-		}
+		if (exists) return;
 
 		await DbContext.GameTypes.AddAsync(new GameType
 		{
@@ -44,7 +41,7 @@ public class CrazyPineappleHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task DealCards_DealsThreeHoleCardsPerPlayer()
 	{
-		var setup = await CreateCrazyPineappleGameSetupAsync(playerCount: 4, dealerPosition: 0);
+		var setup = await CreateCrazyPineappleGameSetupAsync(4, 0);
 		var game = setup.Game;
 
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
@@ -68,7 +65,7 @@ public class CrazyPineappleHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task Lifecycle_PreFlopDiscardThenFlopTurnRiverShowdown()
 	{
-		var setup = await CreateDealtCrazyPineappleGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtCrazyPineappleGameAsync(3, 0);
 		var game = setup.Game;
 
 		await CheckAllPlayersThrough(game.Id);
@@ -115,7 +112,7 @@ public class CrazyPineappleHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessDiscard_DiscardingTwoCards_ShouldFail()
 	{
-		var setup = await CreateDealtCrazyPineappleGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtCrazyPineappleGameAsync(3, 0);
 		var game = setup.Game;
 
 		await CheckAllPlayersThrough(game.Id);
@@ -130,7 +127,7 @@ public class CrazyPineappleHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessDiscard_OutsideDrawPhase_ShouldFail()
 	{
-		var setup = await CreateDealtCrazyPineappleGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtCrazyPineappleGameAsync(3, 0);
 		var game = setup.Game;
 
 		var gameBeforeDiscard = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
@@ -182,19 +179,13 @@ public class CrazyPineappleHandLifecycleTests : IntegrationTestBase
 	{
 		var targetRound = await GetFreshDbContext().BettingRounds
 			.FirstOrDefaultAsync(br => br.GameId == gameId && !br.IsComplete);
-		if (targetRound is null)
-		{
-			return;
-		}
+		if (targetRound is null) return;
 
 		for (var i = 0; i < 12; i++)
 		{
 			var currentTargetRound = await GetFreshDbContext().BettingRounds
 				.FirstOrDefaultAsync(br => br.Id == targetRound.Id);
-			if (currentTargetRound is null || currentTargetRound.IsComplete)
-			{
-				break;
-			}
+			if (currentTargetRound is null || currentTargetRound.IsComplete) break;
 
 			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.Check));
 			result.IsT0.Should().BeTrue($"check at iteration {i} should succeed");

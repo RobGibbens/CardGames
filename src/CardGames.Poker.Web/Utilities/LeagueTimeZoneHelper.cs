@@ -69,10 +69,7 @@ public static class LeagueTimeZoneHelper
 
 	public static DateTime? ConvertUtcToLocalDate(DateTimeOffset? utcValue, string? timeZoneId)
 	{
-		if (!utcValue.HasValue)
-		{
-			return null;
-		}
+		if (!utcValue.HasValue) return null;
 
 		var localValue = ConvertUtcToLocal(utcValue.Value, timeZoneId);
 		return localValue?.Date;
@@ -80,10 +77,7 @@ public static class LeagueTimeZoneHelper
 
 	public static string ConvertUtcToTimeText(DateTimeOffset? utcValue, string? timeZoneId)
 	{
-		if (!utcValue.HasValue)
-		{
-			return DefaultTimeText;
-		}
+		if (!utcValue.HasValue) return DefaultTimeText;
 
 		var localValue = ConvertUtcToLocal(utcValue.Value, timeZoneId);
 		return localValue?.ToString("HH:mm", CultureInfo.InvariantCulture) ?? DefaultTimeText;
@@ -91,10 +85,7 @@ public static class LeagueTimeZoneHelper
 
 	public static string FormatDateTime(DateTimeOffset? utcValue, string? timeZoneId)
 	{
-		if (!utcValue.HasValue)
-		{
-			return "-";
-		}
+		if (!utcValue.HasValue) return "-";
 
 		var localValue = ConvertUtcToLocal(utcValue.Value, timeZoneId);
 		return localValue?.ToString("g", CultureInfo.CurrentCulture) ??
@@ -117,10 +108,7 @@ public static class LeagueTimeZoneHelper
 
 	private static DateTimeOffset? ConvertUtcToLocal(DateTimeOffset utcValue, string? timeZoneId)
 	{
-		if (!TryResolveTimeZone(timeZoneId, out var timeZone))
-		{
-			return null;
-		}
+		if (!TryResolveTimeZone(timeZoneId, out var timeZone)) return null;
 
 		return TimeZoneInfo.ConvertTime(utcValue, timeZone);
 	}
@@ -140,22 +128,15 @@ public static class LeagueTimeZoneHelper
 			return false;
 		}
 
-		if (TryFindSystemTimeZone(timeZoneId, out timeZone))
-		{
-			return true;
-		}
+		if (TryFindSystemTimeZone(timeZoneId, out timeZone)) return true;
 
 		if (TimeZoneInfo.TryConvertIanaIdToWindowsId(timeZoneId, out var windowsId)
 		    && TryFindSystemTimeZone(windowsId, out timeZone))
-		{
 			return true;
-		}
 
 		if (TimeZoneInfo.TryConvertWindowsIdToIanaId(timeZoneId, out var ianaId)
 		    && TryFindSystemTimeZone(ianaId, out timeZone))
-		{
 			return true;
-		}
 
 		timeZone = TimeZoneInfo.Utc;
 		return false;

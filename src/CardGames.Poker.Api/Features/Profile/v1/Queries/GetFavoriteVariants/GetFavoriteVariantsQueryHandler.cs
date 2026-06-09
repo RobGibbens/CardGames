@@ -15,9 +15,7 @@ public sealed class GetFavoriteVariantsQueryHandler(
 	public async Task<FavoriteVariantsDto> Handle(GetFavoriteVariantsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return EmptyFavorites();
-		}
 
 		var userId = currentUserService.UserId;
 
@@ -30,17 +28,12 @@ public sealed class GetFavoriteVariantsQueryHandler(
 			var resolvedUserId = await ResolveLocalUserIdAsync(cancellationToken);
 			if (!string.IsNullOrWhiteSpace(resolvedUserId)
 			    && !string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
-			{
 				preferences = await context.UserGamePreferences
 					.AsNoTracking()
 					.FirstOrDefaultAsync(x => x.UserId == resolvedUserId, cancellationToken);
-			}
 		}
 
-		if (preferences is null)
-		{
-			return EmptyFavorites();
-		}
+		if (preferences is null) return EmptyFavorites();
 
 		return new FavoriteVariantsDto
 		{
@@ -58,10 +51,7 @@ public sealed class GetFavoriteVariantsQueryHandler(
 
 	private static IReadOnlyList<string> DeserializeFavoriteVariantCodes(string? favoriteVariantCodesJson)
 	{
-		if (string.IsNullOrWhiteSpace(favoriteVariantCodesJson))
-		{
-			return [];
-		}
+		if (string.IsNullOrWhiteSpace(favoriteVariantCodesJson)) return [];
 
 		try
 		{
@@ -75,10 +65,7 @@ public sealed class GetFavoriteVariantsQueryHandler(
 
 	private static IReadOnlyList<string> NormalizeFavoriteVariantCodes(IEnumerable<string>? favoriteVariantCodes)
 	{
-		if (favoriteVariantCodes is null)
-		{
-			return [];
-		}
+		if (favoriteVariantCodes is null) return [];
 
 		return favoriteVariantCodes
 			.Where(code => !string.IsNullOrWhiteSpace(code))
@@ -99,10 +86,7 @@ public sealed class GetFavoriteVariantsQueryHandler(
 				.Select(u => u.Id)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (!string.IsNullOrWhiteSpace(byEmail))
-			{
-				return byEmail;
-			}
+			if (!string.IsNullOrWhiteSpace(byEmail)) return byEmail;
 		}
 
 		if (!string.IsNullOrWhiteSpace(currentUserService.UserName))
@@ -114,10 +98,7 @@ public sealed class GetFavoriteVariantsQueryHandler(
 				.Select(u => u.Id)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (!string.IsNullOrWhiteSpace(byUserName))
-			{
-				return byUserName;
-			}
+			if (!string.IsNullOrWhiteSpace(byUserName)) return byUserName;
 		}
 
 		return null;

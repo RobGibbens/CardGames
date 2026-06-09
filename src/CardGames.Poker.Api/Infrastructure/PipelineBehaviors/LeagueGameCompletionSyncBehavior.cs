@@ -33,10 +33,7 @@ public sealed class LeagueGameCompletionSyncBehavior<TRequest, TResponse> : IPip
 		var response = await next(cancellationToken);
 
 		// Only process for game state-changing commands
-		if (request is not IGameStateChangingCommand gameCommand)
-		{
-			return response;
-		}
+		if (request is not IGameStateChangingCommand gameCommand) return response;
 
 		// Don't block the response on league sync - fire and forget with error logging
 		_ = Task.Run(

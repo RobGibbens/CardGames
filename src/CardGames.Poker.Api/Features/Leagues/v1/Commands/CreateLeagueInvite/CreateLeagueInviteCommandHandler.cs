@@ -21,24 +21,18 @@ public sealed class CreateLeagueInviteCommandHandler(
 		CreateLeagueInviteCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		if (request.Request.ExpiresAtUtc <= DateTimeOffset.UtcNow)
-		{
 			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.InvalidExpiry,
 				"Invite expiry must be in the future.");
-		}
 
 		var league = await context.Leagues
 			.AsNoTracking()
 			.FirstOrDefaultAsync(x => x.Id == request.LeagueId, cancellationToken);
 
 		if (league is null)
-		{
 			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.LeagueNotFound, "League not found.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -47,10 +41,8 @@ public sealed class CreateLeagueInviteCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.Forbidden,
 				"Only league managers or admins can create invites.");
-		}
 
 		var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 		var tokenHash = ComputeSha256(token);

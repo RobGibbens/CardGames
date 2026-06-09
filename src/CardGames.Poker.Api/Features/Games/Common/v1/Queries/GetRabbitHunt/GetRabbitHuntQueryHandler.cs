@@ -27,9 +27,7 @@ public sealed class GetRabbitHuntQueryHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated)
-		{
 			return new GetRabbitHuntError(GetRabbitHuntErrorCode.NotAuthenticated, "User not authenticated.");
-		}
 
 		var game = await context.Games
 			.Include(g => g.GameType)
@@ -37,27 +35,21 @@ public sealed class GetRabbitHuntQueryHandler(
 			.FirstOrDefaultAsync(g => g.Id == request.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new GetRabbitHuntError(GetRabbitHuntErrorCode.GameNotFound,
 				$"Game with ID '{request.GameId}' was not found.");
-		}
 
 		var gameTypeCode = game.GameType?.Code;
 		if (!RabbitHuntBoardProjector.SupportsRabbitHunt(gameTypeCode))
-		{
 			return new GetRabbitHuntError(GetRabbitHuntErrorCode.UnsupportedGameType,
 				"Rabbit Hunt is only available for supported community-card variants.");
-		}
 
 		var handIsOver = string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
 		                 || string.Equals(game.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase)
 		                 || game.Status == GameStatus.Completed;
 
 		if (!handIsOver)
-		{
 			return new GetRabbitHuntError(GetRabbitHuntErrorCode.RabbitHuntNotAvailable,
 				"Rabbit Hunt is only available after the hand is over.");
-		}
 
 		var userEmail = currentUserService.UserEmail;
 		var userName = currentUserService.UserName;
@@ -74,10 +66,8 @@ public sealed class GetRabbitHuntQueryHandler(
 				cancellationToken);
 
 		if (requestingGamePlayer is null)
-		{
 			return new GetRabbitHuntError(GetRabbitHuntErrorCode.NotSeated,
 				"Only seated players can request Rabbit Hunt for this hand.");
-		}
 
 		var currentCommunityCards = await context.GameCards
 			.Where(card => card.GameId == request.GameId
@@ -102,10 +92,8 @@ public sealed class GetRabbitHuntQueryHandler(
 		var newlyRevealedCards = projectedBoard.Where(card => !card.WasAlreadyVisible).ToList();
 
 		if (newlyRevealedCards.Count == 0)
-		{
 			return new GetRabbitHuntError(GetRabbitHuntErrorCode.RabbitHuntNotAvailable,
 				"All community cards were already dealt and shown for this hand.");
-		}
 
 		var selectedShowcaseDealOrder = string.Equals(gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode,
 			StringComparison.OrdinalIgnoreCase)

@@ -11,7 +11,7 @@ public sealed class LeaguesTelemetry
 	{
 		var meter = meterFactory.Create("CardGames.Poker.Api.Leagues");
 		_funnelAttempts = meter.CreateCounter<long>("leagues_funnel_attempts_total");
-		_endpointLatencyMs = meter.CreateHistogram<double>("leagues_endpoint_latency_ms", unit: "ms");
+		_endpointLatencyMs = meter.CreateHistogram<double>("leagues_endpoint_latency_ms", "ms");
 	}
 
 	public void RecordFunnelAttempt(string step, string outcome)

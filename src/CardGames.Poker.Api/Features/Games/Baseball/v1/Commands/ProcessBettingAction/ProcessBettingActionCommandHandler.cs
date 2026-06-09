@@ -30,13 +30,11 @@ public class ProcessBettingActionCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = ProcessBettingActionErrorCode.GameNotFound
 			};
-		}
 
 		var bettingPhases = new[]
 		{
@@ -48,13 +46,11 @@ public class ProcessBettingActionCommandHandler(
 		};
 
 		if (!bettingPhases.Contains(game.CurrentPhase))
-		{
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
-		}
 
 		var activePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active)
@@ -69,60 +65,48 @@ public class ProcessBettingActionCommandHandler(
 				cancellationToken);
 
 		if (bettingRound is null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = "No active betting round found.",
 				Code = ProcessBettingActionErrorCode.NoBettingRound
 			};
-		}
 
 		var currentPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == bettingRound.CurrentActorIndex);
 		if (currentPlayer is null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = "Current player not found.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
-		}
 
 		if (currentPlayer.SeatPosition != game.CurrentPlayerIndex)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = "It is not this player's turn.",
 				Code = ProcessBettingActionErrorCode.NotPlayerTurn
 			};
-		}
 
 		if (currentPlayer.HasFolded)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = "Player has already folded.",
 				Code = ProcessBettingActionErrorCode.InvalidAction
 			};
-		}
 
 		if (currentPlayer.IsAllIn)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = "Player is already all-in and cannot take further actions.",
 				Code = ProcessBettingActionErrorCode.InvalidAction
 			};
-		}
 
 		var validationResult = ValidateAction(command.ActionType, command.Amount, currentPlayer, bettingRound);
 		if (validationResult is not null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = validationResult,
 				Code = ProcessBettingActionErrorCode.InvalidAction
 			};
-		}
 
 		var chipStackBefore = currentPlayer.ChipStack;
 		var potBefore = game.Pots.Sum(p => p.Amount);
@@ -149,10 +133,7 @@ public class ProcessBettingActionCommandHandler(
 		context.BettingActionRecords.Add(actionRecord);
 
 		var mainPot = game.Pots.FirstOrDefault(p => p.PotOrder == 0 && p.HandNumber == game.CurrentHandNumber);
-		if (mainPot is not null)
-		{
-			mainPot.Amount += chipsMoved;
-		}
+		if (mainPot is not null) mainPot.Amount += chipsMoved;
 
 		bettingRound.PlayersActed++;
 
@@ -180,9 +161,7 @@ public class ProcessBettingActionCommandHandler(
 				AdvanceToNextPhase(game, activePlayers);
 
 				if (game.CurrentPhase != nameof(Phases.Showdown))
-				{
 					await DealRemainingStreetsAsync(game, activePlayers, game.CurrentPhase, now, cancellationToken);
-				}
 
 				game.UpdatedAt = now;
 				await context.SaveChangesAsync(cancellationToken);
@@ -237,13 +216,9 @@ public class ProcessBettingActionCommandHandler(
 					dealResultHolder = await mediator.Send(new DealHandsCommand(game.Id), ct);
 
 					if (dealResultHolder.Value.IsT0)
-					{
 						await transaction.CommitAsync(ct);
-					}
 					else
-					{
 						await transaction.RollbackAsync(ct);
-					}
 				}
 				else
 				{
@@ -341,8 +316,8 @@ public class ProcessBettingActionCommandHandler(
 		int amount,
 		BettingRound bettingRound)
 	{
-		int actualAmount = 0;
-		int chipsMoved = 0;
+		var actualAmount = 0;
+		var chipsMoved = 0;
 
 		switch (actionType)
 		{
@@ -429,10 +404,7 @@ public class ProcessBettingActionCommandHandler(
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
@@ -450,15 +422,10 @@ public class ProcessBettingActionCommandHandler(
 
 		var allMatched = playersWhoCanAct.All(p => p.CurrentBet == bettingRound.CurrentBet);
 
-		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex && allMatched)
-		{
-			return true;
-		}
+		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex &&
+		    allMatched) return true;
 
-		if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched)
-		{
-			return true;
-		}
+		if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched) return true;
 
 		return false;
 	}
@@ -473,10 +440,7 @@ public class ProcessBettingActionCommandHandler(
 			return;
 		}
 
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
 		switch (game.CurrentPhase)
 		{
@@ -519,10 +483,7 @@ public class ProcessBettingActionCommandHandler(
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
@@ -533,10 +494,7 @@ public class ProcessBettingActionCommandHandler(
 	private static bool AreAllPlayersAllIn(List<GamePlayer> activePlayers)
 	{
 		var playersInHand = activePlayers.Count(p => !p.HasFolded);
-		if (playersInHand <= 1)
-		{
-			return false;
-		}
+		if (playersInHand <= 1) return false;
 
 		var playersWhoCanBet = activePlayers.Count(p => !p.HasFolded && !p.IsAllIn && p.ChipStack > 0);
 		return playersWhoCanBet < 2;
@@ -558,10 +516,7 @@ public class ProcessBettingActionCommandHandler(
 		};
 
 		var startIndex = Array.IndexOf(streetOrder, currentPhase);
-		if (startIndex < 0)
-		{
-			return;
-		}
+		if (startIndex < 0) return;
 
 		var playersToReceiveCards = activePlayers.Where(p => !p.HasFolded).OrderBy(p => p.SeatPosition).ToList();
 

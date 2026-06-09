@@ -20,10 +20,7 @@ public class GoodBadUglyWildCardRules
 		IReadOnlyCollection<Card> hand,
 		int? wildRank)
 	{
-		if (!wildRank.HasValue)
-		{
-			return new List<Card>();
-		}
+		if (!wildRank.HasValue) return new List<Card>();
 
 		return hand.Where(c => c.Value == wildRank.Value).ToList();
 	}

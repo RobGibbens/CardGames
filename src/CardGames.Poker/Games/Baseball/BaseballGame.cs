@@ -19,20 +19,20 @@ namespace CardGames.Poker.Games.Baseball;
 ///     - Standard seven-card stud betting structure otherwise
 /// </summary>
 [PokerGameMetadata(
-	code: "BASEBALL",
-	name: "Baseball",
-	description: "A seven-card stud variant with wild 3s and 9s, and buy-card options on 4s.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 4,
-	initialHoleCards: 2,
-	initialBoardCards: 1,
-	maxCommunityCards: 0,
-	maxPlayerCards: 7,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.FixedRanks,
-	bettingStructure: BettingStructure.AnteBringIn,
-	imageName: "baseball.png")]
+	"BASEBALL",
+	"Baseball",
+	"A seven-card stud variant with wild 3s and 9s, and buy-card options on 4s.",
+	2,
+	4,
+	2,
+	1,
+	0,
+	7,
+	false,
+	0,
+	WildCardRule.FixedRanks,
+	BettingStructure.AnteBringIn,
+	"baseball.png")]
 public class BaseballGame : IPokerGame
 {
 	private readonly FrenchDeckDealer _dealer;
@@ -53,11 +53,11 @@ public class BaseballGame : IPokerGame
 	public BaseballGame()
 		: this(
 			new[] { ("P1", 100), ("P2", 100) },
-			ante: 0,
-			bringIn: 0,
-			smallBet: 0,
-			bigBet: 0,
-			buyCardPrice: 0)
+			0,
+			0,
+			0,
+			0,
+			0)
 	{
 	}
 
@@ -72,14 +72,10 @@ public class BaseballGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Baseball requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Baseball supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new BaseballGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -256,9 +252,7 @@ public class BaseballGame : IPokerGame
 	public List<BettingAction> CollectAntes()
 	{
 		if (CurrentPhase != Phases.CollectingAntes)
-		{
 			throw new InvalidOperationException("Cannot collect antes in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -288,9 +282,7 @@ public class BaseballGame : IPokerGame
 	public void DealThirdStreet()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot deal third street in current phase");
-		}
 
 		// Clear any existing offers and reset dealing state
 		_pendingBuyCardOffers.Clear();
@@ -298,10 +290,7 @@ public class BaseballGame : IPokerGame
 		_nextPlayerToDeal = 0;
 
 		// Deal to all players
-		while (HasMorePlayersToDeal())
-		{
-			DealThirdStreetToNextPlayer();
-		}
+		while (HasMorePlayersToDeal()) DealThirdStreetToNextPlayer();
 
 		FinishThirdStreetDealing();
 	}
@@ -313,9 +302,7 @@ public class BaseballGame : IPokerGame
 	public void StartDealingThirdStreet()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot deal third street in current phase");
-		}
 
 		// Clear any existing offers and reset dealing state
 		_pendingBuyCardOffers.Clear();
@@ -340,25 +327,16 @@ public class BaseballGame : IPokerGame
 	public bool DealThirdStreetToNextPlayer()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot deal third street in current phase");
-		}
 
 		if (_nextPlayerToDeal >= _gamePlayers.Count)
-		{
 			throw new InvalidOperationException("All players have already been dealt to");
-		}
 
 		// Find the next active player
 		while (_nextPlayerToDeal < _gamePlayers.Count && _gamePlayers[_nextPlayerToDeal].Player.HasFolded)
-		{
 			_nextPlayerToDeal++;
-		}
 
-		if (_nextPlayerToDeal >= _gamePlayers.Count)
-		{
-			return false;
-		}
+		if (_nextPlayerToDeal >= _gamePlayers.Count) return false;
 
 		var playerIndex = _nextPlayerToDeal;
 		var gamePlayer = _gamePlayers[playerIndex];
@@ -385,20 +363,13 @@ public class BaseballGame : IPokerGame
 	public void FinishThirdStreetDealing()
 	{
 		// Reset current bets before betting round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		// Determine the bring-in player (lowest upcard) only if bring-in is enabled
 		if (UseBringIn)
-		{
 			_bringInPlayerIndex = FindBringInPlayer();
-		}
 		else
-		{
 			_bringInPlayerIndex = -1;
-		}
 	}
 
 	/// <summary>
@@ -407,15 +378,10 @@ public class BaseballGame : IPokerGame
 	private void QueueBuyCardOffersForPlayer(int playerIndex)
 	{
 		var gamePlayer = _gamePlayers[playerIndex];
-		if (gamePlayer.Player.HasFolded)
-		{
-			return;
-		}
+		if (gamePlayer.Player.HasFolded) return;
 
 		foreach (var boardCardIndex in gamePlayer.GetPendingFourOffers())
-		{
 			_pendingBuyCardOffers.Enqueue((playerIndex, boardCardIndex));
-		}
 	}
 
 	/// <summary>
@@ -425,10 +391,7 @@ public class BaseballGame : IPokerGame
 	{
 		_pendingBuyCardOffers.Clear();
 
-		for (int i = 0; i < _gamePlayers.Count; i++)
-		{
-			QueueBuyCardOffersForPlayer(i);
-		}
+		for (var i = 0; i < _gamePlayers.Count; i++) QueueBuyCardOffersForPlayer(i);
 	}
 
 	/// <summary>
@@ -445,14 +408,9 @@ public class BaseballGame : IPokerGame
 	public (BaseballGamePlayer player, Card fourCard)? GetCurrentBuyCardOffer()
 	{
 		if (!_currentBuyCardOffer.HasValue && _pendingBuyCardOffers.Count > 0)
-		{
 			_currentBuyCardOffer = _pendingBuyCardOffers.Dequeue();
-		}
 
-		if (!_currentBuyCardOffer.HasValue)
-		{
-			return null;
-		}
+		if (!_currentBuyCardOffer.HasValue) return null;
 
 		var (playerIndex, boardCardIndex) = _currentBuyCardOffer.Value;
 		var gamePlayer = _gamePlayers[playerIndex];
@@ -469,13 +427,11 @@ public class BaseballGame : IPokerGame
 	public BuyCardResult ProcessBuyCardDecision(bool accept)
 	{
 		if (!_currentBuyCardOffer.HasValue)
-		{
 			return new BuyCardResult
 			{
 				Success = false,
 				ErrorMessage = "No pending buy-card offer"
 			};
-		}
 
 		var (playerIndex, boardCardIndex) = _currentBuyCardOffer.Value;
 		var gamePlayer = _gamePlayers[playerIndex];
@@ -484,13 +440,11 @@ public class BaseballGame : IPokerGame
 		{
 			// Check if player can afford the buy-card price
 			if (gamePlayer.Player.ChipStack < BuyCardPrice)
-			{
 				return new BuyCardResult
 				{
 					Success = false,
 					ErrorMessage = $"Insufficient chips. Need {BuyCardPrice}, have {gamePlayer.Player.ChipStack}"
 				};
-			}
 
 			// Take the buy-card payment (not a bet, goes directly to pot)
 			var actualAmount = gamePlayer.Player.PlaceBet(BuyCardPrice);
@@ -542,14 +496,9 @@ public class BaseballGame : IPokerGame
 	public BettingAction PostBringIn()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot post bring-in in current phase");
-		}
 
-		if (!UseBringIn)
-		{
-			throw new InvalidOperationException("Bring-in is disabled for this game");
-		}
+		if (!UseBringIn) throw new InvalidOperationException("Bring-in is disabled for this game");
 
 		var bringInPlayer = _gamePlayers[_bringInPlayerIndex];
 		var actualAmount = bringInPlayer.Player.PlaceBet(Math.Min(BringIn, bringInPlayer.Player.ChipStack));
@@ -569,8 +518,8 @@ public class BaseballGame : IPokerGame
 		var activePlayers = _gamePlayers.Select(gp => gp.Player).ToList();
 		int startPosition;
 		int minBet;
-		int initialBet = 0;
-		int forcedBetPlayerIndex = -1;
+		var initialBet = 0;
+		var forcedBetPlayerIndex = -1;
 
 		switch (CurrentPhase)
 		{
@@ -637,10 +586,7 @@ public class BaseballGame : IPokerGame
 	/// </summary>
 	public BaseballGamePlayer GetBringInPlayer()
 	{
-		if (_bringInPlayerIndex < 0 || _bringInPlayerIndex >= _gamePlayers.Count)
-		{
-			return null;
-		}
+		if (_bringInPlayerIndex < 0 || _bringInPlayerIndex >= _gamePlayers.Count) return null;
 
 		return _gamePlayers[_bringInPlayerIndex];
 	}
@@ -651,20 +597,15 @@ public class BaseballGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -681,10 +622,7 @@ public class BaseballGame : IPokerGame
 
 		// Calculate side pots if any players are all-in
 		var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
-		if (hasAllIn)
-		{
-			PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-		}
+		if (hasAllIn) PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 
 		// Check if all remaining players are all-in (skip to showdown)
 		var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
@@ -695,10 +633,7 @@ public class BaseballGame : IPokerGame
 		}
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		switch (CurrentPhase)
 		{
@@ -732,9 +667,7 @@ public class BaseballGame : IPokerGame
 		    or Phases.FifthStreet
 		    or Phases.SixthStreet
 		    or Phases.SeventhStreet))
-		{
 			throw new InvalidOperationException("Cannot deal street card in current phase");
-		}
 
 		// Clear any existing offers and reset dealing state
 		_pendingBuyCardOffers.Clear();
@@ -742,10 +675,7 @@ public class BaseballGame : IPokerGame
 		_nextPlayerToDeal = 0;
 
 		// Deal to all players
-		while (HasMorePlayersToDeal())
-		{
-			DealStreetCardToNextPlayer();
-		}
+		while (HasMorePlayersToDeal()) DealStreetCardToNextPlayer();
 
 		FinishStreetCardDealing();
 	}
@@ -760,9 +690,7 @@ public class BaseballGame : IPokerGame
 		    or Phases.FifthStreet
 		    or Phases.SixthStreet
 		    or Phases.SeventhStreet))
-		{
 			throw new InvalidOperationException("Cannot deal street card in current phase");
-		}
 
 		// Clear any existing offers and reset dealing state
 		_pendingBuyCardOffers.Clear();
@@ -783,25 +711,16 @@ public class BaseballGame : IPokerGame
 		    or Phases.FifthStreet
 		    or Phases.SixthStreet
 		    or Phases.SeventhStreet))
-		{
 			throw new InvalidOperationException("Cannot deal street card in current phase");
-		}
 
 		if (_nextPlayerToDeal >= _gamePlayers.Count)
-		{
 			throw new InvalidOperationException("All players have already been dealt to");
-		}
 
 		// Find the next active player
 		while (_nextPlayerToDeal < _gamePlayers.Count && _gamePlayers[_nextPlayerToDeal].Player.HasFolded)
-		{
 			_nextPlayerToDeal++;
-		}
 
-		if (_nextPlayerToDeal >= _gamePlayers.Count)
-		{
-			return false;
-		}
+		if (_nextPlayerToDeal >= _gamePlayers.Count) return false;
 
 		var playerIndex = _nextPlayerToDeal;
 		var gamePlayer = _gamePlayers[playerIndex];
@@ -834,10 +753,7 @@ public class BaseballGame : IPokerGame
 	public void FinishStreetCardDealing()
 	{
 		// Reset current bets before betting round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 	}
 
 	/// <summary>
@@ -846,13 +762,11 @@ public class BaseballGame : IPokerGame
 	public BaseballShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new BaseballShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 
@@ -949,16 +863,13 @@ public class BaseballGame : IPokerGame
 	/// </summary>
 	private int FindBringInPlayer()
 	{
-		int lowestIndex = -1;
+		var lowestIndex = -1;
 		Card lowestCard = null;
 
-		for (int i = 0; i < _gamePlayers.Count; i++)
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
 			var gamePlayer = _gamePlayers[i];
-			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0) continue;
 
 			var upcard = gamePlayer.BoardCards[0];
 
@@ -977,10 +888,7 @@ public class BaseballGame : IPokerGame
 	/// </summary>
 	private static int CompareCardsForBringIn(Card a, Card b)
 	{
-		if (a.Value != b.Value)
-		{
-			return a.Value.CompareTo(b.Value);
-		}
+		if (a.Value != b.Value) return a.Value.CompareTo(b.Value);
 
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
@@ -1002,16 +910,13 @@ public class BaseballGame : IPokerGame
 	/// </summary>
 	private int FindBestVisibleHandPosition()
 	{
-		int bestIndex = -1;
+		var bestIndex = -1;
 		long bestStrength = -1;
 
-		for (int i = 0; i < _gamePlayers.Count; i++)
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
 			var gamePlayer = _gamePlayers[i];
-			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0) continue;
 
 			var visibleStrength = EvaluateVisibleHand(gamePlayer.BoardCards);
 
@@ -1054,23 +959,16 @@ public class BaseballGame : IPokerGame
 		{
 			var pairs = valueCounts.Where(g => g.Count() >= 2).ToList();
 			if (pairs.Count >= 2)
-			{
 				strength = 3_000_000 + pairs[0].Key * 1000 + pairs[1].Key * 10;
-			}
 			else
-			{
 				strength = 2_000_000 + pairs[0].Key * 1000;
-			}
 		}
 		else
 		{
 			strength = 1_000_000;
 		}
 
-		foreach (var card in cards.Take(4))
-		{
-			strength = strength * 15 + card.Value;
-		}
+		foreach (var card in cards.Take(4)) strength = strength * 15 + card.Value;
 
 		return strength;
 	}

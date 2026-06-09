@@ -27,29 +27,21 @@ public sealed class ToggleSitOutCommandHandler(
 		var currentUserName = currentUserService.UserName;
 
 		if (string.IsNullOrWhiteSpace(currentUserId) || string.IsNullOrWhiteSpace(currentUserName))
-		{
 			return new ToggleSitOutError("User not authenticated");
-		}
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
 			.ThenInclude(gp => gp.Player)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
-		if (game == null)
-		{
-			return new ToggleSitOutError("Game not found");
-		}
+		if (game == null) return new ToggleSitOutError("Game not found");
 
 		var gamePlayer = game.GamePlayers
 			.FirstOrDefault(gp =>
 				gp.Player.Name.Equals(currentUserName, StringComparison.OrdinalIgnoreCase) &&
 				gp.Status != GamePlayerStatus.Left);
 
-		if (gamePlayer == null)
-		{
-			return new ToggleSitOutError("You are not seated at this table");
-		}
+		if (gamePlayer == null) return new ToggleSitOutError("You are not seated at this table");
 
 		// Update sit out state
 		gamePlayer.IsSittingOut = command.IsSittingOut;
@@ -64,17 +56,12 @@ public sealed class ToggleSitOutCommandHandler(
 				                gc.HandNumber == game.CurrentHandNumber,
 					cancellationToken);
 
-			if (!hasCards)
-			{
-				gamePlayer.HasFolded = true;
-			}
+			if (!hasCards) gamePlayer.HasFolded = true;
 		}
 
 		// If player is coming back and game is waiting for players, schedule next hand check immediately
 		if (!command.IsSittingOut && game.CurrentPhase == nameof(Phases.WaitingForPlayers))
-		{
 			game.NextHandStartsAt = DateTimeOffset.UtcNow;
-		}
 
 		game.UpdatedAt = DateTimeOffset.UtcNow;
 		await context.SaveChangesAsync(cancellationToken);

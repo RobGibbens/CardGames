@@ -54,7 +54,6 @@ public sealed class GameFlowHandlerFactory : IGameFlowHandlerFactory
 			.Where(t => t is { IsClass: true, IsAbstract: false } && handlerInterface.IsAssignableFrom(t));
 
 		foreach (var handlerType in handlerTypes)
-		{
 			try
 			{
 				if (Activator.CreateInstance(handlerType) is IGameFlowHandler handler)
@@ -73,7 +72,6 @@ public sealed class GameFlowHandlerFactory : IGameFlowHandlerFactory
 					"Failed to instantiate flow handler {HandlerType}. Skipping.",
 					handlerType.Name);
 			}
-		}
 
 		_handlers = handlersDict.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
@@ -92,17 +90,12 @@ public sealed class GameFlowHandlerFactory : IGameFlowHandlerFactory
 	public IGameFlowHandler GetHandler(string? gameTypeCode)
 	{
 		if (string.IsNullOrWhiteSpace(gameTypeCode))
-		{
 			throw new ArgumentException(
 				"Game type code must not be null or empty. " +
 				$"Registered types: {string.Join(", ", _handlers.Keys)}.",
 				nameof(gameTypeCode));
-		}
 
-		if (_handlers.TryGetValue(gameTypeCode, out var handler))
-		{
-			return handler;
-		}
+		if (_handlers.TryGetValue(gameTypeCode, out var handler)) return handler;
 
 		throw new NotSupportedException(
 			$"No game flow handler registered for game type '{gameTypeCode}'. " +

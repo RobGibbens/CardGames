@@ -146,10 +146,7 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 	{
 		// Arrange
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
-		foreach (var gp in setup.GamePlayers)
-		{
-			gp.IsSittingOut = true;
-		}
+		foreach (var gp in setup.GamePlayers) gp.IsSittingOut = true;
 
 		await DbContext.SaveChangesAsync();
 		var command = new StartHandCommand(setup.Game.Id);
@@ -167,7 +164,7 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 	{
 		// Arrange
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
-			DbContext, "FIVECARDDRAW", 4, startingChips: 1000, ante: 10);
+			DbContext, "FIVECARDDRAW", 4, 1000, 10);
 
 		// Set one player with insufficient chips (less than ante)
 		setup.GamePlayers[3].ChipStack = 5;
@@ -315,10 +312,7 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
 
 		// Set DropOrStay decisions from previous hand
-		foreach (var gp in setup.GamePlayers)
-		{
-			gp.DropOrStayDecision = DropOrStayDecision.Stay;
-		}
+		foreach (var gp in setup.GamePlayers) gp.DropOrStayDecision = DropOrStayDecision.Stay;
 
 		await DbContext.SaveChangesAsync();
 
@@ -342,9 +336,9 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
 			DbContext,
 			"OMAHA",
-			numberOfPlayers: 4,
-			startingChips: 1000,
-			ante: 0);
+			4,
+			1000,
+			0);
 
 		setup.Game.SmallBlind = 5;
 		setup.Game.BigBlind = 10;
@@ -377,10 +371,7 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 
 		dealtCards.Should().HaveCount(4 * setup.GamePlayers.Count);
 
-		foreach (var player in setup.GamePlayers)
-		{
-			dealtCards.Count(c => c.GamePlayerId == player.Id).Should().Be(4);
-		}
+		foreach (var player in setup.GamePlayers) dealtCards.Count(c => c.GamePlayerId == player.Id).Should().Be(4);
 	}
 
 	[Fact]
@@ -390,9 +381,9 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
 			DbContext,
 			"HOLDTHEBASEBALL",
-			numberOfPlayers: 4,
-			startingChips: 1000,
-			ante: 0);
+			4,
+			1000,
+			0);
 
 		setup.Game.SmallBlind = 5;
 		setup.Game.BigBlind = 10;
@@ -439,10 +430,7 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 
 		dealtCards.Should().HaveCount(2 * setup.GamePlayers.Count);
 
-		foreach (var player in setup.GamePlayers)
-		{
-			dealtCards.Count(c => c.GamePlayerId == player.Id).Should().Be(2);
-		}
+		foreach (var player in setup.GamePlayers) dealtCards.Count(c => c.GamePlayerId == player.Id).Should().Be(2);
 	}
 
 	[Fact]

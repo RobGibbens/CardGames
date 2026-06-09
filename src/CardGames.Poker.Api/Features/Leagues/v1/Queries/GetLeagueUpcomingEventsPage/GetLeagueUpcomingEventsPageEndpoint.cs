@@ -21,9 +21,7 @@ public static class GetLeagueUpcomingEventsPageEndpoint
 					var resolvedPageNumber = pageNumber ?? 1;
 
 					if (!pageNumber.HasValue && skip.HasValue)
-					{
 						resolvedPageNumber = Math.Max(1, skip.Value / resolvedPageSize + 1);
-					}
 
 					var result =
 						await mediator.Send(

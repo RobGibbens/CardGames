@@ -23,30 +23,24 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var leagueExists = await context.Leagues
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.LeagueId, cancellationToken);
 
 		if (!leagueExists)
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.LeagueNotFound,
 				"League not found.");
-		}
 
 		var season = await context.LeagueSeasons
 			.AsNoTracking()
 			.FirstOrDefaultAsync(x => x.Id == request.SeasonId && x.LeagueId == request.LeagueId, cancellationToken);
 
 		if (season is null)
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.SeasonNotFound,
 				"Season not found in league.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -55,10 +49,8 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Forbidden,
 				"Only league managers or admins can update season events.");
-		}
 
 		var seasonEvent = await context.LeagueSeasonEvents
 			.FirstOrDefaultAsync(
@@ -66,28 +58,20 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 				cancellationToken);
 
 		if (seasonEvent is null)
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.EventNotFound,
 				"Season event not found in league season.");
-		}
 
 		if (seasonEvent.Status != LeagueSeasonEventStatus.Planned || seasonEvent.LaunchedGameId.HasValue)
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Conflict,
 				"Only planned, unlaunched season events can be edited.");
-		}
 
 		if (request.Request.ScheduledAtUtc == default)
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest,
 				"Scheduled date/time is required.");
-		}
 
 		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest,
 				LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
-		}
 
 		string? normalizedGameTypeCode = null;
 		GameRules? rules = null;
@@ -95,27 +79,21 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 		{
 			if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var resolvedGameTypeCode,
 				    out rules, out var gameTypeError))
-			{
 				return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest,
 					gameTypeError!);
-			}
 
 			var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet,
 				request.Request.SmallBlind, request.Request.BigBlind);
 			if (stakesError is not null)
-			{
 				return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, stakesError);
-			}
 
 			normalizedGameTypeCode = resolvedGameTypeCode;
 		}
 
 		var tournamentBuyInError = ValidateSeasonTournamentBuyIn(request.Request.TournamentBuyIn);
 		if (tournamentBuyInError is not null)
-		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest,
 				tournamentBuyInError);
-		}
 
 		seasonEvent.Name = GenerateSeasonEventName(request.Request.ScheduledAtUtc);
 		seasonEvent.SequenceNumber = null;
@@ -151,15 +129,10 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 
 	private static string? ValidateSeasonTournamentBuyIn(int? tournamentBuyIn)
 	{
-		if (!tournamentBuyIn.HasValue)
-		{
-			return null;
-		}
+		if (!tournamentBuyIn.HasValue) return null;
 
 		if (tournamentBuyIn.Value <= 0 || tournamentBuyIn.Value > LeagueEventBuyInRules.MaxTournamentBuyIn)
-		{
 			return $"Tournament buy-in must be between 1 and {LeagueEventBuyInRules.MaxTournamentBuyIn:N0}.";
-		}
 
 		return null;
 	}

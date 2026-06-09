@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,8 +45,8 @@ public class BobBarkerShowdownOverlayTests
 	[Fact]
 	public void GetPlayerDisplayName_PrefersFirstNameAndFallsBackToEmailLocalPart()
 	{
-		var namedPlayer = CreatePlayer("amy@example.com", playerFirstName: "Amy", showcaseAmountWon: 25,
-			isShowcaseWinner: true, showcaseCardValue: 10);
+		var namedPlayer = CreatePlayer("amy@example.com", "Amy", 25,
+			true, 10);
 		var unnamedPlayer = CreatePlayer("zoe.turner@example.com", showcaseAmountWon: 10, isShowcaseWinner: false,
 			showcaseCardValue: 9);
 
@@ -217,19 +215,19 @@ public class BobBarkerShowdownOverlayTests
 	private static ShowdownPlayerHand CreateHand(string playerName, string cards)
 	{
 		return new ShowdownPlayerHand(
-			amountWon: 0,
-			cards: ParseShowdownCards(cards).ToList(),
-			handDescription: string.Empty,
-			handStrength: null,
-			handType: string.Empty,
-			highHandAmountWon: 0,
-			isHighHandWinner: false,
-			isSevensWinner: false,
-			isWinner: false,
-			playerFirstName: playerName,
-			playerName: playerName,
-			sevensAmountWon: 0,
-			wildCardIndexes: []);
+			0,
+			ParseShowdownCards(cards).ToList(),
+			string.Empty,
+			null,
+			string.Empty,
+			0,
+			false,
+			false,
+			false,
+			playerName,
+			playerName,
+			0,
+			[]);
 	}
 
 	private static IReadOnlyList<ShowdownCard> ParseShowdownCards(string cards)

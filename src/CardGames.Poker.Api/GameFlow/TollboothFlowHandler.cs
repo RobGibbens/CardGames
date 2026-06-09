@@ -91,10 +91,7 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 	/// </summary>
 	public override string? GetNextPhase(Game game, string currentPhase)
 	{
-		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase))
-		{
-			return nameof(Phases.Showdown);
-		}
+		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase)) return nameof(Phases.Showdown);
 
 		return currentPhase switch
 		{
@@ -228,10 +225,7 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 			displayCard.DealtAt = now;
 		}
 
-		foreach (var player in game.GamePlayers)
-		{
-			player.CurrentBet = 0;
-		}
+		foreach (var player in game.GamePlayers) player.CurrentBet = 0;
 
 		// Determine bring-in player
 		var bringInPlayer = FindBringInPlayer(playerUpCards);
@@ -253,10 +247,7 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 				                          p.HandNumber == game.CurrentHandNumber &&
 				                          p.PotType == PotType.Main,
 					cancellationToken);
-			if (pot is not null)
-			{
-				pot.Amount += actualBringIn;
-			}
+			if (pot is not null) pot.Amount += actualBringIn;
 		}
 
 		var minBet = game.SmallBet ?? game.MinBet ?? 0;
@@ -294,22 +285,17 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 
 	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
 	{
-		if (playerUpCards.Count == 0)
-		{
-			return null;
-		}
+		if (playerUpCards.Count == 0) return null;
 
 		GamePlayer? lowestPlayer = null;
 		GameCard? lowestCard = null;
 
 		foreach (var (player, upCard) in playerUpCards)
-		{
 			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
 			{
 				lowestCard = upCard;
 				lowestPlayer = player;
 			}
-		}
 
 		return lowestPlayer;
 	}
@@ -319,10 +305,7 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 		var aValue = GetCardValue(a.Symbol);
 		var bValue = GetCardValue(b.Symbol);
 
-		if (aValue != bValue)
-		{
-			return aValue.CompareTo(bValue);
-		}
+		if (aValue != bValue) return aValue.CompareTo(bValue);
 
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
@@ -382,13 +365,9 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 	public override async Task PerformAutoActionAsync(AutoActionContext context)
 	{
 		if (context.CurrentPhase.Equals(nameof(Phases.TollboothOffer), StringComparison.OrdinalIgnoreCase))
-		{
 			await PerformAutoTollboothChoiceAsync(context);
-		}
 		else
-		{
 			await base.PerformAutoActionAsync(context);
-		}
 	}
 
 	private static async Task PerformAutoTollboothChoiceAsync(AutoActionContext context)

@@ -16,9 +16,7 @@ public sealed class GetLeagueSeasonsQueryHandler(
 		GetLeagueSeasonsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueSeasonsError(GetLeagueSeasonsErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -28,10 +26,8 @@ public sealed class GetLeagueSeasonsQueryHandler(
 				cancellationToken);
 
 		if (!isMember)
-		{
 			return new GetLeagueSeasonsError(GetLeagueSeasonsErrorCode.Forbidden,
 				"Only active members can view seasons.");
-		}
 
 		var seasons = await context.LeagueSeasons
 			.AsNoTracking()

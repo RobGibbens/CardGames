@@ -13,21 +13,20 @@ namespace CardGames.Poker.Games.SevenCardStud;
 ///     Orchestrates a Seven Card Stud poker game with betting.
 /// </summary>
 [PokerGameMetadata(
-	code: "SEVENCARDSTUD",
-	name: "Seven Card Stud",
-	description:
+	"SEVENCARDSTUD",
+	"Seven Card Stud",
 	"A classic poker variant where players receive seven cards individually, with betting rounds after the third, fourth, fifth, and sixth cards.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 7,
-	initialHoleCards: 2,
-	initialBoardCards: 1,
-	maxCommunityCards: 0,
-	maxPlayerCards: 7,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.AnteBringIn,
-	imageName: "sevencardstud.png")]
+	2,
+	7,
+	2,
+	1,
+	0,
+	7,
+	false,
+	0,
+	WildCardRule.None,
+	BettingStructure.AnteBringIn,
+	"sevencardstud.png")]
 public class SevenCardStudGame : IPokerGame
 {
 	private readonly FrenchDeckDealer _dealer;
@@ -41,10 +40,10 @@ public class SevenCardStudGame : IPokerGame
 	public SevenCardStudGame()
 		: this(
 			new[] { ("P1", 100), ("P2", 100) },
-			ante: 0,
-			bringIn: 0,
-			smallBet: 0,
-			bigBet: 0)
+			0,
+			0,
+			0,
+			0)
 	{
 	}
 
@@ -58,14 +57,10 @@ public class SevenCardStudGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Seven Card Stud requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Seven Card Stud supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new SevenCardStudGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -141,9 +136,7 @@ public class SevenCardStudGame : IPokerGame
 	public List<BettingAction> CollectAntes()
 	{
 		if (CurrentPhase != Phases.CollectingAntes)
-		{
 			throw new InvalidOperationException("Cannot collect antes in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -170,12 +163,9 @@ public class SevenCardStudGame : IPokerGame
 	public void DealThirdStreet()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot deal third street in current phase");
-		}
 
 		foreach (var gamePlayer in _gamePlayers)
-		{
 			if (!gamePlayer.Player.HasFolded)
 			{
 				// Deal 2 hole cards (face down)
@@ -184,23 +174,15 @@ public class SevenCardStudGame : IPokerGame
 				// Deal 1 board card (face up)
 				gamePlayer.AddBoardCard(_dealer.DealCard());
 			}
-		}
 
 		// Reset current bets before betting round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		// Determine the bring-in player (lowest upcard) only if bring-in is enabled
 		if (UseBringIn)
-		{
 			_bringInPlayerIndex = FindBringInPlayer();
-		}
 		else
-		{
 			_bringInPlayerIndex = -1;
-		}
 	}
 
 	/// <summary>
@@ -211,14 +193,9 @@ public class SevenCardStudGame : IPokerGame
 	public BettingAction PostBringIn()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot post bring-in in current phase");
-		}
 
-		if (!UseBringIn)
-		{
-			throw new InvalidOperationException("Bring-in is disabled for this game");
-		}
+		if (!UseBringIn) throw new InvalidOperationException("Bring-in is disabled for this game");
 
 		var bringInPlayer = _gamePlayers[_bringInPlayerIndex];
 		var actualAmount = bringInPlayer.Player.PlaceBet(Math.Min(BringIn, bringInPlayer.Player.ChipStack));
@@ -238,8 +215,8 @@ public class SevenCardStudGame : IPokerGame
 		var activePlayers = _gamePlayers.Select(gp => gp.Player).ToList();
 		int startPosition;
 		int minBet;
-		int initialBet = 0;
-		int forcedBetPlayerIndex = -1;
+		var initialBet = 0;
+		var forcedBetPlayerIndex = -1;
 
 		switch (CurrentPhase)
 		{
@@ -309,10 +286,7 @@ public class SevenCardStudGame : IPokerGame
 	/// </summary>
 	public SevenCardStudGamePlayer GetBringInPlayer()
 	{
-		if (_bringInPlayerIndex < 0 || _bringInPlayerIndex >= _gamePlayers.Count)
-		{
-			return null;
-		}
+		if (_bringInPlayerIndex < 0 || _bringInPlayerIndex >= _gamePlayers.Count) return null;
 
 		return _gamePlayers[_bringInPlayerIndex];
 	}
@@ -323,20 +297,15 @@ public class SevenCardStudGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -353,10 +322,7 @@ public class SevenCardStudGame : IPokerGame
 
 		// Calculate side pots if any players are all-in
 		var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
-		if (hasAllIn)
-		{
-			PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-		}
+		if (hasAllIn) PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 
 		// Check if all remaining players are all-in (skip to showdown)
 		var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
@@ -367,10 +333,7 @@ public class SevenCardStudGame : IPokerGame
 		}
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		switch (CurrentPhase)
 		{
@@ -401,32 +364,21 @@ public class SevenCardStudGame : IPokerGame
 		    or Phases.FifthStreet
 		    or Phases.SixthStreet
 		    or Phases.SeventhStreet))
-		{
 			throw new InvalidOperationException("Cannot deal street card in current phase");
-		}
 
 		foreach (var gamePlayer in _gamePlayers)
-		{
 			if (!gamePlayer.Player.HasFolded)
 			{
 				if (CurrentPhase == Phases.SeventhStreet)
-				{
 					// Seventh street card is dealt face down
 					gamePlayer.AddHoleCard(_dealer.DealCard());
-				}
 				else
-				{
 					// 4th, 5th, 6th street cards are dealt face up
 					gamePlayer.AddBoardCard(_dealer.DealCard());
-				}
 			}
-		}
 
 		// Reset current bets before betting round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 	}
 
 	/// <summary>
@@ -435,13 +387,11 @@ public class SevenCardStudGame : IPokerGame
 	public SevenCardStudShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new SevenCardStudShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 
@@ -544,16 +494,13 @@ public class SevenCardStudGame : IPokerGame
 	/// </summary>
 	private int FindBringInPlayer()
 	{
-		int lowestIndex = -1;
+		var lowestIndex = -1;
 		Card lowestCard = null;
 
-		for (int i = 0; i < _gamePlayers.Count; i++)
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
 			var gamePlayer = _gamePlayers[i];
-			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0) continue;
 
 			var upcard = gamePlayer.BoardCards[0];
 
@@ -574,10 +521,7 @@ public class SevenCardStudGame : IPokerGame
 	/// </summary>
 	private static int CompareCardsForBringIn(Card a, Card b)
 	{
-		if (a.Value != b.Value)
-		{
-			return a.Value.CompareTo(b.Value);
-		}
+		if (a.Value != b.Value) return a.Value.CompareTo(b.Value);
 
 		// Suit order for ties: Clubs (0) < Diamonds (1) < Hearts (2) < Spades (3)
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
@@ -600,16 +544,13 @@ public class SevenCardStudGame : IPokerGame
 	/// </summary>
 	private int FindBestVisibleHandPosition()
 	{
-		int bestIndex = -1;
+		var bestIndex = -1;
 		long bestStrength = -1;
 
-		for (int i = 0; i < _gamePlayers.Count; i++)
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
 			var gamePlayer = _gamePlayers[i];
-			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0) continue;
 
 			var visibleStrength = EvaluateVisibleHand(gamePlayer.BoardCards);
 
@@ -656,15 +597,11 @@ public class SevenCardStudGame : IPokerGame
 		{
 			var pairs = valueCounts.Where(g => g.Count() >= 2).ToList();
 			if (pairs.Count >= 2)
-			{
 				// Two pair
 				strength = 3_000_000 + pairs[0].Key * 1000 + pairs[1].Key * 10;
-			}
 			else
-			{
 				// One pair
 				strength = 2_000_000 + pairs[0].Key * 1000;
-			}
 		}
 		else
 		{
@@ -673,10 +610,7 @@ public class SevenCardStudGame : IPokerGame
 		}
 
 		// Add kicker values
-		foreach (var card in cards.Take(4))
-		{
-			strength = strength * 15 + card.Value;
-		}
+		foreach (var card in cards.Take(4)) strength = strength * 15 + card.Value;
 
 		return strength;
 	}

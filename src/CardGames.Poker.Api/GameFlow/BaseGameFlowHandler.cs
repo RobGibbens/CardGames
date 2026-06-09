@@ -60,19 +60,14 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 		// Find the current phase index
 		var currentIndex = -1;
 		for (var i = 0; i < phases.Count; i++)
-		{
 			if (string.Equals(phases[i].PhaseId, currentPhase, StringComparison.OrdinalIgnoreCase))
 			{
 				currentIndex = i;
 				break;
 			}
-		}
 
 		// If current phase not found or is the last phase, no transition
-		if (currentIndex < 0 || currentIndex >= phases.Count - 1)
-		{
-			return null;
-		}
+		if (currentIndex < 0 || currentIndex >= phases.Count - 1) return null;
 
 		return phases[currentIndex + 1].PhaseId;
 	}
@@ -109,10 +104,7 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 			.Where(gc => gc.GameId == game.Id)
 			.ToListAsync(cancellationToken);
 
-		if (existingCards.Count > 0)
-		{
-			context.GameCards.RemoveRange(existingCards);
-		}
+		if (existingCards.Count > 0) context.GameCards.RemoveRange(existingCards);
 	}
 
 	/// <inheritdoc />
@@ -127,13 +119,9 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	{
 		// Default implementation handles standard betting and drawing phases
 		if (IsBettingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
-		{
 			await PerformAutoBettingActionAsync(context);
-		}
 		else if (IsDrawingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
-		{
 			await PerformAutoDrawActionAsync(context);
-		}
 	}
 
 	/// <summary>
@@ -141,7 +129,7 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	/// </summary>
 	/// <param name="phase">The phase name to check.</param>
 	/// <returns>True if the phase is categorized as Betting; otherwise, false.</returns>
-	protected bool IsBettingPhase(string phase)
+	private bool IsBettingPhase(string phase)
 	{
 		var rules = GetGameRules();
 		var phaseDescriptor = rules.Phases
@@ -195,7 +183,7 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	/// </summary>
 	/// <param name="game">The game entity.</param>
 	/// <returns>The count of active, non-folded players.</returns>
-	protected static int CountActivePlayers(Game game)
+	private static int CountActivePlayers(Game game)
 	{
 		return game.GamePlayers
 			.Count(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded && !gp.IsSittingOut);
@@ -235,18 +223,13 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 		// We should query DB to be safe as this runs in a fresh scope/timer
 		var gamePlayer = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == playerSeatIndex);
 		if (gamePlayer is null)
-		{
 			// If the collection wasn't loaded or player missing, try to fetch
 			gamePlayer = await context.DbContext.GamePlayers
 				.AsNoTracking()
 				.FirstOrDefaultAsync(gp => gp.GameId == gameId && gp.SeatPosition == playerSeatIndex,
 					cancellationToken);
-		}
 
-		if (gamePlayer is null)
-		{
-			return;
-		}
+		if (gamePlayer is null) return;
 
 		// Calculate if can check
 		var currentBetInRound = await context.DbContext.GamePlayers
@@ -388,7 +371,6 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 		// Deal cards to each player
 		var dealOrder = 1;
 		foreach (var player in playersInDealOrder)
-		{
 			for (var cardIndex = 0; cardIndex < cardsPerPlayer; cardIndex++)
 			{
 				if (deckIndex >= deckCards.Count) break;
@@ -400,19 +382,14 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 				card.IsVisible = !config.AllFaceDown;
 				card.DealtAt = now;
 			}
-		}
 
 		var isBlindBasedHand = SkipsAnteCollection;
 
 		// Ante-based variants start betting rounds with all players at 0.
 		// Blind-based variants preserve posted blind contributions into pre-flop.
 		if (!isBlindBasedHand)
-		{
 			foreach (var player in game.GamePlayers)
-			{
 				player.CurrentBet = 0;
-			}
-		}
 
 		var openingCurrentBet = isBlindBasedHand && eligiblePlayers.Count > 0
 			? eligiblePlayers.Max(p => p.CurrentBet)
@@ -491,12 +468,9 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	/// <summary>
 	///     Finds the first active player after the specified seat position who can act.
 	/// </summary>
-	protected static int FindFirstActivePlayerAfterSeat(Game game, List<GamePlayer> activePlayers, int seatPosition)
+	private static int FindFirstActivePlayerAfterSeat(Game game, List<GamePlayer> activePlayers, int seatPosition)
 	{
-		if (activePlayers.Count == 0)
-		{
-			return -1;
-		}
+		if (activePlayers.Count == 0) return -1;
 
 		var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
 		var totalSeats = maxSeatPosition + 1;
@@ -506,10 +480,7 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 		for (var i = 0; i < totalSeats; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalSeats;
 		}
@@ -520,19 +491,13 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	/// <summary>
 	///     Finds the first active pre-flop actor for blind-based games (player after the big blind).
 	/// </summary>
-	protected static int FindFirstActivePlayerAfterBigBlind(Game game, List<GamePlayer> eligiblePlayers)
+	private static int FindFirstActivePlayerAfterBigBlind(Game game, List<GamePlayer> eligiblePlayers)
 	{
-		if (eligiblePlayers.Count == 0)
-		{
-			return -1;
-		}
+		if (eligiblePlayers.Count == 0) return -1;
 
 		var sortedPlayers = eligiblePlayers.OrderBy(p => p.SeatPosition).ToList();
 		var dealerIndex = sortedPlayers.FindIndex(p => p.SeatPosition == game.DealerPosition);
-		if (dealerIndex == -1)
-		{
-			dealerIndex = sortedPlayers.Count - 1;
-		}
+		if (dealerIndex == -1) dealerIndex = sortedPlayers.Count - 1;
 
 		var bigBlindIndex = sortedPlayers.Count == 2
 			? (dealerIndex + 1) % sortedPlayers.Count
@@ -568,10 +533,8 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 		// Find Dealer index
 		var dealerIndex = sortedPlayers.FindIndex(p => p.SeatPosition == dealerPos);
 		if (dealerIndex == -1)
-		{
 			// Fallback if dealer not found in eligible players
 			dealerIndex = sortedPlayers.Count - 1;
-		}
 
 		GamePlayer sbPlayer;
 		GamePlayer bbPlayer;
@@ -596,7 +559,7 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	/// <summary>
 	///     Posts a blind for a single player, deducting from their chip stack and adding to the main pot.
 	/// </summary>
-	protected async Task PostBlindAsync(CardsDbContext context, Game game, GamePlayer player, int amount,
+	private async Task PostBlindAsync(CardsDbContext context, Game game, GamePlayer player, int amount,
 		DateTimeOffset now)
 	{
 		if (amount <= 0) return;
@@ -611,10 +574,7 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 			                          p.HandNumber == game.CurrentHandNumber &&
 			                          p.PotType == PotType.Main);
 
-		if (pot != null)
-		{
-			pot.Amount += actualAmount;
-		}
+		if (pot != null) pot.Amount += actualAmount;
 	}
 
 	#endregion

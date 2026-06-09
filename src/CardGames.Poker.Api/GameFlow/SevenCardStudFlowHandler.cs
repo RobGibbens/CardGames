@@ -121,10 +121,7 @@ public class SevenCardStudFlowHandler : BaseGameFlowHandler
 	public override string? GetNextPhase(Game game, string currentPhase)
 	{
 		// Check if only one player remains - skip to showdown/complete
-		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase))
-		{
-			return nameof(Phases.Showdown);
-		}
+		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase)) return nameof(Phases.Showdown);
 
 		// Seven Card Stud has explicit street-based phase transitions
 		return currentPhase switch
@@ -246,10 +243,7 @@ public class SevenCardStudFlowHandler : BaseGameFlowHandler
 		}
 
 		// Reset CurrentBet for all players
-		foreach (var player in game.GamePlayers)
-		{
-			player.CurrentBet = 0;
-		}
+		foreach (var player in game.GamePlayers) player.CurrentBet = 0;
 
 		// Determine bring-in player (lowest up card)
 		var bringInPlayer = FindBringInPlayer(playerUpCards);
@@ -273,10 +267,7 @@ public class SevenCardStudFlowHandler : BaseGameFlowHandler
 				                          p.HandNumber == game.CurrentHandNumber &&
 				                          p.PotType == PotType.Main,
 					cancellationToken);
-			if (pot is not null)
-			{
-				pot.Amount += actualBringIn;
-			}
+			if (pot is not null) pot.Amount += actualBringIn;
 		}
 
 		// Create betting round for Third Street
@@ -317,22 +308,17 @@ public class SevenCardStudFlowHandler : BaseGameFlowHandler
 	/// </summary>
 	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
 	{
-		if (playerUpCards.Count == 0)
-		{
-			return null;
-		}
+		if (playerUpCards.Count == 0) return null;
 
 		GamePlayer? lowestPlayer = null;
 		GameCard? lowestCard = null;
 
 		foreach (var (player, upCard) in playerUpCards)
-		{
 			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
 			{
 				lowestCard = upCard;
 				lowestPlayer = player;
 			}
-		}
 
 		return lowestPlayer;
 	}
@@ -347,10 +333,7 @@ public class SevenCardStudFlowHandler : BaseGameFlowHandler
 		var aValue = GetCardValue(a.Symbol);
 		var bValue = GetCardValue(b.Symbol);
 
-		if (aValue != bValue)
-		{
-			return aValue.CompareTo(bValue);
-		}
+		if (aValue != bValue) return aValue.CompareTo(bValue);
 
 		// Suit order for ties
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));

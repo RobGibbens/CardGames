@@ -36,10 +36,7 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
 		var response = await next(cancellationToken);
 
 		// Only broadcast for game state-changing commands
-		if (request is not IGameStateChangingCommand gameCommand)
-		{
-			return response;
-		}
+		if (request is not IGameStateChangingCommand gameCommand) return response;
 
 		// Only broadcast if the command was successful
 		if (!IsSuccessfulResponse(response))
@@ -110,10 +107,7 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
 	/// </summary>
 	private static bool IsSuccessfulResponse(TResponse response)
 	{
-		if (response is null)
-		{
-			return false;
-		}
+		if (response is null) return false;
 
 		// Handle OneOf<TSuccess, TError> pattern used by command handlers
 		// The first type parameter is typically the success type
@@ -149,33 +143,18 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
 	private static TInterface? ExtractResponseValue<TInterface>(TResponse response)
 		where TInterface : class
 	{
-		if (response is null)
-		{
-			return null;
-		}
+		if (response is null) return null;
 
-		if (response is TInterface directValue)
-		{
-			return directValue;
-		}
+		if (response is TInterface directValue) return directValue;
 
 		var responseType = response.GetType();
-		if (!responseType.IsGenericType)
-		{
-			return null;
-		}
+		if (!responseType.IsGenericType) return null;
 
 		var genericTypeDef = responseType.GetGenericTypeDefinition();
-		if (genericTypeDef.FullName?.StartsWith("OneOf.OneOf") != true)
-		{
-			return null;
-		}
+		if (genericTypeDef.FullName?.StartsWith("OneOf.OneOf") != true) return null;
 
 		var valueProperty = responseType.GetProperty("Value");
-		if (valueProperty?.GetValue(response) is TInterface value)
-		{
-			return value;
-		}
+		if (valueProperty?.GetValue(response) is TInterface value) return value;
 
 		return null;
 	}

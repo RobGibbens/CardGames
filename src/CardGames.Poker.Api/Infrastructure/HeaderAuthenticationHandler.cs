@@ -77,10 +77,7 @@ public sealed class HeaderAuthenticationHandler : AuthenticationHandler<Authenti
 		}
 
 		// Require at least user ID or authenticated indicator
-		if (!hasUserId && !hasAuthIndicator)
-		{
-			return Task.FromResult(AuthenticateResult.NoResult());
-		}
+		if (!hasUserId && !hasAuthIndicator) return Task.FromResult(AuthenticateResult.NoResult());
 
 		var userId = userIdValue.ToString();
 		var userName = userNameValue.ToString();
@@ -89,38 +86,21 @@ public sealed class HeaderAuthenticationHandler : AuthenticationHandler<Authenti
 		var authProvider = authProviderValue.ToString();
 
 		if (string.IsNullOrWhiteSpace(userId) && string.IsNullOrWhiteSpace(userName))
-		{
 			return Task.FromResult(AuthenticateResult.NoResult());
-		}
 
 		// Build claims identity
 		var claims = new List<Claim>();
 
-		if (!string.IsNullOrWhiteSpace(userId))
-		{
-			claims.Add(new Claim(ClaimTypes.NameIdentifier, userId));
-		}
+		if (!string.IsNullOrWhiteSpace(userId)) claims.Add(new Claim(ClaimTypes.NameIdentifier, userId));
 
-		if (!string.IsNullOrWhiteSpace(userName))
-		{
-			claims.Add(new Claim(ClaimTypes.Name, userName));
-		}
+		if (!string.IsNullOrWhiteSpace(userName)) claims.Add(new Claim(ClaimTypes.Name, userName));
 
-		if (!string.IsNullOrWhiteSpace(userEmail))
-		{
-			claims.Add(new Claim(ClaimTypes.Email, userEmail));
-		}
+		if (!string.IsNullOrWhiteSpace(userEmail)) claims.Add(new Claim(ClaimTypes.Email, userEmail));
 
-		if (!string.IsNullOrWhiteSpace(displayName))
-		{
-			claims.Add(new Claim("display_name", displayName));
-		}
+		if (!string.IsNullOrWhiteSpace(displayName)) claims.Add(new Claim("display_name", displayName));
 
 		// Add authentication provider claim (local, Google, etc.)
-		if (!string.IsNullOrWhiteSpace(authProvider))
-		{
-			claims.Add(new Claim("idp", authProvider));
-		}
+		if (!string.IsNullOrWhiteSpace(authProvider)) claims.Add(new Claim("idp", authProvider));
 
 		var identity = new ClaimsIdentity(claims, SchemeName);
 		var principal = new ClaimsPrincipal(identity);

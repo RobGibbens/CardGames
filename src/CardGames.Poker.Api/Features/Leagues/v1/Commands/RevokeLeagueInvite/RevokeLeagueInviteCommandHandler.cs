@@ -17,9 +17,7 @@ public sealed class RevokeLeagueInviteCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -28,18 +26,14 @@ public sealed class RevokeLeagueInviteCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.Forbidden,
 				"Only league managers or admins can revoke invites.");
-		}
 
 		var invite = await context.LeagueInvites
 			.FirstOrDefaultAsync(x => x.Id == request.InviteId && x.LeagueId == request.LeagueId, cancellationToken);
 
 		if (invite is null)
-		{
 			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.InviteNotFound, "Invite not found.");
-		}
 
 		if (invite.Status != LeagueInviteStatus.Revoked)
 		{

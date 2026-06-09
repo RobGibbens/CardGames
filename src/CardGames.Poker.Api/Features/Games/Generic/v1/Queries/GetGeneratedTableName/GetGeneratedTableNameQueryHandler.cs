@@ -11,7 +11,7 @@ public class
 	{
 		try
 		{
-			string gameType = request.GameType ?? string.Empty;
+			var gameType = request.GameType ?? string.Empty;
 
 			await using var client = new CopilotClient();
 

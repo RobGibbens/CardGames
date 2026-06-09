@@ -8,10 +8,7 @@ public class PagedResponse<T> where T : class
 		int pageSize,
 		int totalCount)
 	{
-		if (pageSize <= 0)
-		{
-			throw new ArgumentException("Page size must be greater than 0.", nameof(pageSize));
-		}
+		if (pageSize <= 0) throw new ArgumentException("Page size must be greater than 0.", nameof(pageSize));
 
 		Data = data ?? [];
 		PageNumber = pageNumber;
@@ -23,10 +20,10 @@ public class PagedResponse<T> where T : class
 	}
 
 	public IEnumerable<T> Data { get; }
-	public int PageNumber { get; }
+	private int PageNumber { get; }
 	public int PageSize { get; }
 	public int TotalCount { get; }
-	public int TotalPages { get; }
+	private int TotalPages { get; }
 	public bool HasPreviousPage { get; }
 	public bool HasNextPage { get; }
 }

@@ -82,7 +82,7 @@
 			<!-- Placeholder cards -->
 			<div class="seat-cards-container placeholder">
 				<div class="cards-fan">
-					@for (int i = 0; i < 5; i++)
+					@for (var i = 0; i < 5; i++)
 					{
 						<div class="playing-card-placeholder"></div>
 					}
@@ -218,7 +218,7 @@
 </div>
 
 @code {
-	[Parameter, EditorRequired] public required SeatInfo Seat { get; set; }
+	[Parameter] [EditorRequired] public required SeatInfo Seat { get; set; }
 
 	[Parameter] public bool IsDealer { get; set; }
 
@@ -355,10 +355,10 @@
 	private string GetPillStatusClass()
 	{
 		// Check for statuses that should alternate with the name
-		bool hasAlternateStatus = !string.IsNullOrWhiteSpace(Seat.LastActionDescription) ||
-		                          IsCurrentActor ||
-		                          Seat.SittingOutReason == "Observing" ||
-		                          Seat.IsSittingOut;
+		var hasAlternateStatus = !string.IsNullOrWhiteSpace(Seat.LastActionDescription) ||
+		                         IsCurrentActor ||
+		                         Seat.SittingOutReason == "Observing" ||
+		                         Seat.IsSittingOut;
 
 		// If we're alternating and currently showing the name, show passive/background status only
 		if (hasAlternateStatus && !_showAlternateStatus)

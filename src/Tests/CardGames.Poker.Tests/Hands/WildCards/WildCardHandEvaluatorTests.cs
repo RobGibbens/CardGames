@@ -17,7 +17,7 @@ public class WildCardHandEvaluatorTests
 		// Hand: 5c 4d 3s 2c 2d with wilds 2c, 2d
 		// This should evaluate to a Straight, NOT a Straight Flush
 		var cards = "5c 4d 3s 2c 2d".ToCards();
-		var wildCardRules = new WildCardRules(kingRequired: false);
+		var wildCardRules = new WildCardRules(false);
 		var wildCards = wildCardRules.DetermineWildCards(cards);
 
 		var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
@@ -38,7 +38,7 @@ public class WildCardHandEvaluatorTests
 	{
 		// Hand: 5c 4d 3s 2c 2d with wilds 2c, 2d
 		var cards = "5c 4d 3s 2c 2d".ToCards();
-		var wildCardRules = new WildCardRules(kingRequired: false);
+		var wildCardRules = new WildCardRules(false);
 		var wildCards = wildCardRules.DetermineWildCards(cards);
 
 		var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
@@ -58,7 +58,7 @@ public class WildCardHandEvaluatorTests
 		// Hand: 5s 4s 3s 2s 2c with wilds 2s, 2c (both are wild as lowest)
 		// This CAN be a straight flush since natural cards 5s, 4s, 3s are all spades
 		var cards = "5s 4s 3s 2s 2c".ToCards();
-		var wildCardRules = new WildCardRules(kingRequired: false);
+		var wildCardRules = new WildCardRules(false);
 		var wildCards = wildCardRules.DetermineWildCards(cards);
 
 		var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(

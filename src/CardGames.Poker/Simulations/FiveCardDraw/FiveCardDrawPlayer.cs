@@ -24,10 +24,7 @@ public class FiveCardDrawPlayer
 
 	public FiveCardDrawPlayer WithCards(IReadOnlyCollection<Card> cards)
 	{
-		if (cards.Count > 5)
-		{
-			throw new ArgumentException($"{Name} has too many cards to play Five Card Draw.");
-		}
+		if (cards.Count > 5) throw new ArgumentException($"{Name} has too many cards to play Five Card Draw.");
 
 		GivenCards = cards;
 		return this;

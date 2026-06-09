@@ -51,10 +51,7 @@ public class GetActiveGamesQueryHandler(
 					.Select(x => new { GameId = x.LaunchedGameId!.Value, x.LeagueId })
 					.ToListAsync(cancellationToken);
 
-				foreach (var link in seasonEventLinks)
-				{
-					leagueGameIds[link.GameId] = link.LeagueId;
-				}
+				foreach (var link in seasonEventLinks) leagueGameIds[link.GameId] = link.LeagueId;
 
 				var oneOffEventLinks = await context.LeagueOneOffEvents
 					.AsNoTracking()
@@ -65,10 +62,7 @@ public class GetActiveGamesQueryHandler(
 					.Select(x => new { GameId = x.LaunchedGameId!.Value, x.LeagueId })
 					.ToListAsync(cancellationToken);
 
-				foreach (var link in oneOffEventLinks)
-				{
-					leagueGameIds[link.GameId] = link.LeagueId;
-				}
+				foreach (var link in oneOffEventLinks) leagueGameIds[link.GameId] = link.LeagueId;
 
 				return results
 					.Select(r =>
@@ -79,13 +73,11 @@ public class GetActiveGamesQueryHandler(
 							: (Guid?)null;
 
 						if (!PokerGameMetadataRegistry.TryGet(r.GameTypeCode, out var metadata) || metadata is null)
-						{
 							return r with
 							{
 								CurrentPhaseDescription = phaseDescription,
 								LeagueId = leagueId
 							};
-						}
 
 						return r with
 						{
@@ -102,10 +94,7 @@ public class GetActiveGamesQueryHandler(
 			tags: [Feature.Version, Feature.Name, nameof(GetActiveGamesQuery)]
 		);
 
-		if (!activeGames.Any(x => x.LeagueId.HasValue))
-		{
-			return activeGames;
-		}
+		if (!activeGames.Any(x => x.LeagueId.HasValue)) return activeGames;
 
 		var accessibleLeagueIds = await GetAccessibleLeagueIdsAsync(cancellationToken);
 
@@ -116,10 +105,7 @@ public class GetActiveGamesQueryHandler(
 
 	private async Task<HashSet<Guid>> GetAccessibleLeagueIdsAsync(CancellationToken cancellationToken)
 	{
-		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
-			return [];
-		}
+		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId)) return [];
 
 		var userId = currentUserService.UserId;
 		var membershipLeagueIds = await context.LeagueMembersCurrent

@@ -65,7 +65,7 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 	/// <summary>
 	///     Gets the street names for this game variant.
 	/// </summary>
-	public static IReadOnlyList<string> Streets =>
+	private static IReadOnlyList<string> Streets =>
 	[
 		nameof(Phases.ThirdStreet),
 		nameof(Phases.FourthStreet),
@@ -102,10 +102,7 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 	public override string? GetNextPhase(Game game, string currentPhase)
 	{
 		// Check if only one player remains - skip to showdown/complete
-		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase))
-		{
-			return nameof(Phases.Showdown);
-		}
+		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase)) return nameof(Phases.Showdown);
 
 		return currentPhase switch
 		{
@@ -207,7 +204,6 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 		// Deal Third Street: 4 hole cards per player
 		var dealOrder = 10; // Start after table cards
 		foreach (var player in playersInDealOrder)
-		{
 			for (var i = 0; i < 4; i++)
 			{
 				if (deckIndex >= deckCards.Count) break;
@@ -220,13 +216,9 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 				card.DealtAtPhase = nameof(Phases.ThirdStreet);
 				card.DealtAt = now;
 			}
-		}
 
 		// Reset CurrentBet for all players
-		foreach (var player in game.GamePlayers)
-		{
-			player.CurrentBet = 0;
-		}
+		foreach (var player in game.GamePlayers) player.CurrentBet = 0;
 
 		var firstActorSeatPosition = playersInDealOrder.FirstOrDefault()?.SeatPosition ?? -1;
 
@@ -266,22 +258,17 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 
 	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
 	{
-		if (playerUpCards.Count == 0)
-		{
-			return null;
-		}
+		if (playerUpCards.Count == 0) return null;
 
 		GamePlayer? lowestPlayer = null;
 		GameCard? lowestCard = null;
 
 		foreach (var (player, upCard) in playerUpCards)
-		{
 			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
 			{
 				lowestCard = upCard;
 				lowestPlayer = player;
 			}
-		}
 
 		return lowestPlayer;
 	}
@@ -291,10 +278,7 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 		var aValue = GetCardValue(a.Symbol);
 		var bValue = GetCardValue(b.Symbol);
 
-		if (aValue != bValue)
-		{
-			return aValue.CompareTo(bValue);
-		}
+		if (aValue != bValue) return aValue.CompareTo(bValue);
 
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}

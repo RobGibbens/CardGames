@@ -12,7 +12,7 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_ValidAmount_AddsChipsToPlayer()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 500);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 500);
 		var player = setup.GamePlayers[0];
 		var command = new AddChipsCommand(setup.Game.Id, player.PlayerId, 200);
 
@@ -127,7 +127,7 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_KingsAndLows_AlwaysAppliesImmediately()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 2, startingChips: 500);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 2, 500);
 		setup.Game.Status = GameStatus.InProgress;
 		setup.Game.CurrentPhase = nameof(Phases.FirstBettingRound);
 		await DbContext.SaveChangesAsync();
@@ -150,7 +150,7 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_BetweenHands_AppliesImmediately()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 500);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 500);
 		setup.Game.CurrentPhase = "BetweenHands";
 		await DbContext.SaveChangesAsync();
 
@@ -172,7 +172,7 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_DuringHand_QueuesChips()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 500);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 500);
 		setup.Game.Status = GameStatus.InProgress;
 		setup.Game.CurrentPhase = nameof(Phases.FirstBettingRound);
 		await DbContext.SaveChangesAsync();
@@ -196,7 +196,7 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_MultipleQueuedAdditions_Accumulate()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 500);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 500);
 		setup.Game.Status = GameStatus.InProgress;
 		setup.Game.CurrentPhase = nameof(Phases.FirstBettingRound);
 		await DbContext.SaveChangesAsync();
@@ -234,7 +234,7 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_TournamentTable_ReturnsTournamentRebuyNotAllowed()
 	{
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 500);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 500);
 		setup.Game.TournamentBuyIn = 500;
 		await DbContext.SaveChangesAsync();
 
@@ -255,8 +255,8 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_RebuyGraceWithOtherBustedPlayers_KeepsSharedPauseActive()
 	{
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 3, startingChips: 100,
-			ante: 10);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 3, 100,
+			10);
 
 		setup.Game.CurrentPhase = nameof(Phases.WaitingForPlayers);
 		setup.Game.Status = GameStatus.BetweenHands;

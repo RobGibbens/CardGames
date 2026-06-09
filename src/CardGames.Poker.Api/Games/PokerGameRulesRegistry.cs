@@ -30,11 +30,8 @@ public static class PokerGameRulesRegistry
 
 		foreach (var gameType in gameTypes)
 		{
-			var attribute = gameType.GetCustomAttribute<PokerGameMetadataAttribute>(inherit: false);
-			if (attribute is null)
-			{
-				continue;
-			}
+			var attribute = gameType.GetCustomAttribute<PokerGameMetadataAttribute>(false);
+			if (attribute is null) continue;
 
 			try
 			{
@@ -63,17 +60,11 @@ public static class PokerGameRulesRegistry
 	{
 		// Try parameterless constructor first
 		var parameterlessCtor = gameType.GetConstructor(Type.EmptyTypes);
-		if (parameterlessCtor is not null)
-		{
-			return Activator.CreateInstance(gameType) as IPokerGame;
-		}
+		if (parameterlessCtor is not null) return Activator.CreateInstance(gameType) as IPokerGame;
 
 		// Try to find a constructor and provide default values
 		var constructors = gameType.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-		if (constructors.Length == 0)
-		{
-			return null;
-		}
+		if (constructors.Length == 0) return null;
 
 		var ctor = constructors[0];
 		var parameters = ctor.GetParameters();
@@ -98,10 +89,7 @@ public static class PokerGameRulesRegistry
 	{
 		rules = null;
 
-		if (string.IsNullOrWhiteSpace(gameTypeCode))
-		{
-			return false;
-		}
+		if (string.IsNullOrWhiteSpace(gameTypeCode)) return false;
 
 		return RulesByGameTypeCode.TryGetValue(gameTypeCode, out rules);
 	}
@@ -114,10 +102,7 @@ public static class PokerGameRulesRegistry
 	/// <exception cref="ArgumentException">Thrown when the game type code is unknown.</exception>
 	public static GameRules Get(string gameTypeCode)
 	{
-		if (TryGet(gameTypeCode, out var rules) && rules is not null)
-		{
-			return rules;
-		}
+		if (TryGet(gameTypeCode, out var rules) && rules is not null) return rules;
 
 		throw new ArgumentException($"Unknown game type code: {gameTypeCode}", nameof(gameTypeCode));
 	}

@@ -20,30 +20,24 @@ public sealed class DeleteLeagueSeasonEventCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new DeleteLeagueSeasonEventError(DeleteLeagueSeasonEventErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var leagueExists = await context.Leagues
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.LeagueId, cancellationToken);
 
 		if (!leagueExists)
-		{
 			return new DeleteLeagueSeasonEventError(DeleteLeagueSeasonEventErrorCode.LeagueNotFound,
 				"League not found.");
-		}
 
 		var seasonExists = await context.LeagueSeasons
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.SeasonId && x.LeagueId == request.LeagueId, cancellationToken);
 
 		if (!seasonExists)
-		{
 			return new DeleteLeagueSeasonEventError(DeleteLeagueSeasonEventErrorCode.SeasonNotFound,
 				"Season not found in league.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -52,10 +46,8 @@ public sealed class DeleteLeagueSeasonEventCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new DeleteLeagueSeasonEventError(DeleteLeagueSeasonEventErrorCode.Forbidden,
 				"Only league managers or admins can delete season events.");
-		}
 
 		var seasonEvent = await context.LeagueSeasonEvents
 			.FirstOrDefaultAsync(
@@ -63,16 +55,12 @@ public sealed class DeleteLeagueSeasonEventCommandHandler(
 				cancellationToken);
 
 		if (seasonEvent is null)
-		{
 			return new DeleteLeagueSeasonEventError(DeleteLeagueSeasonEventErrorCode.EventNotFound,
 				"Season event not found in league season.");
-		}
 
 		if (seasonEvent.Status != LeagueSeasonEventStatus.Planned || seasonEvent.LaunchedGameId.HasValue)
-		{
 			return new DeleteLeagueSeasonEventError(DeleteLeagueSeasonEventErrorCode.Conflict,
 				"Only planned, unlaunched season events can be deleted.");
-		}
 
 		var seasonEventId = seasonEvent.Id;
 		var seasonId = seasonEvent.LeagueSeasonId;

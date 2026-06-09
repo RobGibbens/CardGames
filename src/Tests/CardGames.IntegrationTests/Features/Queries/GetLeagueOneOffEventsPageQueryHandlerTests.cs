@@ -50,7 +50,7 @@ public class GetLeagueOneOffEventsPageQueryHandlerTests : IntegrationTestBase
 		await DbContext.SaveChangesAsync();
 
 		var filteredResult =
-			await Mediator.Send(new GetLeagueOneOffEventsPageQuery(leagueId, 10, 1, IncludeCompleted: false));
+			await Mediator.Send(new GetLeagueOneOffEventsPageQuery(leagueId, 10, 1, false));
 
 		filteredResult.IsT0.Should().BeTrue();
 		filteredResult.AsT0.TotalCount.Should().Be(1);

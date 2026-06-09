@@ -39,10 +39,7 @@ public sealed class LeagueGameCompletionSyncService
 				.Include(g => g.GamePlayers)
 				.FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
-			if (game is null || game.Status != GameStatus.Completed)
-			{
-				return;
-			}
+			if (game is null || game.Status != GameStatus.Completed) return;
 
 			var now = DateTimeOffset.UtcNow;
 
@@ -59,14 +56,12 @@ public sealed class LeagueGameCompletionSyncService
 
 					// If this is a tournament (has TournamentBuyIn), capture results
 					if (linkedSeasonEvent.TournamentBuyIn.HasValue)
-					{
 						await CaptureSeasonTournamentResultsAsync(
 							linkedSeasonEvent.LeagueId,
 							linkedSeasonEvent.LeagueSeasonId,
 							linkedSeasonEvent.Id,
 							game,
 							cancellationToken);
-					}
 
 					_logger.LogInformation(
 						"Marked season event {EventId} as completed for game {GameId}",
@@ -91,7 +86,6 @@ public sealed class LeagueGameCompletionSyncService
 				.FirstOrDefaultAsync(e => e.LaunchedGameId == gameId, cancellationToken);
 
 			if (linkedOneOffEvent is not null)
-			{
 				if (linkedOneOffEvent.Status != LeagueOneOffEventStatus.Completed)
 				{
 					linkedOneOffEvent.Status = LeagueOneOffEventStatus.Completed;
@@ -110,7 +104,6 @@ public sealed class LeagueGameCompletionSyncService
 						ChangedAtUtc = now
 					}, cancellationToken);
 				}
-			}
 		}
 		catch (Exception ex)
 		{
@@ -225,9 +218,7 @@ public sealed class LeagueGameCompletionSyncService
 
 		var placement = 1;
 		foreach (var player in orderedByBestFinish)
-		{
 			placements.Add((player.Player?.Id.ToString() ?? $"player-{player.Id}", placement++));
-		}
 
 		return placements;
 	}

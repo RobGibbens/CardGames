@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -101,15 +99,15 @@ public class ProcessBettingActionCommandHandlerTests
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(
 			context,
-			gameTypeCode: "REDRIVER",
-			currentPhase: nameof(Phases.Turn),
+			"REDRIVER",
+			nameof(Phases.Turn),
 			currentBet: 0,
 			currentActorIndex: 0,
 			firstPlayerStack: 50,
 			secondPlayerAllIn: true);
 
-		context.GameCards.Add(CreateDeckCard(game, dealOrder: 1, CardSuit.Hearts, CardSymbol.Ace));
-		context.GameCards.Add(CreateDeckCard(game, dealOrder: 2, CardSuit.Clubs, CardSymbol.King));
+		context.GameCards.Add(CreateDeckCard(game, 1, CardSuit.Hearts, CardSymbol.Ace));
+		context.GameCards.Add(CreateDeckCard(game, 2, CardSuit.Clubs, CardSymbol.King));
 		await context.SaveChangesAsync();
 
 		var sut = CreateSut(context);
@@ -204,14 +202,14 @@ public class ProcessBettingActionCommandHandlerTests
 		var alice = CreatePlayer("Alice", now);
 		var bob = CreatePlayer("Bob", now);
 
-		var aliceGamePlayer = CreateGamePlayer(game, alice, seatPosition: 0, chipStack: firstPlayerStack, now);
+		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, firstPlayerStack, now);
 		var bobGamePlayer = CreateGamePlayer(
 			game,
 			bob,
-			seatPosition: 1,
-			chipStack: secondPlayerAllIn ? 0 : 200,
+			1,
+			secondPlayerAllIn ? 0 : 200,
 			now,
-			isAllIn: secondPlayerAllIn);
+			secondPlayerAllIn);
 
 		context.GameTypes.Add(gameType);
 		context.Games.Add(game);
@@ -229,7 +227,6 @@ public class ProcessBettingActionCommandHandlerTests
 		});
 
 		if (includeBettingRound)
-		{
 			context.BettingRounds.Add(new BettingRoundEntity
 			{
 				GameId = game.Id,
@@ -249,7 +246,6 @@ public class ProcessBettingActionCommandHandlerTests
 				IsComplete = false,
 				StartedAt = now
 			});
-		}
 
 		await context.SaveChangesAsync();
 		return game;

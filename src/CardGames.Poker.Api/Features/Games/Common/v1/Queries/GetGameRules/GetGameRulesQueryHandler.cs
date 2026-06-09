@@ -11,9 +11,7 @@ public sealed class GetGameRulesQueryHandler : IRequestHandler<GetGameRulesQuery
 	public Task<GetGameRulesResponse?> Handle(GetGameRulesQuery request, CancellationToken cancellationToken)
 	{
 		if (!PokerGameRulesRegistry.TryGet(request.GameTypeCode, out var rules) || rules is null)
-		{
 			return Task.FromResult<GetGameRulesResponse?>(null);
-		}
 
 		var response = GameRulesMapper.ToResponse(rules);
 		return Task.FromResult<GetGameRulesResponse?>(response);

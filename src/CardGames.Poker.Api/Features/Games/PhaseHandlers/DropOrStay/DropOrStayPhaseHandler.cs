@@ -4,16 +4,39 @@ using CardGames.Poker.Betting;
 namespace CardGames.Poker.Api.Features.Games.PhaseHandlers.DropOrStay;
 
 /// <summary>
-/// Handles the Drop or Stay phase for Kings and Lows poker variant.
+///     Handles the Drop or Stay phase for Kings and Lows poker variant.
 /// </summary>
 /// <remarks>
-/// <para> In Kings and Lows, after cards are dealt, each player must decide to either: </para> <list type="bullet">
-/// <item> <description> Stay - Continue playing and compete for the pot</description> </item> <item> <description> Drop
-/// - Fold and exit the hand</description> </item> </list> <para> All players make their decisions simultaneously. Once
-/// all decisions are recorded, the game transitions to the next phase based on how many players stayed: </para>
-/// <list type="bullet"> <item> <description> 0 players stayed: Hand ends (Complete)</description> </item> <item>
-/// <description> 1 player stayed: Player vs Deck mode</description> </item> <item> <description> 2+ players stayed:
-/// Normal draw phase</description> </item> </list>
+///     <para> In Kings and Lows, after cards are dealt, each player must decide to either: </para>
+///     <list type="bullet">
+///         <item>
+///             <description> Stay - Continue playing and compete for the pot</description>
+///         </item>
+///         <item>
+///             <description>
+///                 Drop
+///                 - Fold and exit the hand
+///             </description>
+///         </item>
+///     </list>
+///     <para>
+///         All players make their decisions simultaneously. Once
+///         all decisions are recorded, the game transitions to the next phase based on how many players stayed:
+///     </para>
+///     <list type="bullet">
+///         <item>
+///             <description> 0 players stayed: Hand ends (Complete)</description>
+///         </item>
+///         <item>
+///             <description> 1 player stayed: Player vs Deck mode</description>
+///         </item>
+///         <item>
+///             <description>
+///                 2+ players stayed:
+///                 Normal draw phase
+///             </description>
+///         </item>
+///     </list>
 /// </remarks>
 public sealed class DropOrStayPhaseHandler : IPhaseHandler
 {
@@ -59,35 +82,22 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 
 		// Check game is in correct phase
 		if (game.CurrentPhase != nameof(Phases.DropOrStay))
-		{
 			return $"Cannot make drop/stay decision. Game is in '{game.CurrentPhase}' phase, " +
-				   $"but must be in '{nameof(Phases.DropOrStay)}' phase.";
-		}
+			       $"but must be in '{nameof(Phases.DropOrStay)}' phase.";
 
 		// Check player is active in the game
-		if (player.Status != GamePlayerStatus.Active)
-		{
-			return "Player is not active in this game.";
-		}
+		if (player.Status != GamePlayerStatus.Active) return "Player is not active in this game.";
 
 		// Check player is not sitting out
-		if (player.IsSittingOut)
-		{
-			return "Player is sitting out and cannot make decisions.";
-		}
+		if (player.IsSittingOut) return "Player is sitting out and cannot make decisions.";
 
 		// Check player hasn't folded
-		if (player.HasFolded)
-		{
-			return "Player has already folded.";
-		}
+		if (player.HasFolded) return "Player has already folded.";
 
 		// Check if player has already decided
 		if (player.DropOrStayDecision.HasValue &&
-			player.DropOrStayDecision.Value != DropOrStayDecision.Undecided)
-		{
+		    player.DropOrStayDecision.Value != DropOrStayDecision.Undecided)
 			return "Player has already made their decision.";
-		}
 
 		return null; // No validation error
 	}
@@ -99,27 +109,21 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 		ArgumentNullException.ThrowIfNull(player);
 
 		// If player can't act, return empty list
-		if (ValidatePlayerCanAct(game, player) is not null)
-		{
-			return [];
-		}
+		if (ValidatePlayerCanAct(game, player) is not null) return [];
 
 		// Check if player is flagged for auto-drop (from chip check timeout)
-		if (player.AutoDropOnDropOrStay)
-		{
-			return ["Drop"]; // Only drop is available
-		}
+		if (player.AutoDropOnDropOrStay) return ["Drop"]; // Only drop is available
 
 		return ["Drop", "Stay"];
 	}
 
 	/// <summary>
-	/// Determines the seat position of the first player to act in the draw phase.
+	///     Determines the seat position of the first player to act in the draw phase.
 	/// </summary>
 	/// <param name="game">The game entity.</param>
 	/// <returns>The seat position of the first drawer.</returns>
 	/// <remarks>
-	/// The first drawer is the first staying player after the dealer, going clockwise.
+	///     The first drawer is the first staying player after the dealer, going clockwise.
 	/// </remarks>
 	public int DetermineFirstDrawerSeatPosition(Game game)
 	{
@@ -127,14 +131,11 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 
 		var stayingPlayers = game.GamePlayers
 			.Where(gp => gp is { Status: GamePlayerStatus.Active, HasFolded: false } &&
-						 gp.DropOrStayDecision == DropOrStayDecision.Stay)
+			             gp.DropOrStayDecision == DropOrStayDecision.Stay)
 			.OrderBy(gp => gp.SeatPosition)
 			.ToList();
 
-		if (stayingPlayers.Count == 0)
-		{
-			return 0;
-		}
+		if (stayingPlayers.Count == 0) return 0;
 
 		var dealerPosition = game.DealerPosition;
 		var totalPlayers = game.GamePlayers
@@ -144,19 +145,13 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 
 		// Find the first staying player clockwise from dealer
 		var dealerIndex = totalPlayers.FindIndex(gp => gp.SeatPosition == dealerPosition);
-		if (dealerIndex < 0)
-		{
-			dealerIndex = 0;
-		}
+		if (dealerIndex < 0) dealerIndex = 0;
 
 		var searchIndex = (dealerIndex + 1) % totalPlayers.Count;
 		foreach (var gamePlayer in totalPlayers)
 		{
 			var candidate = totalPlayers[searchIndex];
-			if (candidate.DropOrStayDecision == DropOrStayDecision.Stay)
-			{
-				return candidate.SeatPosition;
-			}
+			if (candidate.DropOrStayDecision == DropOrStayDecision.Stay) return candidate.SeatPosition;
 
 			searchIndex = (searchIndex + 1) % totalPlayers.Count;
 		}
@@ -166,7 +161,7 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 	}
 
 	/// <summary>
-	/// Gets the count of players who chose to stay.
+	///     Gets the count of players who chose to stay.
 	/// </summary>
 	/// <param name="game">The game entity.</param>
 	/// <returns>The number of players who stayed.</returns>
@@ -176,11 +171,11 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 
 		return game.GamePlayers
 			.Count(gp => gp is { Status: GamePlayerStatus.Active, HasFolded: false } &&
-						 gp.DropOrStayDecision == DropOrStayDecision.Stay);
+			             gp.DropOrStayDecision == DropOrStayDecision.Stay);
 	}
 
 	/// <summary>
-	/// Gets players who chose to drop.
+	///     Gets players who chose to drop.
 	/// </summary>
 	/// <param name="game">The game entity.</param>
 	/// <returns>List of players who dropped.</returns>
@@ -190,13 +185,13 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 
 		return game.GamePlayers
 			.Where(gp => gp is { Status: GamePlayerStatus.Active } &&
-						 gp.DropOrStayDecision == DropOrStayDecision.Drop)
+			             gp.DropOrStayDecision == DropOrStayDecision.Drop)
 			.ToList()
 			.AsReadOnly();
 	}
 
 	/// <summary>
-	/// Gets players who chose to stay.
+	///     Gets players who chose to stay.
 	/// </summary>
 	/// <param name="game">The game entity.</param>
 	/// <returns>List of players who stayed.</returns>
@@ -206,14 +201,14 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 
 		return game.GamePlayers
 			.Where(gp => gp is { Status: GamePlayerStatus.Active, HasFolded: false } &&
-						 gp.DropOrStayDecision == DropOrStayDecision.Stay)
+			             gp.DropOrStayDecision == DropOrStayDecision.Stay)
 			.OrderBy(gp => gp.SeatPosition)
 			.ToList()
 			.AsReadOnly();
 	}
 
 	/// <summary>
-	/// Processes any pending auto-drops from chip check pause timeout.
+	///     Processes any pending auto-drops from chip check pause timeout.
 	/// </summary>
 	/// <param name="game">The game entity.</param>
 	/// <returns>The number of players that were auto-dropped.</returns>
@@ -225,9 +220,9 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 
 		var pendingAutoDrops = game.GamePlayers
 			.Where(gp => gp is { Status: GamePlayerStatus.Active, IsSittingOut: false, HasFolded: false } &&
-						 gp.AutoDropOnDropOrStay &&
-						 (!gp.DropOrStayDecision.HasValue ||
-						  gp.DropOrStayDecision.Value == DropOrStayDecision.Undecided))
+			             gp.AutoDropOnDropOrStay &&
+			             (!gp.DropOrStayDecision.HasValue ||
+			              gp.DropOrStayDecision.Value == DropOrStayDecision.Undecided))
 			.ToList();
 
 		foreach (var player in pendingAutoDrops)
@@ -242,7 +237,7 @@ public sealed class DropOrStayPhaseHandler : IPhaseHandler
 	}
 
 	/// <summary>
-	/// Gets the active players who can make a drop/stay decision.
+	///     Gets the active players who can make a drop/stay decision.
 	/// </summary>
 	private static IEnumerable<GamePlayer> GetActivePlayers(Game game)
 	{

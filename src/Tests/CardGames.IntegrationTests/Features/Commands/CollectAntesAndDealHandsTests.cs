@@ -59,8 +59,8 @@ public class CollectAntesAndDealHandsTests : IntegrationTestBase
 	public async Task CollectAntes_DeductsFromPlayerChips()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4, startingChips: 1000,
-			ante: 10);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4, 1000,
+			10);
 		await Mediator.Send(new StartHandCommand(setup.Game.Id));
 
 		// Act

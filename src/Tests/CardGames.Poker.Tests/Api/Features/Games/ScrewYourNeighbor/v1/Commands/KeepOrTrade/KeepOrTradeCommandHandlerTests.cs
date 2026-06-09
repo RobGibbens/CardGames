@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,7 +38,7 @@ public class KeepOrTradeCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.PreFlop));
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new KeepOrTradeCommand(game.Id, playerId, "Keep"), CancellationToken.None);
@@ -68,7 +66,7 @@ public class KeepOrTradeCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context, currentPlayerIndex: 1);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new KeepOrTradeCommand(game.Id, playerId, "Keep"), CancellationToken.None);
@@ -82,7 +80,7 @@ public class KeepOrTradeCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(context);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new KeepOrTradeCommand(game.Id, playerId, "Maybe"), CancellationToken.None);
@@ -97,15 +95,15 @@ public class KeepOrTradeCommandHandlerTests
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(
 			context,
-			playerCount: 2,
-			currentPlayerIndex: 0,
-			dealerPosition: 1,
+			2,
+			0,
+			1,
 			handCardsBySeat: new Dictionary<int, CardSymbol>
 			{
 				[0] = CardSymbol.Four
 			},
 			deckSymbols: [CardSymbol.Ace]);
-		var playerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 0);
+		var playerId = await GetPlayerIdAsync(context, game.Id, 0);
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new KeepOrTradeCommand(game.Id, playerId, "Trade"), CancellationToken.None);
@@ -127,15 +125,15 @@ public class KeepOrTradeCommandHandlerTests
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(
 			context,
-			playerCount: 2,
-			currentPlayerIndex: 1,
-			dealerPosition: 1,
+			2,
+			1,
+			1,
 			handCardsBySeat: new Dictionary<int, CardSymbol>
 			{
 				[0] = CardSymbol.Four
 			},
 			deckSymbols: [CardSymbol.King]);
-		var dealerPlayerId = await GetPlayerIdAsync(context, game.Id, seatPosition: 1);
+		var dealerPlayerId = await GetPlayerIdAsync(context, game.Id, 1);
 		var sut = CreateSut(context, out var flowHandler, out var handSettlementService);
 
 		flowHandler.PerformShowdownAsync(
@@ -185,9 +183,9 @@ public class KeepOrTradeCommandHandlerTests
 		{
 			var game = await SeedGameAsync(
 				setupContext,
-				playerCount: 3,
-				currentPlayerIndex: 0,
-				dealerPosition: 2,
+				3,
+				0,
+				2,
 				handCardsBySeat: new Dictionary<int, CardSymbol>
 				{
 					[0] = CardSymbol.Four,
@@ -196,7 +194,7 @@ public class KeepOrTradeCommandHandlerTests
 				},
 				deckSymbols: [CardSymbol.Ace]);
 			gameId = game.Id;
-			playerId = await GetPlayerIdAsync(setupContext, game.Id, seatPosition: 0);
+			playerId = await GetPlayerIdAsync(setupContext, game.Id, 0);
 		}
 
 		await using var staleContext = CreateContext(databaseName, databaseRoot);
@@ -349,7 +347,6 @@ public class KeepOrTradeCommandHandlerTests
 			context.GamePlayers.Add(gamePlayer);
 
 			if (handCardsBySeat.TryGetValue(seatPosition, out var symbol))
-			{
 				context.GameCards.Add(new GameCard
 				{
 					Id = Guid.NewGuid(),
@@ -367,11 +364,9 @@ public class KeepOrTradeCommandHandlerTests
 					DealtAt = now,
 					DealtAtPhase = nameof(Phases.Dealing)
 				});
-			}
 		}
 
 		for (var deckIndex = 0; deckIndex < deckSymbols.Count; deckIndex++)
-		{
 			context.GameCards.Add(new GameCard
 			{
 				Id = Guid.NewGuid(),
@@ -388,7 +383,6 @@ public class KeepOrTradeCommandHandlerTests
 				DealtAt = now,
 				DealtAtPhase = nameof(Phases.Dealing)
 			});
-		}
 
 		await context.SaveChangesAsync();
 		return game;

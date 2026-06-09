@@ -16,19 +16,15 @@ public sealed class GetLeagueInvitesQueryHandler(
 		GetLeagueInvitesQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueInvitesError(GetLeagueInvitesErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AnyAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive,
 				cancellationToken);
 
 		if (!isMember)
-		{
 			return new GetLeagueInvitesError(GetLeagueInvitesErrorCode.Forbidden,
 				"Only league members can view invites.");
-		}
 
 		var invites = await context.LeagueInvites
 			.AsNoTracking()

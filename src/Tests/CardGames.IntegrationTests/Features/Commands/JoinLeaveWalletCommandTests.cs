@@ -27,7 +27,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		SetCurrentUser("wallet-user-id", "Wallet User", "wallet.user@test.com");
 
 		// Act
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 0, StartingChips: 200));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 0, 200));
 
 		// Assert
 		result.IsT0.Should().BeTrue();
@@ -70,7 +70,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		SetCurrentUser("short-stack-user-id", "Short Stack", "short.stack@test.com");
 
 		// Act
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 1, StartingChips: 100));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 1, 100));
 
 		// Assert
 		result.IsT1.Should().BeTrue();
@@ -105,7 +105,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		SetCurrentUser("capped-player-user-id", "Capped Player", "capped.player@test.com");
 
 		// Act
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 1, StartingChips: 200));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 1, 200));
 
 		// Assert
 		result.IsT1.Should().BeTrue();
@@ -140,7 +140,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		SetCurrentUser("exact-cap-user-id", "Exact Cap Player", "exact.cap@test.com");
 
 		// Act
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 2, StartingChips: 200));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 2, 200));
 
 		// Assert
 		result.IsT0.Should().BeTrue();
@@ -169,7 +169,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 
 		SetCurrentUser("tournament-mismatch-user-id", "Tournament Mismatch", "tournament.mismatch@test.com");
 
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 3, StartingChips: 200));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 3, 200));
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(JoinGameErrorCode.InvalidStartingChips);
@@ -195,7 +195,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 
 		SetCurrentUser("tournament-match-user-id", "Tournament Match", "tournament.match@test.com");
 
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 4, StartingChips: 250));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 4, 250));
 
 		result.IsT0.Should().BeTrue();
 		var gamePlayer = await DbContext.GamePlayers.FirstAsync(x => x.GameId == game.Id && x.PlayerId == player.Id);
@@ -206,7 +206,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	public async Task JoinGame_ScrewYourNeighborAfterStart_ReturnsLateJoinNotAllowedAndDoesNotSeatPlayer()
 	{
 		// Arrange
-		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "SCREWYOURNEIGHBOR", ante: 25);
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "SCREWYOURNEIGHBOR", 25);
 		game.Status = GameStatus.InProgress;
 		game.CurrentHandNumber = 1;
 		game.CurrentPhase = "KeepOrTrade";
@@ -226,7 +226,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		SetCurrentUser("late-syn-user-id", "Late SYN Player", "late.syn@test.com");
 
 		// Act
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 0, StartingChips: 75));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 0, 75));
 
 		// Assert
 		result.IsT1.Should().BeTrue();
@@ -241,7 +241,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	public async Task JoinGame_ScrewYourNeighborBeforeStart_AllowsPlayerToJoin()
 	{
 		// Arrange
-		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "SCREWYOURNEIGHBOR", ante: 25);
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "SCREWYOURNEIGHBOR", 25);
 		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Prestart SYN Player", "prestart.syn@test.com");
 
 		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
@@ -256,7 +256,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		SetCurrentUser("prestart-syn-user-id", "Prestart SYN Player", "prestart.syn@test.com");
 
 		// Act
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 0, StartingChips: 10));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 0, 10));
 
 		// Assert
 		result.IsT0.Should().BeTrue();
@@ -285,7 +285,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		SetCurrentUser("broke-player-user-id", "Broke Player", "broke.player@test.com");
 
 		// Act
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 1, StartingChips: 200));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 1, 200));
 
 		// Assert
 		result.IsT1.Should().BeTrue();
@@ -309,7 +309,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		SetCurrentUser("no-wallet-user-id", "No Wallet Yet", "no.wallet@test.com");
 
 		// Act
-		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 2, StartingChips: 100));
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, 2, 100));
 
 		// Assert
 		result.IsT0.Should().BeTrue();
@@ -341,8 +341,8 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	public async Task LeaveGame_BetweenHands_WritesAuditOnlyCashOutLedger()
 	{
 		// Arrange
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", numberOfPlayers: 2,
-			startingChips: 400);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2,
+			400);
 		var player = setup.Players[0];
 		var gamePlayer = setup.GamePlayers[0];
 

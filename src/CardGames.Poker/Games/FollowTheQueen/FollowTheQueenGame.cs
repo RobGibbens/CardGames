@@ -15,21 +15,20 @@ namespace CardGames.Poker.Games.FollowTheQueen;
 ///     and the card following the last face-up Queen also becomes wild (along with all cards of that rank).
 /// </summary>
 [PokerGameMetadata(
-	code: "FOLLOWTHEQUEEN",
-	name: "Follow the Queen",
-	description:
+	"FOLLOWTHEQUEEN",
+	"Follow the Queen",
 	"A seven card stud poker variant where Queens are wild, and the card following the last face-up Queen also becomes wild.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 7,
-	initialHoleCards: 2,
-	initialBoardCards: 1,
-	maxCommunityCards: 0,
-	maxPlayerCards: 7,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.Dynamic,
-	bettingStructure: BettingStructure.AnteBringIn,
-	imageName: "followthequeen.png")]
+	2,
+	7,
+	2,
+	1,
+	0,
+	7,
+	false,
+	0,
+	WildCardRule.Dynamic,
+	BettingStructure.AnteBringIn,
+	"followthequeen.png")]
 public class FollowTheQueenGame : IPokerGame
 {
 	private readonly FrenchDeckDealer _dealer;
@@ -44,10 +43,10 @@ public class FollowTheQueenGame : IPokerGame
 	public FollowTheQueenGame()
 		: this(
 			[("P1", 100), ("P2", 100)],
-			ante: 0,
-			bringIn: 0,
-			smallBet: 0,
-			bigBet: 0)
+			0,
+			0,
+			0,
+			0)
 	{
 	}
 
@@ -61,14 +60,10 @@ public class FollowTheQueenGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Follow the Queen requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Follow the Queen supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new FollowTheQueenGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -146,9 +141,7 @@ public class FollowTheQueenGame : IPokerGame
 	public List<BettingAction> CollectAntes()
 	{
 		if (CurrentPhase != Phases.CollectingAntes)
-		{
 			throw new InvalidOperationException("Cannot collect antes in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -175,12 +168,10 @@ public class FollowTheQueenGame : IPokerGame
 	public void DealThirdStreet()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot deal third street in current phase");
-		}
 
-		int startPosition = (DealerPosition + 1) % _gamePlayers.Count;
-		for (int i = 0; i < _gamePlayers.Count; i++)
+		var startPosition = (DealerPosition + 1) % _gamePlayers.Count;
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
 			var gamePlayer = _gamePlayers[(startPosition + i) % _gamePlayers.Count];
 			if (!gamePlayer.Player.HasFolded)
@@ -196,20 +187,13 @@ public class FollowTheQueenGame : IPokerGame
 		}
 
 		// Reset current bets before betting round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		// Determine the bring-in player (lowest upcard) only if bring-in is enabled
 		if (UseBringIn)
-		{
 			_bringInPlayerIndex = FindBringInPlayer();
-		}
 		else
-		{
 			_bringInPlayerIndex = -1;
-		}
 	}
 
 	/// <summary>
@@ -220,14 +204,9 @@ public class FollowTheQueenGame : IPokerGame
 	public BettingAction PostBringIn()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot post bring-in in current phase");
-		}
 
-		if (!UseBringIn)
-		{
-			throw new InvalidOperationException("Bring-in is disabled for this game");
-		}
+		if (!UseBringIn) throw new InvalidOperationException("Bring-in is disabled for this game");
 
 		var bringInPlayer = _gamePlayers[_bringInPlayerIndex];
 		var actualAmount = bringInPlayer.Player.PlaceBet(Math.Min(BringIn, bringInPlayer.Player.ChipStack));
@@ -247,8 +226,8 @@ public class FollowTheQueenGame : IPokerGame
 		var activePlayers = _gamePlayers.Select(gp => gp.Player).ToList();
 		int startPosition;
 		int minBet;
-		int initialBet = 0;
-		int forcedBetPlayerIndex = -1;
+		var initialBet = 0;
+		var forcedBetPlayerIndex = -1;
 
 		switch (CurrentPhase)
 		{
@@ -318,10 +297,7 @@ public class FollowTheQueenGame : IPokerGame
 	/// </summary>
 	public FollowTheQueenGamePlayer GetBringInPlayer()
 	{
-		if (_bringInPlayerIndex < 0 || _bringInPlayerIndex >= _gamePlayers.Count)
-		{
-			return null;
-		}
+		if (_bringInPlayerIndex < 0 || _bringInPlayerIndex >= _gamePlayers.Count) return null;
 
 		return _gamePlayers[_bringInPlayerIndex];
 	}
@@ -332,20 +308,15 @@ public class FollowTheQueenGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -362,10 +333,7 @@ public class FollowTheQueenGame : IPokerGame
 
 		// Calculate side pots if any players are all-in
 		var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
-		if (hasAllIn)
-		{
-			PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-		}
+		if (hasAllIn) PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 
 		// Check if all remaining players are all-in (skip to showdown)
 		var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
@@ -376,10 +344,7 @@ public class FollowTheQueenGame : IPokerGame
 		}
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		switch (CurrentPhase)
 		{
@@ -410,12 +375,10 @@ public class FollowTheQueenGame : IPokerGame
 		    or Phases.FifthStreet
 		    or Phases.SixthStreet
 		    or Phases.SeventhStreet))
-		{
 			throw new InvalidOperationException("Cannot deal street card in current phase");
-		}
 
-		int startPosition = (DealerPosition + 1) % _gamePlayers.Count;
-		for (int i = 0; i < _gamePlayers.Count; i++)
+		var startPosition = (DealerPosition + 1) % _gamePlayers.Count;
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
 			var gamePlayer = _gamePlayers[(startPosition + i) % _gamePlayers.Count];
 			if (!gamePlayer.Player.HasFolded)
@@ -436,10 +399,7 @@ public class FollowTheQueenGame : IPokerGame
 		}
 
 		// Reset current bets before betting round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 	}
 
 	/// <summary>
@@ -448,13 +408,11 @@ public class FollowTheQueenGame : IPokerGame
 	public FollowTheQueenShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new FollowTheQueenShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 
@@ -558,16 +516,13 @@ public class FollowTheQueenGame : IPokerGame
 	/// </summary>
 	private int FindBringInPlayer()
 	{
-		int lowestIndex = -1;
+		var lowestIndex = -1;
 		Card lowestCard = null;
 
-		for (int i = 0; i < _gamePlayers.Count; i++)
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
 			var gamePlayer = _gamePlayers[i];
-			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0) continue;
 
 			var upcard = gamePlayer.BoardCards[0];
 
@@ -588,10 +543,7 @@ public class FollowTheQueenGame : IPokerGame
 	/// </summary>
 	private static int CompareCardsForBringIn(Card a, Card b)
 	{
-		if (a.Value != b.Value)
-		{
-			return a.Value.CompareTo(b.Value);
-		}
+		if (a.Value != b.Value) return a.Value.CompareTo(b.Value);
 
 		// Suit order for ties: Clubs (0) < Diamonds (1) < Hearts (2) < Spades (3)
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
@@ -614,16 +566,13 @@ public class FollowTheQueenGame : IPokerGame
 	/// </summary>
 	private int FindBestVisibleHandPosition()
 	{
-		int bestIndex = -1;
+		var bestIndex = -1;
 		long bestStrength = -1;
 
-		for (int i = 0; i < _gamePlayers.Count; i++)
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
 			var gamePlayer = _gamePlayers[i];
-			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0) continue;
 
 			var visibleStrength = EvaluateVisibleHand(gamePlayer.BoardCards);
 
@@ -670,15 +619,11 @@ public class FollowTheQueenGame : IPokerGame
 		{
 			var pairs = valueCounts.Where(g => g.Count() >= 2).ToList();
 			if (pairs.Count >= 2)
-			{
 				// Two pair
 				strength = 3_000_000 + pairs[0].Key * 1000 + pairs[1].Key * 10;
-			}
 			else
-			{
 				// One pair
 				strength = 2_000_000 + pairs[0].Key * 1000;
-			}
 		}
 		else
 		{
@@ -687,10 +632,7 @@ public class FollowTheQueenGame : IPokerGame
 		}
 
 		// Add kicker values
-		foreach (var card in cards.Take(4))
-		{
-			strength = strength * 15 + card.Value;
-		}
+		foreach (var card in cards.Take(4)) strength = strength * 15 + card.Value;
 
 		return strength;
 	}
@@ -735,17 +677,12 @@ public class FollowTheQueenGame : IPokerGame
 	{
 		Symbol? followingRank = null;
 
-		for (int i = 0; i < _faceUpCardsInOrder.Count - 1; i++)
-		{
+		for (var i = 0; i < _faceUpCardsInOrder.Count - 1; i++)
 			if (_faceUpCardsInOrder[i].Symbol == Symbol.Queen)
 			{
 				var nextCard = _faceUpCardsInOrder[i + 1];
-				if (nextCard.Symbol != Symbol.Queen)
-				{
-					followingRank = nextCard.Symbol;
-				}
+				if (nextCard.Symbol != Symbol.Queen) followingRank = nextCard.Symbol;
 			}
-		}
 
 		return followingRank;
 	}

@@ -18,10 +18,7 @@ internal static class LeagueSeasonEventStandingsRecalculator
 			.Distinct(StringComparer.Ordinal)
 			.ToArray();
 
-		if (normalizedMemberIds.Length == 0)
-		{
-			return;
-		}
+		if (normalizedMemberIds.Length == 0) return;
 
 		var aggregates = await context.LeagueSeasonEventResults
 			.AsNoTracking()

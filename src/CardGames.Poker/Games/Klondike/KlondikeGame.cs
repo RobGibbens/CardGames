@@ -10,21 +10,20 @@ namespace CardGames.Poker.Games.Klondike;
 ///     best 5-card hand.
 /// </summary>
 [PokerGameMetadata(
-	code: "KLONDIKE",
-	name: "Klondike Hold'em",
-	description:
+	"KLONDIKE",
+	"Klondike Hold'em",
 	"Texas Hold 'Em with a hidden wild card placed after the flop. At showdown, each player treats it as any rank and suit.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 2,
-	initialBoardCards: 0,
-	maxCommunityCards: 6,
-	maxPlayerCards: 2,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.Dynamic,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "klondike.png")]
+	2,
+	10,
+	2,
+	0,
+	6,
+	2,
+	false,
+	0,
+	WildCardRule.Dynamic,
+	BettingStructure.Blinds,
+	"klondike.png")]
 public sealed class KlondikeGame : IPokerGame
 {
 	public string Name { get; } = "Klondike Hold'em";

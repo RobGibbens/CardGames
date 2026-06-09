@@ -163,10 +163,7 @@ public class TollboothFlowHandlerTests : IntegrationTestBase
 		var handler = new TollboothFlowHandler();
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, TollboothCode, 3);
 
-		foreach (var gp in setup.GamePlayers.Skip(1))
-		{
-			gp.HasFolded = true;
-		}
+		foreach (var gp in setup.GamePlayers.Skip(1)) gp.HasFolded = true;
 
 		await DbContext.SaveChangesAsync();
 
@@ -176,10 +173,7 @@ public class TollboothFlowHandlerTests : IntegrationTestBase
 	private async Task EnsureTollboothGameTypeAsync()
 	{
 		var existing = await DbContext.GameTypes.FirstOrDefaultAsync(gt => gt.Code == TollboothCode);
-		if (existing is not null)
-		{
-			return;
-		}
+		if (existing is not null) return;
 
 		DbContext.GameTypes.Add(new GameType
 		{

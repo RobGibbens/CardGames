@@ -21,21 +21,13 @@ public class KingsAndLowsDrawOddsCalculatorTests
 
 		var nonWildPairOrBetter = 0m;
 		foreach (var (handType, probability) in nonWild.HandTypeProbabilities)
-		{
 			if (handType != HandType.HighCard)
-			{
 				nonWildPairOrBetter += probability;
-			}
-		}
 
 		var withWildPairOrBetter = 0m;
 		foreach (var (handType, probability) in withWild.HandTypeProbabilities)
-		{
 			if (handType != HandType.HighCard)
-			{
 				withWildPairOrBetter += probability;
-			}
-		}
 
 		withWildPairOrBetter.Should().BeGreaterThan(nonWildPairOrBetter);
 	}
@@ -51,12 +43,8 @@ public class KingsAndLowsDrawOddsCalculatorTests
 
 		var pairOrBetter = 0m;
 		foreach (var (handType, probability) in withLowCard.HandTypeProbabilities)
-		{
 			if (handType != HandType.HighCard)
-			{
 				pairOrBetter += probability;
-			}
-		}
 
 		// With a wild card (the 2), we should have a high probability of pair or better
 		pairOrBetter.Should().BeGreaterThan(0.5m);

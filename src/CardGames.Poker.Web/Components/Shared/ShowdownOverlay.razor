@@ -419,10 +419,13 @@
 		}
 
 		return displayCards
-			.Select(entry => entry with { IsWild = WildCardDisplayMatcher.IsActiveWildCard(
-				GetPlayingCardRank(entry.Card),
-				GetPlayingCardSuit(entry.Card),
-				ActiveWildCards) })
+			.Select(entry => entry with
+			{
+				IsWild = WildCardDisplayMatcher.IsActiveWildCard(
+					GetPlayingCardRank(entry.Card),
+					GetPlayingCardSuit(entry.Card),
+					ActiveWildCards)
+			})
 			.ToList();
 	}
 
@@ -830,7 +833,7 @@
 		}
 
 		List<(ShowdownCard Card, Card Core)>? bestCombo = null;
-		long bestStrength = long.MinValue;
+		var bestStrength = long.MinValue;
 
 		foreach (var holePair in holeCards.SubsetsOfSize(2))
 		{

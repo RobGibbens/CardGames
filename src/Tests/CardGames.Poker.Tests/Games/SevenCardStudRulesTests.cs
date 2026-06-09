@@ -130,7 +130,7 @@ public class SevenCardStudRulesTests
 		dealingRounds[1].Target.Should().Be(DealingTarget.Players);
 
 		// Fourth, Fifth, Sixth streets - all face up
-		for (int i = 2; i <= 4; i++)
+		for (var i = 2; i <= 4; i++)
 		{
 			dealingRounds[i].CardCount.Should().Be(1);
 			dealingRounds[i].Visibility.Should().Be(CardVisibility.FaceUp);

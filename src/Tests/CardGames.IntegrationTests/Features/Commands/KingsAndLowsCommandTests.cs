@@ -124,9 +124,7 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
 
 		// All players stay
 		foreach (var player in setup.GamePlayers)
-		{
 			await Mediator.Send(new DropOrStayCommand(game.Id, player.PlayerId, "Stay"));
-		}
 
 		// Assert - Should have advanced past DropOrStay phase
 		var finalGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
@@ -143,10 +141,8 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
 		await Mediator.Send(new DropOrStayCommand(game.Id, setup.GamePlayers[0].PlayerId, "Stay"));
 
 		// Rest drop
-		for (int i = 1; i < setup.GamePlayers.Count; i++)
-		{
+		for (var i = 1; i < setup.GamePlayers.Count; i++)
 			await Mediator.Send(new DropOrStayCommand(game.Id, setup.GamePlayers[i].PlayerId, "Drop"));
-		}
 
 		// Assert - Should go to DrawPhase (single player needs to draw before playing vs deck)
 		var finalGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
@@ -161,9 +157,7 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
 
 		// All players drop
 		foreach (var player in setup.GamePlayers)
-		{
 			await Mediator.Send(new DropOrStayCommand(game.Id, player.PlayerId, "Drop"));
-		}
 
 		// Assert - Should complete the hand
 		var finalGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
@@ -194,10 +188,7 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
 
 		// Set previous decisions
-		foreach (var gp in setup.GamePlayers)
-		{
-			gp.DropOrStayDecision = DropOrStayDecision.Stay;
-		}
+		foreach (var gp in setup.GamePlayers) gp.DropOrStayDecision = DropOrStayDecision.Stay;
 
 		await DbContext.SaveChangesAsync();
 

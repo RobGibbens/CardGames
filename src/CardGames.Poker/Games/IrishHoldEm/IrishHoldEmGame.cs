@@ -15,20 +15,20 @@ namespace CardGames.Poker.Games.IrishHoldEm;
 ///     exactly 2 of their 4 hole cards, then play continues as Texas Hold 'Em.
 /// </summary>
 [PokerGameMetadata(
-	code: "IRISHHOLDEM",
-	name: "Irish Hold 'Em",
-	description: "Deal 4 hole cards, discard 2 after the flop, then play like Hold 'Em with community cards.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 4,
-	initialBoardCards: 0,
-	maxCommunityCards: 5,
-	maxPlayerCards: 4,
-	hasDrawPhase: true,
-	maxDiscards: 2,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "irishholdem.png")]
+	"IRISHHOLDEM",
+	"Irish Hold 'Em",
+	"Deal 4 hole cards, discard 2 after the flop, then play like Hold 'Em with community cards.",
+	2,
+	10,
+	4,
+	0,
+	5,
+	4,
+	true,
+	2,
+	WildCardRule.None,
+	BettingStructure.Blinds,
+	"irishholdem.png")]
 public class IrishHoldEmGame : IPokerGame
 {
 	private const int HoleCardsCount = 4;
@@ -43,8 +43,8 @@ public class IrishHoldEmGame : IPokerGame
 	public IrishHoldEmGame()
 		: this(
 			new[] { ("P1", 100), ("P2", 100) },
-			smallBlind: 0,
-			bigBlind: 0)
+			0,
+			0)
 	{
 	}
 
@@ -55,14 +55,10 @@ public class IrishHoldEmGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Irish Hold 'Em requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Irish Hold 'Em supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new IrishHoldEmGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -141,9 +137,7 @@ public class IrishHoldEmGame : IPokerGame
 	public List<BettingAction> PostBlinds()
 	{
 		if (CurrentPhase != Phases.CollectingBlinds)
-		{
 			throw new InvalidOperationException("Cannot post blinds in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -177,22 +171,15 @@ public class IrishHoldEmGame : IPokerGame
 	public void DealHoleCards()
 	{
 		if (CurrentPhase != Phases.PreFlop)
-		{
 			throw new InvalidOperationException("Cannot deal hole cards in current phase");
-		}
 
 		// Deal cards one at a time, rotating around the table
-		for (int cardNum = 0; cardNum < HoleCardsCount; cardNum++)
+		for (var cardNum = 0; cardNum < HoleCardsCount; cardNum++)
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
-			for (int i = 0; i < _gamePlayers.Count; i++)
-			{
-				var playerIndex = (SmallBlindPosition + i) % _gamePlayers.Count;
-				var gamePlayer = _gamePlayers[playerIndex];
-				if (!gamePlayer.Player.HasFolded)
-				{
-					gamePlayer.AddHoleCard(_dealer.DealCard());
-				}
-			}
+			var playerIndex = (SmallBlindPosition + i) % _gamePlayers.Count;
+			var gamePlayer = _gamePlayers[playerIndex];
+			if (!gamePlayer.Player.HasFolded) gamePlayer.AddHoleCard(_dealer.DealCard());
 		}
 	}
 
@@ -205,17 +192,13 @@ public class IrishHoldEmGame : IPokerGame
 
 		// Reset current bets for the round (except preflop where blinds are already posted)
 		if (CurrentPhase != Phases.PreFlop)
-		{
 			foreach (var gamePlayer in _gamePlayers)
-			{
 				gamePlayer.Player.ResetCurrentBet();
-			}
-		}
 
 		int startPosition;
 		int minBet;
-		int initialBet = 0;
-		int forcedBetPlayerIndex = -1;
+		var initialBet = 0;
+		var forcedBetPlayerIndex = -1;
 
 		switch (CurrentPhase)
 		{
@@ -265,20 +248,15 @@ public class IrishHoldEmGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -294,10 +272,7 @@ public class IrishHoldEmGame : IPokerGame
 		}
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		switch (CurrentPhase)
 		{
@@ -325,28 +300,17 @@ public class IrishHoldEmGame : IPokerGame
 	public void DiscardCards(string playerName, List<int> discardIndices)
 	{
 		if (CurrentPhase != Phases.DrawPhase)
-		{
 			throw new InvalidOperationException("Can only discard during the draw phase.");
-		}
 
 		var gamePlayer = _gamePlayers.FirstOrDefault(gp => gp.Player.Name == playerName);
-		if (gamePlayer == null)
-		{
-			throw new ArgumentException($"Player '{playerName}' not found.");
-		}
+		if (gamePlayer == null) throw new ArgumentException($"Player '{playerName}' not found.");
 
-		if (gamePlayer.Player.HasFolded)
-		{
-			throw new InvalidOperationException("Folded players cannot discard.");
-		}
+		if (gamePlayer.Player.HasFolded) throw new InvalidOperationException("Folded players cannot discard.");
 
 		gamePlayer.DiscardCards(discardIndices);
 
 		// Auto-advance to Turn when all active players have discarded
-		if (IsDiscardingComplete())
-		{
-			AdvanceToNextPhase();
-		}
+		if (IsDiscardingComplete()) AdvanceToNextPhase();
 	}
 
 	/// <summary>
@@ -364,10 +328,7 @@ public class IrishHoldEmGame : IPokerGame
 	/// </summary>
 	public void DealFlop()
 	{
-		if (CurrentPhase != Phases.Flop)
-		{
-			throw new InvalidOperationException("Cannot deal flop in current phase");
-		}
+		if (CurrentPhase != Phases.Flop) throw new InvalidOperationException("Cannot deal flop in current phase");
 
 		_communityCards.Add(_dealer.DealCard());
 		_communityCards.Add(_dealer.DealCard());
@@ -382,10 +343,7 @@ public class IrishHoldEmGame : IPokerGame
 	/// </summary>
 	public void DealTurn()
 	{
-		if (CurrentPhase != Phases.Turn)
-		{
-			throw new InvalidOperationException("Cannot deal turn in current phase");
-		}
+		if (CurrentPhase != Phases.Turn) throw new InvalidOperationException("Cannot deal turn in current phase");
 
 		_communityCards.Add(_dealer.DealCard());
 	}
@@ -395,10 +353,7 @@ public class IrishHoldEmGame : IPokerGame
 	/// </summary>
 	public void DealRiver()
 	{
-		if (CurrentPhase != Phases.River)
-		{
-			throw new InvalidOperationException("Cannot deal river in current phase");
-		}
+		if (CurrentPhase != Phases.River) throw new InvalidOperationException("Cannot deal river in current phase");
 
 		_communityCards.Add(_dealer.DealCard());
 	}
@@ -410,13 +365,11 @@ public class IrishHoldEmGame : IPokerGame
 	public IrishHoldEmShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new IrishHoldEmShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 

@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -25,8 +23,7 @@ public class GameStateBroadcasterTests
 			"KINGSANDLOWS",
 			"DropOrStay",
 			3,
-			currentPhaseRequiresAction: true,
-			seats:
+			true,
 			[
 				CreateSeat(0, 5, "Alice"),
 				CreateSeat(1, 5, "Bob"),
@@ -49,7 +46,7 @@ public class GameStateBroadcasterTests
 	public async Task BroadcastGameStateAsync_ScrewYourNeighborKeepOrTrade_UsesThirtySecondTimer()
 	{
 		var gameId = Guid.NewGuid();
-		var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 3, currentPhaseRequiresAction: true);
+		var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 3, true);
 		var (sut, tableStateBuilder, actionTimerService, _) = CreateSubject(publicState);
 
 		await sut.BroadcastGameStateAsync(gameId);
@@ -78,7 +75,7 @@ public class GameStateBroadcasterTests
 	public async Task BroadcastGameStateAsync_BobBarkerDrawPhase_UsesSharedTimer()
 	{
 		var gameId = Guid.NewGuid();
-		var publicState = CreateState(gameId, "BOBBARKER", "DrawPhase", 1, currentPhaseRequiresAction: true);
+		var publicState = CreateState(gameId, "BOBBARKER", "DrawPhase", 1, true);
 		var (sut, _, actionTimerService, _) = CreateSubject(publicState);
 
 		await sut.BroadcastGameStateAsync(gameId);

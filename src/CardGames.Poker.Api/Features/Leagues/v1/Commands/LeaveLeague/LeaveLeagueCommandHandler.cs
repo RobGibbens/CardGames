@@ -19,23 +19,19 @@ public sealed class LeaveLeagueCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new LeaveLeagueError(LeaveLeagueErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var membership = await context.LeagueMembersCurrent
 			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId,
 				cancellationToken);
 
 		if (membership is null || !membership.IsActive)
-		{
 			return new LeaveLeagueResponse
 			{
 				LeagueId = request.LeagueId,
 				Left = false,
 				WasActiveMember = false
 			};
-		}
 
 		var activeMembers = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -50,9 +46,7 @@ public sealed class LeaveLeagueCommandHandler(
 				LeagueGovernanceRules.IsManagerAuthority(x.Role));
 
 			if (!hasAnotherManager)
-			{
 				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict, "League must retain at least one manager.");
-			}
 		}
 
 		if (membership.Role == LeagueRole.Admin)
@@ -60,9 +54,7 @@ public sealed class LeaveLeagueCommandHandler(
 			var hasAnotherAdmin =
 				activeMembers.Any(x => x.UserId != currentUserService.UserId && x.Role == LeagueRole.Admin);
 			if (!hasAnotherAdmin)
-			{
 				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict, "League must retain at least one admin.");
-			}
 		}
 
 		if (LeagueGovernanceRules.IsGovernanceCapable(membership.Role))
@@ -72,10 +64,8 @@ public sealed class LeaveLeagueCommandHandler(
 				LeagueGovernanceRules.IsGovernanceCapable(x.Role));
 
 			if (!hasAnotherGovernanceMember)
-			{
 				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict,
 					"League must retain at least one manager or admin.");
-			}
 		}
 
 		var now = DateTimeOffset.UtcNow;

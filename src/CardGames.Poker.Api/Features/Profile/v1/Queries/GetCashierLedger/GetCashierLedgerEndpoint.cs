@@ -20,9 +20,7 @@ public static class GetCashierLedgerEndpoint
 					var resolvedPageNumber = pageNumber ?? 1;
 
 					if (!pageNumber.HasValue && skip.HasValue)
-					{
 						resolvedPageNumber = Math.Max(1, skip.Value / resolvedPageSize + 1);
-					}
 
 					var response = await mediator.Send(new GetCashierLedgerQuery(resolvedPageSize, resolvedPageNumber),
 						cancellationToken);

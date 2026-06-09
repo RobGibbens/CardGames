@@ -25,7 +25,7 @@ public class BaseballGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20);
+		var act = () => new BaseballGame(players, 5, 5, 10, 20, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -36,7 +36,7 @@ public class BaseballGameTests
 	{
 		var players = Enumerable.Range(1, 7).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20);
+		var act = () => new BaseballGame(players, 5, 5, 10, 20, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 6 players*");
@@ -279,7 +279,7 @@ public class BaseballGameTests
 			("Alice", 1000),
 			("Bob", 0)
 		};
-		var game = new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20);
+		var game = new BaseballGame(players, 5, 5, 10, 20, 20);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -302,7 +302,7 @@ public class BaseballGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 50);
+		var game = new BaseballGame(players, 5, 5, 10, 20, 50);
 
 		game.BuyCardPrice.Should().Be(50);
 	}
@@ -334,13 +334,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 
 		// Now try to process without a pending offer
@@ -366,8 +362,8 @@ public class BaseballGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20,
-			useBringIn: false);
+		var game = new BaseballGame(players, 5, 5, 10, 20, 20,
+			false);
 
 		game.UseBringIn.Should().BeFalse();
 	}
@@ -380,8 +376,8 @@ public class BaseballGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20,
-			useBringIn: false);
+		var game = new BaseballGame(players, 5, 5, 10, 20, 20,
+			false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -391,13 +387,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 
 		var bringInPlayer = game.GetBringInPlayer();
@@ -413,8 +405,8 @@ public class BaseballGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20,
-			useBringIn: false);
+		var game = new BaseballGame(players, 5, 5, 10, 20, 20,
+			false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -433,8 +425,8 @@ public class BaseballGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20,
-			useBringIn: false);
+		var game = new BaseballGame(players, 5, 5, 10, 20, 20,
+			false);
 		game.StartHand();
 		game.CollectAntes();
 		game.DealThirdStreet();
@@ -444,13 +436,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 
 		// Should not throw and should start betting round without bring-in
@@ -497,10 +485,7 @@ public class BaseballGameTests
 		game.CollectAntes();
 		game.StartDealingThirdStreet();
 
-		while (game.HasMorePlayersToDeal())
-		{
-			game.DealThirdStreetToNextPlayer();
-		}
+		while (game.HasMorePlayersToDeal()) game.DealThirdStreetToNextPlayer();
 
 		game.GamePlayers.Should().AllSatisfy(gp =>
 		{
@@ -517,16 +502,13 @@ public class BaseballGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		var game = new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20,
-			useBringIn: true);
+		var game = new BaseballGame(players, 5, 5, 10, 20, 20,
+			true);
 		game.StartHand();
 		game.CollectAntes();
 		game.StartDealingThirdStreet();
 
-		while (game.HasMorePlayersToDeal())
-		{
-			game.DealThirdStreetToNextPlayer();
-		}
+		while (game.HasMorePlayersToDeal()) game.DealThirdStreetToNextPlayer();
 
 		game.FinishThirdStreetDealing();
 
@@ -582,7 +564,7 @@ public class BaseballGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20);
+		return new BaseballGame(players, 5, 5, 10, 20, 20);
 	}
 
 	private static void SetupToFourthStreet(BaseballGame game)
@@ -596,13 +578,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 
 		game.PostBringIn();
@@ -612,13 +590,8 @@ public class BaseballGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -633,13 +606,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 
 		game.StartBettingRound();
@@ -647,13 +616,8 @@ public class BaseballGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -669,13 +633,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 
 		game.StartBettingRound();
@@ -683,13 +643,8 @@ public class BaseballGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 
 		// Sixth street
@@ -700,13 +655,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 
 		game.StartBettingRound();
@@ -714,13 +665,8 @@ public class BaseballGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -735,13 +681,8 @@ public class BaseballGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -759,13 +700,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 
 		// Skip bring-in since it's disabled by default
@@ -775,13 +712,8 @@ public class BaseballGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -817,13 +749,9 @@ public class BaseballGameTests
 		{
 			var offer = game.GetCurrentBuyCardOffer();
 			if (offer != null)
-			{
 				game.ProcessBuyCardDecision(false);
-			}
 			else
-			{
 				break;
-			}
 		}
 	}
 
@@ -833,13 +761,8 @@ public class BaseballGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 }

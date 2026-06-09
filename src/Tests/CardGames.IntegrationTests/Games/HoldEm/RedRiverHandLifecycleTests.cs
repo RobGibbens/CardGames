@@ -22,10 +22,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		await base.SeedBaseDataAsync();
 
 		var exists = await DbContext.GameTypes.AnyAsync(gt => gt.Code == GameTypeCode);
-		if (exists)
-		{
-			return;
-		}
+		if (exists) return;
 
 		await DbContext.GameTypes.AddAsync(new GameType
 		{
@@ -95,7 +92,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task RiverRound_WhenRiverIsRed_DealsBonusCommunityCardBeforeShowdown()
 	{
-		var setup = await CreateDealtRedRiverGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtRedRiverGameAsync(3, 0);
 
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "River");
 		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Hearts);
@@ -121,7 +118,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task RiverRound_WhenRiverIsBlack_DoesNotDealBonusCommunityCard()
 	{
-		var setup = await CreateDealtRedRiverGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtRedRiverGameAsync(3, 0);
 
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "River");
 		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Spades);
@@ -146,7 +143,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessBettingAction_WhenNotInBettingPhase_ReturnsInvalidGameState()
 	{
-		var setup = await CreateRedRiverGameSetupAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateRedRiverGameSetupAsync(3, 0);
 		setup.Game.CurrentPhase = "CollectingBlinds";
 		await DbContext.SaveChangesAsync();
 
@@ -159,11 +156,11 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task RiverAllInRunout_WithControlledDeck_DealsDeterministicBonusCardWhenRiverIsRed()
 	{
-		var setup = await CreateDealtRedRiverGameAsync(playerCount: 2, dealerPosition: 0);
+		var setup = await CreateDealtRedRiverGameAsync(2, 0);
 
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "River");
 		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Hearts);
-		await ConfigureNextDeckCardAsync(setup.Game.Id, bonusSuit: CardSuit.Clubs, bonusSymbol: CardSymbol.King);
+		await ConfigureNextDeckCardAsync(setup.Game.Id, CardSuit.Clubs, CardSymbol.King);
 
 		var preAllInContext = GetFreshDbContext();
 		var preAllInGame = await preAllInContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
@@ -254,10 +251,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		for (var i = 0; i < 64; i++)
 		{
 			var game = await GetFreshDbContext().Games.AsNoTracking().FirstAsync(g => g.Id == gameId);
-			if (string.Equals(game.CurrentPhase, targetPhase, StringComparison.OrdinalIgnoreCase))
-			{
-				return;
-			}
+			if (string.Equals(game.CurrentPhase, targetPhase, StringComparison.OrdinalIgnoreCase)) return;
 
 			var result = await SendPassiveBettingActionAsync(gameId);
 			result.IsT0.Should()
@@ -274,10 +268,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 			.OrderByDescending(br => br.RoundNumber)
 			.FirstOrDefaultAsync();
 
-		if (round is null)
-		{
-			return;
-		}
+		if (round is null) return;
 
 		for (var i = 0; i < 16; i++)
 		{
@@ -285,10 +276,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 				.AsNoTracking()
 				.FirstOrDefaultAsync(br => br.Id == round.Id);
 
-			if (freshRound is null || freshRound.IsComplete)
-			{
-				return;
-			}
+			if (freshRound is null || freshRound.IsComplete) return;
 
 			var result = await SendPassiveBettingActionAsync(gameId);
 			result.IsT0.Should().BeTrue($"passive betting action at iteration {i} should complete the current round");
@@ -310,10 +298,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 			.ToListAsync();
 
 		riverCards.Should().NotBeEmpty("river card should already be dealt before suit adjustment");
-		foreach (var riverCard in riverCards)
-		{
-			riverCard.Suit = suit;
-		}
+		foreach (var riverCard in riverCards) riverCard.Suit = suit;
 
 		// When forcing a non-red suit, revert any bonus card that was dealt
 		// because the original River card happened to be red.

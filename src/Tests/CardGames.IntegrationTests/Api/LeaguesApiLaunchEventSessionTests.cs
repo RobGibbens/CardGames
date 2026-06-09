@@ -69,11 +69,11 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		var (leagueId, seasonId, eventId) = await CreateLeagueSeasonAndEventAsync(
 			"league-season-holdem-owner",
 			"Season HoldEm League",
-			gameTypeCode: "HOLDEM",
-			ante: 0,
-			minBet: 10,
-			smallBlind: 5,
-			bigBlind: 10);
+			"HOLDEM",
+			0,
+			10,
+			5,
+			10);
 
 		var launchResponse = await PostAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}/launch",
 			new LaunchLeagueEventSessionRequest
@@ -103,7 +103,7 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		SetUser("league-season-holdem-owner");
-		var startResponse = await Client.PostAsync($"/api/v1/games/generic/{launched.GameId}/hands", content: null);
+		var startResponse = await Client.PostAsync($"/api/v1/games/generic/{launched.GameId}/hands", null);
 		startResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		DbContext.ChangeTracker.Clear();
@@ -130,11 +130,11 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		var (leagueId, seasonId, eventId) = await CreateLeagueSeasonAndEventAsync(
 			"league-season-holdem-derived-owner",
 			"Season HoldEm Derived Blinds League",
-			gameTypeCode: "HOLDEM",
-			ante: 0,
-			minBet: 10,
-			smallBlind: null,
-			bigBlind: null);
+			"HOLDEM",
+			0,
+			10,
+			null,
+			null);
 
 		var launchResponse = await PostAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}/launch",
 			new LaunchLeagueEventSessionRequest
@@ -167,7 +167,7 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		SetUser("league-season-holdem-derived-owner");
-		var startResponse = await Client.PostAsync($"/api/v1/games/generic/{launched.GameId}/hands", content: null);
+		var startResponse = await Client.PostAsync($"/api/v1/games/generic/{launched.GameId}/hands", null);
 		startResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		DbContext.ChangeTracker.Clear();
@@ -240,10 +240,10 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		SetUser("league-oneoff-ante-owner");
-		var startResponse = await Client.PostAsync($"/api/v1/games/generic/{launched.GameId}/hands", content: null);
+		var startResponse = await Client.PostAsync($"/api/v1/games/generic/{launched.GameId}/hands", null);
 		startResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var collectAntesResponse =
-			await Client.PostAsync($"/api/v1/games/five-card-draw/{launched.GameId}/hands/antes", content: null);
+			await Client.PostAsync($"/api/v1/games/five-card-draw/{launched.GameId}/hands/antes", null);
 		collectAntesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		DbContext.ChangeTracker.Clear();
@@ -396,11 +396,11 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		var (leagueId, seasonId, eventId) = await CreateLeagueSeasonAndEventAsync(
 			"league-season-holdem-specific-owner",
 			"Season HoldEm Specific League",
-			gameTypeCode: "HOLDEM",
-			ante: 0,
-			minBet: 10,
-			smallBlind: 5,
-			bigBlind: 10);
+			"HOLDEM",
+			0,
+			10,
+			5,
+			10);
 
 		var launchResponse = await PostAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}/launch",
 			new LaunchLeagueEventSessionRequest
@@ -431,7 +431,7 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 
 		// Use the Hold'Em-specific start endpoint (what the Blazor UI actually calls)
 		SetUser("league-season-holdem-specific-owner");
-		var startResponse = await Client.PostAsync($"/api/v1/games/hold-em/{launched.GameId}/start", content: null);
+		var startResponse = await Client.PostAsync($"/api/v1/games/hold-em/{launched.GameId}/start", null);
 		startResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		DbContext.ChangeTracker.Clear();
@@ -509,7 +509,7 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 
 		// Use the Hold'Em-specific start endpoint (what the Blazor UI actually calls)
 		SetUser("league-oneoff-holdem-owner");
-		var startResponse = await Client.PostAsync($"/api/v1/games/hold-em/{launched.GameId}/start", content: null);
+		var startResponse = await Client.PostAsync($"/api/v1/games/hold-em/{launched.GameId}/start", null);
 		startResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
 		DbContext.ChangeTracker.Clear();

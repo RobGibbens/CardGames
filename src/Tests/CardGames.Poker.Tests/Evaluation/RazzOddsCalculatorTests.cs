@@ -41,7 +41,7 @@ public class RazzOddsCalculatorTests
 		var heroHole = "Ah 2d".ToCards();
 		var heroBoard = "3c 4s".ToCards();
 
-		var act = () => OddsCalculator.CalculateRazzOdds(heroHole, heroBoard, totalCardsPerPlayer: 6, simulations: 5);
+		var act = () => OddsCalculator.CalculateRazzOdds(heroHole, heroBoard, 6, simulations: 5);
 
 		act.Should().Throw<ArgumentException>();
 	}

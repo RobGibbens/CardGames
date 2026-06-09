@@ -11,7 +11,7 @@ public static class EnumExtensions
 		{
 			var memberName = value.ToString();
 			var field = value.GetType().GetField(memberName, BindingFlags.Public | BindingFlags.Static);
-			var description = field?.GetCustomAttribute<DescriptionAttribute>(inherit: false)?.Description;
+			var description = field?.GetCustomAttribute<DescriptionAttribute>(false)?.Description;
 
 			return string.IsNullOrWhiteSpace(description) ? memberName : description;
 		}

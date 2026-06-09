@@ -35,24 +35,20 @@ public class DealHandsCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new DealHandsError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = DealHandsErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game state allows dealing
 		if (game.CurrentPhase != nameof(Phases.Dealing))
-		{
 			return new DealHandsError
 			{
 				Message = $"Cannot deal hands. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Hands can only be dealt when the game is in '{nameof(Phases.Dealing)}' phase.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Get active players who should receive cards
 		var activePlayers = game.GamePlayers
@@ -64,14 +60,12 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		var totalCardsNeeded = activePlayers.Count * CardsPerPlayer;
 		const int standardDeckSize = 52;
 		if (totalCardsNeeded > standardDeckSize)
-		{
 			return new DealHandsError
 			{
 				Message =
 					$"Not enough cards to deal. Need {totalCardsNeeded} cards for {activePlayers.Count} players but deck only has {standardDeckSize} cards.",
 				Code = DealHandsErrorCode.InsufficientCards
 			};
-		}
 
 		// 5. Create shuffled deck, persist all 52 cards, then deal from the persisted deck
 		var dealer = FrenchDeckDealer.WithFullDeck();
@@ -161,10 +155,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		}
 
 		// 6. Reset current bets for all players before first betting round
-		foreach (var gamePlayer in game.GamePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in game.GamePlayers) gamePlayer.CurrentBet = 0;
 
 		// 7. Determine first player to act (left of dealer)
 		var firstActorIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
@@ -228,10 +219,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}

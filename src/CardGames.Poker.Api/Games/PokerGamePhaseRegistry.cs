@@ -33,10 +33,7 @@ public static class PokerGamePhaseRegistry
 	{
 		phase = default;
 
-		if (!TryResolve(gameTypeCode, currentPhase, out var boxed) || boxed is not TEnum typed)
-		{
-			return false;
-		}
+		if (!TryResolve(gameTypeCode, currentPhase, out var boxed) || boxed is not TEnum typed) return false;
 
 		phase = typed;
 		return true;
@@ -45,7 +42,7 @@ public static class PokerGamePhaseRegistry
 	private static bool TryResolveEnum<TEnum>(string currentPhase, out Enum? phase)
 		where TEnum : struct, Enum
 	{
-		if (!Enum.TryParse<TEnum>(currentPhase, ignoreCase: true, out var parsed))
+		if (!Enum.TryParse<TEnum>(currentPhase, true, out var parsed))
 		{
 			phase = null;
 			return false;

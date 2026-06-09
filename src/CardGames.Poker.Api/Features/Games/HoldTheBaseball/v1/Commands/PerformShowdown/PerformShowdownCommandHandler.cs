@@ -40,25 +40,21 @@ public class PerformShowdownCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new PerformShowdownError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = PerformShowdownErrorCode.GameNotFound
 			};
-		}
 
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
 		var isAlreadyAwarded = currentHandPots.Any(p => p.IsAwarded);
 
 		if (game.CurrentPhase != "Showdown" && !isAlreadyAwarded)
-		{
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
-		}
 
 		var playersInHand = game.GamePlayers
 			.Where(gp => !gp.HasFolded && (gp.Status == GamePlayerStatus.Active || gp.IsAllIn))
@@ -137,11 +133,11 @@ public class PerformShowdownCommandHandler(
 
 				await RecordHandHistoryAsync(
 					game, game.GamePlayers.ToList(), now, totalPot,
-					wonByFold: true,
-					winners: [(winner.PlayerId, winner.Player.Name, totalPot)],
-					winnerNames: [winner.Player.Name],
-					winningHandDescription: null,
-					playerHandEvaluations: null,
+					true,
+					[(winner.PlayerId, winner.Player.Name, totalPot)],
+					[winner.Player.Name],
+					null,
+					null,
 					cancellationToken);
 			}
 
@@ -200,13 +196,11 @@ public class PerformShowdownCommandHandler(
 		}
 
 		if (playerHandEvaluations.Count == 0)
-		{
 			return new PerformShowdownError
 			{
 				Message = "No eligible hands could be evaluated at showdown.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
-		}
 
 		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
 		var winners = playerHandEvaluations
@@ -218,15 +212,9 @@ public class PerformShowdownCommandHandler(
 		var remainder = totalPot % winners.Count;
 		var payouts = new Dictionary<string, int>();
 
-		foreach (var winner in winners)
-		{
-			payouts[winner] = payoutPerWinner;
-		}
+		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
 
-		if (remainder > 0 && winners.Count > 0)
-		{
-			payouts[winners[0]] += remainder;
-		}
+		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
 
 		if (!isAlreadyAwarded)
 		{
@@ -274,11 +262,11 @@ public class PerformShowdownCommandHandler(
 
 			await RecordHandHistoryAsync(
 				game, game.GamePlayers.ToList(), now, totalPot,
-				wonByFold: false,
-				winners: winnerInfos,
-				winnerNames: winners,
-				winningHandDescription: winReason,
-				playerHandEvaluations: playerHandEvaluations,
+				false,
+				winnerInfos,
+				winners,
+				winReason,
+				playerHandEvaluations,
 				cancellationToken);
 		}
 
@@ -297,9 +285,7 @@ public class PerformShowdownCommandHandler(
 			var usedIndexes = new HashSet<int>();
 
 			foreach (var bestCard in bestHand)
-			{
 				for (var i = 0; i < cardsList.Count; i++)
-				{
 					if (!usedIndexes.Contains(i) &&
 					    cardsList[i].Suit == (CardSuit)bestCard.Suit &&
 					    cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
@@ -308,8 +294,6 @@ public class PerformShowdownCommandHandler(
 						usedIndexes.Add(i);
 						break;
 					}
-				}
-			}
 
 			return new ShowdownPlayerHand
 			{
@@ -465,7 +449,7 @@ public class PerformShowdownCommandHandler(
 
 		var ranking = HandTypeStrengthRanking.Classic;
 		List<Card>? bestCombo = null;
-		long bestStrength = long.MinValue;
+		var bestStrength = long.MinValue;
 
 		foreach (var combo in allCards.SubsetsOfSize(5))
 		{

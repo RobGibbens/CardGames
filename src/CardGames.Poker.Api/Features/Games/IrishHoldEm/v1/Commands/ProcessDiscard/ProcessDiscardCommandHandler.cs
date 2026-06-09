@@ -46,24 +46,20 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ProcessDiscardError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = ProcessDiscardErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in discard phase
 		if (game.CurrentPhase != nameof(Phases.DrawPhase))
-		{
 			return new ProcessDiscardError
 			{
 				Message = $"Cannot process discard. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Discard is only allowed during '{nameof(Phases.DrawPhase)}' phase.",
 				Code = ProcessDiscardErrorCode.NotInDiscardPhase
 			};
-		}
 
 		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
 		var isPhilsMom = string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode,
@@ -73,19 +69,14 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		var isCrazyPineapple = string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode,
 			StringComparison.OrdinalIgnoreCase);
 		if (!isPhilsMom && !isIrishHoldEm && !isCrazyPineapple)
-		{
 			return new ProcessDiscardError
 			{
 				Message = $"Discard is not supported for game type '{gameTypeCode}'.",
 				Code = ProcessDiscardErrorCode.NotInDiscardPhase
 			};
-		}
 
 		var requiredDiscardCount = isIrishHoldEm ? IrishRequiredDiscardCount : PhilsMomRequiredDiscardCount;
-		if (isCrazyPineapple)
-		{
-			requiredDiscardCount = CrazyPineappleRequiredDiscardCount;
-		}
+		if (isCrazyPineapple) requiredDiscardCount = CrazyPineappleRequiredDiscardCount;
 
 		// 3. Get eligible discard players
 		var activePlayers = game.GamePlayers
@@ -99,44 +90,36 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (eligiblePlayers.Count == 0)
-		{
 			return new ProcessDiscardError
 			{
 				Message = "No eligible players to discard.",
 				Code = ProcessDiscardErrorCode.NoEligiblePlayers
 			};
-		}
 
 		var requestedSeatIndex = command.PlayerSeatIndex ?? game.CurrentDrawPlayerIndex;
 		var currentDrawPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == requestedSeatIndex);
 		if (currentDrawPlayer is null)
-		{
 			return new ProcessDiscardError
 			{
 				Message = "Discard player not found.",
 				Code = ProcessDiscardErrorCode.NotPlayerTurn
 			};
-		}
 
 		if (currentDrawPlayer.HasFolded)
-		{
 			return new ProcessDiscardError
 			{
 				Message = "Folded players cannot discard.",
 				Code = ProcessDiscardErrorCode.NotPlayerTurn
 			};
-		}
 
 		// 4. Validate exact discard count for this variant.
 		if (command.DiscardIndices.Count != requiredDiscardCount)
-		{
 			return new ProcessDiscardError
 			{
 				Message =
 					$"Must discard exactly {requiredDiscardCount} cards. Received {command.DiscardIndices.Count}.",
 				Code = ProcessDiscardErrorCode.InvalidDiscardCount
 			};
-		}
 
 		// 5. Get the player's current hand cards (not discarded)
 		var playerCards = game.GameCards
@@ -145,69 +128,56 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (playerCards.Count < InitialHoleCardCount && isIrishHoldEm)
-		{
 			return new ProcessDiscardError
 			{
 				Message =
 					$"Player does not have enough cards. Expected {InitialHoleCardCount}, found {playerCards.Count}.",
 				Code = ProcessDiscardErrorCode.InsufficientCards
 			};
-		}
 
 		if (playerCards.Count < CrazyPineappleInitialHoleCardCount && isCrazyPineapple)
-		{
 			return new ProcessDiscardError
 			{
 				Message =
 					$"Player does not have enough cards. Expected {CrazyPineappleInitialHoleCardCount}, found {playerCards.Count}.",
 				Code = ProcessDiscardErrorCode.InsufficientCards
 			};
-		}
 
 		var drawRound = ResolveDrawRound(playerCards.Count, isPhilsMom, isCrazyPineapple);
 		if (drawRound < 0)
-		{
 			return new ProcessDiscardError
 			{
 				Message = "Player card state is invalid for the current discard round.",
 				Code = ProcessDiscardErrorCode.InsufficientCards
 			};
-		}
 
 		// 6. Validate card indices are within the player's current hand.
 		if (command.DiscardIndices.Any(i => i < 0 || i >= playerCards.Count))
-		{
 			return new ProcessDiscardError
 			{
 				Message = $"Invalid card index. Indices must be between 0 and {playerCards.Count - 1}.",
 				Code = ProcessDiscardErrorCode.InvalidCardIndex
 			};
-		}
 
 		// 7. Check for duplicate indices
 		if (command.DiscardIndices.Distinct().Count() != command.DiscardIndices.Count)
-		{
 			return new ProcessDiscardError
 			{
 				Message = "Duplicate card indices are not allowed.",
 				Code = ProcessDiscardErrorCode.InvalidCardIndex
 			};
-		}
 
 		// 8. Check if player has already discarded
 		if (currentDrawPlayer.HasDrawnThisRound)
-		{
 			return new ProcessDiscardError
 			{
 				Message = "Player has already discarded this round.",
 				Code = ProcessDiscardErrorCode.AlreadyDiscarded
 			};
-		}
 
 		// 9. Process discards — mark cards as discarded (no replacement cards in Irish Hold 'Em)
 		var discardedCards = new List<CardInfo>();
 		foreach (var index in command.DiscardIndices.Distinct().OrderByDescending(i => i))
-		{
 			if (index < playerCards.Count)
 			{
 				var cardToDiscard = playerCards[index];
@@ -221,7 +191,6 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 					Display = FormatCard(cardToDiscard.Symbol, cardToDiscard.Suit)
 				});
 			}
-		}
 
 		// Mark that the current player has discarded this round
 		currentDrawPlayer.HasDrawnThisRound = true;
@@ -237,18 +206,12 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		if (discardComplete)
 		{
 			if (isCrazyPineapple)
-			{
-				await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken, dealFlopCards: false);
-			}
+				await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken, false);
 			else if (isPhilsMom && drawRound == 1)
-			{
 				await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken);
-			}
 			else
-			{
 				// Irish Hold 'Em and Phil's Mom second discard both advance to Turn.
 				await StartTurnPhaseAsync(game, activePlayers, now, cancellationToken);
-			}
 		}
 		else
 		{
@@ -283,10 +246,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			.OrderBy(p => p.SeatPosition)
 			.ToList();
 
-		if (!pendingPlayers.Any())
-		{
-			return -1; // All players have discarded
-		}
+		if (!pendingPlayers.Any()) return -1; // All players have discarded
 
 		return pendingPlayers[0].SeatPosition;
 	}
@@ -294,18 +254,13 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 	private static int ResolveDrawRound(int cardsInHand, bool isPhilsMom, bool isCrazyPineapple)
 	{
 		if (isCrazyPineapple)
-		{
 			return cardsInHand switch
 			{
 				3 => 1,
 				_ => -1
 			};
-		}
 
-		if (!isPhilsMom)
-		{
-			return 1;
-		}
+		if (!isPhilsMom) return 1;
 
 		return cardsInHand switch
 		{
@@ -322,10 +277,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		CancellationToken cancellationToken,
 		bool dealFlopCards = true)
 	{
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
 		var firstActorIndex = FindFirstActivePlayerAfterDealerForBetting(game, activePlayers);
 
@@ -338,10 +290,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		}
 
 		if (dealFlopCards)
-		{
-			await DealCommunityCardsAsync(game, nameof(Phases.Flop), cardCount: 3, firstDealOrder: 1, now,
+			await DealCommunityCardsAsync(game, nameof(Phases.Flop), 3, 1, now,
 				cancellationToken);
-		}
 
 		var nextRoundNumber = await context.BettingRounds
 			.Where(br => br.GameId == game.Id && br.HandNumber == game.CurrentHandNumber)
@@ -377,10 +327,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		CancellationToken cancellationToken)
 	{
 		// Reset draw state
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
 		// Find first active player after dealer who can bet (not folded, not all-in)
 		var firstActorIndex = FindFirstActivePlayerAfterDealerForBetting(game, activePlayers);
@@ -395,7 +342,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		}
 
 		// Deal the Turn community card (4th community card)
-		await DealCommunityCardsAsync(game, nameof(Phases.Turn), cardCount: 1, firstDealOrder: 4, now,
+		await DealCommunityCardsAsync(game, nameof(Phases.Turn), 1, 4, now,
 			cancellationToken);
 
 		var nextRoundNumber = await context.BettingRounds
@@ -441,10 +388,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
-		if (cardCount <= 0)
-		{
-			return;
-		}
+		if (cardCount <= 0) return;
 
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id
@@ -477,10 +421,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}

@@ -29,9 +29,7 @@ public sealed class LeaveGameCommandHandler(
 		var currentUserName = currentUserService.UserName;
 
 		if (string.IsNullOrWhiteSpace(currentUserId) || string.IsNullOrWhiteSpace(currentUserName))
-		{
 			return new LeaveGameError("User not authenticated");
-		}
 
 		// 2. Load the game with related entities
 		var game = await context.Games
@@ -41,10 +39,7 @@ public sealed class LeaveGameCommandHandler(
 			.ThenInclude(gp => gp.Cards)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
-		if (game == null)
-		{
-			return new LeaveGameError("Game not found");
-		}
+		if (game == null) return new LeaveGameError("Game not found");
 
 		// 3. Find the player's GamePlayer record
 		var gamePlayer = game.GamePlayers
@@ -52,10 +47,7 @@ public sealed class LeaveGameCommandHandler(
 				gp.Player.Name.Equals(currentUserName, StringComparison.OrdinalIgnoreCase) &&
 				gp.Status != GamePlayerStatus.Left);
 
-		if (gamePlayer == null)
-		{
-			return new LeaveGameError("You are not seated at this table or have already left");
-		}
+		if (gamePlayer == null) return new LeaveGameError("You are not seated at this table or have already left");
 
 		// 4. Check if game has started
 		var gameStarted = game.StartedAt.HasValue && game.Status == GameStatus.InProgress;
@@ -84,13 +76,13 @@ public sealed class LeaveGameCommandHandler(
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
 			return new LeaveGameSuccessful(
-				GameId: game.Id,
-				PlayerId: gamePlayer.PlayerId,
-				PlayerName: playerName,
-				LeftAtHandNumber: -1,
-				LeftAt: DateTimeOffset.UtcNow,
-				FinalChipCount: null,
-				Immediate: true);
+				game.Id,
+				gamePlayer.PlayerId,
+				playerName,
+				-1,
+				DateTimeOffset.UtcNow,
+				null,
+				true);
 		}
 
 		// 6. Check if player is in an active hand
@@ -113,14 +105,14 @@ public sealed class LeaveGameCommandHandler(
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
 			return new LeaveGameSuccessful(
-				GameId: game.Id,
-				PlayerId: gamePlayer.PlayerId,
-				PlayerName: playerName,
-				LeftAtHandNumber: -1,
-				LeftAt: null,
-				FinalChipCount: null,
-				Immediate: false,
-				Message: "You will leave the table after the current hand completes.");
+				game.Id,
+				gamePlayer.PlayerId,
+				playerName,
+				-1,
+				null,
+				null,
+				false,
+				"You will leave the table after the current hand completes.");
 		}
 
 		// 8. Handle mid-game departure (not in active hand)
@@ -151,13 +143,13 @@ public sealed class LeaveGameCommandHandler(
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
 		return new LeaveGameSuccessful(
-			GameId: game.Id,
-			PlayerId: gamePlayer.PlayerId,
-			PlayerName: playerName,
-			LeftAtHandNumber: gamePlayer.LeftAtHandNumber,
-			LeftAt: gamePlayer.LeftAt,
-			FinalChipCount: gamePlayer.FinalChipCount,
-			Immediate: true);
+			game.Id,
+			gamePlayer.PlayerId,
+			playerName,
+			gamePlayer.LeftAtHandNumber,
+			gamePlayer.LeftAt,
+			gamePlayer.FinalChipCount,
+			true);
 	}
 
 	private bool IsPlayerInActiveHand(GamePlayer gamePlayer, Game game)
@@ -168,15 +160,9 @@ public sealed class LeaveGameCommandHandler(
 		// 3. Current phase is an "active" phase (betting, drawing, decision)
 		// 4. Player has cards dealt in the current hand
 
-		if (game.Status != GameStatus.InProgress)
-		{
-			return false;
-		}
+		if (game.Status != GameStatus.InProgress) return false;
 
-		if (gamePlayer.HasFolded)
-		{
-			return false;
-		}
+		if (gamePlayer.HasFolded) return false;
 
 		// Check if current phase is an "active" phase (betting, drawing, decision)
 		var activePhases = new[]
@@ -188,10 +174,7 @@ public sealed class LeaveGameCommandHandler(
 			"ThirdStreet", "FourthStreet", "FifthStreet", "SixthStreet", "SeventhStreet"
 		};
 
-		if (!activePhases.Contains(game.CurrentPhase, StringComparer.OrdinalIgnoreCase))
-		{
-			return false;
-		}
+		if (!activePhases.Contains(game.CurrentPhase, StringComparer.OrdinalIgnoreCase)) return false;
 
 		// Check if player has cards for current hand
 		var hasCardsInCurrentHand = gamePlayer.Cards

@@ -13,13 +13,13 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	public async Task Handle_ValidChoice_SetsGameTypeAndTransitionsToWaitingToStart()
 	{
 		// Arrange — DC game with "Test User" at seat 0 as the DC dealer
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -51,8 +51,8 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 		var command = new ChooseDealerGameCommand(
 			Guid.NewGuid(),
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		var result = await Mediator.Send(command);
 
@@ -71,8 +71,8 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 		var command = new ChooseDealerGameCommand(
 			game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		var result = await Mediator.Send(command);
 
@@ -84,15 +84,15 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	public async Task Handle_WrongPhase_ReturnsError()
 	{
 		// Arrange — DC game but in WaitingToStart phase (not WaitingForDealerChoice)
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 		setup.Game.CurrentPhase = nameof(Phases.WaitingToStart);
 		await DbContext.SaveChangesAsync();
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		var result = await Mediator.Send(command);
 
@@ -105,14 +105,14 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	{
 		// Arrange — DC game where "Test User" is at seat 1, but DC dealer is at seat 0
 		var setup = await CreateDealersChoiceSetupWithTestUser(
-			dealerSeatPosition: 0,
-			testUserSeatPosition: 1);
+			0,
+			1);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		var result = await Mediator.Send(command);
 
@@ -123,13 +123,13 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_UnknownGameTypeCode_ReturnsError()
 	{
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			"NOTAREALGAME",
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		var result = await Mediator.Send(command);
 
@@ -140,15 +140,15 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_DisallowedGameTypeCode_ReturnsError()
 	{
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 		setup.Game.GameSettings = "{\"allowedDealerChoiceGameCodes\":[\"FIVECARDDRAW\"]}";
 		await DbContext.SaveChangesAsync();
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.OmahaCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		var result = await Mediator.Send(command);
 
@@ -159,13 +159,13 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_NegativeAnte_ReturnsError()
 	{
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: -5,
-			MinBet: 20);
+			-5,
+			20);
 
 		var result = await Mediator.Send(command);
 
@@ -178,13 +178,13 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	[InlineData(-1)]
 	public async Task Handle_ZeroOrNegativeMinBet_ReturnsError(int minBet)
 	{
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 10,
-			MinBet: minBet);
+			10,
+			minBet);
 
 		var result = await Mediator.Send(command);
 
@@ -195,13 +195,13 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_ZeroAnte_Succeeds()
 	{
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 0,
-			MinBet: 10);
+			0,
+			10);
 
 		var result = await Mediator.Send(command);
 
@@ -212,13 +212,13 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	[Fact]
 	public async Task Handle_CreatesDealersChoiceHandLog()
 	{
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		await Mediator.Send(command);
 
@@ -244,15 +244,15 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 		int bigBlind)
 	{
 		// Arrange
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			gameTypeCode,
-			Ante: 0,
-			MinBet: 10,
-			SmallBlind: smallBlind,
-			BigBlind: bigBlind);
+			0,
+			10,
+			smallBlind,
+			bigBlind);
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -290,13 +290,13 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	[InlineData(PokerGameMetadataRegistry.IrishHoldEmCode)]
 	public async Task Handle_DifferentGameTypes_AllSucceed(string gameTypeCode)
 	{
-		var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
 
 		var command = new ChooseDealerGameCommand(
 			setup.Game.Id,
 			gameTypeCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		var result = await Mediator.Send(command);
 
@@ -321,8 +321,8 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 		var command = new ChooseDealerGameCommand(
 			game.Id,
 			PokerGameMetadataRegistry.FiveCardDrawCode,
-			Ante: 10,
-			MinBet: 20);
+			10,
+			20);
 
 		var result = await Mediator.Send(command);
 

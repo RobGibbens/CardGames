@@ -7,40 +7,24 @@ public static class WildCardDisplayMatcher
 		string? suit,
 		IReadOnlyList<TableCanvas.WildCardDisplay>? wildCards)
 	{
-		if (string.IsNullOrWhiteSpace(rank) || wildCards is null || wildCards.Count == 0)
-		{
-			return false;
-		}
+		if (string.IsNullOrWhiteSpace(rank) || wildCards is null || wildCards.Count == 0) return false;
 
 		var normalizedRank = NormalizeRank(rank);
-		if (string.IsNullOrWhiteSpace(normalizedRank))
-		{
-			return false;
-		}
+		if (string.IsNullOrWhiteSpace(normalizedRank)) return false;
 
 		var normalizedSuit = NormalizeSuit(suit);
 
 		foreach (var wildCard in wildCards)
 		{
-			if (string.IsNullOrWhiteSpace(wildCard.Rank))
-			{
-				continue;
-			}
+			if (string.IsNullOrWhiteSpace(wildCard.Rank)) continue;
 
-			if (!string.Equals(normalizedRank, NormalizeRank(wildCard.Rank), StringComparison.OrdinalIgnoreCase))
-			{
-				continue;
-			}
+			if (!string.Equals(normalizedRank, NormalizeRank(wildCard.Rank),
+				    StringComparison.OrdinalIgnoreCase)) continue;
 
-			if (string.IsNullOrWhiteSpace(wildCard.Suit))
-			{
-				return true;
-			}
+			if (string.IsNullOrWhiteSpace(wildCard.Suit)) return true;
 
 			if (string.Equals(normalizedSuit, NormalizeSuit(wildCard.Suit), StringComparison.OrdinalIgnoreCase))
-			{
 				return true;
-			}
 		}
 
 		return false;

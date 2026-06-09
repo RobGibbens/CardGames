@@ -21,10 +21,8 @@ public sealed class DenyLeagueJoinRequestCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -33,20 +31,16 @@ public sealed class DenyLeagueJoinRequestCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.Forbidden,
 				"Only league managers or admins can deny join requests.");
-		}
 
 		var joinRequest = await context.LeagueJoinRequests
 			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.Id == request.JoinRequestId,
 				cancellationToken);
 
 		if (joinRequest is null)
-		{
 			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.JoinRequestNotFound,
 				"Join request not found.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		if (joinRequest.Status == LeagueJoinRequestStatus.Pending && joinRequest.ExpiresAtUtc <= now)
@@ -81,21 +75,14 @@ public sealed class DenyLeagueJoinRequestCommandHandler(
 		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Approved)
-		{
 			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.InvalidState,
 				"Join request has already been approved.");
-		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Expired)
-		{
 			return new DenyLeagueJoinRequestError(DenyLeagueJoinRequestErrorCode.InvalidState,
 				"Join request has expired.");
-		}
 
-		if (joinRequest.Status == LeagueJoinRequestStatus.Denied)
-		{
-			return Unit.Value;
-		}
+		if (joinRequest.Status == LeagueJoinRequestStatus.Denied) return Unit.Value;
 
 		joinRequest.Status = LeagueJoinRequestStatus.Denied;
 		joinRequest.UpdatedAtUtc = now;

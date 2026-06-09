@@ -18,10 +18,8 @@ public sealed class GetRecentCompletedLeagueSeasonEventsQueryHandler(
 		GetRecentCompletedLeagueSeasonEventsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetRecentCompletedLeagueSeasonEventsError(
 				GetRecentCompletedLeagueSeasonEventsErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -29,20 +27,16 @@ public sealed class GetRecentCompletedLeagueSeasonEventsQueryHandler(
 				cancellationToken);
 
 		if (!isMember)
-		{
 			return new GetRecentCompletedLeagueSeasonEventsError(
 				GetRecentCompletedLeagueSeasonEventsErrorCode.Forbidden, "Only active members can view season events.");
-		}
 
 		var seasonExists = await context.LeagueSeasons
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.SeasonId && x.LeagueId == request.LeagueId, cancellationToken);
 
 		if (!seasonExists)
-		{
 			return new GetRecentCompletedLeagueSeasonEventsError(
 				GetRecentCompletedLeagueSeasonEventsErrorCode.SeasonNotFound, "Season not found in league.");
-		}
 
 		var take = Math.Clamp(request.Take, 1, 20);
 		var events = await context.LeagueSeasonEvents

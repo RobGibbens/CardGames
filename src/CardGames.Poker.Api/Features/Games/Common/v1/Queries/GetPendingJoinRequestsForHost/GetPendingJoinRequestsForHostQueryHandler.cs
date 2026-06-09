@@ -15,10 +15,7 @@ public sealed class GetPendingJoinRequestsForHostQueryHandler(
 	public async Task<IReadOnlyList<GameJoinRequestReceivedDto>> Handle(GetPendingJoinRequestsForHostQuery request,
 		CancellationToken cancellationToken)
 	{
-		if (string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
-			return [];
-		}
+		if (string.IsNullOrWhiteSpace(currentUserService.UserId)) return [];
 
 		var now = DateTimeOffset.UtcNow;
 

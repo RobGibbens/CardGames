@@ -17,9 +17,7 @@ public sealed class GetMyLeaguesQueryHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetMyLeaguesError(GetMyLeaguesErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var leagues = await context.LeagueMembersCurrent
 			.AsNoTracking()

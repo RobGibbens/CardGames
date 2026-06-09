@@ -121,10 +121,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 	public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
 	{
 		// Reset player state for new round
-		foreach (var player in game.GamePlayers)
-		{
-			player.HasFolded = false;
-		}
+		foreach (var player in game.GamePlayers) player.HasFolded = false;
 
 		return Task.CompletedTask;
 	}
@@ -142,10 +139,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			.Where(gc => gc.GameId == game.Id)
 			.ToListAsync(cancellationToken);
 
-		if (existingCards.Count == 0)
-		{
-			return;
-		}
+		if (existingCards.Count == 0) return;
 
 		var remainingDeckCards = existingCards
 			.Where(gc => gc.Location == CardLocation.Deck && gc.GamePlayerId == null && !gc.IsDiscarded)
@@ -167,10 +161,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			.Where(gc => !remainingDeckCardIds.Contains(gc.Id))
 			.ToList();
 
-		if (cardsToRemove.Count > 0)
-		{
-			context.GameCards.RemoveRange(cardsToRemove);
-		}
+		if (cardsToRemove.Count > 0) context.GameCards.RemoveRange(cardsToRemove);
 
 		foreach (var deckCard in remainingDeckCards)
 		{
@@ -202,10 +193,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 
 		if (deckCards.Count < requiredCardsForHand)
 		{
-			if (deckCards.Count > 0)
-			{
-				context.GameCards.RemoveRange(deckCards);
-			}
+			if (deckCards.Count > 0) context.GameCards.RemoveRange(deckCards);
 
 			deckCards = await CreateFreshDeckAsync(context, game, now, cancellationToken);
 		}
@@ -221,13 +209,9 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		var deckIndex = 0;
 		var dealOrder = 1;
 		foreach (var player in playersInDealOrder)
-		{
 			for (var cardIndex = 0; cardIndex < cardsPerPlayer; cardIndex++)
 			{
-				if (deckIndex >= deckCards.Count)
-				{
-					break;
-				}
+				if (deckIndex >= deckCards.Count) break;
 
 				var card = deckCards[deckIndex++];
 				card.GamePlayerId = player.Id;
@@ -236,7 +220,6 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 				card.IsVisible = !config.AllFaceDown || IsKing(card.Symbol);
 				card.DealtAt = now;
 			}
-		}
 
 		game.CurrentPhase = nameof(Phases.KeepOrTrade);
 		game.CurrentPlayerIndex = FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
@@ -308,18 +291,11 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		// Build player-card map
 		var playerCards = new Dictionary<Guid, GameCard>();
 		foreach (var card in handCards)
-		{
 			if (card.GamePlayerId.HasValue)
-			{
 				playerCards[card.GamePlayerId.Value] = card;
-			}
-		}
 
 		// Reveal all cards
-		foreach (var card in handCards)
-		{
-			card.IsVisible = true;
-		}
+		foreach (var card in handCards) card.IsVisible = true;
 
 		// SYN stack loss is based on configured ante/stack size, but zero/negative
 		// ante values should still use the default stack size.
@@ -328,18 +304,13 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		// Find lowest card value (Ace is low = 1, King is high = 13)
 		var playerValues = new List<(GamePlayer Player, int CardValue, GameCard Card)>();
 		foreach (var player in activePlayers)
-		{
 			if (playerCards.TryGetValue(player.Id, out var card))
 			{
 				var value = GetScrewYourNeighborCardValue(card.Symbol);
 				playerValues.Add((player, value, card));
 			}
-		}
 
-		if (playerValues.Count == 0)
-		{
-			return ShowdownResult.Failure("No cards to evaluate");
-		}
+		if (playerValues.Count == 0) return ShowdownResult.Failure("No cards to evaluate");
 
 		var lowestValue = playerValues.Min(pv => pv.CardValue);
 		var losers = playerValues.Where(pv => pv.CardValue == lowestValue).Select(pv => pv.Player).ToList();
@@ -356,10 +327,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			                          p.PotType == PotType.Main,
 				cancellationToken);
 
-		if (mainPot == null)
-		{
-			return ShowdownResult.Failure("No pot found");
-		}
+		if (mainPot == null) return ShowdownResult.Failure("No pot found");
 
 		var totalLost = 0;
 
@@ -464,9 +432,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 
 		// Sit out eliminated players
 		foreach (var player in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack <= 0))
-		{
 			player.IsSittingOut = true;
-		}
 
 		await context.SaveChangesAsync(cancellationToken);
 
@@ -490,10 +456,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
-		if (game.Status == GameStatus.Completed)
-		{
-			return Task.FromResult("Ended");
-		}
+		if (game.Status == GameStatus.Completed) return Task.FromResult("Ended");
 
 		return Task.FromResult(nameof(Phases.Complete));
 	}
@@ -506,22 +469,18 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 	public override async Task PerformAutoActionAsync(AutoActionContext context)
 	{
 		if (context.CurrentPhase.Equals(nameof(Phases.KeepOrTrade), StringComparison.OrdinalIgnoreCase))
-		{
 			// Auto-action for timed-out player: keep their card
 			await PerformAutoKeepAsync(context);
-		}
 	}
 
 	private async Task PerformAutoKeepAsync(AutoActionContext context)
 	{
 		var player = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
 		if (player is null)
-		{
 			player = await context.DbContext.GamePlayers
 				.AsNoTracking()
 				.FirstOrDefaultAsync(gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex,
 					context.CancellationToken);
-		}
 
 		if (player is null) return;
 
@@ -637,13 +596,11 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			.ToList();
 
 		if (activePlayers.Count == 0)
-		{
 			activePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active)
 				.OrderBy(gp => gp.SeatPosition)
 				.Select(gp => gp.SeatPosition)
 				.ToList();
-		}
 
 		if (activePlayers.Count == 0) return;
 

@@ -230,10 +230,7 @@ public class SevenCardStudGameFlowTests : IntegrationTestBase
 		var handler = FlowHandlerFactory.GetHandler("SEVENCARDSTUD");
 
 		// Simulate all but one player folding
-		foreach (var gp in setup.GamePlayers.Skip(1))
-		{
-			gp.HasFolded = true;
-		}
+		foreach (var gp in setup.GamePlayers.Skip(1)) gp.HasFolded = true;
 
 		await DbContext.SaveChangesAsync();
 		DbContext.ChangeTracker.Clear();

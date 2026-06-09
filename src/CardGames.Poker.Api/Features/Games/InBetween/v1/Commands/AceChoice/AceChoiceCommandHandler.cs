@@ -26,51 +26,41 @@ public class AceChoiceCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new AceChoiceError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = AceChoiceErrorCode.GameNotFound
 			};
-		}
 
 		if (!string.Equals(game.CurrentPhase, nameof(Phases.InBetweenTurn), StringComparison.OrdinalIgnoreCase))
-		{
 			return new AceChoiceError
 			{
 				Message = $"Cannot make ace choice. Game is in '{game.CurrentPhase}' phase.",
 				Code = AceChoiceErrorCode.InvalidPhase
 			};
-		}
 
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
-		{
 			return new AceChoiceError
 			{
 				Message = $"Player with ID '{command.PlayerId}' is not in this game.",
 				Code = AceChoiceErrorCode.PlayerNotFound
 			};
-		}
 
 		if (gamePlayer.SeatPosition != game.CurrentPlayerIndex)
-		{
 			return new AceChoiceError
 			{
 				Message = "It's not this player's turn.",
 				Code = AceChoiceErrorCode.NotPlayersTurn
 			};
-		}
 
 		var state = GetState(game);
 		if (state.SubPhase != TurnSubPhase.AwaitingAceChoice)
-		{
 			return new AceChoiceError
 			{
 				Message = "Ace choice is not required at this time.",
 				Code = AceChoiceErrorCode.AceChoiceNotRequired
 			};
-		}
 
 		// Record the ace choice and advance to bet/pass
 		state.AceIsHigh = command.AceIsHigh;

@@ -72,10 +72,7 @@ public sealed class HoldTheBaseballHand : CommunityCardsHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 

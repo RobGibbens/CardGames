@@ -32,10 +32,7 @@ public class TwosJacksManWithTheAxeApiClientWrapper(ITwosJacksManWithTheAxeApi c
 		var response = await client.TwosJacksManWithTheAxeProcessDrawAsync(gameId, request);
 
 		string? errorMessage = null;
-		if (response?.Error is ApiException apiException)
-		{
-			errorMessage = apiException.Content;
-		}
+		if (response?.Error is ApiException apiException) errorMessage = apiException.Content;
 
 		return new ProcessDrawResult
 		{

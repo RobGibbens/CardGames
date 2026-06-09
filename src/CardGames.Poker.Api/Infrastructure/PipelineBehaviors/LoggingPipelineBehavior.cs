@@ -45,9 +45,7 @@ public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TR
 	{
 		_logger.LogInformation("Handling {RequestType} at {Timestamp}", typeof(TRequest).FullName, DateTime.UtcNow);
 		foreach (var property in GetProperties(request))
-		{
 			_logger.LogInformation("{Property} : {@Value}", property.Name, property.GetValue(request, null));
-		}
 	}
 
 	private void LogResponse(TResponse response, long elapsedMilliseconds)

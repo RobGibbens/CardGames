@@ -18,27 +18,19 @@ public sealed class AddAccountChipsCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated)
-		{
 			return new AddAccountChipsError(AddAccountChipsErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		if (request.Amount <= 0)
-		{
 			return new AddAccountChipsError(AddAccountChipsErrorCode.InvalidAmount, "Amount must be greater than 0.");
-		}
 
 		if (request.Amount > 1_000_000)
-		{
 			return new AddAccountChipsError(AddAccountChipsErrorCode.InvalidAmount,
 				"Amount exceeds the maximum allowed per request.");
-		}
 
 		var player = await CashierPlayerResolver.ResolveOrCreateAsync(context, currentUserService, cancellationToken);
 		if (player is null)
-		{
 			return new AddAccountChipsError(AddAccountChipsErrorCode.PlayerUnavailable,
 				"Unable to resolve player account for current user.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		var account = await CashierAccountInitializer.EnsureRegistrationCreditAsync(

@@ -170,15 +170,12 @@ public class Program
 		builder.Services.AddDistributedMemoryCache();
 
 		builder.Services.AddValidatorsFromAssembly(typeof(MapFeatureEndpoints).Assembly);
-		builder.AddAzureServiceBusClient(connectionName: "messaging");
+		builder.AddAzureServiceBusClient("messaging");
 
 		builder.Services.AddOpenTelemetry()
 			.WithTracing(x =>
 			{
-				if (builder.Environment.IsDevelopment())
-				{
-					x.SetSampler<AlwaysOnSampler>();
-				}
+				if (builder.Environment.IsDevelopment()) x.SetSampler<AlwaysOnSampler>();
 
 				x.AddFusionCacheInstrumentation(o => { o.IncludeMemoryLevel = true; });
 
@@ -218,15 +215,13 @@ public class Program
 			limiterOptions.OnRejected = static (context, cancellationToken) =>
 			{
 				if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
-				{
 					context.HttpContext.Response.Headers.RetryAfter =
 						Math.Ceiling(retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
-				}
 
 				return ValueTask.CompletedTask;
 			};
 
-			limiterOptions.AddFixedWindowLimiter(policyName: "fixed", options =>
+			limiterOptions.AddFixedWindowLimiter("fixed", options =>
 			{
 				options.PermitLimit = 4;
 				options.Window = TimeSpan.FromSeconds(12);
@@ -236,8 +231,8 @@ public class Program
 
 			limiterOptions.AddPolicy(LeagueRateLimitPolicies.JoinAndRequestFlow, static httpContext =>
 				RateLimitPartition.GetFixedWindowLimiter(
-					partitionKey: BuildLeagueJoinRequestPartitionKey(httpContext),
-					factory: _ => new FixedWindowRateLimiterOptions
+					BuildLeagueJoinRequestPartitionKey(httpContext),
+					_ => new FixedWindowRateLimiterOptions
 					{
 						PermitLimit = 10,
 						Window = TimeSpan.FromMinutes(1),
@@ -262,10 +257,7 @@ public class Program
 					.OfType<EndpointNameAttribute>()
 					.FirstOrDefault()?.EndpointName;
 
-				if (!string.IsNullOrEmpty(endpointName))
-				{
-					operation.OperationId = endpointName;
-				}
+				if (!string.IsNullOrEmpty(endpointName)) operation.OperationId = endpointName;
 
 				return Task.CompletedTask;
 			});
@@ -322,21 +314,16 @@ public class Program
 
 		var swaggerUiPath = Path.Combine(Directory.GetCurrentDirectory(), "swagger-ui");
 		if (Directory.Exists(swaggerUiPath))
-		{
 			app.UseStaticFiles(new StaticFileOptions
 			{
 				FileProvider = new PhysicalFileProvider(swaggerUiPath),
 				RequestPath = "/swagger-ui"
 			});
-		}
 
 		app.UseResponseCompression();
 		app.MapPrometheusScrapingEndpoint();
 		app.UseCors("SignalRPolicy");
-		if (app.Environment.IsDevelopment())
-		{
-			app.MapOpenApi();
-		}
+		if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 		app.MapScalarApiReference(o =>
 			o.WithTheme(ScalarTheme.Alternate)
@@ -370,21 +357,14 @@ public class Program
 		if (string.IsNullOrWhiteSpace(userId)
 		    && context.Request.Headers.TryGetValue("X-User-Id", out var headerUserId)
 		    && !string.IsNullOrWhiteSpace(headerUserId.ToString()))
-		{
 			userId = headerUserId.ToString();
-		}
 
 		if (string.IsNullOrWhiteSpace(userId)
 		    && context.Request.Headers.TryGetValue("X-Test-UserId", out var testHeaderUserId)
 		    && !string.IsNullOrWhiteSpace(testHeaderUserId.ToString()))
-		{
 			userId = testHeaderUserId.ToString();
-		}
 
-		if (string.IsNullOrWhiteSpace(userId))
-		{
-			userId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
-		}
+		if (string.IsNullOrWhiteSpace(userId)) userId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
 
 		return $"{LeagueRateLimitPolicies.JoinAndRequestFlow}:{userId}";
 	}

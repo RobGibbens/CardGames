@@ -14,21 +14,20 @@ namespace CardGames.Poker.Games.Omaha;
 ///     Uses blinds (small blind and big blind) instead of antes.
 /// </summary>
 [PokerGameMetadata(
-	code: "OMAHA",
-	name: "Omaha",
-	description:
+	"OMAHA",
+	"Omaha",
 	"A popular variant of poker where players are dealt four hole cards and share five community cards, with four betting rounds.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 4,
-	initialBoardCards: 0,
-	maxCommunityCards: 5,
-	maxPlayerCards: 4,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "omaha.png")]
+	2,
+	10,
+	4,
+	0,
+	5,
+	4,
+	false,
+	0,
+	WildCardRule.None,
+	BettingStructure.Blinds,
+	"omaha.png")]
 public class OmahaGame : IPokerGame
 {
 	private const int HoleCardsCount = 4;
@@ -43,8 +42,8 @@ public class OmahaGame : IPokerGame
 	public OmahaGame()
 		: this(
 			new[] { ("P1", 100), ("P2", 100) },
-			smallBlind: 0,
-			bigBlind: 0)
+			0,
+			0)
 	{
 	}
 
@@ -55,14 +54,10 @@ public class OmahaGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Omaha requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Omaha supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers =
 		[
@@ -225,9 +220,7 @@ public class OmahaGame : IPokerGame
 	public List<BettingAction> PostBlinds()
 	{
 		if (CurrentPhase != Phases.CollectingBlinds)
-		{
 			throw new InvalidOperationException("Cannot post blinds in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -261,22 +254,15 @@ public class OmahaGame : IPokerGame
 	public void DealHoleCards()
 	{
 		if (CurrentPhase != Phases.PreFlop)
-		{
 			throw new InvalidOperationException("Cannot deal hole cards in current phase");
-		}
 
 		// Deal cards one at a time, rotating around the table
-		for (int cardNum = 0; cardNum < HoleCardsCount; cardNum++)
+		for (var cardNum = 0; cardNum < HoleCardsCount; cardNum++)
+		for (var i = 0; i < _gamePlayers.Count; i++)
 		{
-			for (int i = 0; i < _gamePlayers.Count; i++)
-			{
-				var playerIndex = (SmallBlindPosition + i) % _gamePlayers.Count;
-				var gamePlayer = _gamePlayers[playerIndex];
-				if (!gamePlayer.Player.HasFolded)
-				{
-					gamePlayer.AddHoleCard(_dealer.DealCard());
-				}
-			}
+			var playerIndex = (SmallBlindPosition + i) % _gamePlayers.Count;
+			var gamePlayer = _gamePlayers[playerIndex];
+			if (!gamePlayer.Player.HasFolded) gamePlayer.AddHoleCard(_dealer.DealCard());
 		}
 	}
 
@@ -291,17 +277,13 @@ public class OmahaGame : IPokerGame
 
 		// Reset current bets for the round (except preflop where blinds are already posted)
 		if (CurrentPhase != Phases.PreFlop)
-		{
 			foreach (var gamePlayer in _gamePlayers)
-			{
 				gamePlayer.Player.ResetCurrentBet();
-			}
-		}
 
 		int startPosition;
 		int minBet;
-		int initialBet = 0;
-		int forcedBetPlayerIndex = -1;
+		var initialBet = 0;
+		var forcedBetPlayerIndex = -1;
 
 		switch (CurrentPhase)
 		{
@@ -360,20 +342,15 @@ public class OmahaGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -389,10 +366,7 @@ public class OmahaGame : IPokerGame
 		}
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		switch (CurrentPhase)
 		{
@@ -417,10 +391,7 @@ public class OmahaGame : IPokerGame
 	/// </summary>
 	public void DealFlop()
 	{
-		if (CurrentPhase != Phases.Flop)
-		{
-			throw new InvalidOperationException("Cannot deal flop in current phase");
-		}
+		if (CurrentPhase != Phases.Flop) throw new InvalidOperationException("Cannot deal flop in current phase");
 
 		_communityCards.Add(_dealer.DealCard());
 		_communityCards.Add(_dealer.DealCard());
@@ -432,10 +403,7 @@ public class OmahaGame : IPokerGame
 	/// </summary>
 	public void DealTurn()
 	{
-		if (CurrentPhase != Phases.Turn)
-		{
-			throw new InvalidOperationException("Cannot deal turn in current phase");
-		}
+		if (CurrentPhase != Phases.Turn) throw new InvalidOperationException("Cannot deal turn in current phase");
 
 		_communityCards.Add(_dealer.DealCard());
 	}
@@ -445,10 +413,7 @@ public class OmahaGame : IPokerGame
 	/// </summary>
 	public void DealRiver()
 	{
-		if (CurrentPhase != Phases.River)
-		{
-			throw new InvalidOperationException("Cannot deal river in current phase");
-		}
+		if (CurrentPhase != Phases.River) throw new InvalidOperationException("Cannot deal river in current phase");
 
 		_communityCards.Add(_dealer.DealCard());
 	}
@@ -459,13 +424,11 @@ public class OmahaGame : IPokerGame
 	public OmahaShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new OmahaShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 

@@ -19,10 +19,8 @@ public sealed class GetPendingLeagueJoinRequestsQueryHandler(
 		GetPendingLeagueJoinRequestsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetPendingLeagueJoinRequestsError(GetPendingLeagueJoinRequestsErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -31,10 +29,8 @@ public sealed class GetPendingLeagueJoinRequestsQueryHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new GetPendingLeagueJoinRequestsError(GetPendingLeagueJoinRequestsErrorCode.Forbidden,
 				"Only league managers or admins can view pending join requests.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		var expiredPendingRequests = await context.LeagueJoinRequests

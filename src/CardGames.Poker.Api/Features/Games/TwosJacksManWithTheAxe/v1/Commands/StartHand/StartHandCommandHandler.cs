@@ -26,13 +26,11 @@ public class StartHandCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new StartHandError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = StartHandErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game state allows starting a new hand
 		var validPhases = new[]
@@ -42,7 +40,6 @@ public class StartHandCommandHandler(CardsDbContext context)
 		};
 
 		if (!validPhases.Contains(game.CurrentPhase))
-		{
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
@@ -50,7 +47,6 @@ public class StartHandCommandHandler(CardsDbContext context)
 				          $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Finalize leave requests for players who were waiting for the hand to finish
 		var playersLeaving = game.GamePlayers
@@ -85,10 +81,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			             gp.ChipStack < ante)
 			.ToList();
 
-		foreach (var player in playersWithInsufficientChips)
-		{
-			player.IsSittingOut = true;
-		}
+		foreach (var player in playersWithInsufficientChips) player.IsSittingOut = true;
 
 		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
 		var eligiblePlayers = game.GamePlayers
@@ -98,14 +91,12 @@ public class StartHandCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (eligiblePlayers.Count < 2)
-		{
 			return new StartHandError
 			{
 				Message =
 					"Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
-		}
 
 		// 5. Reset player states for new hand (mirrors FiveCardDrawGame.StartHand)
 		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
@@ -122,10 +113,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			.Where(gc => gc.GameId == game.Id)
 			.ToListAsync(cancellationToken);
 
-		if (existingCards.Count > 0)
-		{
-			context.GameCards.RemoveRange(existingCards);
-		}
+		if (existingCards.Count > 0) context.GameCards.RemoveRange(existingCards);
 
 		// 7. Create a new main pot for this hand
 		var mainPot = new Pot

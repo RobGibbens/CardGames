@@ -33,28 +33,20 @@ public sealed class ResolveJoinRequestCommandHandler(
 			.FirstOrDefaultAsync(x => x.GameId == command.GameId && x.Id == command.JoinRequestId, cancellationToken);
 
 		if (joinRequest is null)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.NotFound, "Join request was not found.");
-		}
 
 		var game = joinRequest.Game;
 		if (!string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.Ordinal))
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.NotHost,
 				"Only the table host can resolve join requests.");
-		}
 
 		if (game.Status is GameStatus.Completed or GameStatus.Cancelled)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.GameEnded,
 				"This table is no longer accepting join approvals.");
-		}
 
 		if (joinRequest.Status != GameJoinRequestStatus.Pending)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.AlreadyResolved,
 				"This join request has already been resolved.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		if (joinRequest.ExpiresAt <= now)
@@ -88,22 +80,16 @@ public sealed class ResolveJoinRequestCommandHandler(
 
 		var approvedBuyIn = command.ApprovedBuyIn ?? joinRequest.RequestedBuyIn;
 		if (approvedBuyIn <= 0 || approvedBuyIn > joinRequest.RequestedBuyIn)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn,
 				"Approved buy-in must be greater than 0 and cannot exceed the requested amount.");
-		}
 
 		if (game.MaxBuyIn.HasValue && approvedBuyIn > game.MaxBuyIn.Value)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn,
 				$"Approved buy-in cannot exceed the table maximum of {game.MaxBuyIn.Value:N0}.");
-		}
 
 		if (game.TournamentBuyIn.HasValue && approvedBuyIn != game.TournamentBuyIn.Value)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn,
 				$"This tournament requires a fixed buy-in of {game.TournamentBuyIn.Value:N0}.");
-		}
 
 		var lateJoinAllowed = (!string.Equals(
 			                       game.GameType?.Code,
@@ -116,26 +102,20 @@ public sealed class ResolveJoinRequestCommandHandler(
 		                      || !game.StartedAt.HasValue;
 
 		if (!lateJoinAllowed)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.GameEnded,
 				"This game variant no longer allows late joins.");
-		}
 
 		var maxPlayers = game.GameType?.MaxPlayers ?? MaxSeatIndex + 1;
 		var activePlayerCount =
 			game.GamePlayers.Count(gp => gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut);
 		if (activePlayerCount >= maxPlayers)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.SeatUnavailable,
 				"No seats are available anymore.");
-		}
 
 		var seatIndex = ResolveSeatIndex(game.GamePlayers, joinRequest.SeatIndex);
 		if (seatIndex is null)
-		{
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.SeatUnavailable,
 				"No seats are available anymore.");
-		}
 
 		var debitResult = await playerChipWalletService.TryDebitForBuyInAsync(
 			joinRequest.PlayerId,
@@ -145,11 +125,9 @@ public sealed class ResolveJoinRequestCommandHandler(
 			cancellationToken);
 
 		if (!debitResult.Succeeded)
-		{
 			return new ResolveJoinRequestError(
 				ResolveJoinRequestErrorCode.InsufficientAccountChips,
 				debitResult.ErrorMessage ?? "The player no longer has enough chips for this buy-in.");
-		}
 
 		var canPlayCurrentHand = string.Equals(game.CurrentPhase, "WaitingToStart", StringComparison.Ordinal) ||
 		                         game.Status == GameStatus.WaitingForPlayers;
@@ -201,10 +179,7 @@ public sealed class ResolveJoinRequestCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		var routingKey = joinRequest.Player.Email ?? joinRequest.Player.Name;
-		if (string.IsNullOrWhiteSpace(routingKey))
-		{
-			return;
-		}
+		if (string.IsNullOrWhiteSpace(routingKey)) return;
 
 		await joinRequestBroadcaster.BroadcastJoinRequestResolvedAsync(
 			routingKey,
@@ -229,18 +204,11 @@ public sealed class ResolveJoinRequestCommandHandler(
 			.Select(gp => gp.SeatPosition)
 			.ToHashSet();
 
-		if (!occupiedSeats.Contains(requestedSeatIndex))
-		{
-			return requestedSeatIndex;
-		}
+		if (!occupiedSeats.Contains(requestedSeatIndex)) return requestedSeatIndex;
 
 		for (var seatIndex = 0; seatIndex <= MaxSeatIndex; seatIndex++)
-		{
 			if (!occupiedSeats.Contains(seatIndex))
-			{
 				return seatIndex;
-			}
-		}
 
 		return null;
 	}

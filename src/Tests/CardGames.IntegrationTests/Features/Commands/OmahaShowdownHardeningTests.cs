@@ -15,9 +15,9 @@ public class OmahaShowdownHardeningTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
 			DbContext,
 			PokerGameMetadataRegistry.OmahaCode,
-			numberOfPlayers: 2,
-			startingChips: 1000,
-			ante: 0);
+			2,
+			1000,
+			0);
 
 		var game = setup.Game;
 		game.CurrentHandNumber = 1;
@@ -25,7 +25,7 @@ public class OmahaShowdownHardeningTests : IntegrationTestBase
 		game.Status = GameStatus.InProgress;
 		await DbContext.SaveChangesAsync();
 
-		await DatabaseSeeder.CreatePotAsync(DbContext, game, amount: 100);
+		await DatabaseSeeder.CreatePotAsync(DbContext, game, 100);
 
 		var playerOne = setup.GamePlayers.Single(gp => gp.SeatPosition == 0);
 		var playerTwo = setup.GamePlayers.Single(gp => gp.SeatPosition == 1);

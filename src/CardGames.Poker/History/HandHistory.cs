@@ -39,19 +39,11 @@ public sealed class HandHistory
 		ArgumentNullException.ThrowIfNull(playerResults);
 
 		if (handNumber < 1)
-		{
 			throw new ArgumentOutOfRangeException(nameof(handNumber), "Hand number must be at least 1.");
-		}
 
-		if (totalPot < 0)
-		{
-			throw new ArgumentOutOfRangeException(nameof(totalPot), "Total pot cannot be negative.");
-		}
+		if (totalPot < 0) throw new ArgumentOutOfRangeException(nameof(totalPot), "Total pot cannot be negative.");
 
-		if (winners.Count == 0)
-		{
-			throw new ArgumentException("At least one winner is required.", nameof(winners));
-		}
+		if (winners.Count == 0) throw new ArgumentException("At least one winner is required.", nameof(winners));
 
 		HandId = handId;
 		GameId = gameId;
@@ -131,10 +123,7 @@ public sealed class HandHistory
 	/// <returns>A string suitable for UI display, handling split pots.</returns>
 	public string GetWinnerDisplay()
 	{
-		if (Winners.Count == 1)
-		{
-			return Winners[0].PlayerName;
-		}
+		if (Winners.Count == 1) return Winners[0].PlayerName;
 
 		return string.Join(", ", Winners.Select(w => w.PlayerName)) + " (Split)";
 	}

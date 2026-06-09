@@ -24,10 +24,7 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 					.AsNoTracking()
 					.FirstOrDefaultAsync(g => g.Id == request.GameId, cancellationToken);
 
-				if (game is null || game.CurrentPlayerIndex < 0)
-				{
-					return null;
-				}
+				if (game is null || game.CurrentPlayerIndex < 0) return null;
 
 				var gamePlayer = await context.GamePlayers
 					.Where(gp => gp.GameId == request.GameId && gp.SeatPosition == game.CurrentPlayerIndex)
@@ -36,10 +33,7 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 					.AsNoTracking()
 					.FirstOrDefaultAsync(cancellationToken);
 
-				if (gamePlayer is null)
-				{
-					return null;
-				}
+				if (gamePlayer is null) return null;
 
 				var playerResponse = gamePlayer.ToCurrentPlayerResponse();
 
@@ -87,16 +81,10 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 		BettingRound? bettingRound)
 	{
 		// No available actions if not in a betting phase
-		if (bettingRound is null || bettingRound.IsComplete)
-		{
-			return null;
-		}
+		if (bettingRound is null || bettingRound.IsComplete) return null;
 
 		// No actions for folded or all-in players
-		if (player.HasFolded || player.IsAllIn)
-		{
-			return null;
-		}
+		if (player.HasFolded || player.IsAllIn) return null;
 
 		var currentBet = bettingRound.CurrentBet;
 		var minBet = bettingRound.MinBet;
@@ -105,16 +93,16 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 		var canAffordCall = player.ChipStack >= amountToCall;
 
 		return new AvailableActionsResponse(
-			CanCheck: currentBet == player.CurrentBet,
-			CanBet: currentBet == 0 && player.ChipStack >= minBet,
-			CanCall: currentBet > player.CurrentBet && canAffordCall && amountToCall < player.ChipStack,
-			CanRaise: currentBet > 0 && player.ChipStack > amountToCall,
-			CanFold: currentBet > player.CurrentBet,
-			CanAllIn: player.ChipStack > 0,
-			MinBet: minBet,
-			MaxBet: player.ChipStack,
-			CallAmount: Math.Min(amountToCall, player.ChipStack),
-			MinRaise: currentBet + lastRaiseAmount
+			currentBet == player.CurrentBet,
+			currentBet == 0 && player.ChipStack >= minBet,
+			currentBet > player.CurrentBet && canAffordCall && amountToCall < player.ChipStack,
+			currentBet > 0 && player.ChipStack > amountToCall,
+			currentBet > player.CurrentBet,
+			player.ChipStack > 0,
+			minBet,
+			player.ChipStack,
+			Math.Min(amountToCall, player.ChipStack),
+			currentBet + lastRaiseAmount
 		);
 	}
 }

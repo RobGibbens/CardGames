@@ -59,7 +59,7 @@ public class LeaguesApiUpcomingEventsTests(ApiWebApplicationFactory factory) : A
 				})
 		});
 
-		var response = await api.GetUpcomingEventsPageAsync(leagueId, pageSize: 5, pageNumber: 1);
+		var response = await api.GetUpcomingEventsPageAsync(leagueId, 5, 1);
 
 		response.IsSuccessStatusCode.Should().BeTrue();
 		response.Content.Should().NotBeNull();

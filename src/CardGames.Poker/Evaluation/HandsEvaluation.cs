@@ -27,16 +27,10 @@ public static class HandsEvaluation
 			var winners = round.Where(h => h.Value.Strength == maxStrength).ToList();
 
 			if (winners.Count == 1)
-			{
 				winCounts[winners[0].Key]++;
-			}
 			else
-			{
 				foreach (var winner in winners)
-				{
 					tieCounts[winner.Key]++;
-				}
-			}
 		}
 
 		return players

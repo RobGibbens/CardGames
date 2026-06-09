@@ -17,7 +17,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessBettingAction_PreFlopCheckAround_AdvancesToFlopWith3CommunityCards()
 	{
-		var setup = await CreateDealtIrishHoldEmGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtIrishHoldEmGameAsync(3, 0);
 		var game = setup.Game;
 
 		var activePlayers = await DbContext.GamePlayers
@@ -62,7 +62,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessBettingAction_AllButOneFold_HandCompletesWithFoldWin()
 	{
-		var setup = await CreateDealtIrishHoldEmGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtIrishHoldEmGameAsync(3, 0);
 		var game = setup.Game;
 
 		// First actor bets
@@ -151,7 +151,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	public async Task DealCardsAsync_Deals4HoleCardsPerPlayer()
 	{
 		var handler = FlowHandlerFactory.GetHandler("IRISHHOLDEM");
-		var setup = await CreateIrishHoldEmGameSetupAsync(playerCount: 4);
+		var setup = await CreateIrishHoldEmGameSetupAsync(4);
 		var game = setup.Game;
 
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
@@ -167,10 +167,8 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 		playerCards.Should().HaveCount(16, "4 players * 4 hole cards each");
 
 		foreach (var gp in setup.GamePlayers)
-		{
 			cards.Count(c => c.GamePlayerId == gp.Id && c.Location == CardLocation.Hand)
 				.Should().Be(4, $"player at seat {gp.SeatPosition} should have 4 hole cards");
-		}
 	}
 
 	[Fact]
@@ -178,7 +176,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	{
 		// Arrange — 4 players, dealer at seat 0 → SB = seat 1, BB = seat 2
 		var handler = FlowHandlerFactory.GetHandler("IRISHHOLDEM");
-		var setup = await CreateIrishHoldEmGameSetupAsync(playerCount: 4, dealerPosition: 0);
+		var setup = await CreateIrishHoldEmGameSetupAsync(4, 0);
 		var game = setup.Game;
 
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
@@ -212,7 +210,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	public async Task DealCardsAsync_HeadsUp_DealerIsSmallBlind()
 	{
 		var handler = FlowHandlerFactory.GetHandler("IRISHHOLDEM");
-		var setup = await CreateIrishHoldEmGameSetupAsync(playerCount: 2, dealerPosition: 0);
+		var setup = await CreateIrishHoldEmGameSetupAsync(2, 0);
 		var game = setup.Game;
 
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
@@ -237,8 +235,8 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	public async Task DealCardsAsync_AllHoleCardsAreFaceDown()
 	{
 		var handler = FlowHandlerFactory.GetHandler("IRISHHOLDEM");
-		var setup = await CreateIrishHoldEmGameSetupAsync(playerCount: 3);
-		await DatabaseSeeder.CreatePotAsync(DbContext, game: setup.Game, amount: 0);
+		var setup = await CreateIrishHoldEmGameSetupAsync(3);
+		await DatabaseSeeder.CreatePotAsync(DbContext, setup.Game, 0);
 
 		await handler.DealCardsAsync(
 			DbContext, setup.Game, setup.GamePlayers, DateTimeOffset.UtcNow, CancellationToken.None);
@@ -258,7 +256,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	public async Task ProcessDiscard_PlayersDiscard2Of4Cards_EachPlayerHas2CardsAfter()
 	{
 		// Arrange — get to DrawPhase (PreFlop check around ➜ Flop check around ➜ DrawPhase)
-		var setup = await CreateGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateGameInDrawPhaseAsync(3, 0);
 		var game = setup.Game;
 
 		// Verify players have 4 cards before discard
@@ -293,7 +291,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessDiscard_InvalidCount_ReturnsError()
 	{
-		var setup = await CreateGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateGameInDrawPhaseAsync(3, 0);
 
 		// Try discarding only 1 card (must be exactly 2)
 		var result = await Mediator.Send(
@@ -306,7 +304,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessDiscard_AllDiscardComplete_AdvancesToTurn()
 	{
-		var setup = await CreateGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateGameInDrawPhaseAsync(3, 0);
 		var game = setup.Game;
 
 		var activePlayers = await GetFreshDbContext().GamePlayers
@@ -315,10 +313,8 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 			.ToListAsync();
 
 		for (var i = 0; i < activePlayers.Count; i++)
-		{
 			await Mediator.Send(
 				new ProcessDiscardCommand(game.Id, new List<int> { 2, 3 }));
-		}
 
 		var freshGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
 		freshGame.CurrentPhase.Should().Be("Turn", "after all players discard, phase should advance to Turn");
@@ -327,7 +323,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessDiscard_AllowsOutOfOrderDiscard_BySeatIndex()
 	{
-		var setup = await CreateGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateGameInDrawPhaseAsync(3, 0);
 		var game = setup.Game;
 
 		var freshDb = GetFreshDbContext();
@@ -358,7 +354,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task ProcessDiscard_PartialCompletion_StaysInDrawPhaseUntilAllPlayersAct()
 	{
-		var setup = await CreateGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateGameInDrawPhaseAsync(3, 0);
 		var game = setup.Game;
 
 		var firstResult = await Mediator.Send(new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }));

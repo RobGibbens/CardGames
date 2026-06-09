@@ -30,12 +30,8 @@ public class KingsAndLowsGamePlayer
 	{
 		// Remove cards at specified indices (in descending order to avoid index shifting)
 		foreach (var index in discardIndices.OrderByDescending(i => i))
-		{
 			if (index >= 0 && index < Hand.Count)
-			{
 				Hand.RemoveAt(index);
-			}
-		}
 
 		// Add new cards
 		Hand.AddRange(newCards);

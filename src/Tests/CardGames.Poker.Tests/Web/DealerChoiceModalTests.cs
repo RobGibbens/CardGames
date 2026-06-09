@@ -1,5 +1,3 @@
-#nullable enable
-
 using System.Reflection;
 using CardGames.Poker.Web.Components.Shared;
 using FluentAssertions;

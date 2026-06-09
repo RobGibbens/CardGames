@@ -17,16 +17,12 @@ public sealed class TransferLeagueOwnershipCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new TransferLeagueOwnershipError(TransferLeagueOwnershipErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		if (string.Equals(request.MemberUserId, currentUserService.UserId, StringComparison.Ordinal))
-		{
 			return new TransferLeagueOwnershipError(TransferLeagueOwnershipErrorCode.InvalidRequest,
 				"Ownership must be transferred to another active member.");
-		}
 
 		var actorMembership = await context.LeagueMembersCurrent
 			.FirstOrDefaultAsync(
@@ -34,20 +30,16 @@ public sealed class TransferLeagueOwnershipCommandHandler(
 				cancellationToken);
 
 		if (actorMembership is null || !LeagueGovernanceRules.IsManagerAuthority(actorMembership.Role))
-		{
 			return new TransferLeagueOwnershipError(TransferLeagueOwnershipErrorCode.Forbidden,
 				"Only league owners or managers can transfer ownership.");
-		}
 
 		var targetMembership = await context.LeagueMembersCurrent
 			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == request.MemberUserId && x.IsActive,
 				cancellationToken);
 
 		if (targetMembership is null)
-		{
 			return new TransferLeagueOwnershipError(TransferLeagueOwnershipErrorCode.MemberNotFound,
 				"Target member was not found in the league.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		actorMembership.Role = LeagueRole.Manager;

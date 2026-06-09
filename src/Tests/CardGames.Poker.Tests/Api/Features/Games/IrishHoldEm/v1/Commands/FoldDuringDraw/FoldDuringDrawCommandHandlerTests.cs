@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +20,7 @@ public class FoldDuringDrawCommandHandlerTests
 		await using var context = CreateContext();
 		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
 
-		var result = await sut.Handle(new FoldDuringDrawCommand(Guid.NewGuid(), PlayerSeatIndex: 0),
+		var result = await sut.Handle(new FoldDuringDrawCommand(Guid.NewGuid(), 0),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -33,10 +31,10 @@ public class FoldDuringDrawCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInDrawPhase_ReturnsError()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.Turn));
+		var game = await SeedGameAsync(context, nameof(Phases.Turn));
 		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
 
-		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, 0), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Message.Should().Contain(nameof(Phases.Turn));
@@ -49,7 +47,7 @@ public class FoldDuringDrawCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
 
-		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, PlayerSeatIndex: 99), CancellationToken.None);
+		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, 99), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Message.Should().Be("Player not found at the specified seat.");
@@ -62,7 +60,7 @@ public class FoldDuringDrawCommandHandlerTests
 		var game = await SeedGameAsync(context, firstPlayerFolded: true);
 		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
 
-		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, 0), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Message.Should().Be("Player has already folded.");
@@ -75,7 +73,7 @@ public class FoldDuringDrawCommandHandlerTests
 		var game = await SeedGameAsync(context, secondPlayerFolded: true);
 		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
 
-		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, 0), CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.OnlyOnePlayerRemains.Should().BeTrue();
@@ -95,7 +93,7 @@ public class FoldDuringDrawCommandHandlerTests
 			thirdPlayerHasDrawn: true);
 		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
 
-		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, PlayerSeatIndex: 0), CancellationToken.None);
+		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, 0), CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.OnlyOnePlayerRemains.Should().BeFalse();
@@ -146,26 +144,20 @@ public class FoldDuringDrawCommandHandlerTests
 		var secondPlayer = CreatePlayer("Bob", now);
 		var thirdPlayer = includeThirdPlayer ? CreatePlayer("Carol", now) : null;
 
-		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, seatPosition: 0, firstPlayerFolded,
-			hasDrawnThisRound: false, now);
-		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, seatPosition: 1, secondPlayerFolded,
+		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, 0, firstPlayerFolded,
+			false, now);
+		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, 1, secondPlayerFolded,
 			secondPlayerHasDrawn, now);
 		var thirdGamePlayer = includeThirdPlayer && thirdPlayer is not null
-			? CreateGamePlayer(game, thirdPlayer, seatPosition: 2, thirdPlayerFolded, thirdPlayerHasDrawn, now)
+			? CreateGamePlayer(game, thirdPlayer, 2, thirdPlayerFolded, thirdPlayerHasDrawn, now)
 			: null;
 
 		context.Games.Add(game);
 		context.Players.AddRange(firstPlayer, secondPlayer);
-		if (thirdPlayer is not null)
-		{
-			context.Players.Add(thirdPlayer);
-		}
+		if (thirdPlayer is not null) context.Players.Add(thirdPlayer);
 
 		context.GamePlayers.AddRange(firstGamePlayer, secondGamePlayer);
-		if (thirdGamePlayer is not null)
-		{
-			context.GamePlayers.Add(thirdGamePlayer);
-		}
+		if (thirdGamePlayer is not null) context.GamePlayers.Add(thirdGamePlayer);
 
 		await context.SaveChangesAsync();
 		return game;

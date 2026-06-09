@@ -27,10 +27,7 @@ public sealed class NotificationHubClient : IAsyncDisposable
 
 	public async ValueTask DisposeAsync()
 	{
-		if (_hubConnection is null)
-		{
-			return;
-		}
+		if (_hubConnection is null) return;
 
 		try
 		{
@@ -52,9 +49,7 @@ public sealed class NotificationHubClient : IAsyncDisposable
 	{
 		if (_hubConnection is not null && _hubConnection.State is HubConnectionState.Connected
 			    or HubConnectionState.Connecting or HubConnectionState.Reconnecting)
-		{
 			return;
-		}
 
 		var userInfo = await GetUserInfoAsync();
 		var hubUrl = GetHubUrl(userInfo);
@@ -66,19 +61,13 @@ public sealed class NotificationHubClient : IAsyncDisposable
 				{
 					options.Headers["X-User-Authenticated"] = "true";
 					if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-					{
 						options.Headers["X-User-Id"] = userInfo.Value.UserId;
-					}
 
 					if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-					{
 						options.Headers["X-User-Name"] = userInfo.Value.UserName;
-					}
 
 					if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
-					{
 						options.Headers["X-User-Email"] = userInfo.Value.UserEmail;
-					}
 				}
 			})
 			.WithAutomaticReconnect(new[]
@@ -100,18 +89,12 @@ public sealed class NotificationHubClient : IAsyncDisposable
 
 	private async Task HandleGameJoinRequestReceivedAsync(GameJoinRequestReceivedDto payload)
 	{
-		if (OnGameJoinRequestReceived is not null)
-		{
-			await OnGameJoinRequestReceived(payload);
-		}
+		if (OnGameJoinRequestReceived is not null) await OnGameJoinRequestReceived(payload);
 	}
 
 	private async Task HandleGameJoinRequestResolvedAsync(GameJoinRequestResolvedDto payload)
 	{
-		if (OnGameJoinRequestResolved is not null)
-		{
-			await OnGameJoinRequestResolved(payload);
-		}
+		if (OnGameJoinRequestResolved is not null) await OnGameJoinRequestResolved(payload);
 	}
 
 	private string GetHubUrl((string? UserId, string? UserName, string? UserEmail)? userInfo)
@@ -125,19 +108,13 @@ public sealed class NotificationHubClient : IAsyncDisposable
 		{
 			var queryParams = new List<string> { "authenticated=true" };
 			if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-			{
 				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
-			}
 
 			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-			{
 				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
-			}
 
 			if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
-			{
 				queryParams.Add($"userEmail={HttpUtility.UrlEncode(userInfo.Value.UserEmail)}");
-			}
 
 			url = $"{url}?{string.Join("&", queryParams)}";
 		}
@@ -152,10 +129,7 @@ public sealed class NotificationHubClient : IAsyncDisposable
 			var authState = await _authStateProvider.GetAuthenticationStateAsync();
 			var user = authState.User;
 
-			if (user.Identity?.IsAuthenticated != true)
-			{
-				return null;
-			}
+			if (user.Identity?.IsAuthenticated != true) return null;
 
 			var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
 			             ?? user.FindFirstValue("sub");

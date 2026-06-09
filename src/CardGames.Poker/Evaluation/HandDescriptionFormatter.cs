@@ -15,10 +15,7 @@ public static class HandDescriptionFormatter
 {
 	public static string GetHandDescription(HandBase hand)
 	{
-		if (hand is null)
-		{
-			throw new ArgumentNullException(nameof(hand));
-		}
+		if (hand is null) throw new ArgumentNullException(nameof(hand));
 
 		var cards = GetCardsForDescription(hand);
 
@@ -40,60 +37,27 @@ public static class HandDescriptionFormatter
 
 	private static List<Card> GetCardsForDescription(HandBase hand)
 	{
-		if (hand is TwosJacksManWithTheAxeDrawHand twosJacksHand)
-		{
-			return [.. twosJacksHand.EvaluatedBestCards];
-		}
+		if (hand is TwosJacksManWithTheAxeDrawHand twosJacksHand) return [.. twosJacksHand.EvaluatedBestCards];
 
-		if (hand is KingsAndLowsDrawHand kingsAndLowsHand)
-		{
-			return [.. kingsAndLowsHand.EvaluatedBestCards];
-		}
+		if (hand is KingsAndLowsDrawHand kingsAndLowsHand) return [.. kingsAndLowsHand.EvaluatedBestCards];
 
-		if (hand is BaseballHand baseballHand)
-		{
-			return baseballHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is BaseballHand baseballHand) return baseballHand.EvaluatedBestCards.ToList();
 
-		if (hand is FollowTheQueenHand followTheQueenHand)
-		{
-			return followTheQueenHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is FollowTheQueenHand followTheQueenHand) return followTheQueenHand.EvaluatedBestCards.ToList();
 
-		if (hand is PairPressureHand pairPressureHand)
-		{
-			return pairPressureHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is PairPressureHand pairPressureHand) return pairPressureHand.EvaluatedBestCards.ToList();
 
-		if (hand is GoodBadUglyHand gbuHand)
-		{
-			return gbuHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is GoodBadUglyHand gbuHand) return gbuHand.EvaluatedBestCards.ToList();
 
-		if (hand is HoldTheBaseballHand holdTheBaseballHand)
-		{
-			return holdTheBaseballHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is HoldTheBaseballHand holdTheBaseballHand) return holdTheBaseballHand.EvaluatedBestCards.ToList();
 
-		if (hand is NebraskaHand nebraskaHand)
-		{
-			return nebraskaHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is NebraskaHand nebraskaHand) return nebraskaHand.EvaluatedBestCards.ToList();
 
-		if (hand is OmahaHand omahaHand)
-		{
-			return omahaHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is OmahaHand omahaHand) return omahaHand.EvaluatedBestCards.ToList();
 
-		if (hand is BobBarkerHand bobBarkerHand)
-		{
-			return bobBarkerHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is BobBarkerHand bobBarkerHand) return bobBarkerHand.EvaluatedBestCards.ToList();
 
-		if (hand is KlondikeHand klondikeHand)
-		{
-			return klondikeHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is KlondikeHand klondikeHand) return klondikeHand.EvaluatedBestCards.ToList();
 
 		return hand.Cards.ToList();
 	}
@@ -207,22 +171,16 @@ public static class HandDescriptionFormatter
 	{
 		var distinctValues = cards.DistinctDescendingValues().ToList();
 
-		for (int i = 0; i <= distinctValues.Count - 5; i++)
+		for (var i = 0; i <= distinctValues.Count - 5; i++)
 		{
 			var potentialHigh = distinctValues[i];
 			var potentialLow = distinctValues[i + 4];
-			if (potentialHigh - potentialLow == 4)
-			{
-				return potentialHigh;
-			}
+			if (potentialHigh - potentialLow == 4) return potentialHigh;
 		}
 
 		// Wheel (A-2-3-4-5)
 		var wheelValues = new[] { 14, 5, 4, 3, 2 };
-		if (wheelValues.All(distinctValues.Contains))
-		{
-			return 5;
-		}
+		if (wheelValues.All(distinctValues.Contains)) return 5;
 
 		return distinctValues.First();
 	}

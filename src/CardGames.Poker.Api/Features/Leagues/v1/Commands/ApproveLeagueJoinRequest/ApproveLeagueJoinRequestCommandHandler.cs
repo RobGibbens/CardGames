@@ -21,10 +21,8 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -33,20 +31,16 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.Forbidden,
 				"Only league managers or admins can approve join requests.");
-		}
 
 		var joinRequest = await context.LeagueJoinRequests
 			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.Id == request.JoinRequestId,
 				cancellationToken);
 
 		if (joinRequest is null)
-		{
 			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.JoinRequestNotFound,
 				"Join request not found.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		if (joinRequest.Status == LeagueJoinRequestStatus.Pending && joinRequest.ExpiresAtUtc <= now)
@@ -81,21 +75,14 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Denied)
-		{
 			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState,
 				"Join request has already been denied.");
-		}
 
 		if (joinRequest.Status == LeagueJoinRequestStatus.Expired)
-		{
 			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState,
 				"Join request has expired.");
-		}
 
-		if (joinRequest.Status == LeagueJoinRequestStatus.Approved)
-		{
-			return Unit.Value;
-		}
+		if (joinRequest.Status == LeagueJoinRequestStatus.Approved) return Unit.Value;
 
 		var membership = await context.LeagueMembersCurrent
 			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == joinRequest.RequesterUserId,
@@ -127,7 +114,6 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 		}
 
 		if (createdOrActivatedMembership)
-		{
 			context.LeagueMembershipEvents.Add(new LeagueMembershipEvent
 			{
 				Id = Guid.CreateVersion7(),
@@ -137,7 +123,6 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 				EventType = LeagueMembershipEventType.MemberJoined,
 				OccurredAtUtc = now
 			});
-		}
 
 		joinRequest.Status = LeagueJoinRequestStatus.Approved;
 		joinRequest.UpdatedAtUtc = now;

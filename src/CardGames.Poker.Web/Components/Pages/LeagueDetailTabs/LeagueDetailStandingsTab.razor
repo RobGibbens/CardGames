@@ -101,7 +101,7 @@
 
 	[Parameter] public Dictionary<string, int> RankMovementByUserId { get; set; } = new(StringComparer.Ordinal);
 
-	[Parameter, EditorRequired] public List<LeagueStandingEntryDto> Standings { get; set; } = [];
+	[Parameter] [EditorRequired] public List<LeagueStandingEntryDto> Standings { get; set; } = [];
 
 	[Parameter] public bool IsLoading { get; set; }
 

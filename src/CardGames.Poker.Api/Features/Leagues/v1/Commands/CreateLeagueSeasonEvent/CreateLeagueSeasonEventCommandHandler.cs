@@ -25,30 +25,24 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 		CreateLeagueSeasonEventCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var leagueExists = await context.Leagues
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.LeagueId, cancellationToken);
 
 		if (!leagueExists)
-		{
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.LeagueNotFound,
 				"League not found.");
-		}
 
 		var season = await context.LeagueSeasons
 			.AsNoTracking()
 			.FirstOrDefaultAsync(x => x.Id == request.SeasonId && x.LeagueId == request.LeagueId, cancellationToken);
 
 		if (season is null)
-		{
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.SeasonNotFound,
 				"Season not found in league.");
-		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -57,22 +51,16 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!canManageLeague)
-		{
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.Forbidden,
 				"Only league managers or admins can create season events.");
-		}
 
 		if (request.Request.ScheduledAtUtc == default)
-		{
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest,
 				"Scheduled date/time is required.");
-		}
 
 		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
-		{
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest,
 				LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
-		}
 
 		string? normalizedGameTypeCode = null;
 		GameRules? rules = null;
@@ -80,27 +68,21 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 		{
 			if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var resolvedGameTypeCode,
 				    out rules, out var gameTypeError))
-			{
 				return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest,
 					gameTypeError!);
-			}
 
 			var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet,
 				request.Request.SmallBlind, request.Request.BigBlind);
 			if (stakesError is not null)
-			{
 				return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, stakesError);
-			}
 
 			normalizedGameTypeCode = resolvedGameTypeCode;
 		}
 
 		var tournamentBuyInError = ValidateSeasonTournamentBuyIn(request.Request.TournamentBuyIn);
 		if (tournamentBuyInError is not null)
-		{
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest,
 				tournamentBuyInError);
-		}
 
 		var seasonEvent = new LeagueSeasonEvent
 		{
@@ -164,15 +146,10 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 
 	private static string? ValidateSeasonTournamentBuyIn(int? tournamentBuyIn)
 	{
-		if (!tournamentBuyIn.HasValue)
-		{
-			return null;
-		}
+		if (!tournamentBuyIn.HasValue) return null;
 
 		if (tournamentBuyIn.Value <= 0 || tournamentBuyIn.Value > LeagueEventBuyInRules.MaxTournamentBuyIn)
-		{
 			return $"Tournament buy-in must be between 1 and {LeagueEventBuyInRules.MaxTournamentBuyIn:N0}.";
-		}
 
 		return null;
 	}

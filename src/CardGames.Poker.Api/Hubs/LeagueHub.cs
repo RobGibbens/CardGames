@@ -69,10 +69,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	public async Task JoinManagedLeague(Guid leagueId)
 	{
 		var userId = GetCurrentUserId();
-		if (string.IsNullOrWhiteSpace(userId))
-		{
-			throw new HubException("User identifier not found.");
-		}
+		if (string.IsNullOrWhiteSpace(userId)) throw new HubException("User identifier not found.");
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -105,10 +102,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	public async Task JoinViewedLeague(Guid leagueId)
 	{
 		var userId = GetCurrentUserId();
-		if (string.IsNullOrWhiteSpace(userId))
-		{
-			throw new HubException("User identifier not found.");
-		}
+		if (string.IsNullOrWhiteSpace(userId)) throw new HubException("User identifier not found.");
 
 		var canViewLeague = await CanViewLeagueAsync(leagueId, userId);
 		if (!canViewLeague)
@@ -162,10 +156,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 			.AsNoTracking()
 			.AnyAsync(x => x.LeagueId == leagueId && x.UserId == userId && x.IsActive);
 
-		if (membership)
-		{
-			return true;
-		}
+		if (membership) return true;
 
 		return await context.Leagues
 			.AsNoTracking()

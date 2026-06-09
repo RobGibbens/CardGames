@@ -28,13 +28,11 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new StartHandError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = StartHandErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game state allows starting a new hand
 		var validPhases = new[]
@@ -44,7 +42,6 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		};
 
 		if (!validPhases.Contains(game.CurrentPhase))
-		{
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
@@ -52,7 +49,6 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 				          $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Finalize leave requests for players who were waiting for the hand to finish
 		var playersLeaving = game.GamePlayers
@@ -76,10 +72,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			             gp.ChipStack < ante)
 			.ToList();
 
-		foreach (var player in playersWithInsufficientChips)
-		{
-			player.IsSittingOut = true;
-		}
+		foreach (var player in playersWithInsufficientChips) player.IsSittingOut = true;
 
 		// 4. Apply pending chips to player stacks
 		var playersWithPendingChips = game.GamePlayers
@@ -100,14 +93,12 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			.ToList();
 
 		if (eligiblePlayers.Count < 2)
-		{
 			return new StartHandError
 			{
 				Message =
 					"Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
-		}
 
 		// 5a. Calculate current pot to check chip coverage
 		// For Kings and Lows, players must be able to cover the pot in case they lose
@@ -129,12 +120,10 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 
 		// Log each eligible player's chip stack for debugging
 		foreach (var player in eligiblePlayers)
-		{
 			logger.LogInformation(
 				"[CHIP-CHECK] Game {GameId}: Player {PlayerName} (Seat {Seat}) has {ChipStack} chips, pot is {PotAmount}, CanCover={CanCover}",
 				game.Id, player.Player?.Name ?? "Unknown", player.SeatPosition, player.ChipStack, currentPotAmount,
 				player.ChipStack >= currentPotAmount);
-		}
 
 		// Check if any eligible player cannot cover the pot
 		var playersNeedingChips = eligiblePlayers
@@ -236,10 +225,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			.Where(gc => gc.GameId == game.Id)
 			.ToListAsync(cancellationToken);
 
-		if (existingCards.Count > 0)
-		{
-			context.GameCards.RemoveRange(existingCards);
-		}
+		if (existingCards.Count > 0) context.GameCards.RemoveRange(existingCards);
 
 		// 7. Determine if this is the first hand (antes only collected on first hand in Kings and Lows)
 		var isFirstHand = game.CurrentHandNumber == 0;
@@ -264,7 +250,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		// 9. Find or create the main pot for this hand
 		// For subsequent hands, the pot is typically created by AcknowledgePotMatchCommandHandler (or PerformShowdown),
 		// but if a hand ends in a fold-win or all dropped, we need to create it here.
-		Pot? mainPot = await context.Pots.FirstOrDefaultAsync(
+		var mainPot = await context.Pots.FirstOrDefaultAsync(
 			p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber + 1 && !p.IsAwarded, cancellationToken);
 
 		if (mainPot is null)
@@ -301,9 +287,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 
 		// 11. Automatically collect antes if it's the first hand OR if the pot is empty (Kings and Lows rule)
 		// This ensures the pot never stays at 0 indefinitely.
-		bool collectAntes = isFirstHand || mainPot.Amount == 0;
+		var collectAntes = isFirstHand || mainPot.Amount == 0;
 		if (collectAntes && ante > 0)
-		{
 			foreach (var player in eligiblePlayers)
 			{
 				var anteAmount =
@@ -323,12 +308,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 				};
 				context.Set<PotContribution>().Add(contribution);
 
-				if (player.ChipStack == 0)
-				{
-					player.IsAllIn = true;
-				}
+				if (player.ChipStack == 0) player.IsAllIn = true;
 			}
-		}
 
 		logger.LogInformation(
 			"Kings and Lows pot created for game {GameId}, hand {HandNumber}: Amount={PotAmount}, Ante={Ante}, CollectAntes={CollectAntes}, IsFirstHand={IsFirstHand}",
@@ -343,9 +324,8 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		var shuffledCards = frenchDealer.DealCards(52);
 
 		var deck = new List<GameCard>();
-		int deckOrder = 0;
+		var deckOrder = 0;
 		foreach (var card in shuffledCards)
-		{
 			deck.Add(new GameCard
 			{
 				GameId = game.Id,
@@ -357,20 +337,14 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 				IsVisible = false,
 				DealtAt = now
 			});
-		}
 
 		// Add all 52 cards to the context (including those that will remain in the deck)
-		foreach (var card in deck)
-		{
-			context.GameCards.Add(card);
-		}
+		foreach (var card in deck) context.GameCards.Add(card);
 
 		// Deal 5 cards to each eligible player from the shuffled deck
-		int cardIndex = 0;
-		for (int round = 0; round < 5; round++)
-		{
+		var cardIndex = 0;
+		for (var round = 0; round < 5; round++)
 			foreach (var player in eligiblePlayers.OrderBy(p => p.SeatPosition))
-			{
 				if (cardIndex < deck.Count)
 				{
 					var card = deck[cardIndex++];
@@ -379,8 +353,6 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 					card.IsVisible = true; // Cards visible to the player in their hand
 					card.DealtAtPhase = nameof(Phases.Dealing);
 				}
-			}
-		}
 
 		// Sort each player's cards by value (descending) and assign DealOrder for display
 		foreach (var player in eligiblePlayers)
@@ -392,10 +364,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 				.ToList();
 
 			var dealOrder = 1;
-			foreach (var card in playerCards)
-			{
-				card.DealOrder = dealOrder++;
-			}
+			foreach (var card in playerCards) card.DealOrder = dealOrder++;
 		}
 
 		// 13. Move to DropOrStay phase - this is where players make their decision

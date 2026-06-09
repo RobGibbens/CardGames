@@ -13,11 +13,11 @@ public class TablePlayAutoSeatJoinTests
 	public void TryGetAutoJoinSeatIndex_ReturnsLowestAvailableSeat_WhenMultipleSeatsOpen()
 	{
 		var tablePlay = CreateTablePlayWithSeats(
-			CreateSeat(seatIndex: 3, isOccupied: false),
-			CreateSeat(seatIndex: 0, isOccupied: true),
-			CreateSeat(seatIndex: 4, isOccupied: false),
-			CreateSeat(seatIndex: 1, isOccupied: true),
-			CreateSeat(seatIndex: 2, isOccupied: true));
+			CreateSeat(3, false),
+			CreateSeat(0, true),
+			CreateSeat(4, false),
+			CreateSeat(1, true),
+			CreateSeat(2, true));
 
 		var result = InvokeTryGetAutoJoinSeatIndex(tablePlay);
 
@@ -29,9 +29,9 @@ public class TablePlayAutoSeatJoinTests
 	public void TryGetAutoJoinSeatIndex_ReturnsFalseAndMinusOne_WhenNoSeatsAvailable()
 	{
 		var tablePlay = CreateTablePlayWithSeats(
-			CreateSeat(seatIndex: 0, isOccupied: true),
-			CreateSeat(seatIndex: 1, isOccupied: true),
-			CreateSeat(seatIndex: 2, isOccupied: true));
+			CreateSeat(0, true),
+			CreateSeat(1, true),
+			CreateSeat(2, true));
 
 		var result = InvokeTryGetAutoJoinSeatIndex(tablePlay);
 

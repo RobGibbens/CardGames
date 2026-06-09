@@ -108,10 +108,7 @@ public sealed class DashboardState
 	/// <param name="isExpanded">Whether the section should be expanded.</param>
 	public void SetSectionExpanded(string sectionId, bool isExpanded)
 	{
-		if (_sectionStates.TryGetValue(sectionId, out var current) && current == isExpanded)
-		{
-			return;
-		}
+		if (_sectionStates.TryGetValue(sectionId, out var current) && current == isExpanded) return;
 
 		_sectionStates[sectionId] = isExpanded;
 		NotifyStateChanged();

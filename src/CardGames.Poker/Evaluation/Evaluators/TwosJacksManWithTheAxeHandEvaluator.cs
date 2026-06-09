@@ -43,13 +43,9 @@ public sealed class TwosJacksManWithTheAxeHandEvaluator : IHandEvaluator
 		var cardList = cards.ToList();
 		var wildIndexes = new List<int>();
 
-		for (int i = 0; i < cardList.Count; i++)
-		{
+		for (var i = 0; i < cardList.Count; i++)
 			if (TwosJacksManWithTheAxeWildCardRules.IsWild(cardList[i]))
-			{
 				wildIndexes.Add(i);
-			}
-		}
 
 		return wildIndexes;
 	}
@@ -57,10 +53,7 @@ public sealed class TwosJacksManWithTheAxeHandEvaluator : IHandEvaluator
 	/// <inheritdoc />
 	public IReadOnlyCollection<Card> GetEvaluatedBestCards(HandBase hand)
 	{
-		if (hand is TwosJacksManWithTheAxeDrawHand twosJacksHand)
-		{
-			return twosJacksHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is TwosJacksManWithTheAxeDrawHand twosJacksHand) return twosJacksHand.EvaluatedBestCards.ToList();
 
 		return hand.Cards.ToList();
 	}

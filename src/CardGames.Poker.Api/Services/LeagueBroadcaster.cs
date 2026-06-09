@@ -82,9 +82,7 @@ public sealed class LeagueBroadcaster(
 		};
 
 		if (!string.IsNullOrWhiteSpace(requesterUserId))
-		{
 			groupNames.Add(LeagueHub.GetJoinRequesterGroupName(requesterUserId));
-		}
 
 		await hubContext.Clients.Groups(groupNames.ToList())
 			.SendAsync("LeagueJoinRequestUpdated", joinRequestUpdated, cancellationToken);

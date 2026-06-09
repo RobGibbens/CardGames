@@ -28,11 +28,9 @@ public static class StudOrderHelper
 		var phaseOrder = GetStreetPhaseOrder(dealtAtPhase);
 
 		if (phaseOrder == 1)
-		{
 			return isHoleCard
 				? 1000 + dealOrder
 				: 1100 + dealOrder;
-		}
 
 		return phaseOrder * 1000 + dealOrder;
 	}
@@ -70,26 +68,18 @@ public static class StudOrderHelper
 			.OrderBy(seat => GetRotationOrder(seat.SeatIndex, dealerSeatIndex))
 			.ToList();
 
-		if (visibleCardsBySeat.Count == 0)
-		{
-			return [];
-		}
+		if (visibleCardsBySeat.Count == 0) return [];
 
 		var result = new List<TCard>();
 		var maxVisibleCards = visibleCardsBySeat.Max(seat => seat.Cards.Count);
 
 		for (var visibleIndex = 0; visibleIndex < maxVisibleCards; visibleIndex++)
-		{
 			foreach (var seat in visibleCardsBySeat)
 			{
-				if (seat.Cards.Count <= visibleIndex)
-				{
-					continue;
-				}
+				if (seat.Cards.Count <= visibleIndex) continue;
 
 				result.Add(seat.Cards[visibleIndex]);
 			}
-		}
 
 		return result;
 	}

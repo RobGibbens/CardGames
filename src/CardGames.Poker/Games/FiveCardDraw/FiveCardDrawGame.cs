@@ -13,12 +13,11 @@ namespace CardGames.Poker.Games.FiveCardDraw;
 ///     Orchestrates a Five Card Draw poker game with betting.
 /// </summary>
 [PokerGameMetadata(
-	code: "FIVECARDDRAW",
-	name: "Five Card Draw",
-	description:
+	"FIVECARDDRAW",
+	"Five Card Draw",
 	"A classic poker variant where players are dealt five cards, have a draw phase to exchange cards, and engage in two betting rounds before showdown.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 6,
+	2,
+	6,
 	bettingStructure: BettingStructure.Ante,
 	initialHoleCards: 5,
 	initialBoardCards: 0,
@@ -43,8 +42,8 @@ public class FiveCardDrawGame : IPokerGame
 	public FiveCardDrawGame()
 		: this(
 			new[] { ("P1", 100), ("P2", 100) },
-			ante: 0,
-			minBet: 0)
+			0,
+			0)
 	{
 	}
 
@@ -69,14 +68,10 @@ public class FiveCardDrawGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Five Card Draw requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Five Card Draw supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new FiveCardDrawGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -215,9 +210,7 @@ public class FiveCardDrawGame : IPokerGame
 	public List<BettingAction> CollectAntes()
 	{
 		if (CurrentPhase != Phases.CollectingAntes)
-		{
 			throw new InvalidOperationException("Cannot collect antes in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -261,26 +254,18 @@ public class FiveCardDrawGame : IPokerGame
 	/// </remarks>
 	public void DealHands()
 	{
-		if (CurrentPhase != Phases.Dealing)
-		{
-			throw new InvalidOperationException("Cannot deal in current phase");
-		}
+		if (CurrentPhase != Phases.Dealing) throw new InvalidOperationException("Cannot deal in current phase");
 
 		// Deal 5 cards to each player
 		foreach (var gamePlayer in _gamePlayers)
-		{
 			if (!gamePlayer.Player.HasFolded)
 			{
 				var cards = _dealer.DealCards(5);
 				gamePlayer.SetHand(cards);
 			}
-		}
 
 		// Reset current bets before first betting round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		CurrentPhase = Phases.FirstBettingRound;
 		StartBettingRound();
@@ -308,10 +293,7 @@ public class FiveCardDrawGame : IPokerGame
 	/// </remarks>
 	public AvailableActions GetAvailableActions()
 	{
-		if (CurrentBettingRound == null)
-		{
-			return null;
-		}
+		if (CurrentBettingRound == null) return null;
 
 		return CurrentBettingRound.GetAvailableActions();
 	}
@@ -363,20 +345,15 @@ public class FiveCardDrawGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -392,20 +369,14 @@ public class FiveCardDrawGame : IPokerGame
 		}
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		switch (CurrentPhase)
 		{
 			case Phases.FirstBettingRound:
 				// Calculate side pots if any players are all-in
 				var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
-				if (hasAllIn)
-				{
-					PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-				}
+				if (hasAllIn) PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 
 				// Check if all remaining players are all-in (skip draw phase)
 				var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
@@ -435,10 +406,7 @@ public class FiveCardDrawGame : IPokerGame
 		var count = 0;
 		while (count < _gamePlayers.Count)
 		{
-			if (!_gamePlayers[index].Player.HasFolded && !_gamePlayers[index].Player.IsAllIn)
-			{
-				return index;
-			}
+			if (!_gamePlayers[index].Player.HasFolded && !_gamePlayers[index].Player.IsAllIn) return index;
 
 			index = (index + 1) % _gamePlayers.Count;
 			count++;
@@ -461,10 +429,7 @@ public class FiveCardDrawGame : IPokerGame
 	/// </remarks>
 	public FiveCardDrawGamePlayer GetCurrentDrawPlayer()
 	{
-		if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0)
-		{
-			return null;
-		}
+		if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0) return null;
 
 		return _gamePlayers[_currentDrawPlayerIndex];
 	}
@@ -502,13 +467,11 @@ public class FiveCardDrawGame : IPokerGame
 	public DrawResult ProcessDraw(IReadOnlyCollection<int> discardIndices)
 	{
 		if (CurrentPhase != Phases.DrawPhase)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Not in draw phase"
 			};
-		}
 
 		var gamePlayer = _gamePlayers[_currentDrawPlayerIndex];
 
@@ -517,7 +480,6 @@ public class FiveCardDrawGame : IPokerGame
 		var maxDiscards = hasAce ? 4 : 3;
 
 		if (discardIndices.Count > maxDiscards)
-		{
 			return new DrawResult
 			{
 				Success = false,
@@ -525,16 +487,13 @@ public class FiveCardDrawGame : IPokerGame
 					? "Cannot discard more than 4 cards"
 					: "Cannot discard more than 3 cards"
 			};
-		}
 
 		if (discardIndices.Any(i => i < 0 || i >= 5))
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Invalid card index (must be 0-4)"
 			};
-		}
 
 		// Deal new cards
 		var newCards = _dealer.DealCards(discardIndices.Count);
@@ -569,10 +528,7 @@ public class FiveCardDrawGame : IPokerGame
 			var player = _gamePlayers[_currentDrawPlayerIndex].Player;
 
 			// Check if this player can act and hasn't drawn yet
-			if (!player.HasFolded && !player.IsAllIn && !_playersWhoHaveDrawn.Contains(_currentDrawPlayerIndex))
-			{
-				return;
-			}
+			if (!player.HasFolded && !player.IsAllIn && !_playersWhoHaveDrawn.Contains(_currentDrawPlayerIndex)) return;
 
 			_currentDrawPlayerIndex = (_currentDrawPlayerIndex + 1) % _gamePlayers.Count;
 			checkedCount++;
@@ -601,10 +557,7 @@ public class FiveCardDrawGame : IPokerGame
 	/// </remarks>
 	public void CompleteDrawPhase()
 	{
-		if (CurrentPhase == Phases.DrawPhase)
-		{
-			StartSecondBettingRound();
-		}
+		if (CurrentPhase == Phases.DrawPhase) StartSecondBettingRound();
 	}
 
 	/// <summary>
@@ -640,13 +593,11 @@ public class FiveCardDrawGame : IPokerGame
 	public ShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new ShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 

@@ -93,10 +93,7 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
 
 		// Simulate multiple players staying
-		foreach (var gp in setup.GamePlayers)
-		{
-			gp.DropOrStayDecision = DropOrStayDecision.Stay;
-		}
+		foreach (var gp in setup.GamePlayers) gp.DropOrStayDecision = DropOrStayDecision.Stay;
 
 		await DbContext.SaveChangesAsync();
 
@@ -272,10 +269,7 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
 
 		// Set some existing decisions
-		foreach (var gp in setup.GamePlayers)
-		{
-			gp.DropOrStayDecision = DropOrStayDecision.Stay;
-		}
+		foreach (var gp in setup.GamePlayers) gp.DropOrStayDecision = DropOrStayDecision.Stay;
 
 		await DbContext.SaveChangesAsync();
 
@@ -283,10 +277,7 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
 		await handler.OnHandStartingAsync(setup.Game);
 
 		// Assert - Decisions should be reset
-		foreach (var gp in setup.GamePlayers)
-		{
-			gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided);
-		}
+		foreach (var gp in setup.GamePlayers) gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided);
 	}
 
 	[Fact]

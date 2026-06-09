@@ -32,13 +32,11 @@ public sealed class UpdateTableSettingsCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new UpdateTableSettingsError
 			{
 				Code = UpdateTableSettingsErrorCode.GameNotFound,
 				Message = $"Game with ID {command.GameId} not found."
 			};
-		}
 
 		// 2. Verify authorization - only the creator can edit
 		if (!IsAuthorized(game))
@@ -89,10 +87,7 @@ public sealed class UpdateTableSettingsCommandHandler(
 
 		// 5. Validate settings
 		var validationError = ValidateSettings(command, game);
-		if (validationError is not null)
-		{
-			return validationError;
-		}
+		if (validationError is not null) return validationError;
 
 		// 6. Apply updates
 		var now = DateTimeOffset.UtcNow;
@@ -155,17 +150,12 @@ public sealed class UpdateTableSettingsCommandHandler(
 	/// </summary>
 	private bool IsAuthorized(Game game)
 	{
-		if (!currentUserService.IsAuthenticated)
-		{
-			return false;
-		}
+		if (!currentUserService.IsAuthenticated) return false;
 
 		// Check by user ID first
 		if (!string.IsNullOrEmpty(game.CreatedById) &&
 		    string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.OrdinalIgnoreCase))
-		{
 			return true;
-		}
 
 		// Fall back to checking by name/email for legacy data
 		if (!string.IsNullOrEmpty(game.CreatedByName))
@@ -175,9 +165,7 @@ public sealed class UpdateTableSettingsCommandHandler(
 
 			if (string.Equals(game.CreatedByName, userName, StringComparison.OrdinalIgnoreCase) ||
 			    string.Equals(game.CreatedByName, userEmail, StringComparison.OrdinalIgnoreCase))
-			{
 				return true;
-			}
 		}
 
 		return false;
@@ -190,36 +178,28 @@ public sealed class UpdateTableSettingsCommandHandler(
 	{
 		// Validate BigBlind > SmallBlind if both are provided
 		if (command is { SmallBlind: not null, BigBlind: not null })
-		{
 			if (command.BigBlind <= command.SmallBlind)
-			{
 				return new UpdateTableSettingsError
 				{
 					Code = UpdateTableSettingsErrorCode.ValidationFailed,
 					Message = "Big blind must be greater than small blind."
 				};
-			}
-		}
 
 		// Validate Ante is non-negative
 		if (command.Ante.HasValue && command.Ante < 0)
-		{
 			return new UpdateTableSettingsError
 			{
 				Code = UpdateTableSettingsErrorCode.ValidationFailed,
 				Message = "Ante must be zero or greater."
 			};
-		}
 
 		// Validate MinBet is positive
 		if (command.MinBet.HasValue && command.MinBet <= 0)
-		{
 			return new UpdateTableSettingsError
 			{
 				Code = UpdateTableSettingsErrorCode.ValidationFailed,
 				Message = "Minimum bet must be greater than zero."
 			};
-		}
 
 		return null;
 	}
@@ -229,30 +209,15 @@ public sealed class UpdateTableSettingsCommandHandler(
 	/// </summary>
 	private void ApplyUpdates(Game game, UpdateTableSettingsCommand command, DateTimeOffset now)
 	{
-		if (command.Name is not null)
-		{
-			game.Name = command.Name;
-		}
+		if (command.Name is not null) game.Name = command.Name;
 
-		if (command.Ante.HasValue)
-		{
-			game.Ante = command.Ante.Value;
-		}
+		if (command.Ante.HasValue) game.Ante = command.Ante.Value;
 
-		if (command.MinBet.HasValue)
-		{
-			game.MinBet = command.MinBet.Value;
-		}
+		if (command.MinBet.HasValue) game.MinBet = command.MinBet.Value;
 
-		if (command.SmallBlind.HasValue)
-		{
-			game.SmallBlind = command.SmallBlind.Value;
-		}
+		if (command.SmallBlind.HasValue) game.SmallBlind = command.SmallBlind.Value;
 
-		if (command.BigBlind.HasValue)
-		{
-			game.BigBlind = command.BigBlind.Value;
-		}
+		if (command.BigBlind.HasValue) game.BigBlind = command.BigBlind.Value;
 
 		game.UpdatedAt = now;
 		game.UpdatedById = currentUserService.UserId;

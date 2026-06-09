@@ -21,10 +21,7 @@ public sealed class GetTableSettingsQueryHandler(CardsDbContext context)
 			.Include(g => g.GamePlayers)
 			.FirstOrDefaultAsync(g => g.Id == query.GameId, cancellationToken);
 
-		if (game is null)
-		{
-			return null;
-		}
+		if (game is null) return null;
 
 		var seatedPlayerCount = game.GamePlayers.Count(p => p.Status == GamePlayerStatus.Active);
 

@@ -17,9 +17,7 @@ public sealed class RemoveLeagueMemberCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var actorCanManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -28,26 +26,20 @@ public sealed class RemoveLeagueMemberCommandHandler(
 			.AnyAsync(cancellationToken);
 
 		if (!actorCanManageLeague)
-		{
 			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.Forbidden,
 				"Only league managers or admins can remove members.");
-		}
 
 		if (string.Equals(request.MemberUserId, currentUserService.UserId, StringComparison.Ordinal))
-		{
 			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.InvalidRequest,
 				"Use leave league for self-removal.");
-		}
 
 		var member = await context.LeagueMembersCurrent
 			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == request.MemberUserId && x.IsActive,
 				cancellationToken);
 
 		if (member is null)
-		{
 			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.MemberNotFound,
 				"Target member was not found in the league.");
-		}
 
 		var activeRolesExcludingTarget = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -56,23 +48,17 @@ public sealed class RemoveLeagueMemberCommandHandler(
 			.ToListAsync(cancellationToken);
 
 		if (LeagueGovernanceRules.IsManagerAuthority(member.Role) && !activeRolesExcludingTarget.HasAtLeastOneManager())
-		{
 			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.Conflict,
 				"League must retain at least one manager.");
-		}
 
 		if (member.Role == LeagueRole.Admin && !activeRolesExcludingTarget.HasAtLeastOneAdmin())
-		{
 			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.Conflict,
 				"League must retain at least one admin.");
-		}
 
 		if (LeagueGovernanceRules.IsGovernanceCapable(member.Role) &&
 		    !activeRolesExcludingTarget.HasAtLeastOneGovernanceCapableMember())
-		{
 			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.Conflict,
 				"League must retain at least one manager or admin.");
-		}
 
 		var now = DateTimeOffset.UtcNow;
 		member.IsActive = false;

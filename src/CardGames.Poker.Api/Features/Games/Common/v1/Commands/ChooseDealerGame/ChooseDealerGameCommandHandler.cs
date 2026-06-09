@@ -27,67 +27,55 @@ public class ChooseDealerGameCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Game not found."
 			};
-		}
 
 		// 2. Verify game is a Dealer's Choice table
 		if (!game.IsDealersChoice)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "This is not a Dealer's Choice table."
 			};
-		}
 
 		// 3. Verify game is in the WaitingForDealerChoice phase
 		if (game.CurrentPhase != nameof(Phases.WaitingForDealerChoice))
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = $"Game is not waiting for a dealer choice. Current phase: {game.CurrentPhase}."
 			};
-		}
 
 		// 4. Verify the caller is the current DC dealer
 		var dcDealerPosition = game.DealersChoiceDealerPosition;
 		if (dcDealerPosition is null)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Dealer's Choice dealer position is not set."
 			};
-		}
 
 		var dcDealer = game.GamePlayers
 			.FirstOrDefault(gp => gp.SeatPosition == dcDealerPosition.Value
 			                      && gp.Status == GamePlayerStatus.Active);
 
 		if (dcDealer is null)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Dealer's Choice dealer not found at the designated seat."
 			};
-		}
 
 		var currentUserName = currentUserService.UserName;
 		if (string.IsNullOrWhiteSpace(currentUserName))
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "User not authenticated."
 			};
-		}
 
 		var currentPlayer = game.GamePlayers
 			.FirstOrDefault(gp => gp.Player != null
@@ -95,80 +83,64 @@ public class ChooseDealerGameCommandHandler(
 			                      && gp.Status == GamePlayerStatus.Active);
 
 		if (currentPlayer is null || currentPlayer.SeatPosition != dcDealerPosition.Value)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Only the current dealer may choose the game type."
 			};
-		}
 
 		// 5. Validate the chosen game type code
 		if (!PokerGameMetadataRegistry.TryGet(command.GameTypeCode, out var metadata) || metadata is null)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = $"Unknown game type code '{command.GameTypeCode}'."
 			};
-		}
 
 		if (!DealersChoiceGameSettings.IsGameCodeAllowed(game, command.GameTypeCode))
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = $"Game type '{command.GameTypeCode}' is not allowed at this Dealer's Choice table."
 			};
-		}
 
 		// 6. Validate ante / min bet are positive
 		if (command.Ante < 0)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Ante must be zero or greater."
 			};
-		}
 
 		if (command.MinBet <= 0)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Minimum bet must be greater than zero."
 			};
-		}
 
 		// 6b. Validate blind values when provided
 		if (command.SmallBlind.HasValue && command.SmallBlind.Value <= 0)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Small blind must be greater than zero."
 			};
-		}
 
 		if (command.BigBlind.HasValue && command.BigBlind.Value <= 0)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Big blind must be greater than zero."
 			};
-		}
 
 		if (command.SmallBlind.HasValue && command.BigBlind.HasValue
 		                                && command.BigBlind.Value < command.SmallBlind.Value)
-		{
 			return new ChooseDealerGameError
 			{
 				GameId = command.GameId,
 				Reason = "Big blind must be greater than or equal to small blind."
 			};
-		}
 
 		var now = DateTimeOffset.UtcNow;
 
@@ -251,10 +223,7 @@ public class ChooseDealerGameCommandHandler(
 		var gameType = await context.GameTypes
 			.FirstOrDefaultAsync(gt => gt.Code == gameCode, cancellationToken);
 
-		if (gameType is not null)
-		{
-			return gameType;
-		}
+		if (gameType is not null) return gameType;
 
 		var now = DateTimeOffset.UtcNow;
 		gameType = new GameType

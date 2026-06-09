@@ -143,10 +143,7 @@ public class PairPressureIntegrationTests : IntegrationTestBase
 	private async Task EnsurePairPressureGameTypeAsync()
 	{
 		var existing = await DbContext.GameTypes.FirstOrDefaultAsync(gameType => gameType.Code == PairPressureCode);
-		if (existing is not null)
-		{
-			return;
-		}
+		if (existing is not null) return;
 
 		DbContext.GameTypes.Add(new GameType
 		{

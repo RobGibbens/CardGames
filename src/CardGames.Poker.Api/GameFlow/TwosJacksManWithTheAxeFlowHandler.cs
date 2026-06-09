@@ -76,10 +76,7 @@ public sealed class TwosJacksManWithTheAxeFlowHandler : BaseGameFlowHandler
 	public override string? GetNextPhase(Game game, string currentPhase)
 	{
 		// Check if only one player remains - skip to showdown/complete
-		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase))
-		{
-			return nameof(Phases.Showdown);
-		}
+		if (IsSinglePlayerRemaining(game) && !IsResolutionPhase(currentPhase)) return nameof(Phases.Showdown);
 
 		// Use default linear phase progression (same as Five Card Draw)
 		return base.GetNextPhase(game, currentPhase);

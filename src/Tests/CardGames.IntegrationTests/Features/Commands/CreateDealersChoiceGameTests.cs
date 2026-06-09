@@ -25,7 +25,7 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 				new("Player1", 1000),
 				new("Player2", 1000)
 			},
-			IsDealersChoice: true);
+			true);
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -53,7 +53,7 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			10,
 			20,
 			new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) },
-			IsDealersChoice: true);
+			true);
 
 		await Mediator.Send(command);
 
@@ -78,7 +78,7 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 				new("Player2", 750),
 				new("Player3", 1000)
 			},
-			IsDealersChoice: true);
+			true);
 
 		await Mediator.Send(command);
 
@@ -107,7 +107,7 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			0,
 			0,
 			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
-			IsDealersChoice: true);
+			true);
 
 		await Mediator.Send(command);
 
@@ -127,7 +127,7 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			0,
 			0,
 			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
-			IsDealersChoice: true);
+			true);
 
 		await Mediator.Send(command);
 
@@ -151,7 +151,7 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			0,
 			0,
 			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
-			IsDealersChoice: true)
+			true)
 		{
 			AllowedDealerChoiceGameCodes =
 			[
@@ -187,7 +187,7 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			0,
 			0,
 			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
-			IsDealersChoice: true)
+			true)
 		{
 			AllowedDealerChoiceGameCodes = []
 		};

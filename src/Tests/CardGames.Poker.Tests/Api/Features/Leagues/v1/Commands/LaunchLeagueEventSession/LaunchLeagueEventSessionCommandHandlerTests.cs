@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,7 +31,7 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var sut = CreateSut(context,
-			currentUserService: CreateCurrentUserService(isAuthenticated: false, userId: null));
+			CreateCurrentUserService(false, null));
 
 		var result = await sut.Handle(CreateSeasonCommand(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()),
 			CancellationToken.None);
@@ -52,7 +50,7 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 			Guid.NewGuid(),
 			Guid.NewGuid(),
 			Guid.NewGuid(),
-			request: new LaunchLeagueEventSessionRequest
+			new LaunchLeagueEventSessionRequest
 			{
 				GameCode = " ",
 				HostStartingChips = 300
@@ -130,9 +128,9 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 	{
 		await using var context = CreateContext();
 		var leagueId = await SeedLeagueAsync(context);
-		var wrongLeagueId = await SeedLeagueAsync(context, createdByUserId: "other-owner", name: "Other League");
+		var wrongLeagueId = await SeedLeagueAsync(context, "other-owner", "Other League");
 		var seasonId = await SeedSeasonAsync(context, leagueId);
-		var wrongSeasonId = await SeedSeasonAsync(context, wrongLeagueId, name: "Other Season");
+		var wrongSeasonId = await SeedSeasonAsync(context, wrongLeagueId, "Other Season");
 		var seasonEventId = await SeedSeasonEventAsync(context, wrongLeagueId, wrongSeasonId, tournamentBuyIn: 500);
 		await SeedManagerMembershipAsync(context, leagueId, "manager-user");
 		var sut = CreateSut(context);
@@ -167,7 +165,7 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		var leagueId = await SeedLeagueAsync(context);
 		var seasonId = await SeedSeasonAsync(context, leagueId);
 		var seasonEventId =
-			await SeedSeasonEventAsync(context, leagueId, seasonId, gameTypeCode: "NOPE", tournamentBuyIn: 500);
+			await SeedSeasonEventAsync(context, leagueId, seasonId, "NOPE", 500);
 		await SeedManagerMembershipAsync(context, leagueId, "manager-user");
 		var sut = CreateSut(context);
 
@@ -273,10 +271,9 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 		mediator ??= Substitute.For<IMediator>();
 		leagueBroadcaster ??= Substitute.For<ILeagueBroadcaster>();
 		currentUserService ??=
-			CreateCurrentUserService(isAuthenticated: true, userId: "manager-user", userName: "Manager User");
+			CreateCurrentUserService(true, "manager-user", "Manager User");
 
 		if (shouldConfigureDefaultMediatorResponse)
-		{
 			mediator
 				.Send(Arg.Any<LaunchCreateGameCommand>(), Arg.Any<CancellationToken>())
 				.Returns(callInfo => new CreateGameSuccessful
@@ -285,7 +282,6 @@ public class LaunchLeagueEventSessionCommandHandlerTests
 					GameTypeCode = ((LaunchCreateGameCommand)callInfo[0]).GameCode,
 					PlayerCount = ((LaunchCreateGameCommand)callInfo[0]).Players.Count
 				});
-		}
 
 		return new LaunchLeagueEventSessionCommandHandler(context, currentUserService, mediator, leagueBroadcaster);
 	}

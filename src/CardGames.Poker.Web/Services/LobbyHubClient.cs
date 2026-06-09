@@ -85,10 +85,7 @@ public sealed class LobbyHubClient : IAsyncDisposable
 		if (_hubConnection is not null)
 		{
 			_logger.LogDebug("Lobby hub connection already exists, state: {State}", _hubConnection.State);
-			if (_hubConnection.State == HubConnectionState.Connected)
-			{
-				return;
-			}
+			if (_hubConnection.State == HubConnectionState.Connected) return;
 		}
 
 		// Get user info for authentication
@@ -104,14 +101,10 @@ public sealed class LobbyHubClient : IAsyncDisposable
 				{
 					options.Headers["X-User-Authenticated"] = "true";
 					if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-					{
 						options.Headers["X-User-Id"] = userInfo.Value.UserId;
-					}
 
 					if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-					{
 						options.Headers["X-User-Name"] = userInfo.Value.UserName;
-					}
 				}
 			})
 			.WithAutomaticReconnect(new[]
@@ -204,18 +197,12 @@ public sealed class LobbyHubClient : IAsyncDisposable
 	/// </summary>
 	public async Task DisconnectAsync(CancellationToken cancellationToken = default)
 	{
-		if (_hubConnection is null)
-		{
-			return;
-		}
+		if (_hubConnection is null) return;
 
 		_logger.LogInformation("Disconnecting from lobby hub");
 
 		// Leave lobby first
-		if (_isInLobby)
-		{
-			await LeaveLobbyAsync(cancellationToken);
-		}
+		if (_isInLobby) await LeaveLobbyAsync(cancellationToken);
 
 		try
 		{
@@ -244,14 +231,10 @@ public sealed class LobbyHubClient : IAsyncDisposable
 		{
 			var queryParams = new List<string> { "authenticated=true" };
 			if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-			{
 				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
-			}
 
 			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-			{
 				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
-			}
 
 			url = $"{url}?{string.Join("&", queryParams)}";
 		}
@@ -266,10 +249,7 @@ public sealed class LobbyHubClient : IAsyncDisposable
 			var authState = await _authStateProvider.GetAuthenticationStateAsync();
 			var user = authState.User;
 
-			if (user.Identity?.IsAuthenticated != true)
-			{
-				return null;
-			}
+			if (user.Identity?.IsAuthenticated != true) return null;
 
 			var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
 			             ?? user.FindFirstValue("sub");
@@ -291,13 +271,9 @@ public sealed class LobbyHubClient : IAsyncDisposable
 	private Task OnReconnecting(Exception? exception)
 	{
 		if (exception is not null)
-		{
 			_logger.LogWarning(exception, "Lobby hub connection lost, attempting to reconnect...");
-		}
 		else
-		{
 			_logger.LogInformation("Lobby hub connection reconnecting...");
-		}
 
 		_isInLobby = false;
 		OnConnectionStateChanged?.Invoke(HubConnectionState.Reconnecting);
@@ -324,13 +300,9 @@ public sealed class LobbyHubClient : IAsyncDisposable
 	private Task OnClosed(Exception? exception)
 	{
 		if (exception is not null)
-		{
 			_logger.LogError(exception, "Lobby hub connection closed with error");
-		}
 		else
-		{
 			_logger.LogInformation("Lobby hub connection closed");
-		}
 
 		_isInLobby = false;
 		OnConnectionStateChanged?.Invoke(HubConnectionState.Disconnected);
@@ -342,19 +314,13 @@ public sealed class LobbyHubClient : IAsyncDisposable
 		_logger.LogDebug("Received GameCreated for game {GameId} ({GameName})",
 			gameCreated.GameId, gameCreated.Name);
 
-		if (OnGameCreated is not null)
-		{
-			await OnGameCreated(gameCreated);
-		}
+		if (OnGameCreated is not null) await OnGameCreated(gameCreated);
 	}
 
 	private async Task HandleGameDeleted(Guid gameId)
 	{
 		_logger.LogDebug("Received GameDeleted for game {GameId}", gameId);
 
-		if (OnGameDeleted is not null)
-		{
-			await OnGameDeleted(gameId);
-		}
+		if (OnGameDeleted is not null) await OnGameDeleted(gameId);
 	}
 }

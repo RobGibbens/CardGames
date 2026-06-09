@@ -82,7 +82,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 
 		var revokeResponse =
 			await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite!.InviteId}/revoke",
-				content: null);
+				null);
 		revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
 		var invitesResponse =
@@ -361,7 +361,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 
 		var revokeResponse =
 			await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite.InviteId}/revoke",
-				content: null);
+				null);
 		revokeResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 	}
 
@@ -395,7 +395,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 
 		var revokeResponse =
 			await Client.PostAsync($"/api/v1/leagues/{leagueA.LeagueId}/invites/{inviteA!.InviteId}/revoke",
-				content: null);
+				null);
 
 		revokeResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 	}
@@ -477,7 +477,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 
 		var revokeResponse =
 			await Client.PostAsync($"/api/v1/leagues/{league.LeagueId}/invites/{invite!.InviteId}/revoke",
-				content: null);
+				null);
 		revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
 		var token = invite.InviteUrl.Split('/').Last();
@@ -753,15 +753,9 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 
 		if (body.ValueKind == JsonValueKind.Object)
 		{
-			if (body.TryGetProperty("message", out var message))
-			{
-				return message.GetString();
-			}
+			if (body.TryGetProperty("message", out var message)) return message.GetString();
 
-			if (body.TryGetProperty("Message", out var messagePascalCase))
-			{
-				return messagePascalCase.GetString();
-			}
+			if (body.TryGetProperty("Message", out var messagePascalCase)) return messagePascalCase.GetString();
 		}
 
 		return null;

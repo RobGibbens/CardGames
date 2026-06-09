@@ -16,9 +16,7 @@ public sealed class GetLeagueStandingsQueryHandler(
 		GetLeagueStandingsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueStandingsError(GetLeagueStandingsErrorCode.Unauthorized, "User is not authenticated.");
-		}
 
 		var isActiveMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -26,19 +24,15 @@ public sealed class GetLeagueStandingsQueryHandler(
 				cancellationToken);
 
 		if (!isActiveMember)
-		{
 			return new GetLeagueStandingsError(GetLeagueStandingsErrorCode.Forbidden,
 				"Only active members can view standings.");
-		}
 
 		var resultsQuery = context.LeagueSeasonEventResults
 			.AsNoTracking()
 			.Where(x => x.LeagueId == request.LeagueId);
 
 		if (request.SeasonId.HasValue)
-		{
 			resultsQuery = resultsQuery.Where(x => x.LeagueSeasonId == request.SeasonId.Value);
-		}
 
 		var aggregates = await resultsQuery
 			.GroupBy(x => x.UserId)

@@ -7,10 +7,7 @@ internal static class BobBarkerVariantState
 {
 	public static int? GetSelectedShowcaseDealOrder(GamePlayer player)
 	{
-		if (string.IsNullOrWhiteSpace(player.VariantState))
-		{
-			return null;
-		}
+		if (string.IsNullOrWhiteSpace(player.VariantState)) return null;
 
 		try
 		{

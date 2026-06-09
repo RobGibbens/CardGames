@@ -46,13 +46,9 @@ public sealed class KingsAndLowsHandEvaluator : IHandEvaluator
 		var cardList = cards.ToList();
 		var wildIndexes = new List<int>();
 
-		for (int i = 0; i < cardList.Count; i++)
-		{
+		for (var i = 0; i < cardList.Count; i++)
 			if (wildCards.Contains(cardList[i]))
-			{
 				wildIndexes.Add(i);
-			}
-		}
 
 		return wildIndexes;
 	}
@@ -60,10 +56,7 @@ public sealed class KingsAndLowsHandEvaluator : IHandEvaluator
 	/// <inheritdoc />
 	public IReadOnlyCollection<Card> GetEvaluatedBestCards(HandBase hand)
 	{
-		if (hand is KingsAndLowsDrawHand kingsAndLowsHand)
-		{
-			return kingsAndLowsHand.EvaluatedBestCards.ToList();
-		}
+		if (hand is KingsAndLowsDrawHand kingsAndLowsHand) return kingsAndLowsHand.EvaluatedBestCards.ToList();
 
 		return hand.Cards.ToList();
 	}

@@ -179,10 +179,7 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
 		}
 
 		// Reset current bets for all players
-		foreach (var player in game.GamePlayers)
-		{
-			player.CurrentBet = 0;
-		}
+		foreach (var player in game.GamePlayers) player.CurrentBet = 0;
 
 		// Determine bring-in player (lowest up card)
 		var bringInPlayer = FindBringInPlayer(playerUpCards);
@@ -206,10 +203,7 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
 				                          p.HandNumber == game.CurrentHandNumber &&
 				                          p.PotType == PotType.Main,
 					cancellationToken);
-			if (pot is not null)
-			{
-				pot.Amount += actualBringIn;
-			}
+			if (pot is not null) pot.Amount += actualBringIn;
 		}
 
 		// Set current phase to ThirdStreet (betting round)
@@ -234,10 +228,7 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
 			StartedAt = now
 		};
 
-		if (currentBet > 0 && bringInPlayer is not null)
-		{
-			bettingRound.LastAggressorIndex = bringInPlayer.SeatPosition;
-		}
+		if (currentBet > 0 && bringInPlayer is not null) bettingRound.LastAggressorIndex = bringInPlayer.SeatPosition;
 
 		context.Set<BettingRound>().Add(bettingRound);
 	}

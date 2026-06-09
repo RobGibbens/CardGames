@@ -24,7 +24,7 @@ public class HoldEmGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new HoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		var act = () => new HoldEmGame(players, 5, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -35,7 +35,7 @@ public class HoldEmGameTests
 	{
 		var players = Enumerable.Range(1, 11).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new HoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		var act = () => new HoldEmGame(players, 5, 10);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 10 players*");
@@ -273,7 +273,7 @@ public class HoldEmGameTests
 			("Alice", 1000),
 			("Bob", 0)
 		};
-		var game = new HoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		var game = new HoldEmGame(players, 5, 10);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -346,7 +346,7 @@ public class HoldEmGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new HoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		return new HoldEmGame(players, 5, 10);
 	}
 
 	private static HoldEmGame CreateThreePlayerGame()
@@ -357,7 +357,7 @@ public class HoldEmGameTests
 			("Bob", 1000),
 			("Charlie", 1000)
 		};
-		return new HoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		return new HoldEmGame(players, 5, 10);
 	}
 
 	private static HoldEmGame CreateTwoPlayerGameWithDifferentStacks()
@@ -367,7 +367,7 @@ public class HoldEmGameTests
 			("Alice", 500),
 			("Bob", 1000)
 		};
-		return new HoldEmGame(players, smallBlind: 5, bigBlind: 10);
+		return new HoldEmGame(players, 5, 10);
 	}
 
 	private static void SetupToFlop(HoldEmGame game)
@@ -382,13 +382,8 @@ public class HoldEmGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -404,13 +399,8 @@ public class HoldEmGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -426,13 +416,8 @@ public class HoldEmGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 
@@ -448,13 +433,8 @@ public class HoldEmGameTests
 		{
 			var available = game.GetAvailableActions();
 			if (available.CanCheck)
-			{
 				game.ProcessBettingAction(BettingActionType.Check);
-			}
-			else if (available.CanCall)
-			{
-				game.ProcessBettingAction(BettingActionType.Call);
-			}
+			else if (available.CanCall) game.ProcessBettingAction(BettingActionType.Call);
 		}
 	}
 }

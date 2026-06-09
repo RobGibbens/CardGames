@@ -25,14 +25,10 @@ public class KingsAndLowsHand : StudHand
 		: base(holeCards, openCards, new[] { downCard })
 	{
 		if (holeCards.Count != 2)
-		{
 			throw new ArgumentException("Kings and Lows needs exactly two hole cards", nameof(holeCards));
-		}
 
 		if (openCards.Count > 4)
-		{
 			throw new ArgumentException("Kings and Lows has at most four open cards", nameof(openCards));
-		}
 
 		_wildCardRules = wildCardRules;
 	}
@@ -77,17 +73,14 @@ public class KingsAndLowsHand : StudHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 
 		// Get all possible wild card sets (Ace-high and Ace-low if applicable)
 		var wildCardSets = _wildCardRules.GetAllPossibleWildCardSets(Cards);
 
-		HandType bestType = HandType.Incomplete;
+		var bestType = HandType.Incomplete;
 		long bestStrength = 0;
 		IReadOnlyCollection<Card> bestCards = Cards.Take(5).ToList();
 		IReadOnlyCollection<Card> bestWildCards = Array.Empty<Card>();

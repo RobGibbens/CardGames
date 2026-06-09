@@ -24,25 +24,29 @@ public class EvaluationsBenchmarks
 			.SimulateWithFullDeck(NumberOfHands);
 	}
 
-	[Benchmark, BenchmarkCategory("HeadsUp")]
+	[Benchmark]
+	[BenchmarkCategory("HeadsUp")]
 	public void EvaluateEquity_HeadsUp()
 	{
 		HandsEvaluation.GroupByWins(_headsUpResult.Hands);
 	}
 
-	[Benchmark, BenchmarkCategory("HeadsUp")]
+	[Benchmark]
+	[BenchmarkCategory("HeadsUp")]
 	public void EvaluateMadeHandDistribution_HeadsUp()
 	{
 		HandsEvaluation.AllMadeHandDistributions(_headsUpResult.Hands);
 	}
 
-	[Benchmark, BenchmarkCategory("FiveHanded")]
+	[Benchmark]
+	[BenchmarkCategory("FiveHanded")]
 	public void EvaluateEquity_FiveHanded()
 	{
 		HandsEvaluation.GroupByWins(_headsUpResult.Hands);
 	}
 
-	[Benchmark, BenchmarkCategory("FiveHanded")]
+	[Benchmark]
+	[BenchmarkCategory("FiveHanded")]
 	public void EvaluateMadeHandDistribution_FiveHanded()
 	{
 		HandsEvaluation.AllMadeHandDistributions(_fiveHandedResult.Hands);

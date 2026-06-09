@@ -163,10 +163,7 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 			playerUpCards.Add((player, boardCard));
 		}
 
-		foreach (var player in game.GamePlayers)
-		{
-			player.CurrentBet = 0;
-		}
+		foreach (var player in game.GamePlayers) player.CurrentBet = 0;
 
 		var bringInPlayer = FindBringInPlayer(playerUpCards);
 		var bringInSeatPosition = bringInPlayer?.SeatPosition ?? playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
@@ -186,10 +183,7 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 				                          p.HandNumber == game.CurrentHandNumber &&
 				                          p.PotType == PotType.Main,
 					cancellationToken);
-			if (pot is not null)
-			{
-				pot.Amount += actualBringIn;
-			}
+			if (pot is not null) pot.Amount += actualBringIn;
 		}
 
 		game.CurrentPhase = nameof(Phases.ThirdStreet);
@@ -219,22 +213,17 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 
 	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
 	{
-		if (playerUpCards.Count == 0)
-		{
-			return null;
-		}
+		if (playerUpCards.Count == 0) return null;
 
 		GamePlayer? lowestPlayer = null;
 		GameCard? lowestCard = null;
 
 		foreach (var (player, upCard) in playerUpCards)
-		{
 			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
 			{
 				lowestCard = upCard;
 				lowestPlayer = player;
 			}
-		}
 
 		return lowestPlayer;
 	}
@@ -244,10 +233,7 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 		var aValue = GetCardValue(a.Symbol);
 		var bValue = GetCardValue(b.Symbol);
 
-		if (aValue != bValue)
-		{
-			return aValue.CompareTo(bValue);
-		}
+		if (aValue != bValue) return aValue.CompareTo(bValue);
 
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}

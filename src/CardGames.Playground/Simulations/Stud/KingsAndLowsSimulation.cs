@@ -13,7 +13,7 @@ public class KingsAndLowsSimulation
 	private readonly IList<KingsAndLowsPlayer> _players = new List<KingsAndLowsPlayer>();
 	private IReadOnlyCollection<Card> _deadCards = new List<Card>();
 	private FrenchDeckDealer _dealer;
-	private WildCardRules _wildCardRules = new(kingRequired: false);
+	private WildCardRules _wildCardRules = new(false);
 
 	public KingsAndLowsSimulation WithPlayer(KingsAndLowsPlayer player)
 	{
@@ -29,7 +29,7 @@ public class KingsAndLowsSimulation
 
 	public KingsAndLowsSimulation WithKingRequired(bool required = true)
 	{
-		_wildCardRules = new WildCardRules(kingRequired: required);
+		_wildCardRules = new WildCardRules(required);
 		return this;
 	}
 

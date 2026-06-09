@@ -311,9 +311,10 @@
 </div>
 
 @code {
-	[Parameter, EditorRequired] public List<LeagueSeasonEventDto> RecentCompletedEvents { get; set; } = [];
+	[Parameter] [EditorRequired] public List<LeagueSeasonEventDto> RecentCompletedEvents { get; set; } = [];
 
-	[Parameter, EditorRequired]
+	[Parameter]
+	[EditorRequired]
 	public LeagueActiveGamesPageDto ActiveGamesPage { get; set; } = new()
 	{
 		Entries = [],
@@ -324,7 +325,8 @@
 		TotalPages = 1
 	};
 
-	[Parameter, EditorRequired]
+	[Parameter]
+	[EditorRequired]
 	public LeagueUpcomingEventsPageDto UpcomingEventsPage { get; set; } = new()
 	{
 		Entries = [],
@@ -335,7 +337,7 @@
 		TotalPages = 1
 	};
 
-	[Parameter, EditorRequired] public List<LeagueStandingEntryDto> Standings { get; set; } = [];
+	[Parameter] [EditorRequired] public List<LeagueStandingEntryDto> Standings { get; set; } = [];
 
 	[Parameter] public EventCallback<Guid> OpenTable { get; set; }
 

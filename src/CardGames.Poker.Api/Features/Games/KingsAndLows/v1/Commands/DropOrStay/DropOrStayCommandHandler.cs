@@ -26,24 +26,20 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new DropOrStayError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = DropOrStayErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in DropOrStay phase
 		if (game.CurrentPhase != nameof(Phases.DropOrStay))
-		{
 			return new DropOrStayError
 			{
 				Message = $"Cannot make drop/stay decision. Game is in '{game.CurrentPhase}' phase, " +
 				          $"but must be in '{nameof(Phases.DropOrStay)}' phase.",
 				Code = DropOrStayErrorCode.InvalidPhase
 			};
-		}
 
 		// 2b. Process any pending auto-drops from chip check pause timeout
 		// This ensures players who couldn't cover the pot are automatically dropped
@@ -66,50 +62,37 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 		// 3. Find the player
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
-		{
 			return new DropOrStayError
 			{
 				Message = $"Player with ID '{command.PlayerId}' is not in this game.",
 				Code = DropOrStayErrorCode.PlayerNotFound
 			};
-		}
 
 		// 4. Check if player has already decided
 		if (gamePlayer.DropOrStayDecision.HasValue &&
 		    gamePlayer.DropOrStayDecision.Value != DropOrStayDecision.Undecided)
-		{
 			return new DropOrStayError
 			{
 				Message = "Player has already made their decision.",
 				Code = DropOrStayErrorCode.AlreadyDecided
 			};
-		}
 
 		// 5. Parse and validate decision
 		DropOrStayDecision decision;
 		if (string.Equals(command.Decision, "Drop", StringComparison.OrdinalIgnoreCase))
-		{
 			decision = DropOrStayDecision.Drop;
-		}
 		else if (string.Equals(command.Decision, "Stay", StringComparison.OrdinalIgnoreCase))
-		{
 			decision = DropOrStayDecision.Stay;
-		}
 		else
-		{
 			return new DropOrStayError
 			{
 				Message = $"Invalid decision '{command.Decision}'. Must be 'Drop' or 'Stay'.",
 				Code = DropOrStayErrorCode.InvalidDecision
 			};
-		}
 
 		// 6. Record the decision
 		gamePlayer.DropOrStayDecision = decision;
-		if (decision == DropOrStayDecision.Drop)
-		{
-			gamePlayer.HasFolded = true;
-		}
+		if (decision == DropOrStayDecision.Drop) gamePlayer.HasFolded = true;
 
 		// 6.5. Explicitly save changes here to ensure the decision is persisted before checking allDecided
 		// This handles concurrency issues where EF might not have updated the local collection yet
@@ -142,10 +125,7 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 			autoDropPlayer.AutoDropOnDropOrStay = false; // Clear the flag after processing
 		}
 
-		if (autoDropPlayers.Count > 0)
-		{
-			await context.SaveChangesAsync(cancellationToken);
-		}
+		if (autoDropPlayers.Count > 0) await context.SaveChangesAsync(cancellationToken);
 
 		// 7. Check if all players have decided
 		var activePlayers = refreshedGame.GamePlayers
@@ -195,10 +175,8 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 				// Find the index of the dealer in the ordered player list
 				var dealerIndex = gamePlayersList.FindIndex(gp => gp.SeatPosition == dealerSeatPosition);
 				if (dealerIndex < 0)
-				{
 					// Dealer seat not occupied, start from seat position 0
 					dealerIndex = 0;
-				}
 
 				var nextPlayerIndex = (dealerIndex + 1) % gamePlayersList.Count;
 				var searched = 0;
@@ -227,11 +205,9 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 
 		// If all players dropped, the hand is dead. Automatically perform showdown to handle pot carry-over.
 		if (allDecided && stayingPlayers.Count == 0)
-		{
 			await mediator.Send(
 				new PerformShowdownCommand(game.Id),
 				cancellationToken);
-		}
 
 		return new DropOrStaySuccessful
 		{
@@ -257,18 +233,13 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 			.ToList();
 
 		if (activePlayers.Count == 0)
-		{
 			activePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active)
 				.OrderBy(gp => gp.SeatPosition)
 				.Select(gp => gp.SeatPosition)
 				.ToList();
-		}
 
-		if (activePlayers.Count == 0)
-		{
-			return;
-		}
+		if (activePlayers.Count == 0) return;
 
 		var currentPosition = game.DealerPosition;
 		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();

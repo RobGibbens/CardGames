@@ -12,25 +12,13 @@ public sealed class OptionalUrlAttribute : ValidationAttribute
 
 	public override bool IsValid(object? value)
 	{
-		if (value is null)
-		{
-			return true;
-		}
+		if (value is null) return true;
 
-		if (value is not string url)
-		{
-			return false;
-		}
+		if (value is not string url) return false;
 
-		if (string.IsNullOrWhiteSpace(url))
-		{
-			return true;
-		}
+		if (string.IsNullOrWhiteSpace(url)) return true;
 
-		if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-		{
-			return false;
-		}
+		if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
 
 		return uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
 		       || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)

@@ -63,7 +63,7 @@
 </div>
 
 @code {
-	[Parameter, EditorRequired] public required GetActiveGamesResponse Table { get; set; }
+	[Parameter] [EditorRequired] public required GetActiveGamesResponse Table { get; set; }
 
 	[Parameter] public string? CurrentUserId { get; set; }
 

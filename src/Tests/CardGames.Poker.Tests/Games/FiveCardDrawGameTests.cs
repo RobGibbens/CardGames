@@ -25,7 +25,7 @@ public class FiveCardDrawGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new FiveCardDrawGame(players, ante: 10, minBet: 20);
+		var act = () => new FiveCardDrawGame(players, 10, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -36,7 +36,7 @@ public class FiveCardDrawGameTests
 	{
 		var players = Enumerable.Range(1, 7).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new FiveCardDrawGame(players, ante: 10, minBet: 20);
+		var act = () => new FiveCardDrawGame(players, 10, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 6 players*");
@@ -339,7 +339,7 @@ public class FiveCardDrawGameTests
 			("Alice", 1000),
 			("Bob", 0)
 		};
-		var game = new FiveCardDrawGame(players, ante: 10, minBet: 20);
+		var game = new FiveCardDrawGame(players, 10, 20);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -353,7 +353,7 @@ public class FiveCardDrawGameTests
 			("Bob", 0),
 			("Charlie", 0)
 		};
-		var game = new FiveCardDrawGame(players, ante: 10, minBet: 20);
+		var game = new FiveCardDrawGame(players, 10, 20);
 
 		game.CanContinue().Should().BeFalse();
 	}
@@ -387,7 +387,7 @@ public class FiveCardDrawGameTests
 			("Bob", 0),
 			("Charlie", 500)
 		};
-		var game = new FiveCardDrawGame(players, ante: 10, minBet: 20);
+		var game = new FiveCardDrawGame(players, 10, 20);
 
 		var playersWithChips = game.GetPlayersWithChips().ToList();
 
@@ -427,7 +427,7 @@ public class FiveCardDrawGameTests
 			("Alice", 1000),
 			("Bob", 5) // Less than the ante of 10
 		};
-		var game = new FiveCardDrawGame(players, ante: 10, minBet: 20);
+		var game = new FiveCardDrawGame(players, 10, 20);
 
 		game.StartHand();
 		var actions = game.CollectAntes();
@@ -448,6 +448,6 @@ public class FiveCardDrawGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new FiveCardDrawGame(players, ante: 10, minBet: 20);
+		return new FiveCardDrawGame(players, 10, 20);
 	}
 }

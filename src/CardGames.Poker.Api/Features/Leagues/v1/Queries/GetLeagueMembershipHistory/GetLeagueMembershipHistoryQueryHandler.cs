@@ -17,10 +17,8 @@ public sealed class GetLeagueMembershipHistoryQueryHandler(
 		GetLeagueMembershipHistoryQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueMembershipHistoryError(GetLeagueMembershipHistoryErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var isActiveMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -28,10 +26,8 @@ public sealed class GetLeagueMembershipHistoryQueryHandler(
 				cancellationToken);
 
 		if (!isActiveMember)
-		{
 			return new GetLeagueMembershipHistoryError(GetLeagueMembershipHistoryErrorCode.Forbidden,
 				"Only active members can view membership history.");
-		}
 
 		var history = await context.LeagueMembershipEvents
 			.AsNoTracking()

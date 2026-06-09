@@ -30,31 +30,19 @@ public static class BaseballGameSettings
 		settings[BuyCardPriceKey] = state.BuyCardPrice;
 
 		if (state.PendingOffers.Count > 0)
-		{
 			settings[BuyCardOffersKey] = JsonSerializer.SerializeToNode(state.PendingOffers);
-		}
 		else
-		{
 			settings.Remove(BuyCardOffersKey);
-		}
 
 		if (!string.IsNullOrWhiteSpace(state.ReturnPhase))
-		{
 			settings[BuyCardReturnPhaseKey] = state.ReturnPhase;
-		}
 		else
-		{
 			settings.Remove(BuyCardReturnPhaseKey);
-		}
 
 		if (state.ReturnActorIndex.HasValue)
-		{
 			settings[BuyCardReturnActorIndexKey] = state.ReturnActorIndex.Value;
-		}
 		else
-		{
 			settings.Remove(BuyCardReturnActorIndexKey);
-		}
 
 		game.GameSettings = settings.ToJsonString();
 	}
@@ -80,10 +68,7 @@ public static class BaseballGameSettings
 
 	private static JsonObject ParseSettings(string? json)
 	{
-		if (string.IsNullOrWhiteSpace(json))
-		{
-			return new JsonObject();
-		}
+		if (string.IsNullOrWhiteSpace(json)) return new JsonObject();
 
 		try
 		{

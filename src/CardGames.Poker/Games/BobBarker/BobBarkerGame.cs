@@ -4,21 +4,20 @@ using CardGames.Poker.Games.GameFlow;
 namespace CardGames.Poker.Games.BobBarker;
 
 [PokerGameMetadata(
-	code: "BOBBARKER",
-	name: "Bob Barker",
-	description:
+	"BOBBARKER",
+	"Bob Barker",
 	"Deal five hole cards, set one showcase card aside against a hidden dealer card, then play the remaining four cards like Omaha for half the pot.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 5,
-	initialBoardCards: 0,
-	maxCommunityCards: 6,
-	maxPlayerCards: 5,
-	hasDrawPhase: true,
-	maxDiscards: 1,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "bobbarker.png")]
+	2,
+	10,
+	5,
+	0,
+	6,
+	5,
+	true,
+	1,
+	WildCardRule.None,
+	BettingStructure.Blinds,
+	"bobbarker.png")]
 public sealed class BobBarkerGame : IPokerGame
 {
 	public string Name { get; } = "Bob Barker";

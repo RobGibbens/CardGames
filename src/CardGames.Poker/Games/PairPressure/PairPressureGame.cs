@@ -16,21 +16,20 @@ namespace CardGames.Poker.Games.PairPressure;
 ///     and only the two most recent paired ranks remain active.
 /// </summary>
 [PokerGameMetadata(
-	code: "PAIRPRESSURE",
-	name: "Pair Pressure",
-	description:
+	"PAIRPRESSURE",
+	"Pair Pressure",
 	"A seven card stud poker variant where face-up paired ranks become wild, with only the two most recent paired ranks remaining active.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 7,
-	initialHoleCards: 2,
-	initialBoardCards: 1,
-	maxCommunityCards: 0,
-	maxPlayerCards: 7,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.Dynamic,
-	bettingStructure: BettingStructure.AnteBringIn,
-	imageName: "pairpressure.png")]
+	2,
+	7,
+	2,
+	1,
+	0,
+	7,
+	false,
+	0,
+	WildCardRule.Dynamic,
+	BettingStructure.AnteBringIn,
+	"pairpressure.png")]
 public class PairPressureGame : IPokerGame
 {
 	private readonly FrenchDeckDealer _dealer;
@@ -45,10 +44,10 @@ public class PairPressureGame : IPokerGame
 	public PairPressureGame()
 		: this(
 			[("P1", 100), ("P2", 100)],
-			ante: 0,
-			bringIn: 0,
-			smallBet: 0,
-			bigBet: 0)
+			0,
+			0,
+			0,
+			0)
 	{
 	}
 
@@ -62,14 +61,10 @@ public class PairPressureGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Pair Pressure requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException($"Pair Pressure supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(player => new PairPressureGamePlayer(new PokerPlayer(player.name, player.chips)))
@@ -138,9 +133,7 @@ public class PairPressureGame : IPokerGame
 	public List<BettingAction> CollectAntes()
 	{
 		if (CurrentPhase != Phases.CollectingAntes)
-		{
 			throw new InvalidOperationException("Cannot collect antes in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -149,10 +142,7 @@ public class PairPressureGame : IPokerGame
 			var player = gamePlayer.Player;
 			var anteAmount = Math.Min(Ante, player.ChipStack);
 
-			if (anteAmount <= 0)
-			{
-				continue;
-			}
+			if (anteAmount <= 0) continue;
 
 			var actualAmount = player.PlaceBet(anteAmount);
 			PotManager.AddContribution(player.Name, actualAmount);
@@ -166,18 +156,13 @@ public class PairPressureGame : IPokerGame
 	public void DealThirdStreet()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot deal third street in current phase");
-		}
 
 		var startPosition = (DealerPosition + 1) % _gamePlayers.Count;
 		for (var index = 0; index < _gamePlayers.Count; index++)
 		{
 			var gamePlayer = _gamePlayers[(startPosition + index) % _gamePlayers.Count];
-			if (gamePlayer.Player.HasFolded)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded) continue;
 
 			gamePlayer.AddHoleCard(_dealer.DealCard());
 			gamePlayer.AddHoleCard(_dealer.DealCard());
@@ -186,10 +171,7 @@ public class PairPressureGame : IPokerGame
 			_faceUpCardsInOrder.Add(boardCard);
 		}
 
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		_bringInPlayerIndex = UseBringIn ? FindBringInPlayer() : -1;
 	}
@@ -197,14 +179,9 @@ public class PairPressureGame : IPokerGame
 	public BettingAction PostBringIn()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot post bring-in in current phase");
-		}
 
-		if (!UseBringIn)
-		{
-			throw new InvalidOperationException("Bring-in is disabled for this game");
-		}
+		if (!UseBringIn) throw new InvalidOperationException("Bring-in is disabled for this game");
 
 		var bringInPlayer = _gamePlayers[_bringInPlayerIndex];
 		var actualAmount = bringInPlayer.Player.PlaceBet(Math.Min(BringIn, bringInPlayer.Player.ChipStack));
@@ -273,10 +250,7 @@ public class PairPressureGame : IPokerGame
 
 	public PairPressureGamePlayer GetBringInPlayer()
 	{
-		if (_bringInPlayerIndex < 0 || _bringInPlayerIndex >= _gamePlayers.Count)
-		{
-			return null;
-		}
+		if (_bringInPlayerIndex < 0 || _bringInPlayerIndex >= _gamePlayers.Count) return null;
 
 		return _gamePlayers[_bringInPlayerIndex];
 	}
@@ -284,20 +258,15 @@ public class PairPressureGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -312,10 +281,7 @@ public class PairPressureGame : IPokerGame
 		}
 
 		var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
-		if (hasAllIn)
-		{
-			PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-		}
+		if (hasAllIn) PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 
 		var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
 		if (activePlayersWhoCanAct == 0)
@@ -324,10 +290,7 @@ public class PairPressureGame : IPokerGame
 			return;
 		}
 
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		CurrentPhase = CurrentPhase switch
 		{
@@ -344,18 +307,13 @@ public class PairPressureGame : IPokerGame
 	{
 		if (CurrentPhase is not (Phases.FourthStreet or Phases.FifthStreet or Phases.SixthStreet
 		    or Phases.SeventhStreet))
-		{
 			throw new InvalidOperationException("Cannot deal street card in current phase");
-		}
 
 		var startPosition = (DealerPosition + 1) % _gamePlayers.Count;
 		for (var index = 0; index < _gamePlayers.Count; index++)
 		{
 			var gamePlayer = _gamePlayers[(startPosition + index) % _gamePlayers.Count];
-			if (gamePlayer.Player.HasFolded)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded) continue;
 
 			if (CurrentPhase == Phases.SeventhStreet)
 			{
@@ -369,22 +327,17 @@ public class PairPressureGame : IPokerGame
 			}
 		}
 
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 	}
 
 	public PairPressureShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new PairPressureShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 
@@ -471,10 +424,7 @@ public class PairPressureGame : IPokerGame
 		for (var index = 0; index < _gamePlayers.Count; index++)
 		{
 			var gamePlayer = _gamePlayers[index];
-			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0) continue;
 
 			var upCard = gamePlayer.BoardCards[0];
 			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
@@ -489,10 +439,7 @@ public class PairPressureGame : IPokerGame
 
 	private static int CompareCardsForBringIn(Card a, Card b)
 	{
-		if (a.Value != b.Value)
-		{
-			return a.Value.CompareTo(b.Value);
-		}
+		if (a.Value != b.Value) return a.Value.CompareTo(b.Value);
 
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
@@ -518,10 +465,7 @@ public class PairPressureGame : IPokerGame
 		for (var index = 0; index < _gamePlayers.Count; index++)
 		{
 			var gamePlayer = _gamePlayers[index];
-			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
-			{
-				continue;
-			}
+			if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0) continue;
 
 			var visibleStrength = EvaluateVisibleHand(gamePlayer.BoardCards, currentWildRanks);
 			if (visibleStrength > bestStrength)
@@ -536,10 +480,7 @@ public class PairPressureGame : IPokerGame
 
 	private static long EvaluateVisibleHand(IReadOnlyCollection<Card> boardCards, HashSet<int> wildRanks)
 	{
-		if (boardCards.Count == 0)
-		{
-			return 0;
-		}
+		if (boardCards.Count == 0) return 0;
 
 		var cards = boardCards.OrderByDescending(card => card.Value).ToList();
 		var valueCounts = cards
@@ -602,15 +543,9 @@ public class PairPressureGame : IPokerGame
 			.Take(4)
 			.ToList();
 
-		if (kickerValues.Count == 0)
-		{
-			kickerValues = cards.Take(4).Select(card => card.Value).ToList();
-		}
+		if (kickerValues.Count == 0) kickerValues = cards.Take(4).Select(card => card.Value).ToList();
 
-		foreach (var kickerValue in kickerValues)
-		{
-			strength = strength * 15 + kickerValue;
-		}
+		foreach (var kickerValue in kickerValues) strength = strength * 15 + kickerValue;
 
 		return strength;
 	}

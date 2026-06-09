@@ -202,7 +202,6 @@ public class TableStateBuilderTests : IntegrationTestBase
 			gamePlayer.HasDrawnThisRound = false;
 
 			for (var cardIndex = 0; cardIndex < 5; cardIndex++)
-			{
 				DbContext.GameCards.Add(new GameCard
 				{
 					Id = Guid.CreateVersion7(),
@@ -218,7 +217,6 @@ public class TableStateBuilderTests : IntegrationTestBase
 					DealtAt = now,
 					DealtAtPhase = nameof(Phases.Dealing)
 				});
-			}
 		}
 
 		await DbContext.SaveChangesAsync();
@@ -708,8 +706,8 @@ public class TableStateBuilderTests : IntegrationTestBase
 			DbContext,
 			"SCREWYOURNEIGHBOR",
 			2,
-			startingChips: 25,
-			ante: 25);
+			25,
+			25);
 
 		await Mediator.Send(new StartHandCommand(setup.Game.Id));
 
@@ -741,10 +739,7 @@ public class TableStateBuilderTests : IntegrationTestBase
 				.AsNoTracking()
 				.FirstAsync(g => g.Id == setup.Game.Id);
 
-			if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
-			{
-				break;
-			}
+			if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
 
 			var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
 			var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
@@ -771,8 +766,8 @@ public class TableStateBuilderTests : IntegrationTestBase
 			DbContext,
 			"SCREWYOURNEIGHBOR",
 			3,
-			startingChips: 25,
-			ante: 25);
+			25,
+			25);
 
 		var game = setup.Game;
 		game.CurrentHandNumber = 1;
@@ -834,8 +829,8 @@ public class TableStateBuilderTests : IntegrationTestBase
 	[Fact]
 	public async Task BuildPublicStateAsync_RebuyGracePause_IncludesBustedSitOutPlayersInShortPlayers()
 	{
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 100,
-			ante: 10);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 100,
+			10);
 
 		var players = await DbContext.GamePlayers
 			.Include(gp => gp.Player)
@@ -872,8 +867,8 @@ public class TableStateBuilderTests : IntegrationTestBase
 	public async Task
 		BuildPublicStateAsync_RebuyGracePause_KeepsMultipleZeroChipObserversInShortPlayersAfterAnotherPlayerRebuys()
 	{
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4, startingChips: 100,
-			ante: 10);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4, 100,
+			10);
 
 		var players = await DbContext.GamePlayers
 			.Include(gp => gp.Player)
@@ -919,8 +914,8 @@ public class TableStateBuilderTests : IntegrationTestBase
 	[Fact]
 	public async Task BuildPublicStateAsync_EliminatedTournamentPlayer_IsShownAsObserving()
 	{
-		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 100,
-			ante: 10);
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 100,
+			10);
 
 		var players = await DbContext.GamePlayers
 			.Include(gp => gp.Player)
@@ -1258,8 +1253,8 @@ public class TableStateBuilderTests : IntegrationTestBase
 			DbContext,
 			"SCREWYOURNEIGHBOR",
 			2,
-			startingChips: 25,
-			ante: 25);
+			25,
+			25);
 
 		setup.Game.CurrentHandNumber = 9;
 		await DbContext.SaveChangesAsync();
@@ -1294,10 +1289,7 @@ public class TableStateBuilderTests : IntegrationTestBase
 				.AsNoTracking()
 				.FirstAsync(g => g.Id == setup.Game.Id);
 
-			if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
-			{
-				break;
-			}
+			if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
 
 			var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
 			var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
@@ -1330,8 +1322,8 @@ public class TableStateBuilderTests : IntegrationTestBase
 			DbContext,
 			"SCREWYOURNEIGHBOR",
 			2,
-			startingChips: 25,
-			ante: 25);
+			25,
+			25);
 
 		await Mediator.Send(new StartHandCommand(setup.Game.Id));
 
@@ -1363,10 +1355,7 @@ public class TableStateBuilderTests : IntegrationTestBase
 				.AsNoTracking()
 				.FirstAsync(g => g.Id == setup.Game.Id);
 
-			if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
-			{
-				break;
-			}
+			if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
 
 			var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
 			var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));

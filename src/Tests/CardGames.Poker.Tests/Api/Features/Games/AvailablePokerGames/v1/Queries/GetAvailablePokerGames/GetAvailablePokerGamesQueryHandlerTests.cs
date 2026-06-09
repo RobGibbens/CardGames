@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Reflection;
@@ -145,19 +143,19 @@ public class GetAvailablePokerGamesQueryHandlerTests
 	}
 
 	[PokerGameMetadata(
-		code: "TEST_INVALID",
-		name: "Validation Failure",
-		description: "Throws when default constructor arguments are invalid.",
-		minimumNumberOfPlayers: 2,
-		maximumNumberOfPlayers: 6,
-		initialHoleCards: 2,
-		initialBoardCards: 0,
-		maxCommunityCards: 5,
-		maxPlayerCards: 2,
-		hasDrawPhase: false,
-		maxDiscards: 0,
-		wildCardRule: WildCardRule.None,
-		bettingStructure: BettingStructure.Blinds)]
+		"TEST_INVALID",
+		"Validation Failure",
+		"Throws when default constructor arguments are invalid.",
+		2,
+		6,
+		2,
+		0,
+		5,
+		2,
+		false,
+		0,
+		WildCardRule.None,
+		BettingStructure.Blinds)]
 	private sealed class GameWithFailingValidation(int seatCount) : IPokerGame
 	{
 		public int SeatCount { get; } = seatCount > 0
@@ -177,20 +175,20 @@ public class GetAvailablePokerGamesQueryHandlerTests
 	}
 
 	[PokerGameMetadata(
-		code: "TEST_NO_RULES",
-		name: "Test No Rules",
-		description: "Metadata exists but rules are not registered.",
-		minimumNumberOfPlayers: 2,
-		maximumNumberOfPlayers: 8,
-		initialHoleCards: 2,
-		initialBoardCards: 0,
-		maxCommunityCards: 5,
-		maxPlayerCards: 2,
-		hasDrawPhase: false,
-		maxDiscards: 0,
-		wildCardRule: WildCardRule.None,
-		bettingStructure: BettingStructure.Blinds,
-		imageName: "test-no-rules.png")]
+		"TEST_NO_RULES",
+		"Test No Rules",
+		"Metadata exists but rules are not registered.",
+		2,
+		8,
+		2,
+		0,
+		5,
+		2,
+		false,
+		0,
+		WildCardRule.None,
+		BettingStructure.Blinds,
+		"test-no-rules.png")]
 	private sealed class GameWithoutRegisteredRules : IPokerGame
 	{
 		public string Name => "Incorrect Name Should Not Leak";

@@ -20,15 +20,9 @@ public sealed class GetGameRulesByGameIdQueryHandler(CardsDbContext context)
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
 
-		if (string.IsNullOrEmpty(gameTypeCode))
-		{
-			return null;
-		}
+		if (string.IsNullOrEmpty(gameTypeCode)) return null;
 
-		if (!PokerGameRulesRegistry.TryGet(gameTypeCode, out var rules) || rules is null)
-		{
-			return null;
-		}
+		if (!PokerGameRulesRegistry.TryGet(gameTypeCode, out var rules) || rules is null) return null;
 
 		return GameRulesMapper.ToResponse(rules);
 	}

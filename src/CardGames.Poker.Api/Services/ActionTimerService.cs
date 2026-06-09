@@ -40,10 +40,7 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 		StopTimer(gameId);
 
 		var effectiveStartDelay = startDelay.GetValueOrDefault();
-		if (effectiveStartDelay < TimeSpan.Zero)
-		{
-			effectiveStartDelay = TimeSpan.Zero;
-		}
+		if (effectiveStartDelay < TimeSpan.Zero) effectiveStartDelay = TimeSpan.Zero;
 
 		var state = new ActionTimerState
 		{
@@ -61,10 +58,10 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 
 		// Create the timer that ticks every second
 		var timer = new Timer(
-			callback: async _ => await OnTimerTickAsync(gameId),
-			state: null,
-			dueTime: TimeSpan.FromSeconds(1),
-			period: TimeSpan.FromSeconds(1));
+			async _ => await OnTimerTickAsync(gameId),
+			null,
+			TimeSpan.FromSeconds(1),
+			TimeSpan.FromSeconds(1));
 
 		timerState.Timer = timer;
 
@@ -105,10 +102,10 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 
 		// Create the timer that ticks every second
 		var timer = new Timer(
-			callback: async _ => await OnTimerTickAsync(gameId),
-			state: null,
-			dueTime: TimeSpan.FromSeconds(1),
-			period: TimeSpan.FromSeconds(1));
+			async _ => await OnTimerTickAsync(gameId),
+			null,
+			TimeSpan.FromSeconds(1),
+			TimeSpan.FromSeconds(1));
 
 		timerState.Timer = timer;
 
@@ -150,32 +147,20 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 	/// <inheritdoc />
 	public void Dispose()
 	{
-		if (_disposed)
-		{
-			return;
-		}
+		if (_disposed) return;
 
 		_disposed = true;
 
-		foreach (var kvp in _activeTimers)
-		{
-			kvp.Value.Timer?.Dispose();
-		}
+		foreach (var kvp in _activeTimers) kvp.Value.Timer?.Dispose();
 
 		_activeTimers.Clear();
 	}
 
 	private async Task OnTimerTickAsync(Guid gameId)
 	{
-		if (_disposed)
-		{
-			return;
-		}
+		if (_disposed) return;
 
-		if (!_activeTimers.TryGetValue(gameId, out var timerState))
-		{
-			return;
-		}
+		if (!_activeTimers.TryGetValue(gameId, out var timerState)) return;
 
 		var state = timerState.State;
 		var secondsRemaining = state.SecondsRemaining;
@@ -195,7 +180,6 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 
 			// Invoke appropriate expiration callback based on timer type
 			if (state.TimerType == ActionTimerType.ChipCheckPause && timerState.OnChipCheckExpired is not null)
-			{
 				try
 				{
 					await timerState.OnChipCheckExpired(gameId);
@@ -204,9 +188,7 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 				{
 					_logger.LogError(ex, "Error in chip check timer expiration callback for game {GameId}", gameId);
 				}
-			}
 			else if (timerState.OnExpired is not null)
-			{
 				try
 				{
 					await timerState.OnExpired(gameId, state.PlayerSeatIndex);
@@ -215,7 +197,6 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 				{
 					_logger.LogError(ex, "Error in timer expiration callback for game {GameId}", gameId);
 				}
-			}
 		}
 	}
 

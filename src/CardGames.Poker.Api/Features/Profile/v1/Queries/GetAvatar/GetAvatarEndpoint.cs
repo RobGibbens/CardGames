@@ -19,9 +19,7 @@ public static class GetAvatarEndpoint
 					CancellationToken cancellationToken) =>
 				{
 					if (string.IsNullOrWhiteSpace(userId))
-					{
 						return Results.BadRequest(new { message = "User id is required." });
-					}
 
 					var avatarReference = await dbContext.Users
 						.AsNoTracking()
@@ -33,19 +31,15 @@ public static class GetAvatarEndpoint
 					{
 						var storedAvatar = await avatarStorageService.TryGetAsync(avatarReference, cancellationToken);
 						if (storedAvatar is not null)
-						{
 							return Results.File(storedAvatar.Content, storedAvatar.ContentType);
-						}
 
 						if (Uri.TryCreate(avatarReference, UriKind.Absolute, out var absoluteAvatarUri)
 						    && (string.Equals(absoluteAvatarUri.Scheme, Uri.UriSchemeHttp,
 							        StringComparison.OrdinalIgnoreCase)
 						        || string.Equals(absoluteAvatarUri.Scheme, Uri.UriSchemeHttps,
 							        StringComparison.OrdinalIgnoreCase)))
-						{
-							return Results.Redirect(absoluteAvatarUri.ToString(), permanent: false,
-								preserveMethod: false);
-						}
+							return Results.Redirect(absoluteAvatarUri.ToString(), false,
+								false);
 					}
 
 					return Results.File(DefaultAvatarBytes, "image/svg+xml");

@@ -1152,10 +1152,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 		public IGameFlowHandler GetHandler(string? gameTypeCode)
 		{
 			var code = gameTypeCode ?? "DEFAULT";
-			if (!_handlers.ContainsKey(code))
-			{
-				_handlers[code] = new FakeGameFlowHandler(code);
-			}
+			if (!_handlers.ContainsKey(code)) _handlers[code] = new FakeGameFlowHandler(code);
 
 			return _handlers[code];
 		}

@@ -8,20 +8,20 @@ namespace CardGames.Poker.Games.RedRiver;
 ///     If the river card is a heart or diamond, one additional community card is dealt.
 /// </summary>
 [PokerGameMetadata(
-	code: "REDRIVER",
-	name: "Red River",
-	description: "Texas Hold 'Em with a conditional extra board card when the river is a heart or diamond.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 2,
-	initialBoardCards: 0,
-	maxCommunityCards: 6,
-	maxPlayerCards: 2,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "redriver.png")]
+	"REDRIVER",
+	"Red River",
+	"Texas Hold 'Em with a conditional extra board card when the river is a heart or diamond.",
+	2,
+	10,
+	2,
+	0,
+	6,
+	2,
+	false,
+	0,
+	WildCardRule.None,
+	BettingStructure.Blinds,
+	"redriver.png")]
 public sealed class RedRiverGame : IPokerGame
 {
 	public string Name { get; } = "Red River";

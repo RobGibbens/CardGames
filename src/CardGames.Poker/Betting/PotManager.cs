@@ -57,20 +57,11 @@ public class PotManager
 	/// </summary>
 	public void AddContribution(string playerName, int amount)
 	{
-		if (amount < 0)
-		{
-			throw new ArgumentException("Contribution amount cannot be negative", nameof(amount));
-		}
+		if (amount < 0) throw new ArgumentException("Contribution amount cannot be negative", nameof(amount));
 
-		if (!_contributions.TryAdd(playerName, amount))
-		{
-			_contributions[playerName] += amount;
-		}
+		if (!_contributions.TryAdd(playerName, amount)) _contributions[playerName] += amount;
 
-		if (_pots.Count == 0 || !_pots[0].EligiblePlayers.Contains(playerName))
-		{
-			_pots[0].AddEligiblePlayer(playerName);
-		}
+		if (_pots.Count == 0 || !_pots[0].EligiblePlayers.Contains(playerName)) _pots[0].AddEligiblePlayer(playerName);
 
 		_pots[0].Add(amount);
 	}
@@ -91,10 +82,7 @@ public class PotManager
 	{
 		var allPlayers = players.ToList();
 		var activePlayers = allPlayers.Where(p => !p.HasFolded).ToList();
-		if (activePlayers.Count < 2)
-		{
-			return;
-		}
+		if (activePlayers.Count < 2) return;
 
 		// Get all distinct contribution levels from all-in players
 		var allInLevels = activePlayers
@@ -105,10 +93,7 @@ public class PotManager
 			.OrderBy(c => c)
 			.ToList();
 
-		if (allInLevels.Count == 0)
-		{
-			return; // No side pots needed
-		}
+		if (allInLevels.Count == 0) return; // No side pots needed
 
 		// Recalculate pots from scratch
 		var totalAmount = _contributions.Values.Sum();
@@ -129,18 +114,12 @@ public class PotManager
 					if (contributionToThisPot > 0)
 					{
 						potAmount += contributionToThisPot;
-						if (!player.HasFolded)
-						{
-							eligiblePlayers.Add(player.Name);
-						}
+						if (!player.HasFolded) eligiblePlayers.Add(player.Name);
 					}
 				}
 			}
 
-			if (potAmount > 0)
-			{
-				_pots.Add(new Pot(potAmount, eligiblePlayers));
-			}
+			if (potAmount > 0) _pots.Add(new Pot(potAmount, eligiblePlayers));
 
 			previousLevel = level;
 		}
@@ -159,29 +138,19 @@ public class PotManager
 				{
 					var contributionToFinal = contribution - previousLevel;
 					finalPotAmount += contributionToFinal;
-					if (!player.HasFolded)
-					{
-						eligibleForFinal.Add(player.Name);
-					}
+					if (!player.HasFolded) eligibleForFinal.Add(player.Name);
 				}
 			}
 
-			if (finalPotAmount > 0)
-			{
-				_pots.Add(new Pot(finalPotAmount, eligibleForFinal));
-			}
+			if (finalPotAmount > 0) _pots.Add(new Pot(finalPotAmount, eligibleForFinal));
 		}
 
 		// Ensure we haven't lost any money
 		var calculatedTotal = _pots.Sum(p => p.Amount);
 		if (calculatedTotal != totalAmount)
-		{
 			// If there's a discrepancy, adjust the last pot
 			if (_pots.Count > 0)
-			{
 				_pots[^1].Add(totalAmount - calculatedTotal);
-			}
-		}
 	}
 
 	/// <summary>
@@ -199,10 +168,7 @@ public class PotManager
 	/// </summary>
 	public void RemovePlayerEligibility(string playerName)
 	{
-		foreach (var pot in _pots)
-		{
-			pot.EligiblePlayers.Remove(playerName);
-		}
+		foreach (var pot in _pots) pot.EligiblePlayers.Remove(playerName);
 	}
 
 	/// <summary>
@@ -214,16 +180,10 @@ public class PotManager
 
 		foreach (var pot in _pots)
 		{
-			if (pot.Amount == 0 || pot.EligiblePlayers.Count == 0)
-			{
-				continue;
-			}
+			if (pot.Amount == 0 || pot.EligiblePlayers.Count == 0) continue;
 
 			var winners = determineWinners(pot.EligiblePlayers).ToList();
-			if (winners.Count == 0)
-			{
-				continue;
-			}
+			if (winners.Count == 0) continue;
 
 			var share = pot.Amount / winners.Count;
 			var remainder = pot.Amount % winners.Count;
@@ -238,13 +198,9 @@ public class PotManager
 				}
 
 				if (payouts.TryGetValue(winner, out var existing))
-				{
 					payouts[winner] = existing + payout;
-				}
 				else
-				{
 					payouts[winner] = payout;
-				}
 			}
 		}
 
@@ -273,10 +229,7 @@ public class PotManager
 
 		foreach (var pot in _pots)
 		{
-			if (pot.Amount == 0 || pot.EligiblePlayers.Count == 0)
-			{
-				continue;
-			}
+			if (pot.Amount == 0 || pot.EligiblePlayers.Count == 0) continue;
 
 			// Split pot into two halves (high hand pool gets the odd chip)
 			var sevensPool = pot.Amount / 2;
@@ -320,10 +273,7 @@ public class PotManager
 					AddToPayout(result.SevensPayouts, winner, payout);
 					AddToPayout(result.TotalPayouts, winner, payout);
 
-					if (!result.SevensWinners.Contains(winner))
-					{
-						result.SevensWinners.Add(winner);
-					}
+					if (!result.SevensWinners.Contains(winner)) result.SevensWinners.Add(winner);
 				}
 			}
 
@@ -345,10 +295,7 @@ public class PotManager
 					AddToPayout(result.HighHandPayouts, winner, payout);
 					AddToPayout(result.TotalPayouts, winner, payout);
 
-					if (!result.HighHandWinners.Contains(winner))
-					{
-						result.HighHandWinners.Add(winner);
-					}
+					if (!result.HighHandWinners.Contains(winner)) result.HighHandWinners.Add(winner);
 				}
 			}
 		}
@@ -359,13 +306,9 @@ public class PotManager
 	private static void AddToPayout(Dictionary<string, int> payouts, string player, int amount)
 	{
 		if (payouts.TryGetValue(player, out var existing))
-		{
 			payouts[player] = existing + amount;
-		}
 		else
-		{
 			payouts[player] = amount;
-		}
 	}
 
 	/// <summary>

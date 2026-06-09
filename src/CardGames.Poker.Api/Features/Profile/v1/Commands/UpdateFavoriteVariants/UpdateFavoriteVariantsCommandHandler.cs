@@ -23,10 +23,8 @@ public sealed class UpdateFavoriteVariantsCommandHandler(
 		UpdateFavoriteVariantsCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new UpdateFavoriteVariantsError(UpdateFavoriteVariantsErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var normalizedFavoriteVariantCodes = NormalizeFavoriteVariantCodes(request.FavoriteVariantCodes);
 		var userId = currentUserService.UserId;
@@ -43,9 +41,7 @@ public sealed class UpdateFavoriteVariantsCommandHandler(
 			var resolvedUserId = await ResolveLocalUserIdAsync(cancellationToken);
 			if (string.IsNullOrWhiteSpace(resolvedUserId)
 			    || string.Equals(resolvedUserId, userId, StringComparison.Ordinal))
-			{
 				throw;
-			}
 
 			context.ChangeTracker.Clear();
 			preferences = await UpsertAsync(resolvedUserId, normalizedFavoriteVariantCodes, now, cancellationToken);
@@ -94,10 +90,7 @@ public sealed class UpdateFavoriteVariantsCommandHandler(
 
 	private static IReadOnlyList<string> NormalizeFavoriteVariantCodes(IEnumerable<string>? favoriteVariantCodes)
 	{
-		if (favoriteVariantCodes is null)
-		{
-			return [];
-		}
+		if (favoriteVariantCodes is null) return [];
 
 		return favoriteVariantCodes
 			.Where(code => !string.IsNullOrWhiteSpace(code))
@@ -123,10 +116,7 @@ public sealed class UpdateFavoriteVariantsCommandHandler(
 				.Select(u => u.Id)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (!string.IsNullOrWhiteSpace(byEmail))
-			{
-				return byEmail;
-			}
+			if (!string.IsNullOrWhiteSpace(byEmail)) return byEmail;
 		}
 
 		if (!string.IsNullOrWhiteSpace(currentUserService.UserName))
@@ -138,10 +128,7 @@ public sealed class UpdateFavoriteVariantsCommandHandler(
 				.Select(u => u.Id)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (!string.IsNullOrWhiteSpace(byUserName))
-			{
-				return byUserName;
-			}
+			if (!string.IsNullOrWhiteSpace(byUserName)) return byUserName;
 		}
 
 		return null;

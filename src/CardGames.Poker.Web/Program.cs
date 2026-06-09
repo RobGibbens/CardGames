@@ -75,8 +75,8 @@ builder.Services.ConfigureHttpClientDefaults(http =>
 
 builder.Services
 	.AddRefitClient<IFiveCardDrawApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "fiveCardDrawApi")
+		_ => new RefitSettings(),
+		"fiveCardDrawApi")
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https+http://api");
@@ -86,8 +86,8 @@ builder.Services
 
 builder.Services
 	.AddRefitClient<ISevenCardStudApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "sevenCardStudApi")
+		_ => new RefitSettings(),
+		"sevenCardStudApi")
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https+http://api");
@@ -97,8 +97,8 @@ builder.Services
 
 builder.Services
 	.AddRefitClient<IPairPressureApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "pairPressureApi")
+		_ => new RefitSettings(),
+		"pairPressureApi")
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https+http://api");
@@ -108,8 +108,8 @@ builder.Services
 
 builder.Services
 	.AddRefitClient<ITollboothApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "tollboothApi")
+		_ => new RefitSettings(),
+		"tollboothApi")
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https+http://api");
@@ -119,8 +119,8 @@ builder.Services
 
 builder.Services
 	.AddRefitClient<IGoodBadUglyApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "goodBadUglyApi")
+		_ => new RefitSettings(),
+		"goodBadUglyApi")
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https+http://api");
@@ -130,8 +130,8 @@ builder.Services
 
 builder.Services
 	.AddRefitClient<IBaseballApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "baseballApi")
+		_ => new RefitSettings(),
+		"baseballApi")
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https+http://api");
@@ -141,8 +141,8 @@ builder.Services
 
 builder.Services
 	.AddRefitClient<IFollowTheQueenApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "followTheQueenApi")
+		_ => new RefitSettings(),
+		"followTheQueenApi")
 	.ConfigureHttpClient(c =>
 	{
 		c.BaseAddress = new Uri("https+http://api");
@@ -152,36 +152,36 @@ builder.Services
 
 builder.Services
 	.AddRefitClient<ITwosJacksManWithTheAxeApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "twosJacksManWithTheAxeApi")
+		_ => new RefitSettings(),
+		"twosJacksManWithTheAxeApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IKingsAndLowsApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "kingsAndLowsApi")
+		_ => new RefitSettings(),
+		"kingsAndLowsApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IHoldEmApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "holdEmApi")
+		_ => new RefitSettings(),
+		"holdEmApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IScrewYourNeighborApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "screwYourNeighborApi")
+		_ => new RefitSettings(),
+		"screwYourNeighborApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IInBetweenApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "inBetweenApi")
+		_ => new RefitSettings(),
+		"inBetweenApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
@@ -190,35 +190,35 @@ builder.Services
 
 builder.Services
 	.AddRefitClient<IAvailablePokerGamesApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "availablePokerGamesApi")
+		_ => new RefitSettings(),
+		"availablePokerGamesApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IActiveGamesApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "activeGamesApi")
+		_ => new RefitSettings(),
+		"activeGamesApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IGamesApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "gamesApi")
+		_ => new RefitSettings(),
+		"gamesApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IProfileApi>(
-		settingsAction: _ => new RefitSettings(),
-		httpClientName: "profileApi")
+		_ => new RefitSettings(),
+		"profileApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<ILeaguesApi>(
-		settingsAction: _ => new RefitSettings
+		_ => new RefitSettings
 		{
 			ContentSerializer = new SystemTextJsonContentSerializer(
 				new JsonSerializerOptions(JsonSerializerDefaults.Web)
@@ -229,7 +229,7 @@ builder.Services
 					}
 				})
 		},
-		httpClientName: "leaguesApi")
+		"leaguesApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
@@ -317,9 +317,7 @@ builder.Services.AddAuthentication(options =>
 				var fullName = string.Join(" ", new[] { givenName, familyName }.Where(s => !string.IsNullOrEmpty(s)));
 
 				if (!string.IsNullOrEmpty(fullName) && context.Principal?.Identity is ClaimsIdentity identity)
-				{
 					identity.AddClaim(new Claim(ClaimTypes.Name, fullName));
-				}
 			}
 		};
 	})
@@ -369,7 +367,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-	app.UseExceptionHandler("/Error", createScopeForErrors: true);
+	app.UseExceptionHandler("/Error", true);
 	// The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
 	app.UseHsts();
 }

@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -25,7 +23,7 @@ public class SelectShowcaseCommandHandlerTests
 		var sut = new SelectShowcaseCommandHandler(context);
 
 		var result =
-			await sut.Handle(new SelectShowcaseCommand(Guid.NewGuid(), ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+			await sut.Handle(new SelectShowcaseCommand(Guid.NewGuid(), 0, 0),
 				CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -36,10 +34,10 @@ public class SelectShowcaseCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInDrawPhase_ReturnsNotInShowcasePhase()
 	{
 		await using var context = CreateContext();
-		var game = await SeedBobBarkerGameAsync(context, currentPhase: nameof(Phases.PreFlop));
+		var game = await SeedBobBarkerGameAsync(context, nameof(Phases.PreFlop));
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, 0, 0),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -53,7 +51,7 @@ public class SelectShowcaseCommandHandlerTests
 		var game = await SeedBobBarkerGameAsync(context);
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 99),
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, 0, 99),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -71,7 +69,7 @@ public class SelectShowcaseCommandHandlerTests
 
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, 0, 0),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -85,7 +83,7 @@ public class SelectShowcaseCommandHandlerTests
 		var game = await SeedBobBarkerGameAsync(context, cardsPerPlayer: 4);
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, 0, 0),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -99,7 +97,7 @@ public class SelectShowcaseCommandHandlerTests
 		var game = await SeedBobBarkerGameAsync(context);
 		var sut = new SelectShowcaseCommandHandler(context);
 
-		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, ShowcaseCardIndex: 5, PlayerSeatIndex: 0),
+		var result = await sut.Handle(new SelectShowcaseCommand(game.Id, 5, 0),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -134,10 +132,10 @@ public class SelectShowcaseCommandHandlerTests
 		var staleSut = new SelectShowcaseCommandHandler(staleContext);
 
 		var firstResult =
-			await freshSut.Handle(new SelectShowcaseCommand(gameId, ShowcaseCardIndex: 0, PlayerSeatIndex: 0),
+			await freshSut.Handle(new SelectShowcaseCommand(gameId, 0, 0),
 				CancellationToken.None);
 		var secondResult =
-			await staleSut.Handle(new SelectShowcaseCommand(gameId, ShowcaseCardIndex: 1, PlayerSeatIndex: 1),
+			await staleSut.Handle(new SelectShowcaseCommand(gameId, 1, 1),
 				CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
@@ -215,8 +213,8 @@ public class SelectShowcaseCommandHandlerTests
 		var firstPlayer = CreatePlayer("Alice", now);
 		var secondPlayer = CreatePlayer("Bob", now);
 
-		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, seatPosition: 0, now);
-		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, seatPosition: 1, now);
+		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, 0, now);
+		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, 1, now);
 
 		context.Games.Add(game);
 		context.Players.AddRange(firstPlayer, secondPlayer);

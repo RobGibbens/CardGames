@@ -132,8 +132,8 @@ public class DashboardHandOddsCalculatorTests
 			deadCards,
 			currentFaceUpCardsInOrder,
 			pairPressurePlayers,
-			heroSeatIndex: 0,
-			dealerSeatIndex: 2);
+			0,
+			2);
 
 		tableAwareResult.Should().NotBeNull();
 		tableAwareResult!.HandTypeProbabilities.Should().ContainKey(HandType.HighCard);

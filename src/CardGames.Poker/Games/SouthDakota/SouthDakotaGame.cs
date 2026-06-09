@@ -4,21 +4,20 @@ using CardGames.Poker.Games.GameFlow;
 namespace CardGames.Poker.Games.SouthDakota;
 
 [PokerGameMetadata(
-	code: "SOUTHDAKOTA",
-	name: "South Dakota",
-	description:
+	"SOUTHDAKOTA",
+	"South Dakota",
 	"A Nebraska-style Hold 'Em variant where players are dealt five hole cards, must use exactly three hole cards and two community cards, and play Flop (2 cards) and Turn with no River.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 5,
-	initialBoardCards: 0,
-	maxCommunityCards: 4,
-	maxPlayerCards: 5,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "southdakota.png")]
+	2,
+	10,
+	5,
+	0,
+	4,
+	5,
+	false,
+	0,
+	WildCardRule.None,
+	BettingStructure.Blinds,
+	"southdakota.png")]
 public sealed class SouthDakotaGame : IPokerGame
 {
 	public string Name { get; } = "South Dakota";

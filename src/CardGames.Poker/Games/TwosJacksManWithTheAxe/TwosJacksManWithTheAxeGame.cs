@@ -13,21 +13,20 @@ namespace CardGames.Poker.Games.TwosJacksManWithTheAxe;
 ///     Orchestrates a Twos, Jacks, Man with the Axe poker game with betting.
 /// </summary>
 [PokerGameMetadata(
-	code: "TWOSJACKSMANWITHTHEAXE",
-	name: "Twos, Jacks, Man with the Axe",
-	description:
+	"TWOSJACKSMANWITHTHEAXE",
+	"Twos, Jacks, Man with the Axe",
 	"A five-card draw variant where all 2s, all Jacks, and the King of Diamonds (“Man with the Axe”) are wild, creating big hands and frequent action. Optionally, a player holding a natural pair of 7s can claim half the pot.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 6,
-	initialHoleCards: 5,
-	initialBoardCards: 0,
-	maxCommunityCards: 0,
-	maxPlayerCards: 5,
-	hasDrawPhase: true,
-	maxDiscards: 3,
-	wildCardRule: WildCardRule.FixedRanks,
-	bettingStructure: BettingStructure.Ante,
-	imageName: "2sJacksManWithTheAxe.png")]
+	2,
+	6,
+	5,
+	0,
+	0,
+	5,
+	true,
+	3,
+	WildCardRule.FixedRanks,
+	BettingStructure.Ante,
+	"2sJacksManWithTheAxe.png")]
 public class TwosJacksManWithTheAxeGame : IPokerGame
 {
 	private readonly FrenchDeckDealer _dealer;
@@ -43,8 +42,8 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	public TwosJacksManWithTheAxeGame()
 		: this(
 			new[] { ("P1", 100), ("P2", 100) },
-			ante: 0,
-			minBet: 0)
+			0,
+			0)
 	{
 	}
 
@@ -69,16 +68,12 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException(
 				$"Twos, Jacks, Man with the Axe requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException(
 				$"Twos, Jacks, Man with the Axe supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new TwosJacksManWithTheAxeGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -217,9 +212,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	public List<BettingAction> CollectAntes()
 	{
 		if (CurrentPhase != Phases.CollectingAntes)
-		{
 			throw new InvalidOperationException("Cannot collect antes in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -263,26 +256,18 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	/// </remarks>
 	public void DealHands()
 	{
-		if (CurrentPhase != Phases.Dealing)
-		{
-			throw new InvalidOperationException("Cannot deal in current phase");
-		}
+		if (CurrentPhase != Phases.Dealing) throw new InvalidOperationException("Cannot deal in current phase");
 
 		// Deal 5 cards to each player
 		foreach (var gamePlayer in _gamePlayers)
-		{
 			if (!gamePlayer.Player.HasFolded)
 			{
 				var cards = _dealer.DealCards(5);
 				gamePlayer.SetHand(cards);
 			}
-		}
 
 		// Reset current bets before first betting round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		CurrentPhase = Phases.FirstBettingRound;
 		StartBettingRound();
@@ -310,10 +295,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	/// </remarks>
 	public AvailableActions GetAvailableActions()
 	{
-		if (CurrentBettingRound == null)
-		{
-			return null;
-		}
+		if (CurrentBettingRound == null) return null;
 
 		return CurrentBettingRound.GetAvailableActions();
 	}
@@ -365,20 +347,15 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -394,20 +371,14 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 		}
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		switch (CurrentPhase)
 		{
 			case Phases.FirstBettingRound:
 				// Calculate side pots if any players are all-in
 				var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
-				if (hasAllIn)
-				{
-					PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-				}
+				if (hasAllIn) PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 
 				// Check if all remaining players are all-in (skip draw phase)
 				var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
@@ -437,10 +408,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 		var count = 0;
 		while (count < _gamePlayers.Count)
 		{
-			if (!_gamePlayers[index].Player.HasFolded && !_gamePlayers[index].Player.IsAllIn)
-			{
-				return index;
-			}
+			if (!_gamePlayers[index].Player.HasFolded && !_gamePlayers[index].Player.IsAllIn) return index;
 
 			index = (index + 1) % _gamePlayers.Count;
 			count++;
@@ -463,10 +431,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	/// </remarks>
 	public TwosJacksManWithTheAxeGamePlayer GetCurrentDrawPlayer()
 	{
-		if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0)
-		{
-			return null;
-		}
+		if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0) return null;
 
 		return _gamePlayers[_currentDrawPlayerIndex];
 	}
@@ -504,13 +469,11 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	public DrawResult ProcessDraw(IReadOnlyCollection<int> discardIndices)
 	{
 		if (CurrentPhase != Phases.DrawPhase)
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Not in draw phase"
 			};
-		}
 
 		var gamePlayer = _gamePlayers[_currentDrawPlayerIndex];
 
@@ -519,7 +482,6 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 		var maxDiscards = hasAce ? 4 : 3;
 
 		if (discardIndices.Count > maxDiscards)
-		{
 			return new DrawResult
 			{
 				Success = false,
@@ -527,16 +489,13 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 					? "Cannot discard more than 4 cards"
 					: "Cannot discard more than 3 cards"
 			};
-		}
 
 		if (discardIndices.Any(i => i < 0 || i >= 5))
-		{
 			return new DrawResult
 			{
 				Success = false,
 				ErrorMessage = "Invalid card index (must be 0-4)"
 			};
-		}
 
 		// Deal new cards
 		var newCards = _dealer.DealCards(discardIndices.Count);
@@ -571,10 +530,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 			var player = _gamePlayers[_currentDrawPlayerIndex].Player;
 
 			// Check if this player can act and hasn't drawn yet
-			if (!player.HasFolded && !player.IsAllIn && !_playersWhoHaveDrawn.Contains(_currentDrawPlayerIndex))
-			{
-				return;
-			}
+			if (!player.HasFolded && !player.IsAllIn && !_playersWhoHaveDrawn.Contains(_currentDrawPlayerIndex)) return;
 
 			_currentDrawPlayerIndex = (_currentDrawPlayerIndex + 1) % _gamePlayers.Count;
 			checkedCount++;
@@ -603,10 +559,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	/// </remarks>
 	public void CompleteDrawPhase()
 	{
-		if (CurrentPhase == Phases.DrawPhase)
-		{
-			StartSecondBettingRound();
-		}
+		if (CurrentPhase == Phases.DrawPhase) StartSecondBettingRound();
 	}
 
 	/// <summary>
@@ -648,13 +601,11 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 	public ShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new ShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 
@@ -697,14 +648,11 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 
 		// Build ordered player list for deterministic remainder distribution (dealer-left first)
 		var orderedPlayers = new List<string>();
-		for (int i = 1; i <= _gamePlayers.Count; i++)
+		for (var i = 1; i <= _gamePlayers.Count; i++)
 		{
 			var idx = (DealerPosition + i) % _gamePlayers.Count;
 			var player = _gamePlayers[idx];
-			if (!player.Player.HasFolded)
-			{
-				orderedPlayers.Add(player.Player.Name);
-			}
+			if (!player.Player.HasFolded) orderedPlayers.Add(player.Player.Name);
 		}
 
 		// Use split pot logic for 7s half-pot rule
@@ -723,10 +671,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 					.Where(kvp => eligiblePlayers.Contains(kvp.Key))
 					.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.hand);
 
-				if (eligibleHands.Count == 0)
-				{
-					return Enumerable.Empty<string>();
-				}
+				if (eligibleHands.Count == 0) return Enumerable.Empty<string>();
 
 				var maxStrength = eligibleHands.Values.Max(h => h.Strength);
 				return eligibleHands.Where(kvp => kvp.Value.Strength == maxStrength).Select(kvp => kvp.Key);

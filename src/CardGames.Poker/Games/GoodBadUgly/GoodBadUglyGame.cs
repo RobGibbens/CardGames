@@ -11,21 +11,20 @@ using CardGames.Poker.Hands.WildCards;
 namespace CardGames.Poker.Games.GoodBadUgly;
 
 [PokerGameMetadata(
-	code: "GOODBADUGLY",
-	name: "The Good, the Bad, and the Ugly",
-	description:
+	"GOODBADUGLY",
+	"The Good, the Bad, and the Ugly",
 	"4 hole cards plus 3 community cards. The Good sets wilds, The Bad discards matching cards, and The Ugly creates dead hands that can still bet the final round.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 4,
-	initialBoardCards: 0,
-	maxCommunityCards: 3,
-	maxPlayerCards: 4,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.Dynamic,
-	bettingStructure: BettingStructure.Ante,
-	imageName: "goodbadugly.png")]
+	2,
+	10,
+	4,
+	0,
+	3,
+	4,
+	false,
+	0,
+	WildCardRule.Dynamic,
+	BettingStructure.Ante,
+	"goodbadugly.png")]
 public class GoodBadUglyGame : IPokerGame
 {
 	private readonly FrenchDeckDealer _dealer;
@@ -36,7 +35,7 @@ public class GoodBadUglyGame : IPokerGame
 	private readonly List<Card> _tableCards = new();
 
 	public GoodBadUglyGame()
-		: this(new[] { ("P1", 100), ("P2", 100) }, ante: 0, bringIn: 0, smallBet: 0, bigBet: 0)
+		: this(new[] { ("P1", 100), ("P2", 100) }, 0, 0, 0, 0)
 	{
 	}
 
@@ -50,16 +49,12 @@ public class GoodBadUglyGame : IPokerGame
 	{
 		var playerList = players.ToList();
 		if (playerList.Count < MinimumNumberOfPlayers)
-		{
 			throw new ArgumentException(
 				$"The Good, the Bad, and the Ugly requires at least {MinimumNumberOfPlayers} players");
-		}
 
 		if (playerList.Count > MaximumNumberOfPlayers)
-		{
 			throw new ArgumentException(
 				$"The Good, the Bad, and the Ugly supports at most {MaximumNumberOfPlayers} players");
-		}
 
 		_gamePlayers = playerList
 			.Select(p => new GoodBadUglyGamePlayer(new PokerPlayer(p.name, p.chips)))
@@ -139,9 +134,7 @@ public class GoodBadUglyGame : IPokerGame
 	public List<BettingAction> CollectAntes()
 	{
 		if (CurrentPhase != Phases.CollectingAntes)
-		{
 			throw new InvalidOperationException("Cannot collect antes in current phase");
-		}
 
 		var actions = new List<BettingAction>();
 
@@ -165,25 +158,14 @@ public class GoodBadUglyGame : IPokerGame
 	public void DealThirdStreet()
 	{
 		if (CurrentPhase != Phases.ThirdStreet)
-		{
 			throw new InvalidOperationException("Cannot deal third street in current phase");
-		}
 
 		foreach (var gamePlayer in _gamePlayers)
-		{
 			if (!gamePlayer.Player.HasFolded)
-			{
 				for (var i = 0; i < 4; i++)
-				{
 					gamePlayer.AddHoleCard(_dealer.DealCard());
-				}
-			}
-		}
 
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 	}
 
 	public BettingAction PostBringIn()
@@ -197,8 +179,8 @@ public class GoodBadUglyGame : IPokerGame
 		var startPosition = FindFirstActivePlayerAfterDealer();
 		var minBet = CurrentPhase is Phases.ThirdStreet or Phases.FourthStreet ? SmallBet : BigBet;
 
-		CurrentBettingRound = new BettingRound(activePlayers, PotManager, startPosition, minBet, initialBet: 0,
-			forcedBetPlayerIndex: -1);
+		CurrentBettingRound = new BettingRound(activePlayers, PotManager, startPosition, minBet, 0,
+			-1);
 	}
 
 	public AvailableActions GetAvailableActions()
@@ -219,20 +201,15 @@ public class GoodBadUglyGame : IPokerGame
 	public BettingRoundResult ProcessBettingAction(BettingActionType actionType, int amount = 0)
 	{
 		if (CurrentBettingRound == null)
-		{
 			return new BettingRoundResult
 			{
 				Success = false,
 				ErrorMessage = "No active betting round"
 			};
-		}
 
 		var result = CurrentBettingRound.ProcessAction(actionType, amount);
 
-		if (result.RoundComplete)
-		{
-			AdvanceToNextPhase();
-		}
+		if (result.RoundComplete) AdvanceToNextPhase();
 
 		return result;
 	}
@@ -247,10 +224,7 @@ public class GoodBadUglyGame : IPokerGame
 		}
 
 		var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
-		if (hasAllIn)
-		{
-			PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-		}
+		if (hasAllIn) PotManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
 
 		var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
 		if (activePlayersWhoCanAct == 0)
@@ -259,10 +233,7 @@ public class GoodBadUglyGame : IPokerGame
 			return;
 		}
 
-		foreach (var gamePlayer in _gamePlayers)
-		{
-			gamePlayer.Player.ResetCurrentBet();
-		}
+		foreach (var gamePlayer in _gamePlayers) gamePlayer.Player.ResetCurrentBet();
 
 		CurrentPhase = CurrentPhase switch
 		{
@@ -282,9 +253,7 @@ public class GoodBadUglyGame : IPokerGame
 	public Card RevealTheGood()
 	{
 		if (CurrentPhase != Phases.RevealTheGood)
-		{
 			throw new InvalidOperationException("Cannot reveal The Good in current phase");
-		}
 
 		var goodCard = _tableCards[0];
 		WildRank = goodCard.Value;
@@ -295,9 +264,7 @@ public class GoodBadUglyGame : IPokerGame
 	public (Card badCard, Dictionary<string, List<Card>> discards) RevealTheBad()
 	{
 		if (CurrentPhase != Phases.RevealTheBad)
-		{
 			throw new InvalidOperationException("Cannot reveal The Bad in current phase");
-		}
 
 		var badCard = _tableCards[1];
 		DiscardRank = badCard.Value;
@@ -305,16 +272,11 @@ public class GoodBadUglyGame : IPokerGame
 		var discards = new Dictionary<string, List<Card>>();
 
 		foreach (var gamePlayer in _gamePlayers)
-		{
 			if (!gamePlayer.Player.HasFolded)
 			{
 				var removed = gamePlayer.RemoveMatchingCards(badCard.Value);
-				if (removed.Count > 0)
-				{
-					discards[gamePlayer.Player.Name] = removed;
-				}
+				if (removed.Count > 0) discards[gamePlayer.Player.Name] = removed;
 			}
-		}
 
 		CurrentPhase = Phases.FifthStreet;
 		return (badCard, discards);
@@ -323,9 +285,7 @@ public class GoodBadUglyGame : IPokerGame
 	public (Card uglyCard, List<string> eliminatedPlayers) RevealTheUgly()
 	{
 		if (CurrentPhase != Phases.RevealTheUgly)
-		{
 			throw new InvalidOperationException("Cannot reveal The Ugly in current phase");
-		}
 
 		var uglyCard = _tableCards[2];
 		EliminationRank = uglyCard.Value;
@@ -333,13 +293,11 @@ public class GoodBadUglyGame : IPokerGame
 		var eliminated = new List<string>();
 
 		foreach (var gamePlayer in _gamePlayers)
-		{
 			if (!gamePlayer.Player.HasFolded && gamePlayer.HasMatchingCard(uglyCard.Value))
 			{
 				gamePlayer.EliminateByUgly();
 				eliminated.Add(gamePlayer.Player.Name);
 			}
-		}
 
 		_eliminatedPlayers.AddRange(eliminated);
 		CurrentPhase = Phases.SixthStreet;
@@ -350,13 +308,11 @@ public class GoodBadUglyGame : IPokerGame
 	public GoodBadUglyShowdownResult PerformShowdown()
 	{
 		if (CurrentPhase != Phases.Showdown)
-		{
 			return new GoodBadUglyShowdownResult
 			{
 				Success = false,
 				ErrorMessage = "Not in showdown phase"
 			};
-		}
 
 		var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 
@@ -408,10 +364,7 @@ public class GoodBadUglyGame : IPokerGame
 			var remainder = totalPot % playersInHand.Count;
 
 			payouts = playersInHand.ToDictionary(gp => gp.Player.Name, _ => splitAmount);
-			if (remainder > 0)
-			{
-				payouts[playersInHand[0].Player.Name] += remainder;
-			}
+			if (remainder > 0) payouts[playersInHand[0].Player.Name] += remainder;
 		}
 		else
 		{
@@ -456,10 +409,7 @@ public class GoodBadUglyGame : IPokerGame
 		{
 			var index = (DealerPosition + offset) % playerCount;
 			var player = _gamePlayers[index].Player;
-			if (!player.HasFolded && !player.IsAllIn)
-			{
-				return index;
-			}
+			if (!player.HasFolded && !player.IsAllIn) return index;
 		}
 
 		return (DealerPosition + 1) % playerCount;

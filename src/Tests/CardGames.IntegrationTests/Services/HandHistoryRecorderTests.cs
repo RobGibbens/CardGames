@@ -11,7 +11,7 @@ public class HandHistoryRecorderTests : IDisposable
 	public HandHistoryRecorderTests()
 	{
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
-			.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+			.UseInMemoryDatabase(Guid.NewGuid().ToString())
 			.Options;
 
 		_context = new CardsDbContext(options);
@@ -77,7 +77,7 @@ public class HandHistoryRecorderTests : IDisposable
 	{
 		// Arrange
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
-			.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+			.UseInMemoryDatabase(Guid.NewGuid().ToString())
 			.Options;
 
 		// Use a DbUpdateException that mimics a unique constraint violation
@@ -106,7 +106,7 @@ public class HandHistoryRecorderTests : IDisposable
 	{
 		// Arrange
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
-			.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+			.UseInMemoryDatabase(Guid.NewGuid().ToString())
 			.Options;
 
 		var generalEx = new Exception("Database connection lost");

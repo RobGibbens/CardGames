@@ -36,55 +36,45 @@ public class KeepOrTradeCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new KeepOrTradeError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = KeepOrTradeErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in KeepOrTrade phase
 		if (!string.Equals(game.CurrentPhase, nameof(Phases.KeepOrTrade), StringComparison.OrdinalIgnoreCase))
-		{
 			return new KeepOrTradeError
 			{
 				Message = $"Cannot make keep/trade decision. Game is in '{game.CurrentPhase}' phase.",
 				Code = KeepOrTradeErrorCode.InvalidPhase
 			};
-		}
 
 		// 3. Find the player
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
-		{
 			return new KeepOrTradeError
 			{
 				Message = $"Player with ID '{command.PlayerId}' is not in this game.",
 				Code = KeepOrTradeErrorCode.PlayerNotFound
 			};
-		}
 
 		// 4. Validate it's this player's turn
 		if (gamePlayer.SeatPosition != game.CurrentPlayerIndex)
-		{
 			return new KeepOrTradeError
 			{
 				Message = "It's not this player's turn.",
 				Code = KeepOrTradeErrorCode.NotPlayersTurn
 			};
-		}
 
 		// 5. Parse decision
 		if (!string.Equals(command.Decision, "Keep", StringComparison.OrdinalIgnoreCase) &&
 		    !string.Equals(command.Decision, "Trade", StringComparison.OrdinalIgnoreCase))
-		{
 			return new KeepOrTradeError
 			{
 				Message = $"Invalid decision '{command.Decision}'. Must be 'Keep' or 'Trade'.",
 				Code = KeepOrTradeErrorCode.InvalidDecision
 			};
-		}
 
 		var isKeep = string.Equals(command.Decision, "Keep", StringComparison.OrdinalIgnoreCase);
 		var didTrade = false;
@@ -140,13 +130,11 @@ public class KeepOrTradeCommandHandler(
 				cancellationToken);
 
 			if (!showdownResult.IsSuccess)
-			{
 				return new KeepOrTradeError
 				{
 					Message = showdownResult.ErrorMessage ?? "Failed to resolve Screw Your Neighbor showdown.",
 					Code = KeepOrTradeErrorCode.InvalidPhase
 				};
-			}
 
 			var postShowdownPhase = await flowHandler.ProcessPostShowdownAsync(
 				context,
@@ -221,10 +209,7 @@ public class KeepOrTradeCommandHandler(
 
 	private static bool ShouldSettleTerminalScrewYourNeighborVariant(Game game, ShowdownResult showdownResult)
 	{
-		if (game.Status == GameStatus.Completed)
-		{
-			return true;
-		}
+		if (game.Status == GameStatus.Completed) return true;
 
 		return game.IsDealersChoice &&
 		       string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
@@ -266,10 +251,7 @@ public class KeepOrTradeCommandHandler(
 					                      gc.HandNumber == game.CurrentHandNumber &&
 					                      gc.Location == CardLocation.Hand &&
 					                      !gc.IsDiscarded);
-				if (targetCard is not null)
-				{
-					return (target, targetCard);
-				}
+				if (targetCard is not null) return (target, targetCard);
 			}
 
 			searchSeat = (searchSeat + 1) % totalSeats;
@@ -368,10 +350,8 @@ public class KeepOrTradeCommandHandler(
 				// In SYN, each player acts exactly once, moving from left of dealer clockwise to dealer
 				// We need to check if we've gone all the way around back to the first player
 				if (HasPlayerAlreadyActed(game, nextPlayer, currentPlayer))
-				{
 					// All players have acted — transition to Reveal
 					return (nameof(Phases.Reveal), -1);
-				}
 
 				// Check if this player can be auto-skipped
 				var nextPlayerCard = game.GameCards
@@ -442,10 +422,8 @@ public class KeepOrTradeCommandHandler(
 		if (firstActorSeat == -1) return true;
 
 		// If the candidate is the first actor, and someone else just acted, then we've gone around
-		if (candidatePlayer.SeatPosition == firstActorSeat && justActedPlayer.SeatPosition != firstActorSeat)
-		{
-			return true;
-		}
+		if (candidatePlayer.SeatPosition == firstActorSeat &&
+		    justActedPlayer.SeatPosition != firstActorSeat) return true;
 
 		// Check if candidate comes before justActed in the rotation order (meaning they already acted)
 		var candidateRelative = (candidatePlayer.SeatPosition - firstActorSeat + totalSeats) % totalSeats;
@@ -480,10 +458,7 @@ public class KeepOrTradeCommandHandler(
 					                      gc.HandNumber == game.CurrentHandNumber &&
 					                      gc.Location == CardLocation.Hand &&
 					                      !gc.IsDiscarded);
-				if (targetCard is not null)
-				{
-					return (target, targetCard);
-				}
+				if (targetCard is not null) return (target, targetCard);
 			}
 
 			searchSeat = (searchSeat + 1) % totalSeats;

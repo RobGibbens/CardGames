@@ -96,9 +96,9 @@ public static class HandOddsCalculationService
 		var probabilities = orderedHandTypes
 			.Where(ht => result.HandTypeProbabilities.ContainsKey(ht))
 			.Select(ht => new HandTypeOdds(
-				HandType: ht.ToString(),
-				DisplayName: GetDisplayName(ht),
-				Probability: result.HandTypeProbabilities[ht]
+				ht.ToString(),
+				GetDisplayName(ht),
+				result.HandTypeProbabilities[ht]
 			))
 			.ToList();
 

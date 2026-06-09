@@ -179,7 +179,7 @@ public class OddsCalculatorTests
 			heroCards,
 			communityCards,
 			deadCards,
-			simulations: 500);
+			500);
 
 		// Probabilities should still sum to 1
 		result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
@@ -243,7 +243,7 @@ public class OddsCalculatorTests
 
 		var result = OddsCalculator.CalculateKingsAndLowsOdds(
 			heroCards,
-			kingRequired: false,
+			false,
 			simulations: 500);
 
 		result.HandTypeProbabilities.Should().NotBeEmpty();
@@ -258,7 +258,7 @@ public class OddsCalculatorTests
 
 		var result = OddsCalculator.CalculateKingsAndLowsOdds(
 			heroCards,
-			kingRequired: true,
+			true,
 			simulations: 500);
 
 		result.HandTypeProbabilities.Should().NotBeEmpty();
@@ -275,7 +275,7 @@ public class OddsCalculatorTests
 		var result = OddsCalculator.CalculateKlondikeOdds(
 			heroCards,
 			communityCards,
-			klondikeCard: null,
+			null,
 			simulations: 1000);
 
 		result.HandTypeProbabilities.Should().NotContainKey(HandType.HighCard);
@@ -294,7 +294,7 @@ public class OddsCalculatorTests
 		var result = OddsCalculator.CalculateKlondikeOdds(
 			heroCards,
 			communityCards,
-			klondikeCard: klondikeCard,
+			klondikeCard,
 			simulations: 1000);
 
 		result.HandTypeProbabilities.Should().NotContainKey(HandType.HighCard);

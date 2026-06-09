@@ -33,13 +33,11 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = ProcessBettingActionErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in a betting phase
 		var validBettingPhases = new[]
@@ -49,25 +47,21 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		};
 
 		if (!validBettingPhases.Contains(game.CurrentPhase))
-		{
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Betting is only allowed during '{nameof(Phases.FirstBettingRound)}' or '{nameof(Phases.SecondBettingRound)}' phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Get the active betting round
 		var bettingRound = game.BettingRounds.FirstOrDefault(br => !br.IsComplete);
 		if (bettingRound is null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = "No active betting round found.",
 				Code = ProcessBettingActionErrorCode.NoBettingRound
 			};
-		}
 
 		// 4. Get active players ordered by seat position
 		var activePlayers = game.GamePlayers
@@ -78,24 +72,20 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		// 5. Get current player
 		var currentPlayer = activePlayers.FirstOrDefault(gp => gp.SeatPosition == bettingRound.CurrentActorIndex);
 		if (currentPlayer is null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = "Could not determine current player.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
-		}
 
 		// 6. Validate and process the action
 		var validationResult = ValidateAction(command.ActionType, command.Amount, currentPlayer, bettingRound);
 		if (validationResult is not null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = validationResult,
 				Code = ProcessBettingActionErrorCode.InvalidAction
 			};
-		}
 
 		// 7. Calculate values before execution
 		var chipStackBefore = currentPlayer.ChipStack;
@@ -126,10 +116,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		// 10. Update pot (must filter by current hand number to avoid updating old pots)
 		var mainPot = game.Pots.FirstOrDefault(p => p.PotOrder == 0 && p.HandNumber == game.CurrentHandNumber);
-		if (mainPot is not null)
-		{
-			mainPot.Amount += chipsMoved;
-		}
+		if (mainPot is not null) mainPot.Amount += chipsMoved;
 
 		// 11. Track that player has acted and update betting round state
 		bettingRound.PlayersActed++;
@@ -223,8 +210,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		int amount,
 		BettingRound bettingRound)
 	{
-		int actualAmount = 0;
-		int chipsMoved = 0;
+		var actualAmount = 0;
+		var chipsMoved = 0;
 
 		switch (actionType)
 		{
@@ -313,10 +300,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
@@ -340,16 +324,11 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		var allMatched = playersWhoCanAct.All(p => p.CurrentBet == bettingRound.CurrentBet);
 
 		// If there's a last aggressor, we need to complete the round back to them
-		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex && allMatched)
-		{
-			return true;
-		}
+		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex &&
+		    allMatched) return true;
 
 		// If everyone has acted at least once and all bets are matched
-		if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched)
-		{
-			return true;
-		}
+		if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched) return true;
 
 		return false;
 	}
@@ -367,20 +346,14 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		// Calculate side pots if any players are all-in
 		var hasAllIn = activePlayers.Any(gp => gp.IsAllIn && !gp.HasFolded);
-		if (hasAllIn)
-		{
-			CalculateSidePots(game, activePlayers);
-		}
+		if (hasAllIn) CalculateSidePots(game, activePlayers);
 
 		// Check if all remaining players are all-in
 		var activePlayersWhoCanAct = activePlayers.Count(gp => !gp.HasFolded && !gp.IsAllIn);
 		var allPlayersAllIn = activePlayersWhoCanAct == 0;
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
 		switch (game.CurrentPhase)
 		{
@@ -412,10 +385,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
@@ -436,10 +406,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
 			// Include all-in players - they can still draw cards
-			if (player is not null && !player.HasFolded)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
@@ -455,10 +422,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		var now = DateTimeOffset.UtcNow;
 		var playersInHand = activePlayers.Where(gp => !gp.HasFolded).ToList();
 
-		if (playersInHand.Count < 2)
-		{
-			return;
-		}
+		if (playersInHand.Count < 2) return;
 
 		// Get contribution levels from all-in players, sorted ascending
 		var allInLevels = playersInHand
@@ -469,10 +433,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			.OrderBy(c => c)
 			.ToList();
 
-		if (allInLevels.Count == 0)
-		{
-			return; // No side pots needed
-		}
+		if (allInLevels.Count == 0) return; // No side pots needed
 
 		// Get current pots for this hand
 		var currentPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
@@ -490,10 +451,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		}
 
 		// Remove existing pots
-		foreach (var pot in currentPots)
-		{
-			game.Pots.Remove(pot);
-		}
+		foreach (var pot in currentPots) game.Pots.Remove(pot);
 
 		var previousLevel = 0;
 		var potOrder = 0;
@@ -516,10 +474,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 					{
 						potAmount += contributionToThisPot;
 						// Only non-folded players are eligible to win
-						if (!player.HasFolded)
-						{
-							eligiblePlayers.Add(player);
-						}
+						if (!player.HasFolded) eligiblePlayers.Add(player);
 					}
 				}
 			}
@@ -539,7 +494,6 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 				// Add contributions for eligible (non-folded) players
 				foreach (var player in eligiblePlayers)
-				{
 					pot.Contributions.Add(new PotContribution
 					{
 						GamePlayerId = player.Id,
@@ -547,7 +501,6 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 						IsEligibleToWin = true,
 						ContributedAt = now
 					});
-				}
 
 				// Add contributions from folded players (money stays in pot, but not eligible to win)
 				foreach (var player in activePlayers.Where(p => p.HasFolded))
@@ -557,7 +510,6 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 					{
 						var contributionToThisPot = Math.Min(contribution, level) - previousLevel;
 						if (contributionToThisPot > 0)
-						{
 							pot.Contributions.Add(new PotContribution
 							{
 								GamePlayerId = player.Id,
@@ -565,7 +517,6 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 								IsEligibleToWin = false,
 								ContributedAt = now
 							});
-						}
 					}
 				}
 
@@ -590,10 +541,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 				{
 					var contributionToFinal = contribution - previousLevel;
 					finalPotAmount += contributionToFinal;
-					if (!player.HasFolded)
-					{
-						eligibleForFinal.Add(player);
-					}
+					if (!player.HasFolded) eligibleForFinal.Add(player);
 				}
 			}
 
@@ -611,7 +559,6 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 				};
 
 				foreach (var player in eligibleForFinal)
-				{
 					finalPot.Contributions.Add(new PotContribution
 					{
 						GamePlayerId = player.Id,
@@ -619,14 +566,12 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 						IsEligibleToWin = true,
 						ContributedAt = now
 					});
-				}
 
 				// Add contributions from folded players
 				foreach (var player in activePlayers.Where(p => p.HasFolded))
 				{
 					var contribution = player.TotalContributedThisHand;
 					if (contribution > previousLevel)
-					{
 						finalPot.Contributions.Add(new PotContribution
 						{
 							GamePlayerId = player.Id,
@@ -634,7 +579,6 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 							IsEligibleToWin = false,
 							ContributedAt = now
 						});
-					}
 				}
 
 				game.Pots.Add(finalPot);

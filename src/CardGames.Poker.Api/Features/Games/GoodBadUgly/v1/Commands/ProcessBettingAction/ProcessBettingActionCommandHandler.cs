@@ -40,13 +40,11 @@ public class ProcessBettingActionCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = ProcessBettingActionErrorCode.GameNotFound
 			};
-		}
 
 		logger.LogDebug(
 			"Game loaded: Hand {HandNumber}, Phase {Phase}, PlayerIndex {PlayerIndex}",
@@ -88,14 +86,12 @@ public class ProcessBettingActionCommandHandler(
 			};
 
 		if (!validBettingPhases.Contains(game.CurrentPhase))
-		{
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Betting is only allowed during '{nameof(Phases.ThirdStreet)}' or '{nameof(Phases.FourthStreet)}' phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
-		}
 
 		// 3. Get the active betting round (already filtered by HandNumber and IsComplete when loaded)
 		var bettingRound = bettingRounds.FirstOrDefault();
@@ -136,24 +132,20 @@ public class ProcessBettingActionCommandHandler(
 		// 5. Get current player
 		var currentPlayer = activePlayers.FirstOrDefault(gp => gp.SeatPosition == bettingRound.CurrentActorIndex);
 		if (currentPlayer is null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = "Could not determine current player.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
-		}
 
 		// 6. Validate and process the action
 		var validationResult = ValidateAction(command.ActionType, command.Amount, currentPlayer, bettingRound);
 		if (validationResult is not null)
-		{
 			return new ProcessBettingActionError
 			{
 				Message = validationResult,
 				Code = ProcessBettingActionErrorCode.InvalidAction
 			};
-		}
 
 		// 7. Calculate values before execution
 		var chipStackBefore = currentPlayer.ChipStack;
@@ -184,10 +176,7 @@ public class ProcessBettingActionCommandHandler(
 
 		// 10. Update pot (must filter by current hand number to avoid updating old pots)
 		var mainPot = game.Pots.FirstOrDefault(p => p.PotOrder == 0 && p.HandNumber == game.CurrentHandNumber);
-		if (mainPot is not null)
-		{
-			mainPot.Amount += chipsMoved;
-		}
+		if (mainPot is not null) mainPot.Amount += chipsMoved;
 
 		// 11. Track that player has acted and update betting round state
 		bettingRound.PlayersActed++;
@@ -321,9 +310,7 @@ public class ProcessBettingActionCommandHandler(
 
 					// If not already at showdown, deal remaining streets
 					if (game.CurrentPhase != nameof(Phases.Showdown))
-					{
 						await DealRemainingStreetsAsync(game, activePlayers, game.CurrentPhase, now, cancellationToken);
-					}
 
 					game.UpdatedAt = now;
 					await context.SaveChangesAsync(cancellationToken);
@@ -394,15 +381,11 @@ public class ProcessBettingActionCommandHandler(
 							dealResultHolder = await mediator.Send(new DealHandsCommand(game.Id), ct);
 
 							if (dealResultHolder.Value.IsT0) // Success
-							{
 								// Commit the transaction
 								await transaction.CommitAsync(ct);
-							}
 							else
-							{
 								// Deal failed - rollback the transaction
 								await transaction.RollbackAsync(ct);
-							}
 						}, cancellationToken);
 
 						// Process the deal result after the transaction completes
@@ -513,8 +496,8 @@ public class ProcessBettingActionCommandHandler(
 		int amount,
 		BettingRound bettingRound)
 	{
-		int actualAmount = 0;
-		int chipsMoved = 0;
+		var actualAmount = 0;
+		var chipsMoved = 0;
 
 		switch (actionType)
 		{
@@ -603,10 +586,7 @@ public class ProcessBettingActionCommandHandler(
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
@@ -630,16 +610,11 @@ public class ProcessBettingActionCommandHandler(
 		var allMatched = playersWhoCanAct.All(p => p.CurrentBet == bettingRound.CurrentBet);
 
 		// If there's a last aggressor, we need to complete the round back to them
-		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex && allMatched)
-		{
-			return true;
-		}
+		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex &&
+		    allMatched) return true;
 
 		// If everyone has acted at least once and all bets are matched
-		if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched)
-		{
-			return true;
-		}
+		if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched) return true;
 
 		return false;
 	}
@@ -656,10 +631,7 @@ public class ProcessBettingActionCommandHandler(
 		}
 
 		// Reset current bets for next round
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
 		// Seven Card Stud phase progression:
 		// ThirdStreet (betting) -> FourthStreet (deal card, then betting)
@@ -710,10 +682,7 @@ public class ProcessBettingActionCommandHandler(
 			return;
 		}
 
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
 		game.CurrentPhase = game.CurrentPhase switch
 		{
@@ -811,13 +780,9 @@ public class ProcessBettingActionCommandHandler(
 					.ToDictionary(g => g.Key, g => g.ToList());
 
 				foreach (var player in activePlayers.Where(p => !p.HasFolded))
-				{
 					if (playerCardsByOwner.TryGetValue(player.Id, out var ownedCards) &&
 					    ownedCards.Any(c => c.Symbol == uglyCard.Symbol))
-					{
 						player.VariantState = "UGLY_ELIMINATED";
-					}
-				}
 			}
 
 			game.CurrentPhase = nameof(Phases.SixthStreet);
@@ -832,10 +797,7 @@ public class ProcessBettingActionCommandHandler(
 		for (var i = 0; i < totalPlayers; i++)
 		{
 			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				return searchIndex;
-			}
+			if (player is not null && !player.HasFolded && !player.IsAllIn) return searchIndex;
 
 			searchIndex = (searchIndex + 1) % totalPlayers;
 		}
@@ -856,10 +818,7 @@ public class ProcessBettingActionCommandHandler(
 
 		// If only one player remains, this is a win by fold scenario, not an all-in scenario
 		// The caller should handle this separately via AdvanceToNextPhase
-		if (playersInHand <= 1)
-		{
-			return false;
-		}
+		if (playersInHand <= 1) return false;
 
 		// Count players who haven't folded and still have chips to bet
 		// A player can bet if they're not all-in and have chips remaining
@@ -898,10 +857,8 @@ public class ProcessBettingActionCommandHandler(
 		// Find which streets still need to be dealt
 		var startIndex = Array.IndexOf(streetOrder, currentPhase);
 		if (startIndex < 0)
-		{
 			// Already past all streets or not a street phase
 			return;
-		}
 
 		// Get players who haven't folded (they may be all-in)
 		var playersToReceiveCards = activePlayers.Where(p => !p.HasFolded).OrderBy(p => p.SeatPosition).ToList();

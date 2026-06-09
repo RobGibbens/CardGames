@@ -19,7 +19,7 @@ public class GoodBadUglyWildCardRulesTests
 			new(Suit.Diamonds, 12)
 		};
 
-		var wildCards = _rules.DetermineWildCards(hand, wildRank: null);
+		var wildCards = _rules.DetermineWildCards(hand, null);
 
 		wildCards.Should().BeEmpty();
 	}
@@ -35,7 +35,7 @@ public class GoodBadUglyWildCardRulesTests
 			new(Suit.Clubs, 8)
 		};
 
-		var wildCards = _rules.DetermineWildCards(hand, wildRank: 10);
+		var wildCards = _rules.DetermineWildCards(hand, 10);
 
 		wildCards.Should().HaveCount(2);
 		wildCards.Should().AllSatisfy(c => c.Value.Should().Be(10));
@@ -51,7 +51,7 @@ public class GoodBadUglyWildCardRulesTests
 			new(Suit.Diamonds, 12)
 		};
 
-		var wildCards = _rules.DetermineWildCards(hand, wildRank: 5);
+		var wildCards = _rules.DetermineWildCards(hand, 5);
 
 		wildCards.Should().BeEmpty();
 	}
@@ -67,7 +67,7 @@ public class GoodBadUglyWildCardRulesTests
 			new(Suit.Clubs, 7)
 		};
 
-		var wildCards = _rules.DetermineWildCards(hand, wildRank: 7);
+		var wildCards = _rules.DetermineWildCards(hand, 7);
 
 		wildCards.Should().HaveCount(4);
 	}
@@ -82,7 +82,7 @@ public class GoodBadUglyWildCardRulesTests
 			new(Suit.Diamonds, 12) // Queen
 		};
 
-		var wildCards = _rules.DetermineWildCards(hand, wildRank: 13);
+		var wildCards = _rules.DetermineWildCards(hand, 13);
 
 		wildCards.Should().HaveCount(1);
 		wildCards.Should().Contain(c => c.Value == 13);

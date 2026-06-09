@@ -34,77 +34,63 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new DrawCardsError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = DrawCardsErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in DrawPhase
 		if (game.CurrentPhase != nameof(Phases.DrawPhase))
-		{
 			return new DrawCardsError
 			{
 				Message = $"Cannot draw cards. Game is in '{game.CurrentPhase}' phase, " +
 				          $"but must be in '{nameof(Phases.DrawPhase)}' phase.",
 				Code = DrawCardsErrorCode.InvalidPhase
 			};
-		}
 
 		// 3. Find the player (order by SeatPosition for consistent indexing)
 		var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 		var gamePlayer = gamePlayersList.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
-		{
 			return new DrawCardsError
 			{
 				Message = $"Player with ID '{command.PlayerId}' is not in this game.",
 				Code = DrawCardsErrorCode.PlayerNotFound
 			};
-		}
 
 		// 4. Verify it's this player's turn to draw
 		if (game.CurrentDrawPlayerIndex < 0 ||
 		    gamePlayer.SeatPosition != game.CurrentDrawPlayerIndex)
-		{
 			return new DrawCardsError
 			{
 				Message = "It is not this player's turn to draw.",
 				Code = DrawCardsErrorCode.NotPlayerTurn
 			};
-		}
 
 		// 5. Check if player has already drawn
 		if (gamePlayer.HasDrawnThisRound)
-		{
 			return new DrawCardsError
 			{
 				Message = "Player has already drawn this round.",
 				Code = DrawCardsErrorCode.PlayerHasAlreadyDrawn
 			};
-		}
 
 		// 6. Validate discard indices
 		var discardIndices = command.DiscardIndices.ToList();
 		if (discardIndices.Any(i => i < 0 || i >= 5))
-		{
 			return new DrawCardsError
 			{
 				Message = "Invalid card indices. Indices must be between 0 and 4.",
 				Code = DrawCardsErrorCode.InvalidDiscardIndices
 			};
-		}
 
 		if (discardIndices.Count > MaxDiscards)
-		{
 			return new DrawCardsError
 			{
 				Message = $"Too many cards to discard. Maximum is {MaxDiscards} in Kings and Lows.",
 				Code = DrawCardsErrorCode.TooManyDiscards
 			};
-		}
 
 		// 7. Get player's current cards
 		var playerCards = game.GameCards
@@ -116,7 +102,6 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		var discardedGameCards = new List<GameCard>();
 		var discardedCardInfos = new List<CardInfo>();
 		foreach (var index in discardIndices.OrderByDescending(i => i))
-		{
 			if (index < playerCards.Count)
 			{
 				var card = playerCards[index];
@@ -133,7 +118,6 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				card.Location = CardLocation.Discarded;
 				playerCards.RemoveAt(index);
 			}
-		}
 
 		// Reverse to maintain original order
 		discardedCardInfos.Reverse();
@@ -146,17 +130,15 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (deckCards.Count < discardIndices.Count)
-		{
 			return new DrawCardsError
 			{
 				Message =
 					$"Not enough cards remaining in the deck. Need {discardIndices.Count} but only {deckCards.Count} available.",
 				Code = DrawCardsErrorCode.InsufficientCards
 			};
-		}
 
 		var newCardInfos = new List<CardInfo>();
-		for (int i = 0; i < discardIndices.Count; i++)
+		for (var i = 0; i < discardIndices.Count; i++)
 		{
 			var cardFromDeck = deckCards[i];
 
@@ -187,7 +169,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			.Where(gp => gp.DropOrStayDecision == DropOrStayDecision.Stay && !gp.HasDrawnThisRound)
 			.ToList();
 
-		bool drawPhaseComplete = stayingPlayers.Count == 0;
+		var drawPhaseComplete = stayingPlayers.Count == 0;
 		string? nextPhase = null;
 		Guid? nextPlayerId = null;
 		string? nextPlayerName = null;
@@ -451,18 +433,13 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (activePlayers.Count == 0)
-		{
 			activePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active)
 				.OrderBy(gp => gp.SeatPosition)
 				.Select(gp => gp.SeatPosition)
 				.ToList();
-		}
 
-		if (activePlayers.Count == 0)
-		{
-			return;
-		}
+		if (activePlayers.Count == 0) return;
 
 		var currentPosition = game.DealerPosition;
 		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
@@ -495,7 +472,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			.ToListAsync(cancellationToken);
 
 		// Deal 5 cards from the deck to "the deck's hand" (GamePlayerId = null, Location = Board)
-		for (int i = 0; i < deckCards.Count; i++)
+		for (var i = 0; i < deckCards.Count; i++)
 		{
 			var card = deckCards[i];
 			card.GamePlayerId = null; // Deck cards have no player

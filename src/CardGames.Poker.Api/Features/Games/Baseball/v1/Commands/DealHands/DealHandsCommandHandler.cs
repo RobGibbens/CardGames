@@ -29,13 +29,11 @@ public class DealHandsCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new DealHandsError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = DealHandsErrorCode.GameNotFound
 			};
-		}
 
 		logger.LogDebug(
 			"Game loaded for dealing: Phase {Phase}, Hand {HandNumber}, Players {PlayerCount}",
@@ -61,13 +59,11 @@ public class DealHandsCommandHandler(
 			.ToList();
 
 		if (activePlayers.Count == 0)
-		{
 			return new DealHandsError
 			{
 				Message = "No active players available for dealing.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
-		}
 
 		var deckCards = await context.GameCards
 			.Where(gc => gc.GameId == game.Id &&
@@ -77,13 +73,11 @@ public class DealHandsCommandHandler(
 			.ToListAsync(cancellationToken);
 
 		if (deckCards.Count == 0)
-		{
 			return new DealHandsError
 			{
 				Message = "No deck cards available. The deck may not have been created when the hand started.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
-		}
 
 		var streetPhase = game.CurrentPhase;
 		var expectedCardsForStreet = BaseballGameSettings.GetExpectedCardsForStreet(streetPhase);
@@ -106,10 +100,7 @@ public class DealHandsCommandHandler(
 		foreach (var gamePlayer in activePlayers)
 		{
 			var existingCardCount = cardCountsByPlayer.GetValueOrDefault(gamePlayer.Id, 0);
-			if (existingCardCount >= expectedCardsForStreet)
-			{
-				continue;
-			}
+			if (existingCardCount >= expectedCardsForStreet) continue;
 
 			var dealtCards = new List<DealtCard>();
 			var playerDealOrder = existingCardCount + 1;
@@ -119,17 +110,15 @@ public class DealHandsCommandHandler(
 				while (playerDealOrder <= 2)
 				{
 					if (deckIndex >= deckCards.Count)
-					{
 						return new DealHandsError
 						{
 							Message = "Not enough cards in deck to complete dealing.",
 							Code = DealHandsErrorCode.InvalidGameState
 						};
-					}
 
 					var holeCard = deckCards[deckIndex++];
 					AssignCardToPlayer(holeCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false, streetPhase,
-						now, isBuyCard: false);
+						now, false);
 					dealtCards.Add(new DealtCard
 						{ Suit = holeCard.Suit, Symbol = holeCard.Symbol, DealOrder = holeCard.DealOrder });
 					cardCountsByPlayer[gamePlayer.Id] = cardCountsByPlayer.GetValueOrDefault(gamePlayer.Id, 0) + 1;
@@ -138,45 +127,39 @@ public class DealHandsCommandHandler(
 				if (playerDealOrder == 3)
 				{
 					if (deckIndex >= deckCards.Count)
-					{
 						return new DealHandsError
 						{
 							Message = "Not enough cards in deck to complete dealing.",
 							Code = DealHandsErrorCode.InvalidGameState
 						};
-					}
 
 					var boardCard = deckCards[deckIndex++];
 					AssignCardToPlayer(boardCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, streetPhase,
-						now, isBuyCard: false);
+						now, false);
 					dealtCards.Add(new DealtCard
 						{ Suit = boardCard.Suit, Symbol = boardCard.Symbol, DealOrder = boardCard.DealOrder });
 					cardCountsByPlayer[gamePlayer.Id] = cardCountsByPlayer.GetValueOrDefault(gamePlayer.Id, 0) + 1;
 
 					if (boardCard.Symbol == CardSymbol.Four)
-					{
 						buyCardOffers.Add(new BaseballGameSettings.BuyCardOfferState(
 							gamePlayer.PlayerId,
 							gamePlayer.SeatPosition,
 							boardCard.Id,
 							streetPhase));
-					}
 				}
 			}
 			else if (streetPhase == nameof(Phases.SeventhStreet))
 			{
 				if (deckIndex >= deckCards.Count)
-				{
 					return new DealHandsError
 					{
 						Message = "Not enough cards in deck to complete dealing.",
 						Code = DealHandsErrorCode.InvalidGameState
 					};
-				}
 
 				var downCard = deckCards[deckIndex++];
 				AssignCardToPlayer(downCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false, streetPhase, now,
-					isBuyCard: false);
+					false);
 				dealtCards.Add(new DealtCard
 					{ Suit = downCard.Suit, Symbol = downCard.Symbol, DealOrder = downCard.DealOrder });
 				cardCountsByPlayer[gamePlayer.Id] = cardCountsByPlayer.GetValueOrDefault(gamePlayer.Id, 0) + 1;
@@ -184,45 +167,36 @@ public class DealHandsCommandHandler(
 			else
 			{
 				if (deckIndex >= deckCards.Count)
-				{
 					return new DealHandsError
 					{
 						Message = "Not enough cards in deck to complete dealing.",
 						Code = DealHandsErrorCode.InvalidGameState
 					};
-				}
 
 				var upCard = deckCards[deckIndex++];
 				AssignCardToPlayer(upCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, streetPhase, now,
-					isBuyCard: false);
+					false);
 				dealtCards.Add(new DealtCard
 					{ Suit = upCard.Suit, Symbol = upCard.Symbol, DealOrder = upCard.DealOrder });
 				cardCountsByPlayer[gamePlayer.Id] = cardCountsByPlayer.GetValueOrDefault(gamePlayer.Id, 0) + 1;
 
 				if (upCard.Symbol == CardSymbol.Four)
-				{
 					buyCardOffers.Add(new BaseballGameSettings.BuyCardOfferState(
 						gamePlayer.PlayerId,
 						gamePlayer.SeatPosition,
 						upCard.Id,
 						streetPhase));
-				}
 			}
 
 			if (dealtCards.Count > 0)
-			{
 				playerHands.Add(new PlayerDealtCards
 				{
 					PlayerName = gamePlayer.Player.Name,
 					SeatPosition = gamePlayer.SeatPosition,
 					Cards = dealtCards
 				});
-			}
 
-			if (buyCardOffers.Count > 0)
-			{
-				break;
-			}
+			if (buyCardOffers.Count > 0) break;
 		}
 
 		var streetComplete =
@@ -259,25 +233,20 @@ public class DealHandsCommandHandler(
 		}
 
 		if (!streetComplete)
-		{
 			return new DealHandsError
 			{
 				Message = "Street dealing was not completed.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
-		}
 
-		foreach (var gamePlayer in game.GamePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in game.GamePlayers) gamePlayer.CurrentBet = 0;
 
 		// Persist dealt cards before determining first actor so visible-hand evaluation
 		// includes newly dealt up-cards on this street.
 		await context.SaveChangesAsync(cancellationToken);
 
 		int firstActorSeatPosition;
-		int currentBet = 0;
+		var currentBet = 0;
 
 		if (streetPhase == nameof(Phases.ThirdStreet))
 		{
@@ -303,9 +272,7 @@ public class DealHandsCommandHandler(
 		}
 
 		if (firstActorSeatPosition < 0)
-		{
 			firstActorSeatPosition = GetPlayerLeftOfDealerSeatPosition(activePlayers, game.DealerPosition);
-		}
 
 		var isSmallBetStreet = streetPhase == nameof(Phases.ThirdStreet) ||
 		                       streetPhase == nameof(Phases.FourthStreet);
@@ -376,16 +343,13 @@ public class DealHandsCommandHandler(
 
 	private static int FindBringInPlayer(List<PlayerDealtCards> playerHands)
 	{
-		int lowestSeatPosition = -1;
+		var lowestSeatPosition = -1;
 		DealtCard? lowestCard = null;
 
 		foreach (var playerHand in playerHands)
 		{
 			var upCard = playerHand.Cards.LastOrDefault();
-			if (upCard is null)
-			{
-				continue;
-			}
+			if (upCard is null) continue;
 
 			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
 			{
@@ -412,24 +376,18 @@ public class DealHandsCommandHandler(
 			             gc.GamePlayerId != null)
 			.ToList();
 
-		if (upCards.Count == 0)
-		{
-			return activePlayers.FirstOrDefault()?.SeatPosition ?? -1;
-		}
+		if (upCards.Count == 0) return activePlayers.FirstOrDefault()?.SeatPosition ?? -1;
 
 		var byPlayerId = upCards
 			.GroupBy(c => c.GamePlayerId!.Value)
 			.ToDictionary(g => g.Key, g => g.First());
 
-		int lowestSeatPosition = -1;
+		var lowestSeatPosition = -1;
 		GameCard? lowestCard = null;
 
 		foreach (var player in activePlayers)
 		{
-			if (!byPlayerId.TryGetValue(player.Id, out var upCard))
-			{
-				continue;
-			}
+			if (!byPlayerId.TryGetValue(player.Id, out var upCard)) continue;
 
 			if (lowestCard is null ||
 			    CompareCardsForBringIn(new DealtCard { Suit = upCard.Suit, Symbol = upCard.Symbol },
@@ -448,10 +406,7 @@ public class DealHandsCommandHandler(
 		var aValue = GetCardValue(a.Symbol);
 		var bValue = GetCardValue(b.Symbol);
 
-		if (aValue != bValue)
-		{
-			return aValue.CompareTo(bValue);
-		}
+		if (aValue != bValue) return aValue.CompareTo(bValue);
 
 		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
@@ -481,10 +436,7 @@ public class DealHandsCommandHandler(
 		int handNumber,
 		CardsDbContext context)
 	{
-		if (activePlayers.Count == 0)
-		{
-			return -1;
-		}
+		if (activePlayers.Count == 0) return -1;
 
 		var playerUpCards = context.GameCards
 			.Where(gc => gc.GameId == gameId &&
@@ -498,7 +450,7 @@ public class DealHandsCommandHandler(
 			.GroupBy(c => c.GamePlayerId!.Value)
 			.ToDictionary(g => g.Key, g => g.ToList());
 
-		int bestSeatPosition = -1;
+		var bestSeatPosition = -1;
 		long bestStrength = -1;
 
 		foreach (var player in activePlayers)
@@ -507,7 +459,7 @@ public class DealHandsCommandHandler(
 				? cards.Where(c => c.IsVisible && !c.IsDiscarded).ToList()
 				: [];
 
-			var strength = EvaluateVisibleHand(boardCards, includeWildCards: true);
+			var strength = EvaluateVisibleHand(boardCards, true);
 
 			if (strength > bestStrength)
 			{
@@ -521,10 +473,7 @@ public class DealHandsCommandHandler(
 
 	private static int GetPlayerLeftOfDealerSeatPosition(List<GamePlayer> activePlayers, int dealerSeatPosition)
 	{
-		if (activePlayers.Count == 0)
-		{
-			return -1;
-		}
+		if (activePlayers.Count == 0) return -1;
 
 		var maxSeatPosition = activePlayers.Max(p => p.SeatPosition);
 		var totalSeats = maxSeatPosition + 1;
@@ -589,13 +538,9 @@ public class DealHandsCommandHandler(
 		{
 			var pairs = valueCounts.Where(g => g.Count >= 2).ToList();
 			if (pairs.Count >= 2)
-			{
 				strength = 3_000_000 + pairs[0].Value * 1000 + pairs[1].Value * 10;
-			}
 			else
-			{
 				strength = 2_000_000 + pairs[0].Value * 1000;
-			}
 		}
 		else
 		{
@@ -608,20 +553,11 @@ public class DealHandsCommandHandler(
 			.Take(4)
 			.ToList();
 
-		if (kickerValues.Count == 0)
-		{
-			kickerValues = cards.Take(4).Select(c => GetCardValue(c.Symbol)).ToList();
-		}
+		if (kickerValues.Count == 0) kickerValues = cards.Take(4).Select(c => GetCardValue(c.Symbol)).ToList();
 
-		foreach (var kickerValue in kickerValues)
-		{
-			strength = strength * 15 + kickerValue;
-		}
+		foreach (var kickerValue in kickerValues) strength = strength * 15 + kickerValue;
 
-		if (cards.Count > 0)
-		{
-			strength = strength * 4 + GetSuitRank(cards[0].Suit);
-		}
+		if (cards.Count > 0) strength = strength * 4 + GetSuitRank(cards[0].Suit);
 
 		return strength;
 	}

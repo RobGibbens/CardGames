@@ -23,15 +23,9 @@ public abstract class FrenchDeck : IDeck<Card>
 
 	public Card GetSpecific(Card card)
 	{
-		if (!Cards.Contains(card))
-		{
-			throw new ArgumentException($"The card {card} is not part of the deck at all!");
-		}
+		if (!Cards.Contains(card)) throw new ArgumentException($"The card {card} is not part of the deck at all!");
 
-		if (_cardsOut.Contains(card))
-		{
-			throw new ArgumentException($"The card {card} has already been dealt!");
-		}
+		if (_cardsOut.Contains(card)) throw new ArgumentException($"The card {card} has already been dealt!");
 
 		_cardsOut.Add(card);
 		return card;

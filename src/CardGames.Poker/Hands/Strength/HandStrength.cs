@@ -60,10 +60,8 @@ public static class HandStrength
 		// Check for wheel straight (A-2-3-4-5) or wheel straight flush
 		if ((handType == HandType.Straight || handType == HandType.StraightFlush)
 		    && HandTypeDetermination.IsWheelStraight(cards.DistinctValues()))
-		{
 			// Return wheel values with Ace as low (5-4-3-2-1)
 			return new[] { 5, 4, 3, 2, 1 };
-		}
 
 		return cards
 			.GroupBy(c => c.Value)

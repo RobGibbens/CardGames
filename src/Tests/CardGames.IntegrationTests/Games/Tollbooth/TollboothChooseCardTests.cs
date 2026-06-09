@@ -19,7 +19,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_Furthest_Free_AssignsCardToPlayer()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 3);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(3);
 		var game = setup.Game;
 		var actingPlayer = setup.GamePlayers.First(gp => gp.SeatPosition == game.CurrentDrawPlayerIndex);
 		var chipsBefore = actingPlayer.ChipStack;
@@ -42,7 +42,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_Nearest_ChargesOneAnte()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2);
 		var game = setup.Game;
 		var ante = game.Ante ?? 10;
 		var actingPlayer = setup.GamePlayers.First(gp => gp.SeatPosition == game.CurrentDrawPlayerIndex);
@@ -62,7 +62,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_Deck_ChargesTwoAntes()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2);
 		var game = setup.Game;
 		var ante = game.Ante ?? 10;
 		var actingPlayer = setup.GamePlayers.First(gp => gp.SeatPosition == game.CurrentDrawPlayerIndex);
@@ -82,7 +82,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_WhenCannotAfford_ReturnsError()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2, startingChips: 5);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2, 5);
 		var game = setup.Game;
 		var actingPlayer = setup.GamePlayers.First(gp => gp.SeatPosition == game.CurrentDrawPlayerIndex);
 
@@ -114,7 +114,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_AlreadyChosen_ReturnsAlreadyChosenError()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 3);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(3);
 		var game = setup.Game;
 		var actingPlayer = setup.GamePlayers.First(gp => gp.SeatPosition == game.CurrentDrawPlayerIndex);
 
@@ -133,7 +133,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_AllPlayersChoose_TransitionsToNextBettingStreet()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2);
 		var game = setup.Game;
 
 		var players = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
@@ -159,7 +159,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_FinalOffer_WhenFewerThanTwoPlayersCanBet_TransitionsDirectlyToShowdown()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2, startingChips: 20, ante: 10);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2, 20, 10);
 		var game = setup.Game;
 		var players = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
@@ -196,7 +196,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_FinalOffer_WhenLateBettingActionArrivesDuringShowdown_ReturnsNoOpSuccess()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2, startingChips: 20, ante: 10);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2, 20, 10);
 		var game = setup.Game;
 		var players = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
@@ -236,7 +236,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_Furthest_ReplenishesDisplayFromDeck()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2);
 		var game = setup.Game;
 		var actingPlayer = setup.GamePlayers.First(gp => gp.SeatPosition == game.CurrentDrawPlayerIndex);
 
@@ -264,7 +264,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	[Fact]
 	public async Task ChooseCard_Deck_DoesNotReplenishDisplay()
 	{
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2);
 		var game = setup.Game;
 		var actingPlayer = setup.GamePlayers.First(gp => gp.SeatPosition == game.CurrentDrawPlayerIndex);
 
@@ -294,7 +294,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	public async Task ChooseCard_FinalOffer_WithBettablePlayers_SeventhStreetBettingCompletesToShowdown()
 	{
 		// Set up a game in final TollboothOffer (after SixthStreet) where players CAN bet
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2, startingChips: 1000, ante: 10);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2, 1000, 10);
 		var game = setup.Game;
 		var players = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
@@ -355,7 +355,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		// Start from ThirdStreet TollboothOffer and play all the way through to Showdown:
 		// TollboothOffer(4th) → 4th betting → TollboothOffer(5th) → 5th betting →
 		// TollboothOffer(6th) → 6th betting → TollboothOffer(7th) → 7th betting → Showdown
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2, startingChips: 1000, ante: 10);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2, 1000, 10);
 		var game = setup.Game;
 		var players = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
@@ -483,7 +483,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	public async Task ChooseCard_AllPlayersAllIn_PreSeventhStreet_DealsRemainingAndTransitionsToShowdown()
 	{
 		// startingChips: 20, ante: 10 → Deck choice costs 20 and depletes stack
-		var setup = await CreateTollboothGameInOfferPhaseAsync(playerCount: 2, startingChips: 20, ante: 10);
+		var setup = await CreateTollboothGameInOfferPhaseAsync(2, 20, 10);
 		var game = setup.Game;
 		var players = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
@@ -578,10 +578,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		game.CurrentDrawPlayerIndex = activePlayers.First().SeatPosition;
 		game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
 
-		foreach (var gp in activePlayers)
-		{
-			gp.HasDrawnThisRound = false;
-		}
+		foreach (var gp in activePlayers) gp.HasDrawnThisRound = false;
 
 		var dealOrder = 1;
 		var cardSymbol = CardSymbol.Deuce;
@@ -704,10 +701,7 @@ public class TollboothChooseCardTests : IntegrationTestBase
 	private async Task EnsureTollboothGameTypeAsync()
 	{
 		var existing = await DbContext.GameTypes.FirstOrDefaultAsync(gt => gt.Code == TollboothCode);
-		if (existing is not null)
-		{
-			return;
-		}
+		if (existing is not null) return;
 
 		DbContext.GameTypes.Add(new GameType
 		{

@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,7 +33,7 @@ public class PerformShowdownCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInShowdown_ReturnsInvalidGameState()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.River));
+		var game = await SeedGameAsync(context, nameof(Phases.River));
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
@@ -49,7 +47,7 @@ public class PerformShowdownCommandHandlerTests
 	public async Task Handle_WhenPlayersDoNotHaveEnoughHoleCards_ReturnsInvalidGameState()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.Showdown), holeCardsPerPlayer: 1);
+		var game = await SeedGameAsync(context, nameof(Phases.Showdown), 1);
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);

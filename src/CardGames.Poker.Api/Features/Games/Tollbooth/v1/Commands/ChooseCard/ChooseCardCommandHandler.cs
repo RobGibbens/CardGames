@@ -29,33 +29,27 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ChooseCardError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = ChooseCardErrorCode.GameNotFound
 			};
-		}
 
 		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
 		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.TollboothCode, StringComparison.OrdinalIgnoreCase))
-		{
 			return new ChooseCardError
 			{
 				Message = $"Tollbooth card selection is not supported for game type '{gameTypeCode}'.",
 				Code = ChooseCardErrorCode.NotInTollboothPhase
 			};
-		}
 
 		if (!string.Equals(game.CurrentPhase, nameof(Phases.TollboothOffer), StringComparison.OrdinalIgnoreCase))
-		{
 			return new ChooseCardError
 			{
 				Message =
 					$"Cannot choose a card during '{game.CurrentPhase}'. Card selection is only allowed in '{nameof(Phases.TollboothOffer)}'.",
 				Code = ChooseCardErrorCode.NotInTollboothPhase
 			};
-		}
 
 		var activePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active)
@@ -67,33 +61,27 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (eligiblePlayers.Count == 0)
-		{
 			return new ChooseCardError
 			{
 				Message = "No eligible players remain to choose a Tollbooth card.",
 				Code = ChooseCardErrorCode.NoEligiblePlayers
 			};
-		}
 
 		var requestedSeatIndex = command.PlayerSeatIndex ?? game.CurrentDrawPlayerIndex;
 		var currentPlayer = activePlayers.FirstOrDefault(gp => gp.SeatPosition == requestedSeatIndex);
 		if (currentPlayer is null || currentPlayer.HasFolded)
-		{
 			return new ChooseCardError
 			{
 				Message = "The acting player could not be found for Tollbooth card selection.",
 				Code = ChooseCardErrorCode.NotPlayerTurn
 			};
-		}
 
 		if (currentPlayer.HasDrawnThisRound)
-		{
 			return new ChooseCardError
 			{
 				Message = "This player has already chosen a card this round.",
 				Code = ChooseCardErrorCode.AlreadyChosen
 			};
-		}
 
 		// Determine cost based on choice
 		var ante = game.Ante ?? game.BringIn ?? game.SmallBet ?? game.MinBet ?? 0;
@@ -106,23 +94,19 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		};
 
 		if (cost < 0)
-		{
 			return new ChooseCardError
 			{
 				Message = "Invalid Tollbooth choice.",
 				Code = ChooseCardErrorCode.InvalidChoice
 			};
-		}
 
 		if (cost > 0 && currentPlayer.ChipStack < cost)
-		{
 			return new ChooseCardError
 			{
 				Message =
 					$"Insufficient chips. The {command.Choice} option costs {cost} but player has {currentPlayer.ChipStack}.",
 				Code = ChooseCardErrorCode.CannotAfford
 			};
-		}
 
 		// Load cards for this hand
 		var gameCards = await context.GameCards
@@ -149,13 +133,11 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		{
 			case TollboothChoice.Furthest:
 				if (communityCards.Count == 0)
-				{
 					return new ChooseCardError
 					{
 						Message = "No display cards available.",
 						Code = ChooseCardErrorCode.InvalidChoice
 					};
-				}
 
 				chosenCard = communityCards[^1]; // highest DealOrder = furthest from deck
 				replenishDisplay = true;
@@ -163,13 +145,11 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 
 			case TollboothChoice.Nearest:
 				if (communityCards.Count == 0)
-				{
 					return new ChooseCardError
 					{
 						Message = "No display cards available.",
 						Code = ChooseCardErrorCode.InvalidChoice
 					};
-				}
 
 				chosenCard = communityCards[0]; // lowest DealOrder = nearest to deck
 				replenishDisplay = true;
@@ -177,13 +157,11 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 
 			case TollboothChoice.Deck:
 				if (deckCards.Count == 0)
-				{
 					return new ChooseCardError
 					{
 						Message = "No deck cards available.",
 						Code = ChooseCardErrorCode.InvalidChoice
 					};
-				}
 
 				chosenCard = deckCards[0]; // top of deck
 				replenishDisplay = false;
@@ -247,15 +225,9 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 
 			var mainPot = game.Pots.FirstOrDefault(p =>
 				p.PotOrder == 0 && p.HandNumber == game.CurrentHandNumber);
-			if (mainPot is not null)
-			{
-				mainPot.Amount += cost;
-			}
+			if (mainPot is not null) mainPot.Amount += cost;
 
-			if (currentPlayer.ChipStack == 0)
-			{
-				currentPlayer.IsAllIn = true;
-			}
+			if (currentPlayer.ChipStack == 0) currentPlayer.IsAllIn = true;
 		}
 
 		currentPlayer.HasDrawnThisRound = true;
@@ -273,20 +245,14 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		if (offerComplete)
 		{
 			// Reset HasDrawnThisRound for next TollboothOffer round
-			foreach (var p in activePlayers.Where(gp => !gp.HasFolded))
-			{
-				p.HasDrawnThisRound = false;
-			}
+			foreach (var p in activePlayers.Where(gp => !gp.HasFolded)) p.HasDrawnThisRound = false;
 
 			// Transition to next betting street
 			TollboothVariantState.SetPreviousBettingStreet(game, nextStreet);
 			game.CurrentDrawPlayerIndex = -1;
 
 			// Reset current bets
-			foreach (var p in game.GamePlayers)
-			{
-				p.CurrentBet = 0;
-			}
+			foreach (var p in game.GamePlayers) p.CurrentBet = 0;
 
 			var playersStillInHand = activePlayers
 				.Where(p => !p.HasFolded)
@@ -370,10 +336,7 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 
 				// Determine first actor (best visible hand for 4th+ street)
 				var firstActorSeat = FindBestVisibleHandPlayer(playersStillInHand, game.Id, game.CurrentHandNumber);
-				if (firstActorSeat < 0)
-				{
-					firstActorSeat = GetPlayerLeftOfDealer(activePlayers, game.DealerPosition);
-				}
+				if (firstActorSeat < 0) firstActorSeat = GetPlayerLeftOfDealer(activePlayers, game.DealerPosition);
 
 				// Determine bet sizing
 				var isSmallBetStreet = nextStreet == nameof(Phases.FourthStreet);
@@ -489,9 +452,13 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 		var maxCount = valueCounts[0].Count();
 
 		if (maxCount >= 4)
+		{
 			strength = 7_000_000 + valueCounts[0].Key * 1000;
+		}
 		else if (maxCount >= 3)
+		{
 			strength = 4_000_000 + valueCounts[0].Key * 1000;
+		}
 		else if (maxCount >= 2)
 		{
 			var pairs = valueCounts.Where(g => g.Count() >= 2).ToList();

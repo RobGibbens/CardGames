@@ -101,10 +101,7 @@ public sealed record ActionTimerState
 		get
 		{
 			var elapsed = DateTimeOffset.UtcNow - StartedAtUtc;
-			if (elapsed <= TimeSpan.Zero)
-			{
-				return DurationSeconds;
-			}
+			if (elapsed <= TimeSpan.Zero) return DurationSeconds;
 
 			var remaining = DurationSeconds - (int)elapsed.TotalSeconds;
 			return Math.Max(0, remaining);

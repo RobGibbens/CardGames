@@ -25,7 +25,7 @@ public class HandSettlementTests : IntegrationTestBase
 
 		// Act
 		await WalletService.RecordHandSettlementAsync(
-			player.Id, netDelta: -150, game.Id, handNumber: 1, actorUserId: null, CancellationToken.None);
+			player.Id, -150, game.Id, 1, null, CancellationToken.None);
 		await DbContext.SaveChangesAsync();
 
 		// Assert
@@ -60,7 +60,7 @@ public class HandSettlementTests : IntegrationTestBase
 
 		// Act
 		await WalletService.RecordHandSettlementAsync(
-			player.Id, netDelta: 400, game.Id, handNumber: 1, actorUserId: null, CancellationToken.None);
+			player.Id, 400, game.Id, 1, null, CancellationToken.None);
 		await DbContext.SaveChangesAsync();
 
 		// Assert
@@ -94,7 +94,7 @@ public class HandSettlementTests : IntegrationTestBase
 
 		// Act
 		await WalletService.RecordHandSettlementAsync(
-			player.Id, netDelta: 0, game.Id, handNumber: 1, actorUserId: null, CancellationToken.None);
+			player.Id, 0, game.Id, 1, null, CancellationToken.None);
 		await DbContext.SaveChangesAsync();
 
 		// Assert
@@ -124,11 +124,11 @@ public class HandSettlementTests : IntegrationTestBase
 
 		// Act — call twice with the same (playerId, gameId, handNumber)
 		await WalletService.RecordHandSettlementAsync(
-			player.Id, netDelta: -200, game.Id, handNumber: 3, actorUserId: null, CancellationToken.None);
+			player.Id, -200, game.Id, 3, null, CancellationToken.None);
 		await DbContext.SaveChangesAsync();
 
 		await WalletService.RecordHandSettlementAsync(
-			player.Id, netDelta: -200, game.Id, handNumber: 3, actorUserId: null, CancellationToken.None);
+			player.Id, -200, game.Id, 3, null, CancellationToken.None);
 		await DbContext.SaveChangesAsync();
 
 		// Assert — only one ledger entry, balance debited once

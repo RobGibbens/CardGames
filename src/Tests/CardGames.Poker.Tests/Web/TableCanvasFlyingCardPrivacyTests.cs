@@ -22,7 +22,7 @@ public class TableCanvasFlyingCardPrivacyTests
 	[Fact]
 	public void FlyingCardInfo_PreservesAnimationCoordinates()
 	{
-		var flyingCard = new TableCanvas.FlyingCardInfo(TargetSeatIndex: 3, CardIndex: 1);
+		var flyingCard = new TableCanvas.FlyingCardInfo(3, 1);
 
 		flyingCard.TargetSeatIndex.Should().Be(3);
 		flyingCard.CardIndex.Should().Be(1);

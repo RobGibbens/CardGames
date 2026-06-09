@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Threading;
@@ -34,7 +32,7 @@ public class ProcessDiscardCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInDrawPhase_ReturnsNotInDiscardPhase()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.PreFlop));
+		var game = await SeedGameAsync(context, nameof(Phases.PreFlop));
 		var sut = new ProcessDiscardCommandHandler(context);
 
 		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1]), CancellationToken.None);
@@ -63,7 +61,7 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], PlayerSeatIndex: 99),
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], 99),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -129,7 +127,7 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context, firstPlayerHasDrawn: true, secondPlayerHasDrawn: false);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], PlayerSeatIndex: 0),
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], 0),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -162,9 +160,9 @@ public class ProcessDiscardCommandHandlerTests
 		var freshSut = new ProcessDiscardCommandHandler(freshContext);
 		var staleSut = new ProcessDiscardCommandHandler(staleContext);
 
-		var firstResult = await freshSut.Handle(new ProcessDiscardCommand(gameId, [0, 1], PlayerSeatIndex: 0),
+		var firstResult = await freshSut.Handle(new ProcessDiscardCommand(gameId, [0, 1], 0),
 			CancellationToken.None);
-		var secondResult = await staleSut.Handle(new ProcessDiscardCommand(gameId, [0, 1], PlayerSeatIndex: 1),
+		var secondResult = await staleSut.Handle(new ProcessDiscardCommand(gameId, [0, 1], 1),
 			CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
@@ -253,15 +251,15 @@ public class ProcessDiscardCommandHandlerTests
 		var firstPlayer = CreatePlayer("Alice", now);
 		var secondPlayer = CreatePlayer("Bob", now);
 
-		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, seatPosition: 0, firstPlayerHasDrawn, now);
-		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, seatPosition: 1, secondPlayerHasDrawn, now);
+		var firstGamePlayer = CreateGamePlayer(game, firstPlayer, 0, firstPlayerHasDrawn, now);
+		var secondGamePlayer = CreateGamePlayer(game, secondPlayer, 1, secondPlayerHasDrawn, now);
 
 		context.Games.Add(game);
 		context.Players.AddRange(firstPlayer, secondPlayer);
 		context.GamePlayers.AddRange(firstGamePlayer, secondGamePlayer);
 
 		SeedHoleCards(context, game, firstGamePlayer, firstPlayerCardCount, now);
-		SeedHoleCards(context, game, secondGamePlayer, secondPlayerCardCount, now, dealOrderOffset: 10);
+		SeedHoleCards(context, game, secondGamePlayer, secondPlayerCardCount, now, 10);
 		SeedDeckCards(context, game, 3, now);
 
 		await context.SaveChangesAsync();
@@ -277,7 +275,6 @@ public class ProcessDiscardCommandHandlerTests
 		int dealOrderOffset = 0)
 	{
 		for (var cardIndex = 0; cardIndex < count; cardIndex++)
-		{
 			context.GameCards.Add(new GameCard
 			{
 				Id = Guid.NewGuid(),
@@ -294,13 +291,11 @@ public class ProcessDiscardCommandHandlerTests
 				DealtAt = now,
 				DealtAtPhase = nameof(Phases.Dealing)
 			});
-		}
 	}
 
 	private static void SeedDeckCards(CardsDbContext context, Game game, int count, DateTimeOffset now)
 	{
 		for (var cardIndex = 0; cardIndex < count; cardIndex++)
-		{
 			context.GameCards.Add(new GameCard
 			{
 				Id = Guid.NewGuid(),
@@ -316,7 +311,6 @@ public class ProcessDiscardCommandHandlerTests
 				DealtAt = now,
 				DealtAtPhase = nameof(Phases.Dealing)
 			});
-		}
 	}
 
 	private static Player CreatePlayer(string name, DateTimeOffset now)

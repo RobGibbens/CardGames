@@ -28,72 +28,57 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new ProcessBuyCardError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = ProcessBuyCardErrorCode.GameNotFound
 			};
-		}
 
 		if (!string.Equals(game.CurrentPhase, nameof(Phases.BuyCardOffer), StringComparison.OrdinalIgnoreCase))
-		{
 			return new ProcessBuyCardError
 			{
 				Message = $"Cannot process buy card. Game is in '{game.CurrentPhase}' phase.",
 				Code = ProcessBuyCardErrorCode.InvalidGameState
 			};
-		}
 
 		var player = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (player is null)
-		{
 			return new ProcessBuyCardError
 			{
 				Message = "Player not found in game.",
 				Code = ProcessBuyCardErrorCode.PlayerNotFound
 			};
-		}
 
 		var buyCardState = BaseballGameSettings.GetState(game, game.MinBet ?? 0);
 		if (buyCardState.PendingOffers.Count == 0)
-		{
 			return new ProcessBuyCardError
 			{
 				Message = "No pending buy card offers.",
 				Code = ProcessBuyCardErrorCode.NoPendingOffer
 			};
-		}
 
 		var currentOffer = buyCardState.PendingOffers.FirstOrDefault(o => o.PlayerId == command.PlayerId);
 		if (currentOffer is null)
-		{
 			return new ProcessBuyCardError
 			{
 				Message = "Player does not have a pending buy card offer.",
 				Code = ProcessBuyCardErrorCode.NoPendingOffer
 			};
-		}
 
 		var buyCardPrice = buyCardState.BuyCardPrice > 0 ? buyCardState.BuyCardPrice : game.MinBet ?? 0;
 		if (command.Accept && player.ChipStack < buyCardPrice)
-		{
 			return new ProcessBuyCardError
 			{
 				Message = "Insufficient chips to buy a card.",
 				Code = ProcessBuyCardErrorCode.InsufficientChips
 			};
-		}
 
 		if (command.Accept && buyCardPrice > 0)
 		{
 			player.ChipStack -= buyCardPrice;
 			player.TotalContributedThisHand += buyCardPrice;
 
-			if (player.ChipStack == 0)
-			{
-				player.IsAllIn = true;
-			}
+			if (player.ChipStack == 0) player.IsAllIn = true;
 
 			var pot = game.Pots.FirstOrDefault(p => p.PotOrder == 0 && p.HandNumber == game.CurrentHandNumber);
 			if (pot is null)
@@ -115,11 +100,8 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 
 			var contribution = pot.Contributions.FirstOrDefault(c => c.GamePlayerId == player.Id);
 			if (contribution is not null)
-			{
 				contribution.Amount += buyCardPrice;
-			}
 			else
-			{
 				context.PotContributions.Add(new PotContribution
 				{
 					PotId = pot.Id,
@@ -129,7 +111,6 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 					IsPotMatch = false,
 					ContributedAt = now
 				});
-			}
 
 			var deckCard = await context.GameCards
 				.Where(gc => gc.GameId == game.Id &&
@@ -159,10 +140,7 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 						             !gc.IsDiscarded)
 						.ToListAsync(cancellationToken);
 
-					foreach (var card in cardsToShift)
-					{
-						card.DealOrder++;
-					}
+					foreach (var card in cardsToShift) card.DealOrder++;
 				}
 				else
 				{
@@ -191,7 +169,7 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 			.ToList();
 
 		string? nextPhase = null;
-		int nextActor = -1;
+		var nextActor = -1;
 
 		if (remainingOffers.Count > 0)
 		{
@@ -224,13 +202,11 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 		{
 			var dealResult = await mediator.Send(new DealHandsCommand(game.Id), cancellationToken);
 			if (dealResult.IsT1)
-			{
 				return new ProcessBuyCardError
 				{
 					Message = $"Failed to resume street dealing: {dealResult.AsT1.Message}",
 					Code = ProcessBuyCardErrorCode.InvalidGameState
 				};
-			}
 
 			nextPhase = dealResult.AsT0.CurrentPhase;
 		}

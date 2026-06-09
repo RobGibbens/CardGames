@@ -32,16 +32,10 @@ public class PairPressureWildCardRules
 			currentCount++;
 			rankCounts[card.Value] = currentCount;
 
-			if (currentCount != 2 || !pairedRanksSeen.Add(card.Value))
-			{
-				continue;
-			}
+			if (currentCount != 2 || !pairedRanksSeen.Add(card.Value)) continue;
 
 			activeWildRanks.Enqueue(card.Value);
-			if (activeWildRanks.Count > 2)
-			{
-				activeWildRanks.Dequeue();
-			}
+			if (activeWildRanks.Count > 2) activeWildRanks.Dequeue();
 		}
 
 		return activeWildRanks.ToList();

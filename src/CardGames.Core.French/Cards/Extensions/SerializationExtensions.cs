@@ -58,9 +58,7 @@ public static class SerializationExtensions
 	public static Card ToCard(this string cardExpression)
 	{
 		if (cardExpression.Length != 2)
-		{
 			throw new ArgumentException($"{cardExpression} is not a valid representation of a card.");
-		}
 
 		var cardsSpan = cardExpression.AsSpan();
 		return new Card(cardsSpan[1].ToSuit(), cardsSpan[0].ToSymbol());

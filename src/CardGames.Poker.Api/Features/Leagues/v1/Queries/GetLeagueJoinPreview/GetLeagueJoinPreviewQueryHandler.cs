@@ -19,16 +19,12 @@ public sealed class GetLeagueJoinPreviewQueryHandler(
 		CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		if (string.IsNullOrWhiteSpace(request.Token))
-		{
 			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite,
 				"Invite code is required.");
-		}
 
 		var tokenHash = ComputeSha256(request.Token.Trim());
 		var now = DateTimeOffset.UtcNow;
@@ -38,20 +34,16 @@ public sealed class GetLeagueJoinPreviewQueryHandler(
 			.FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
 
 		if (invite is null || invite.Status != LeagueInviteStatus.Active || invite.ExpiresAtUtc <= now)
-		{
 			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite,
 				"Invite is invalid, revoked, or expired.");
-		}
 
 		var league = await context.Leagues
 			.AsNoTracking()
 			.FirstOrDefaultAsync(x => x.Id == invite.LeagueId, cancellationToken);
 
 		if (league is null)
-		{
 			return new GetLeagueJoinPreviewError(GetLeagueJoinPreviewErrorCode.InvalidInvite,
 				"Invite is invalid, revoked, or expired.");
-		}
 
 		var activeMemberCount = await context.LeagueMembersCurrent
 			.AsNoTracking()

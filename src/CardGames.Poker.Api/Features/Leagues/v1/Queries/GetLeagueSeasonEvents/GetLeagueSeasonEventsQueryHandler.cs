@@ -17,10 +17,8 @@ public sealed class GetLeagueSeasonEventsQueryHandler(
 		GetLeagueSeasonEventsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -30,20 +28,16 @@ public sealed class GetLeagueSeasonEventsQueryHandler(
 				cancellationToken);
 
 		if (!isMember)
-		{
 			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.Forbidden,
 				"Only active members can view season events.");
-		}
 
 		var seasonExists = await context.LeagueSeasons
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.SeasonId && x.LeagueId == request.LeagueId, cancellationToken);
 
 		if (!seasonExists)
-		{
 			return new GetLeagueSeasonEventsError(GetLeagueSeasonEventsErrorCode.SeasonNotFound,
 				"Season not found in league.");
-		}
 
 		var events = await context.LeagueSeasonEvents
 			.AsNoTracking()

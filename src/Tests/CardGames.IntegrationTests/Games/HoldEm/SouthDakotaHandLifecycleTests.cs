@@ -48,7 +48,7 @@ public class SouthDakotaHandLifecycleTests : IntegrationTestBase
 	[Fact]
 	public async Task Lifecycle_DealsTwoCardFlopAndNoRiver_ThenShowdown()
 	{
-		var setup = await CreateDealtSouthDakotaGameAsync(playerCount: 3, dealerPosition: 0);
+		var setup = await CreateDealtSouthDakotaGameAsync(3, 0);
 
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "Flop");
 
@@ -131,10 +131,7 @@ public class SouthDakotaHandLifecycleTests : IntegrationTestBase
 		for (var i = 0; i < 64; i++)
 		{
 			var game = await GetFreshDbContext().Games.AsNoTracking().FirstAsync(g => g.Id == gameId);
-			if (string.Equals(game.CurrentPhase, targetPhase, StringComparison.OrdinalIgnoreCase))
-			{
-				return;
-			}
+			if (string.Equals(game.CurrentPhase, targetPhase, StringComparison.OrdinalIgnoreCase)) return;
 
 			var result = await SendPassiveBettingActionAsync(gameId);
 			result.IsT0.Should()
@@ -151,10 +148,7 @@ public class SouthDakotaHandLifecycleTests : IntegrationTestBase
 			.OrderByDescending(br => br.RoundNumber)
 			.FirstOrDefaultAsync();
 
-		if (round is null)
-		{
-			return;
-		}
+		if (round is null) return;
 
 		for (var i = 0; i < 16; i++)
 		{
@@ -162,10 +156,7 @@ public class SouthDakotaHandLifecycleTests : IntegrationTestBase
 				.AsNoTracking()
 				.FirstOrDefaultAsync(br => br.Id == round.Id);
 
-			if (freshRound is null || freshRound.IsComplete)
-			{
-				return;
-			}
+			if (freshRound is null || freshRound.IsComplete) return;
 
 			var result = await SendPassiveBettingActionAsync(gameId);
 			result.IsT0.Should().BeTrue($"passive betting action at iteration {i} should complete the current round");

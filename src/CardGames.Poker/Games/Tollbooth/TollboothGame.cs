@@ -10,21 +10,20 @@ namespace CardGames.Poker.Games.Tollbooth;
 ///     (free), the nearest card (1× ante), or the top deck card (2× ante).
 /// </summary>
 [PokerGameMetadata(
-	code: "TOLLBOOTH",
-	name: "Tollbooth",
-	description:
+	"TOLLBOOTH",
+	"Tollbooth",
 	"A Seven Card Stud variant where players choose their Fourth through Seventh street cards from a Tollbooth offer: the furthest display card (free), the nearest display card (1× ante), or the top deck card (2× ante).",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 7,
-	initialHoleCards: 2,
-	initialBoardCards: 1,
-	maxCommunityCards: 0,
-	maxPlayerCards: 7,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.AnteBringIn,
-	imageName: "tollbooth.png")]
+	2,
+	7,
+	2,
+	1,
+	0,
+	7,
+	false,
+	0,
+	WildCardRule.None,
+	BettingStructure.AnteBringIn,
+	"tollbooth.png")]
 public sealed class TollboothGame : IPokerGame
 {
 	public string Name { get; } = "Tollbooth";

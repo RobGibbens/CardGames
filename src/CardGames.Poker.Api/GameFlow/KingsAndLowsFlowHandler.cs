@@ -132,10 +132,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 	public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
 	{
 		// Reset all players' DropOrStay decisions and pot matching status
-		foreach (var player in game.GamePlayers)
-		{
-			player.DropOrStayDecision = DropOrStayDecision.Undecided;
-		}
+		foreach (var player in game.GamePlayers) player.DropOrStayDecision = DropOrStayDecision.Undecided;
 
 		return Task.CompletedTask;
 	}
@@ -179,18 +176,13 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 
 		// Fallback to all active players (including sitting out) if no active non-sitting-out players
 		if (activePlayers.Count == 0)
-		{
 			activePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active)
 				.OrderBy(gp => gp.SeatPosition)
 				.Select(gp => gp.SeatPosition)
 				.ToList();
-		}
 
-		if (activePlayers.Count == 0)
-		{
-			return;
-		}
+		if (activePlayers.Count == 0) return;
 
 		var currentPosition = game.DealerPosition;
 		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
@@ -243,10 +235,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 			                          p.HandNumber == game.CurrentHandNumber,
 				cancellationToken);
 
-		if (mainPot == null)
-		{
-			return ShowdownResult.Failure("No pot to award");
-		}
+		if (mainPot == null) return ShowdownResult.Failure("No pot to award");
 
 		// Evaluate hands
 		var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
@@ -270,10 +259,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 			}
 		}
 
-		if (playerHandEvaluations.Count == 0)
-		{
-			return ShowdownResult.Failure("No valid hands to evaluate");
-		}
+		if (playerHandEvaluations.Count == 0) return ShowdownResult.Failure("No valid hands to evaluate");
 
 		// Find winners
 		var maxStrength = playerHandEvaluations.Max(h => h.strength);
@@ -425,10 +411,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 					.OrderBy(gc => gc.DealOrder)
 					.Select(gc => FormatCard(gc.Symbol, gc.Suit))
 					.ToList();
-				if (cards.Count > 0)
-				{
-					showdownCards = cards;
-				}
+				if (cards.Count > 0) showdownCards = cards;
 			}
 
 			return new PlayerResultInfo
@@ -512,26 +495,20 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 	public override async Task PerformAutoActionAsync(AutoActionContext context)
 	{
 		if (context.CurrentPhase.Equals("DropOrStay", StringComparison.OrdinalIgnoreCase))
-		{
 			await PerformAutoDropOrStayAsync(context);
-		}
 		else
-		{
 			await base.PerformAutoActionAsync(context);
-		}
 	}
 
 	protected override async Task SendDrawActionAsync(AutoActionContext context)
 	{
 		var player = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
 		if (player is null)
-		{
 			// Try to load from DB if not in memory
 			player = await context.DbContext.GamePlayers
 				.AsNoTracking()
 				.FirstOrDefaultAsync(gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex,
 					context.CancellationToken);
-		}
 
 		if (player is null)
 		{
@@ -567,28 +544,20 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 				             (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision == DropOrStayDecision.Undecided))
 				.ToListAsync(context.CancellationToken);
 
-			foreach (var player in players)
-			{
-				await SendDropCommandAsync(context, player.PlayerId);
-			}
+			foreach (var player in players) await SendDropCommandAsync(context, player.PlayerId);
 		}
 		else
 		{
 			// Single player timer
 			var player = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
 			if (player is null)
-			{
 				player = await context.DbContext.GamePlayers
 					.AsNoTracking()
 					.FirstOrDefaultAsync(
 						gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex,
 						context.CancellationToken);
-			}
 
-			if (player != null)
-			{
-				await SendDropCommandAsync(context, player.PlayerId);
-			}
+			if (player != null) await SendDropCommandAsync(context, player.PlayerId);
 		}
 	}
 

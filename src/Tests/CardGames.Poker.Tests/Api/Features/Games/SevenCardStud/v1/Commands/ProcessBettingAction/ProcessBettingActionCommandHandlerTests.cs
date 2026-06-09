@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -146,8 +144,8 @@ public class ProcessBettingActionCommandHandlerTests
 		var alice = CreatePlayer("Alice", now);
 		var bob = CreatePlayer("Bob", now);
 
-		var aliceGamePlayer = CreateGamePlayer(game, alice, seatPosition: 0, chipStack: 200, now);
-		var bobGamePlayer = CreateGamePlayer(game, bob, seatPosition: 1, chipStack: 200, now);
+		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, 200, now);
+		var bobGamePlayer = CreateGamePlayer(game, bob, 1, 200, now);
 
 		context.GameTypes.Add(gameType);
 		context.Games.Add(game);
@@ -165,7 +163,6 @@ public class ProcessBettingActionCommandHandlerTests
 		});
 
 		if (includeBettingRound)
-		{
 			context.BettingRounds.Add(new BettingRoundEntity
 			{
 				GameId = game.Id,
@@ -185,7 +182,6 @@ public class ProcessBettingActionCommandHandlerTests
 				IsComplete = false,
 				StartedAt = now
 			});
-		}
 
 		await context.SaveChangesAsync();
 		return game;

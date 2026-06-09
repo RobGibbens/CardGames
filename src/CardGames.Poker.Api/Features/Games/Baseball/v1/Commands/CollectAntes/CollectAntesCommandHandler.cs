@@ -23,23 +23,19 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new CollectAntesError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = CollectAntesErrorCode.GameNotFound
 			};
-		}
 
 		if (game.CurrentPhase != nameof(Phases.CollectingAntes))
-		{
 			return new CollectAntesError
 			{
 				Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase. " +
 				          $"Antes can only be collected when the game is in '{nameof(Phases.CollectingAntes)}' phase.",
 				Code = CollectAntesErrorCode.InvalidGameState
 			};
-		}
 
 		var mainPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
@@ -82,10 +78,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 				gamePlayer.TotalContributedThisHand += anteAmount;
 
 				var wentAllIn = gamePlayer.ChipStack == 0;
-				if (wentAllIn)
-				{
-					gamePlayer.IsAllIn = true;
-				}
+				if (wentAllIn) gamePlayer.IsAllIn = true;
 
 				mainPot.Amount += anteAmount;
 				totalCollected += anteAmount;
@@ -114,10 +107,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		game.CurrentPhase = nameof(Phases.ThirdStreet);
 		game.UpdatedAt = now;
 
-		foreach (var gamePlayer in game.GamePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
+		foreach (var gamePlayer in game.GamePlayers) gamePlayer.CurrentBet = 0;
 
 		await context.SaveChangesAsync(cancellationToken);
 

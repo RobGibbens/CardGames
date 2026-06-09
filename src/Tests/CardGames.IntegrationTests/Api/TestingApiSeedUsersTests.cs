@@ -13,7 +13,7 @@ public class TestingApiSeedUsersTests(ApiWebApplicationFactory factory) : ApiInt
 	[Fact]
 	public async Task SeedUsers_Endpoint_CreatesConfirmedAccounts_AndSkipsExistingUsersOnReplay()
 	{
-		var firstResponse = await Client.PostAsync("/api/v1/testing/users/seed", content: null);
+		var firstResponse = await Client.PostAsync("/api/v1/testing/users/seed", null);
 
 		firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var firstPayload = await firstResponse.Content.ReadFromJsonAsync<SeedDevelopmentUsersResponse>();
@@ -55,7 +55,7 @@ public class TestingApiSeedUsersTests(ApiWebApplicationFactory factory) : ApiInt
 			ledgerEntry.ReferenceType.Should().Be("DevelopmentSeed");
 		}
 
-		var secondResponse = await Client.PostAsync("/api/v1/testing/users/seed", content: null);
+		var secondResponse = await Client.PostAsync("/api/v1/testing/users/seed", null);
 
 		secondResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 		var secondPayload = await secondResponse.Content.ReadFromJsonAsync<SeedDevelopmentUsersResponse>();

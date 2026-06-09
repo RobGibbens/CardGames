@@ -4,21 +4,20 @@ using CardGames.Poker.Games.GameFlow;
 namespace CardGames.Poker.Games.Nebraska;
 
 [PokerGameMetadata(
-	code: "NEBRASKA",
-	name: "Nebraska",
-	description:
+	"NEBRASKA",
+	"Nebraska",
 	"A community card poker variant like Omaha where players are dealt five hole cards and must use exactly three hole cards and two community cards.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 5,
-	initialBoardCards: 0,
-	maxCommunityCards: 5,
-	maxPlayerCards: 5,
-	hasDrawPhase: false,
-	maxDiscards: 0,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "nebraska.png")]
+	2,
+	10,
+	5,
+	0,
+	5,
+	5,
+	false,
+	0,
+	WildCardRule.None,
+	BettingStructure.Blinds,
+	"nebraska.png")]
 public sealed class NebraskaGame : IPokerGame
 {
 	public string Name { get; } = "Nebraska";

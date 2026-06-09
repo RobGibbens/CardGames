@@ -11,9 +11,6 @@ public class FiveCardStudHand : StudHand
 		IReadOnlyCollection<Card> openCards)
 		: base([holeCard], openCards, [])
 	{
-		if (openCards.Count > 4)
-		{
-			throw new ArgumentException("A five card Stud hand has at most four open cards");
-		}
+		if (openCards.Count > 4) throw new ArgumentException("A five card Stud hand has at most four open cards");
 	}
 }

@@ -87,25 +87,21 @@ public sealed class StartHandCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new StartHandError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = StartHandErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Dealer's Choice first-hand: set initial DC dealer and wait for game type selection
 		if (game.IsDealersChoice && game.GameTypeId is null)
 		{
 			if (game.CurrentPhase != nameof(Phases.WaitingToStart))
-			{
 				return new StartHandError
 				{
 					Message = $"Cannot start a Dealer's Choice game from '{game.CurrentPhase}' phase.",
 					Code = StartHandErrorCode.InvalidGameState
 				};
-			}
 
 			// Set initial DC dealer to the same as the game dealer (seat 0 or first occupied seat)
 			var firstActiveSeat = game.GamePlayers
@@ -161,7 +157,6 @@ public sealed class StartHandCommandHandler(
 		};
 
 		if (!validPhases.Contains(game.CurrentPhase))
-		{
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
@@ -169,7 +164,6 @@ public sealed class StartHandCommandHandler(
 				          $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
-		}
 
 		// 4. Finalize leave requests for players who were waiting for the hand to finish
 		ProcessPendingLeaveRequests(game, now);
@@ -184,14 +178,12 @@ public sealed class StartHandCommandHandler(
 		var eligiblePlayers = GetEligiblePlayers(game);
 
 		if (eligiblePlayers.Count < 2)
-		{
 			return new StartHandError
 			{
 				Message =
 					"Not enough eligible players to start a new hand. At least 2 players with sufficient chips are required.",
 				Code = StartHandErrorCode.NotEnoughPlayers
 			};
-		}
 
 		// 8. Reset player states for new hand
 		ResetPlayerStates(game);
@@ -267,7 +259,6 @@ public sealed class StartHandCommandHandler(
 						$"{p.PlayerId}:contributed={p.TotalContributedThisHand},stack={p.ChipStack}")));
 
 			if (await ShouldBroadcastScrewYourNeighborNewDeckToastAsync(context, flowHandler, game, cancellationToken))
-			{
 				await broadcaster.BroadcastTableToastAsync(
 					new TableToastNotificationDto
 					{
@@ -275,7 +266,6 @@ public sealed class StartHandCommandHandler(
 						Message = "Starting new deck"
 					},
 					cancellationToken);
-			}
 		}
 		else if (flowHandler.AutoCollectsAntesOnStart)
 		{
@@ -283,7 +273,6 @@ public sealed class StartHandCommandHandler(
 			// because they have no separate CollectAntes endpoint.
 			var ante = game.Ante ?? 0;
 			if (ante > 0)
-			{
 				foreach (var player in eligiblePlayers)
 				{
 					var anteAmount = Math.Min(ante, player.ChipStack);
@@ -301,12 +290,8 @@ public sealed class StartHandCommandHandler(
 						ContributedAt = now
 					});
 
-					if (player.ChipStack == 0)
-					{
-						player.IsAllIn = true;
-					}
+					if (player.ChipStack == 0) player.IsAllIn = true;
 				}
-			}
 
 			await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
 			await context.SaveChangesAsync(cancellationToken);
@@ -334,9 +319,7 @@ public sealed class StartHandCommandHandler(
 		if (!string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
 			    StringComparison.OrdinalIgnoreCase) ||
 		    game.CurrentHandNumber <= 1)
-		{
 			return false;
-		}
 
 		var currentHandCardCount = await context.GameCards
 			.CountAsync(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber, cancellationToken);

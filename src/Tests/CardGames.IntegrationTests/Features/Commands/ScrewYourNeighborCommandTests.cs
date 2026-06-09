@@ -24,7 +24,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 		int playerCount = 4)
 	{
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
-			DbContext, "SCREWYOURNEIGHBOR", playerCount, startingChips: 100, ante: 25);
+			DbContext, "SCREWYOURNEIGHBOR", playerCount, 100, 25);
 
 		// Start hand — this triggers dealing and transitions to KeepOrTrade
 		await Mediator.Send(new StartHandCommand(setup.Game.Id));
@@ -58,10 +58,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 		var cardsToKeep = deckCards.Take(orderedDeckCards.Length).ToList();
 		var cardsToRemove = deckCards.Skip(orderedDeckCards.Length).ToList();
 
-		if (cardsToRemove.Count > 0)
-		{
-			DbContext.GameCards.RemoveRange(cardsToRemove);
-		}
+		if (cardsToRemove.Count > 0) DbContext.GameCards.RemoveRange(cardsToRemove);
 
 		for (var i = 0; i < orderedDeckCards.Length; i++)
 		{
@@ -93,8 +90,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 		var choice = await Mediator.Send(new ChooseDealerGameCommand(
 			game.Id,
 			"SCREWYOURNEIGHBOR",
-			Ante: ante,
-			MinBet: Math.Max(ante, 1)));
+			ante,
+			Math.Max(ante, 1)));
 
 		choice.IsT0.Should().BeTrue();
 
@@ -123,7 +120,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 	public async Task StartHand_TransitionsToKeepOrTrade()
 	{
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
-			DbContext, "SCREWYOURNEIGHBOR", 4, startingChips: 100, ante: 25);
+			DbContext, "SCREWYOURNEIGHBOR", 4, 100, 25);
 
 		var result = await Mediator.Send(new StartHandCommand(setup.Game.Id));
 		result.IsT0.Should().BeTrue();
@@ -416,10 +413,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 				.AsNoTracking()
 				.FirstAsync(g => g.Id == setup.Game.Id);
 
-			if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
-			{
-				break;
-			}
+			if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
 
 			var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
 			var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
@@ -474,10 +468,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 				.AsNoTracking()
 				.FirstAsync(g => g.Id == setup.Game.Id);
 
-			if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
-			{
-				break;
-			}
+			if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
 
 			var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
 			var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
@@ -614,8 +605,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 			DbContext,
 			"SCREWYOURNEIGHBOR",
 			2,
-			startingChips: 25,
-			ante: 25);
+			25,
+			25);
 
 		await Mediator.Send(new StartHandCommand(setup.Game.Id));
 
@@ -649,10 +640,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 				.AsNoTracking()
 				.FirstAsync(g => g.Id == setup.Game.Id);
 
-			if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
-			{
-				break;
-			}
+			if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
 
 			var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
 			var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
@@ -677,16 +665,14 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 	public async Task DealersChoiceScrewYourNeighbor_StartsWithThreeStacks()
 	{
 		// In DC, when SYN is chosen with ante=25, each player should get 3 stacks (75 chips)
-		var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(playerCount: 3, startingChips: 500, ante: 25);
+		var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(3, 500, 25);
 
 		game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
 
 		var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 		foreach (var player in players)
-		{
 			player.ChipStack.Should()
 				.Be(75, $"player at seat {player.SeatPosition} should have 3 stacks (ante × 3 = 75)");
-		}
 	}
 
 	[Fact]
@@ -739,10 +725,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 				var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
 				var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
 				if (keepResult.IsT1)
-				{
 					throw new XunitException(
 						$"KeepOrTrade H{hand + 1} failed for seat {currentActor.SeatPosition}: {keepResult.AsT1.Code} - {keepResult.AsT1.Message}");
-				}
 			}
 
 			game = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
@@ -779,7 +763,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 	{
 		// 3 players, ante=5, SYN chips = ante × 3 = 15 per player (3 stacks)
 		// Takes 3 SYN hands to get a winner (player 0 always wins, players 1&2 lose 5 each hand)
-		var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(playerCount: 3, startingChips: 15, ante: 5);
+		var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(3, 15, 5);
 		game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
 
 		var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
@@ -1003,10 +987,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 			var result = await Mediator.Send(new KeepOrTradeCommand(game.Id, actor.PlayerId, decision));
 			result.IsT0.Should().BeTrue();
 
-			if (isDealer)
-			{
-				result.AsT0.DidTrade.Should().BeTrue("Dealer should have traded with the deck");
-			}
+			if (isDealer) result.AsT0.DidTrade.Should().BeTrue("Dealer should have traded with the deck");
 		}
 
 		// After all turns, showdown should have fired inline.
@@ -1030,7 +1011,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 	{
 		// Edge-case: ante=0 means ChipStack >= 0 passes the eligible filter for 0-chip losers.
 		// After auto-sit-out, the recomputed eligible count must drop below 2 so the DC fallback triggers.
-		var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(playerCount: 3, startingChips: 25, ante: 0);
+		var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(3, 25, 0);
 		game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
 
 		var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
@@ -1097,10 +1078,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
 			Func<TState, Exception?, string> formatter)
 		{
-			if (logLevel >= LogLevel.Error)
-			{
-				ErrorLogs.Add(formatter(state, exception));
-			}
+			if (logLevel >= LogLevel.Error) ErrorLogs.Add(formatter(state, exception));
 		}
 	}
 }

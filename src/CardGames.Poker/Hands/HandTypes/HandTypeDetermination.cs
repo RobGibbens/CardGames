@@ -15,17 +15,11 @@ public static class HandTypeDetermination
 
 	public static HandType DetermineHandType(IReadOnlyCollection<Card> cards)
 	{
-		if (cards.Count < 5)
-		{
-			return DeterminePartialHandType(cards);
-		}
+		if (cards.Count < 5) return DeterminePartialHandType(cards);
 
 		var numberOfDistinctValues = cards.DistinctValues().Count;
 
-		if (numberOfDistinctValues == 1)
-		{
-			return HandType.FiveOfAKind;
-		}
+		if (numberOfDistinctValues == 1) return HandType.FiveOfAKind;
 
 		return numberOfDistinctValues == 5
 			? HandTypeOfDistinctValueHand(cards)
@@ -42,23 +36,14 @@ public static class HandTypeDetermination
 
 	private static HandType DeterminePartialHandType(IReadOnlyCollection<Card> cards)
 	{
-		if (cards.Count == 0)
-		{
-			return HandType.Incomplete;
-		}
+		if (cards.Count == 0) return HandType.Incomplete;
 
 		var groups = cards.GroupBy(c => c.Value).ToList();
 		var maxGroupSize = groups.Max(g => g.Count());
 
-		if (maxGroupSize == 4)
-		{
-			return HandType.Quads;
-		}
+		if (maxGroupSize == 4) return HandType.Quads;
 
-		if (maxGroupSize == 3)
-		{
-			return HandType.Trips;
-		}
+		if (maxGroupSize == 3) return HandType.Trips;
 
 		if (maxGroupSize == 2)
 		{
@@ -106,16 +91,10 @@ public static class HandTypeDetermination
 	private static bool IsStraight(IReadOnlyCollection<Card> cards)
 	{
 		var values = cards.DistinctDescendingValues();
-		if (values.Count != 5)
-		{
-			return false;
-		}
+		if (values.Count != 5) return false;
 
 		// Check for regular straight (e.g., 5-6-7-8-9)
-		if (values.Max() - values.Min() == 4)
-		{
-			return true;
-		}
+		if (values.Max() - values.Min() == 4) return true;
 
 		// Check for wheel straight (A-2-3-4-5) where Ace (value 14) acts as low
 		return IsWheelStraight(values);

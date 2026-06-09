@@ -55,11 +55,11 @@
 }
 
 @code {
-	[Parameter, EditorRequired] public bool Show { get; set; }
+	[Parameter] [EditorRequired] public bool Show { get; set; }
 
-	[Parameter, EditorRequired] public LeagueOneOffEventType EventType { get; set; }
+	[Parameter] [EditorRequired] public LeagueOneOffEventType EventType { get; set; }
 
-	[Parameter, EditorRequired] public Guid LeagueId { get; set; }
+	[Parameter] [EditorRequired] public Guid LeagueId { get; set; }
 
 	[Parameter] public EventCallback OnClose { get; set; }
 

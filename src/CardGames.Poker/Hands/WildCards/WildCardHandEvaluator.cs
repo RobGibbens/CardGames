@@ -28,7 +28,7 @@ public static class WildCardHandEvaluator
 			? new[] { allCards }
 			: allCards.SubsetsOfSize(5);
 
-		HandType bestType = HandType.Incomplete;
+		var bestType = HandType.Incomplete;
 		long bestStrength = 0;
 		IReadOnlyCollection<Card> bestCards = new List<Card>();
 		IReadOnlyCollection<Card> bestSourceCards = new List<Card>();
@@ -146,7 +146,7 @@ public static class WildCardHandEvaluator
 			var suitCards = naturalCards.Where(c => c.Suit == suit).ToList();
 
 			// Check high straights (A-high down to 6-high)
-			for (int highValue = 14; highValue >= 6; highValue--)
+			for (var highValue = 14; highValue >= 6; highValue--)
 			{
 				var needed = Enumerable.Range(highValue - 4, 5).ToList();
 				var present = suitCards.Count(c => needed.Contains(c.Value));
@@ -193,7 +193,6 @@ public static class WildCardHandEvaluator
 			.ToList();
 
 		foreach (var vc in valueCounts)
-		{
 			if (vc.Count + wildCount >= 4)
 			{
 				var wildsUsed = 4 - vc.Count;
@@ -211,7 +210,6 @@ public static class WildCardHandEvaluator
 				};
 				return (HandType.Quads, HandStrength.Calculate(cards, HandType.Quads, ranking), cards);
 			}
-		}
 
 		if (wildCount >= 4)
 		{
@@ -242,29 +240,27 @@ public static class WildCardHandEvaluator
 			.ThenByDescending(x => x.Value)
 			.ToList();
 
-		for (int i = 0; i < valueCounts.Count; i++)
+		for (var i = 0; i < valueCounts.Count; i++)
+		for (var j = 0; j < valueCounts.Count; j++)
 		{
-			for (int j = 0; j < valueCounts.Count; j++)
+			if (i == j) continue;
+			var tripsValue = valueCounts[i];
+			var pairValue = valueCounts[j];
+
+			var tripsNeeded = Math.Max(0, 3 - tripsValue.Count);
+			var pairNeeded = Math.Max(0, 2 - pairValue.Count);
+
+			if (tripsNeeded + pairNeeded <= wildCount)
 			{
-				if (i == j) continue;
-				var tripsValue = valueCounts[i];
-				var pairValue = valueCounts[j];
-
-				var tripsNeeded = Math.Max(0, 3 - tripsValue.Count);
-				var pairNeeded = Math.Max(0, 2 - pairValue.Count);
-
-				if (tripsNeeded + pairNeeded <= wildCount)
+				var cards = new List<Card>
 				{
-					var cards = new List<Card>
-					{
-						new(Suit.Spades, tripsValue.Value),
-						new(Suit.Hearts, tripsValue.Value),
-						new(Suit.Diamonds, tripsValue.Value),
-						new(Suit.Spades, pairValue.Value),
-						new(Suit.Hearts, pairValue.Value)
-					};
-					return (HandType.FullHouse, HandStrength.Calculate(cards, HandType.FullHouse, ranking), cards);
-				}
+					new(Suit.Spades, tripsValue.Value),
+					new(Suit.Hearts, tripsValue.Value),
+					new(Suit.Diamonds, tripsValue.Value),
+					new(Suit.Spades, pairValue.Value),
+					new(Suit.Hearts, pairValue.Value)
+				};
+				return (HandType.FullHouse, HandStrength.Calculate(cards, HandType.FullHouse, ranking), cards);
 			}
 		}
 
@@ -282,13 +278,9 @@ public static class WildCardHandEvaluator
 			if (suitCards.Count + wildCount >= 5)
 			{
 				var flushCards = suitCards.Take(5 - wildCount).ToList();
-				for (int v = 14; flushCards.Count < 5; v--)
-				{
+				for (var v = 14; flushCards.Count < 5; v--)
 					if (flushCards.All(c => c.Value != v))
-					{
 						flushCards.Add(new Card(suit, v));
-					}
-				}
 
 				flushCards = flushCards.OrderByDescending(c => c.Value).ToList();
 				return (HandType.Flush, HandStrength.Calculate(flushCards, HandType.Flush, ranking), flushCards);
@@ -306,7 +298,7 @@ public static class WildCardHandEvaluator
 		var distinctValues = naturalCards.Select(c => c.Value).Distinct().ToHashSet();
 
 		// Check high straights (A-high down to 6-high)
-		for (int highValue = 14; highValue >= 6; highValue--)
+		for (var highValue = 14; highValue >= 6; highValue--)
 		{
 			var needed = Enumerable.Range(highValue - 4, 5).ToList();
 			var present = needed.Count(v => distinctValues.Contains(v));
@@ -353,7 +345,6 @@ public static class WildCardHandEvaluator
 			.ToList();
 
 		foreach (var vc in valueCounts)
-		{
 			if (vc.Count + wildCount >= 3)
 			{
 				var wildsUsed = Math.Max(0, 3 - vc.Count);
@@ -365,15 +356,9 @@ public static class WildCardHandEvaluator
 					.Select(c => c.Value)
 					.ToList();
 				while (kickers.Count < 2)
-				{
-					for (int v = 14; kickers.Count < 2; v--)
-					{
+					for (var v = 14; kickers.Count < 2; v--)
 						if (v != vc.Value && !kickers.Contains(v))
-						{
 							kickers.Add(v);
-						}
-					}
-				}
 
 				var cards = new List<Card>
 				{
@@ -385,7 +370,6 @@ public static class WildCardHandEvaluator
 				};
 				return (HandType.Trips, HandStrength.Calculate(cards, HandType.Trips, ranking), cards);
 			}
-		}
 
 		return null;
 	}
@@ -457,15 +441,9 @@ public static class WildCardHandEvaluator
 				.Select(c => c.Value)
 				.ToList();
 			while (kickers.Count < 3)
-			{
-				for (int v = 14; kickers.Count < 3; v--)
-				{
+				for (var v = 14; kickers.Count < 3; v--)
 					if (v != highCard.Value && !kickers.Contains(v))
-					{
 						kickers.Add(v);
-					}
-				}
-			}
 
 			var cards = new List<Card>
 			{
@@ -515,13 +493,9 @@ public static class WildCardHandEvaluator
 		var sortedNatural = naturalCards.OrderByDescending(c => c.Value).ToList();
 		var cards = sortedNatural.Take(5 - wildCount).ToList();
 
-		for (int v = 14; cards.Count < 5; v--)
-		{
+		for (var v = 14; cards.Count < 5; v--)
 			if (cards.All(c => c.Value != v))
-			{
 				cards.Add(new Card(Suit.Spades, v));
-			}
-		}
 
 		cards = cards.OrderByDescending(c => c.Value).Take(5).ToList();
 		return (HandType.HighCard, HandStrength.Calculate(cards, HandType.HighCard, ranking), cards);

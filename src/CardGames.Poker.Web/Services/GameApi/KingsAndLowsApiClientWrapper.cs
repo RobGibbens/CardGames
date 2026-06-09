@@ -27,10 +27,7 @@ public class KingsAndLowsApiClientWrapper(IKingsAndLowsApi client, IFiveCardDraw
 		var response = await client.KingsAndLowsDrawCardsAsync(gameId, request);
 
 		string? errorMessage = null;
-		if (response?.Error is ApiException apiException)
-		{
-			errorMessage = apiException.Content;
-		}
+		if (response?.Error is ApiException apiException) errorMessage = apiException.Content;
 
 		var result = new ProcessDrawResult
 		{
@@ -43,15 +40,15 @@ public class KingsAndLowsApiClientWrapper(IKingsAndLowsApi client, IFiveCardDraw
 		{
 			var content = response.Content;
 			result.Content = new ProcessDrawSuccessful(
-				currentPhase: content.NextPhase ?? "DrawPhase",
-				discardedCards: content.DiscardedCards,
-				drawComplete: content.DrawPhaseComplete,
-				gameId: content.GameId,
-				newCards: content.NewCards ?? [],
-				nextDrawPlayerIndex: -1,
-				nextDrawPlayerName: content.NextPlayerName,
-				playerName: content.PlayerName ?? "",
-				playerSeatIndex: content.PlayerSeatIndex
+				content.NextPhase ?? "DrawPhase",
+				content.DiscardedCards,
+				content.DrawPhaseComplete,
+				content.GameId,
+				content.NewCards ?? [],
+				-1,
+				content.NextPlayerName,
+				content.PlayerName ?? "",
+				content.PlayerSeatIndex
 			);
 		}
 

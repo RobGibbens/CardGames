@@ -74,13 +74,8 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 		await DbContext.Database.EnsureDeletedAsync();
 		Scope.Dispose();
 		if (ServiceProvider is IAsyncDisposable asyncDisposable)
-		{
 			await asyncDisposable.DisposeAsync();
-		}
-		else if (ServiceProvider is IDisposable disposable)
-		{
-			disposable.Dispose();
-		}
+		else if (ServiceProvider is IDisposable disposable) disposable.Dispose();
 	}
 
 	/// <summary>

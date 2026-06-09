@@ -8,21 +8,20 @@ namespace CardGames.Poker.Games.PhilsMom;
 ///     deal 4 hole cards, discard 1 before flop, discard 1 after flop, then continue with turn/river.
 /// </summary>
 [PokerGameMetadata(
-	code: "PHILSMOM",
-	name: "Phil's Mom",
-	description:
+	"PHILSMOM",
+	"Phil's Mom",
 	"Deal 4 hole cards, discard 1 before the flop and 1 after the flop, then play Hold 'Em with community cards.",
-	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 10,
-	initialHoleCards: 4,
-	initialBoardCards: 0,
-	maxCommunityCards: 5,
-	maxPlayerCards: 4,
-	hasDrawPhase: true,
-	maxDiscards: 1,
-	wildCardRule: WildCardRule.None,
-	bettingStructure: BettingStructure.Blinds,
-	imageName: "philsmom.png")]
+	2,
+	10,
+	4,
+	0,
+	5,
+	4,
+	true,
+	1,
+	WildCardRule.None,
+	BettingStructure.Blinds,
+	"philsmom.png")]
 public sealed class PhilsMomGame : IPokerGame
 {
 	public string Name { get; } = "Phil's Mom";

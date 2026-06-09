@@ -17,10 +17,8 @@ public sealed class GetLeagueOneOffEventsQueryHandler(
 		GetLeagueOneOffEventsQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueOneOffEventsError(GetLeagueOneOffEventsErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -30,10 +28,8 @@ public sealed class GetLeagueOneOffEventsQueryHandler(
 				cancellationToken);
 
 		if (!isMember)
-		{
 			return new GetLeagueOneOffEventsError(GetLeagueOneOffEventsErrorCode.Forbidden,
 				"Only active members can view one-off events.");
-		}
 
 		var events = await (
 				from oneOffEvent in context.LeagueOneOffEvents.AsNoTracking()

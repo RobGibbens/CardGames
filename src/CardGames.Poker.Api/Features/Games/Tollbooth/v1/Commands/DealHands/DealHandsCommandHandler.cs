@@ -27,10 +27,7 @@ public sealed class DealHandsCommandHandler(
 		var result = await innerHandler.Handle(
 			new SharedDealHandsCommand(command.GameId), cancellationToken);
 
-		if (result.IsT1)
-		{
-			return result;
-		}
+		if (result.IsT1) return result;
 
 		var success = result.AsT0;
 

@@ -24,7 +24,7 @@ public class GoodBadUglyGameTests
 	{
 		var players = new List<(string, int)> { ("Alice", 1000) };
 
-		var act = () => new GoodBadUglyGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		var act = () => new GoodBadUglyGame(players, 5, 5, 10, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at least 2 players*");
@@ -35,7 +35,7 @@ public class GoodBadUglyGameTests
 	{
 		var players = Enumerable.Range(1, 11).Select(i => ($"Player{i}", 1000)).ToList();
 
-		var act = () => new GoodBadUglyGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+		var act = () => new GoodBadUglyGame(players, 5, 5, 10, 20);
 
 		act.Should().Throw<ArgumentException>()
 			.WithMessage("*at most 10 players*");
@@ -228,7 +228,7 @@ public class GoodBadUglyGameTests
 			("Alice", 1000),
 			("Bob", 1000)
 		};
-		return new GoodBadUglyGame(players, ante: 5, bringIn: 0, smallBet: 10, bigBet: 20, useBringIn: false);
+		return new GoodBadUglyGame(players, 5, 0, 10, 20, false);
 	}
 
 	/// <summary>
@@ -237,17 +237,11 @@ public class GoodBadUglyGameTests
 	/// </summary>
 	private static void AdvanceToPhase(GoodBadUglyGame game, Phases target)
 	{
-		if (game.CurrentPhase == Phases.WaitingToStart)
-		{
-			game.StartHand();
-		}
+		if (game.CurrentPhase == Phases.WaitingToStart) game.StartHand();
 
 		if (game.CurrentPhase == target) return;
 
-		if (game.CurrentPhase == Phases.CollectingAntes)
-		{
-			game.CollectAntes();
-		}
+		if (game.CurrentPhase == Phases.CollectingAntes) game.CollectAntes();
 
 		if (game.CurrentPhase == target) return;
 

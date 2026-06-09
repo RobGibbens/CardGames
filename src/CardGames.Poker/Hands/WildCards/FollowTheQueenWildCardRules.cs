@@ -42,28 +42,19 @@ public class FollowTheQueenWildCardRules
 		int? followingWildRank = null;
 		var cardsList = faceUpCardsInOrder.ToList();
 
-		for (int i = 0; i < cardsList.Count; i++)
-		{
+		for (var i = 0; i < cardsList.Count; i++)
 			if (cardsList[i].Symbol == Symbol.Queen)
 			{
 				// Check if there is a next card
 				if (i + 1 < cardsList.Count)
-				{
 					// The next card's rank becomes wild, replacing any previous following wild
 					followingWildRank = cardsList[i + 1].Value;
-				}
 				else
-				{
 					// Queen is the last face-up card, no following wild rank
 					followingWildRank = null;
-				}
 			}
-		}
 
-		if (followingWildRank.HasValue)
-		{
-			wildRanks.Add(followingWildRank.Value);
-		}
+		if (followingWildRank.HasValue) wildRanks.Add(followingWildRank.Value);
 
 		return wildRanks.ToList();
 	}

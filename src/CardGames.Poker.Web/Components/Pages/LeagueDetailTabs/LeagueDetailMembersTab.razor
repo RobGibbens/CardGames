@@ -239,9 +239,9 @@
 	private readonly Dictionary<Guid, string> _joinRequestReasons = [];
 	private Guid? _confirmingDenyJoinRequestId;
 
-	[Parameter, EditorRequired] public List<LeagueMemberDto> Members { get; set; } = [];
+	[Parameter] [EditorRequired] public List<LeagueMemberDto> Members { get; set; } = [];
 
-	[Parameter, EditorRequired] public List<LeagueMembershipHistoryItemDto> MembershipHistory { get; set; } = [];
+	[Parameter] [EditorRequired] public List<LeagueMembershipHistoryItemDto> MembershipHistory { get; set; } = [];
 
 	[Parameter] public bool CanManageLeague { get; set; }
 
@@ -267,7 +267,7 @@
 
 	[Parameter] public bool IsLoadingJoinRequests { get; set; }
 
-	[Parameter, EditorRequired] public List<LeagueJoinRequestQueueItemDto> PendingJoinRequests { get; set; } = [];
+	[Parameter] [EditorRequired] public List<LeagueJoinRequestQueueItemDto> PendingJoinRequests { get; set; } = [];
 
 	[Parameter] public bool IsSubmittingJoinRequest { get; set; }
 
@@ -279,7 +279,7 @@
 
 	[Parameter] public EventCallback OpenInviteModal { get; set; }
 
-	[Parameter, EditorRequired] public List<LeagueInviteSummaryDto> Invites { get; set; } = [];
+	[Parameter] [EditorRequired] public List<LeagueInviteSummaryDto> Invites { get; set; } = [];
 
 	[Parameter] public Func<Guid, string?, Task>? CopyInviteCodeAsync { get; set; }
 

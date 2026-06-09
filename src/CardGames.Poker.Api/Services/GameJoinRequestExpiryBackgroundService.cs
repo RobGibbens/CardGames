@@ -46,10 +46,7 @@ public sealed class GameJoinRequestExpiryBackgroundService(
 			.Where(x => x.Status == GameJoinRequestStatus.Pending && x.ExpiresAt <= now)
 			.ToListAsync(cancellationToken);
 
-		if (expiredRequests.Count == 0)
-		{
-			return;
-		}
+		if (expiredRequests.Count == 0) return;
 
 		foreach (var joinRequest in expiredRequests)
 		{
@@ -65,10 +62,7 @@ public sealed class GameJoinRequestExpiryBackgroundService(
 		foreach (var joinRequest in expiredRequests)
 		{
 			var routingKey = joinRequest.Player.Email ?? joinRequest.Player.Name;
-			if (string.IsNullOrWhiteSpace(routingKey))
-			{
-				continue;
-			}
+			if (string.IsNullOrWhiteSpace(routingKey)) continue;
 
 			await broadcaster.BroadcastJoinRequestResolvedAsync(
 				routingKey,

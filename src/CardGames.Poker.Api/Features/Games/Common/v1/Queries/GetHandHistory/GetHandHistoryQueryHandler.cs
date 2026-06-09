@@ -76,9 +76,7 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 				if (!string.IsNullOrWhiteSpace(email) &&
 				    winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
 				    !string.IsNullOrWhiteSpace(firstName))
-				{
 					return firstName;
-				}
 
 				return firstWinner.PlayerName;
 			}
@@ -103,7 +101,6 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 					// Get cards for this player if they reached showdown (stored in ShowdownCards JSON)
 					List<string>? visibleCards = null;
 					if (pr.ReachedShowdown && !string.IsNullOrWhiteSpace(pr.ShowdownCards))
-					{
 						try
 						{
 							visibleCards = JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
@@ -113,7 +110,6 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 							// Log error but don't fail the request
 							visibleCards = null;
 						}
-					}
 
 					return new PlayerHandResultDto
 					{

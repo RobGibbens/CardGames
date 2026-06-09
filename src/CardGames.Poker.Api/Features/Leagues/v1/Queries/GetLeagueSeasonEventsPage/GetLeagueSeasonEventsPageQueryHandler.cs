@@ -16,10 +16,8 @@ public sealed class GetLeagueSeasonEventsPageQueryHandler(
 		GetLeagueSeasonEventsPageQuery request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
-		{
 			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.Unauthorized,
 				"User is not authenticated.");
-		}
 
 		var isMember = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -29,20 +27,16 @@ public sealed class GetLeagueSeasonEventsPageQueryHandler(
 				cancellationToken);
 
 		if (!isMember)
-		{
 			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.Forbidden,
 				"Only active members can view season events.");
-		}
 
 		var seasonExists = await context.LeagueSeasons
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.SeasonId && x.LeagueId == request.LeagueId, cancellationToken);
 
 		if (!seasonExists)
-		{
 			return new GetLeagueSeasonEventsPageError(GetLeagueSeasonEventsPageErrorCode.SeasonNotFound,
 				"Season not found in league.");
-		}
 
 		var pageSize = Math.Clamp(request.PageSize, 1, 100);
 		var pageNumber = Math.Max(request.PageNumber, 1);
@@ -54,10 +48,7 @@ public sealed class GetLeagueSeasonEventsPageQueryHandler(
 		var totalCount = await query.CountAsync(cancellationToken);
 		var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
 
-		if (pageNumber > totalPages)
-		{
-			pageNumber = totalPages;
-		}
+		if (pageNumber > totalPages) pageNumber = totalPages;
 
 		var skip = (pageNumber - 1) * pageSize;
 		var entries = await query

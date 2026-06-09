@@ -35,10 +35,7 @@ public class OmahaSimulation
 
 	public OmahaSimulation WithFlop(IReadOnlyCollection<Card> flopCards)
 	{
-		if (flopCards.Count != 3)
-		{
-			throw new ArgumentException("A flop needs to have exactly three cards.");
-		}
+		if (flopCards.Count != 3) throw new ArgumentException("A flop needs to have exactly three cards.");
 
 		_flop = flopCards;
 		return this;
@@ -70,10 +67,7 @@ public class OmahaSimulation
 
 	private IEnumerable<IDictionary<string, OmahaHand>> Play(int nrOfHands)
 	{
-		foreach (var _ in Enumerable.Range(1, nrOfHands))
-		{
-			yield return PlayHand();
-		}
+		foreach (var _ in Enumerable.Range(1, nrOfHands)) yield return PlayHand();
 	}
 
 	private IDictionary<string, OmahaHand> PlayHand()

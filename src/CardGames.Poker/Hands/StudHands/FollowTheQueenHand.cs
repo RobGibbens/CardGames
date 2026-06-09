@@ -38,14 +38,10 @@ public class FollowTheQueenHand : StudHand
 		: base(holeCards, openCards, downCard != null ? new[] { downCard } : Array.Empty<Card>())
 	{
 		if (holeCards.Count != 2)
-		{
 			throw new ArgumentException("Follow the Queen needs exactly two hole cards", nameof(holeCards));
-		}
 
 		if (openCards.Count > 4)
-		{
 			throw new ArgumentException("Follow the Queen has at most four open cards", nameof(openCards));
-		}
 
 		_wildCardRules = new FollowTheQueenWildCardRules();
 		_faceUpCardsInOrder = faceUpCardsInOrder;
@@ -98,10 +94,7 @@ public class FollowTheQueenHand : StudHand
 
 	private void EvaluateIfNeeded()
 	{
-		if (_evaluated)
-		{
-			return;
-		}
+		if (_evaluated) return;
 
 		_evaluated = true;
 

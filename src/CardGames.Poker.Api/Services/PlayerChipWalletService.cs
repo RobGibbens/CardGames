@@ -15,10 +15,7 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 			null,
 			cancellationToken);
 
-		if (context.Entry(account).State == EntityState.Added)
-		{
-			await context.SaveChangesAsync(cancellationToken);
-		}
+		if (context.Entry(account).State == EntityState.Added) await context.SaveChangesAsync(cancellationToken);
 
 		return account.Balance;
 	}
@@ -30,19 +27,14 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 		string? actorUserId,
 		CancellationToken cancellationToken)
 	{
-		if (amount <= 0)
-		{
-			return WalletDebitResult.Failure("Buy-in amount must be greater than 0.");
-		}
+		if (amount <= 0) return WalletDebitResult.Failure("Buy-in amount must be greater than 0.");
 
 		var now = DateTimeOffset.UtcNow;
 		var account = await GetOrCreateAccountAsync(playerId, now, actorUserId, cancellationToken);
 
 		if (account.Balance < amount)
-		{
 			return WalletDebitResult.Failure(
 				$"Insufficient chips in your account. Balance: {account.Balance:N0}, requested: {amount:N0}.");
-		}
 
 		// Exposure-limit model: validate only, do NOT debit. Write audit-only BringIn entry.
 		context.PlayerChipLedgerEntries.Add(new PlayerChipLedgerEntry
@@ -69,10 +61,7 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 		string? actorUserId,
 		CancellationToken cancellationToken)
 	{
-		if (amount <= 0)
-		{
-			return null;
-		}
+		if (amount <= 0) return null;
 
 		var now = DateTimeOffset.UtcNow;
 		var account = await GetOrCreateAccountAsync(playerId, now, actorUserId, cancellationToken);
@@ -149,15 +138,9 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 			actorUserId,
 			cancellationToken);
 
-		if (account.CreatedAtUtc == default)
-		{
-			account.CreatedAtUtc = now;
-		}
+		if (account.CreatedAtUtc == default) account.CreatedAtUtc = now;
 
-		if (account.UpdatedAtUtc == default)
-		{
-			account.UpdatedAtUtc = now;
-		}
+		if (account.UpdatedAtUtc == default) account.UpdatedAtUtc = now;
 
 		return account;
 	}

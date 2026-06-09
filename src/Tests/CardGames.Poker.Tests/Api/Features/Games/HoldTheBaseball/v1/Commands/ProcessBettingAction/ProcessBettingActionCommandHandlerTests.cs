@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Linq;
 using System.Text.Json;
@@ -40,8 +38,8 @@ public class ProcessBettingActionCommandHandlerTests
 	public async Task Handle_WhenGameIsNotInBettingPhase_ReturnsInvalidGameState()
 	{
 		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, currentPhase: nameof(Phases.CollectingBlinds),
-			includeBettingRound: false);
+		var game = await SeedGameAsync(context, nameof(Phases.CollectingBlinds),
+			false);
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check),
@@ -88,7 +86,7 @@ public class ProcessBettingActionCommandHandlerTests
 		var game = await SeedGameAsync(context, currentBet: 0, minBet: 10);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, Amount: 5),
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 5),
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -102,17 +100,17 @@ public class ProcessBettingActionCommandHandlerTests
 		await using var context = CreateContext();
 		var game = await SeedGameAsync(
 			context,
-			currentPhase: nameof(Phases.PreFlop),
+			nameof(Phases.PreFlop),
 			currentBet: 0,
 			currentActorIndex: 0,
 			firstPlayerStack: 50,
 			secondPlayerAllIn: true);
 
-		context.GameCards.Add(CreateDeckCard(game, dealOrder: 1, CardSuit.Hearts, CardSymbol.Ace));
-		context.GameCards.Add(CreateDeckCard(game, dealOrder: 2, CardSuit.Clubs, CardSymbol.King));
-		context.GameCards.Add(CreateDeckCard(game, dealOrder: 3, CardSuit.Spades, CardSymbol.Queen));
-		context.GameCards.Add(CreateDeckCard(game, dealOrder: 4, CardSuit.Diamonds, CardSymbol.Jack));
-		context.GameCards.Add(CreateDeckCard(game, dealOrder: 5, CardSuit.Hearts, CardSymbol.Ten));
+		context.GameCards.Add(CreateDeckCard(game, 1, CardSuit.Hearts, CardSymbol.Ace));
+		context.GameCards.Add(CreateDeckCard(game, 2, CardSuit.Clubs, CardSymbol.King));
+		context.GameCards.Add(CreateDeckCard(game, 3, CardSuit.Spades, CardSymbol.Queen));
+		context.GameCards.Add(CreateDeckCard(game, 4, CardSuit.Diamonds, CardSymbol.Jack));
+		context.GameCards.Add(CreateDeckCard(game, 5, CardSuit.Hearts, CardSymbol.Ten));
 		await context.SaveChangesAsync();
 
 		var sut = CreateSut(context);
@@ -208,14 +206,14 @@ public class ProcessBettingActionCommandHandlerTests
 		var alice = CreatePlayer("Alice", now);
 		var bob = CreatePlayer("Bob", now);
 
-		var aliceGamePlayer = CreateGamePlayer(game, alice, seatPosition: 0, chipStack: firstPlayerStack, now);
+		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, firstPlayerStack, now);
 		var bobGamePlayer = CreateGamePlayer(
 			game,
 			bob,
-			seatPosition: 1,
-			chipStack: secondPlayerAllIn ? 0 : 200,
+			1,
+			secondPlayerAllIn ? 0 : 200,
 			now,
-			isAllIn: secondPlayerAllIn);
+			secondPlayerAllIn);
 
 		context.GameTypes.Add(gameType);
 		context.Games.Add(game);
@@ -233,7 +231,6 @@ public class ProcessBettingActionCommandHandlerTests
 		});
 
 		if (includeBettingRound)
-		{
 			context.BettingRounds.Add(new BettingRoundEntity
 			{
 				GameId = game.Id,
@@ -253,7 +250,6 @@ public class ProcessBettingActionCommandHandlerTests
 				IsComplete = false,
 				StartedAt = now
 			});
-		}
 
 		await context.SaveChangesAsync();
 		return game;

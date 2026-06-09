@@ -28,28 +28,18 @@ public class FoldDuringDrawCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new FoldDuringDrawError { Message = $"Game with ID '{command.GameId}' was not found." };
-		}
 
 		if (game.CurrentPhase != nameof(Phases.DrawPhase))
-		{
 			return new FoldDuringDrawError
 			{
 				Message = $"Cannot fold during draw. Game is in '{game.CurrentPhase}' phase."
 			};
-		}
 
 		var player = game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == command.PlayerSeatIndex);
-		if (player is null)
-		{
-			return new FoldDuringDrawError { Message = "Player not found at the specified seat." };
-		}
+		if (player is null) return new FoldDuringDrawError { Message = "Player not found at the specified seat." };
 
-		if (player.HasFolded)
-		{
-			return new FoldDuringDrawError { Message = "Player has already folded." };
-		}
+		if (player.HasFolded) return new FoldDuringDrawError { Message = "Player has already folded." };
 
 		logger.LogInformation(
 			"Folding player {PlayerName} (seat {SeatIndex}) during draw phase for game {GameId}",

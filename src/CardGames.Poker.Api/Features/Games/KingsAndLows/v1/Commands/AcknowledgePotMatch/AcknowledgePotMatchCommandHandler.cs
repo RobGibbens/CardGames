@@ -30,37 +30,31 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new AcknowledgePotMatchError
 			{
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = AcknowledgePotMatchErrorCode.GameNotFound
 			};
-		}
 
 		// 2. Validate game is in PotMatching phase
 		if (game.CurrentPhase != nameof(Phases.PotMatching))
-		{
 			return new AcknowledgePotMatchError
 			{
 				Message = $"Cannot process pot matching. Game is in '{game.CurrentPhase}' phase, " +
 				          $"but must be in '{nameof(Phases.PotMatching)}' phase.",
 				Code = AcknowledgePotMatchErrorCode.InvalidPhase
 			};
-		}
 
 		// 3. Get the awarded pot for this hand to determine the pot amount and winners
 		var awardedPot = game.Pots
 			.FirstOrDefault(p => p.HandNumber == game.CurrentHandNumber && p.IsAwarded);
 
 		if (awardedPot is null)
-		{
 			return new AcknowledgePotMatchError
 			{
 				Message = "No awarded pot found for the current hand. Showdown must complete before pot matching.",
 				Code = AcknowledgePotMatchErrorCode.InvalidPhase
 			};
-		}
 
 		var currentPot = awardedPot.Amount;
 
@@ -72,24 +66,18 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 		// 4. Determine winners from the awarded pot's WinnerPayouts
 		var winnerPlayerIds = new HashSet<Guid>();
 		if (!string.IsNullOrEmpty(awardedPot.WinnerPayouts))
-		{
 			try
 			{
 				using var doc = JsonDocument.Parse(awardedPot.WinnerPayouts);
 				foreach (var element in doc.RootElement.EnumerateArray())
-				{
 					if (element.TryGetProperty("playerId", out var playerIdProp) &&
 					    Guid.TryParse(playerIdProp.GetString(), out var playerId))
-					{
 						winnerPlayerIds.Add(playerId);
-					}
-				}
 			}
 			catch (JsonException)
 			{
 				// If parsing fails, proceed with empty winners (all staying players match)
 			}
-		}
 
 		// 5. Determine losers - staying players who are NOT winners
 		var gamePlayersList = game.GamePlayers.ToList();
@@ -116,10 +104,7 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 				if (handHistory != null)
 				{
 					var result = handHistory.PlayerResults.FirstOrDefault(r => r.PlayerId == loser.PlayerId);
-					if (result != null)
-					{
-						result.NetChipDelta -= matchAmount;
-					}
+					if (result != null) result.NetChipDelta -= matchAmount;
 				}
 			}
 		}
@@ -173,18 +158,13 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 			.ToList();
 
 		if (activePlayers.Count == 0)
-		{
 			activePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active)
 				.OrderBy(gp => gp.SeatPosition)
 				.Select(gp => gp.SeatPosition)
 				.ToList();
-		}
 
-		if (activePlayers.Count == 0)
-		{
-			return;
-		}
+		if (activePlayers.Count == 0) return;
 
 		var currentPosition = game.DealerPosition;
 		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();

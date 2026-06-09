@@ -48,7 +48,6 @@ public class TrimStringsMiddleware
 		var result = new Dictionary<string, object?>();
 
 		foreach (var property in element.EnumerateObject())
-		{
 			if (property.Value.ValueKind == JsonValueKind.String)
 			{
 				result[property.Name] = property.Value.GetString()?.Trim();
@@ -61,20 +60,12 @@ public class TrimStringsMiddleware
 			{
 				var list = new List<object?>();
 				foreach (var arrayElement in property.Value.EnumerateArray())
-				{
 					if (arrayElement.ValueKind == JsonValueKind.String)
-					{
 						list.Add(arrayElement.GetString()?.Trim());
-					}
 					else if (arrayElement.ValueKind == JsonValueKind.Object)
-					{
 						list.Add(TrimJsonElement(arrayElement));
-					}
 					else
-					{
 						list.Add(arrayElement.ToString());
-					}
-				}
 
 				result[property.Name] = list;
 			}
@@ -82,7 +73,6 @@ public class TrimStringsMiddleware
 			{
 				result[property.Name] = property.Value;
 			}
-		}
 
 		return result;
 	}

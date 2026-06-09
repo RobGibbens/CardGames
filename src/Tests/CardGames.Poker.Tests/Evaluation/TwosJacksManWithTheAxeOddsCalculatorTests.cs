@@ -19,21 +19,13 @@ public class TwosJacksManWithTheAxeOddsCalculatorTests
 
 		var nonWildPairOrBetter = 0m;
 		foreach (var (handType, probability) in nonWild.HandTypeProbabilities)
-		{
 			if (handType != HandType.HighCard)
-			{
 				nonWildPairOrBetter += probability;
-			}
-		}
 
 		var withWildPairOrBetter = 0m;
 		foreach (var (handType, probability) in withWild.HandTypeProbabilities)
-		{
 			if (handType != HandType.HighCard)
-			{
 				withWildPairOrBetter += probability;
-			}
-		}
 
 		withWildPairOrBetter.Should().BeGreaterThan(nonWildPairOrBetter);
 	}

@@ -47,7 +47,7 @@ public class StudOrderHelperTests
 
 		var ordered = StudOrderHelper.OrderFaceUpCardsInGlobalDealOrder(
 			seats,
-			dealerSeatIndex: 1,
+			1,
 			seat => seat.SeatIndex,
 			seat => seat.Cards,
 			_ => true);

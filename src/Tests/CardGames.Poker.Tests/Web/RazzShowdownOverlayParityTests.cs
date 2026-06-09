@@ -40,14 +40,14 @@ public class RazzShowdownOverlayParityTests
 	[Fact]
 	public void ShowdownOverlayFallback_UsesRazzLowball_AndAvoidsPairSelections()
 	{
-		var player1Description = InvokeOverlayDescription(Player1, isRazz: true);
-		var player2Description = InvokeOverlayDescription(Player2, isRazz: true);
+		var player1Description = InvokeOverlayDescription(Player1, true);
+		var player2Description = InvokeOverlayDescription(Player2, true);
 
 		player1Description.Should().Be("Queen-Jack-6-5-2");
 		player2Description.Should().Be("King-Queen-9-7-5");
 
-		var player1BestCards = InvokeOverlayBestCards(Player1, isRazz: true);
-		var player2BestCards = InvokeOverlayBestCards(Player2, isRazz: true);
+		var player1BestCards = InvokeOverlayBestCards(Player1, true);
+		var player2BestCards = InvokeOverlayBestCards(Player2, true);
 
 		player1BestCards.Should().ContainInOrder(
 			new ShowdownCard(CardSuit.Hearts, CardSymbol.Deuce),
@@ -76,8 +76,8 @@ public class RazzShowdownOverlayParityTests
 		var tablePlayer1 = EvaluateTableLowDescription("Ks Js 6s 5h Qs 2h 6d");
 		var tablePlayer2 = EvaluateTableLowDescription("Qc Kh 9d 7h 9h 7d 5s");
 
-		var overlayPlayer1 = InvokeOverlayDescription(Player1, isRazz: true);
-		var overlayPlayer2 = InvokeOverlayDescription(Player2, isRazz: true);
+		var overlayPlayer1 = InvokeOverlayDescription(Player1, true);
+		var overlayPlayer2 = InvokeOverlayDescription(Player2, true);
 
 		overlayPlayer1.Should().NotBe(tablePlayer1);
 		overlayPlayer2.Should().NotBe(tablePlayer2);
@@ -135,19 +135,19 @@ public class RazzShowdownOverlayParityTests
 	private static ShowdownPlayerHand CreateHand(string playerName, string cards)
 	{
 		return new ShowdownPlayerHand(
-			amountWon: 0,
-			cards: ParseShowdownCards(cards),
-			handDescription: string.Empty,
-			handStrength: null,
-			handType: string.Empty,
-			highHandAmountWon: 0,
-			isHighHandWinner: false,
-			isSevensWinner: false,
-			isWinner: false,
-			playerFirstName: playerName,
-			playerName: playerName,
-			sevensAmountWon: 0,
-			wildCardIndexes: []);
+			0,
+			ParseShowdownCards(cards),
+			string.Empty,
+			null,
+			string.Empty,
+			0,
+			false,
+			false,
+			false,
+			playerName,
+			playerName,
+			0,
+			[]);
 	}
 
 	private static ICollection<ShowdownCard> ParseShowdownCards(string cards)

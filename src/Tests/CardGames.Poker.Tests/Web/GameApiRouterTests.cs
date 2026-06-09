@@ -522,10 +522,10 @@ public class GameApiRouterTests
 			gameId,
 			playerId,
 			"Trade",
-			didTrade: true,
-			wasBlocked: false,
-			nextPhase: "ResolveKeepOrTrade",
-			nextPlayerSeatIndex: 2));
+			true,
+			false,
+			"ResolveKeepOrTrade",
+			2));
 		return response;
 	}
 

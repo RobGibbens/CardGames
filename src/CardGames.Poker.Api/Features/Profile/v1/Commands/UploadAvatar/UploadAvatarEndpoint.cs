@@ -22,26 +22,20 @@ public static class UploadAvatarEndpoint
 					var options = optionsProvider.Value;
 
 					if (file is null || file.Length <= 0)
-					{
 						return Results.BadRequest(new { message = "Avatar file is required." });
-					}
 
 					if (file.Length > options.MaxUploadBytes)
-					{
 						return Results.BadRequest(new
 						{
 							message = $"Avatar file exceeds the maximum allowed size of {options.MaxUploadBytes} bytes."
 						});
-					}
 
 					if (!AllowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
-					{
 						return Results.BadRequest(new
 						{
 							message =
 								"Unsupported avatar file type. Allowed types: image/jpeg, image/png, image/gif, image/webp."
 						});
-					}
 
 					await using var stream = file.OpenReadStream();
 					try

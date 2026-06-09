@@ -49,10 +49,7 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
 		var lobbyCommand = request as ILobbyStateChangingCommand;
 		var gameCommand = request as IGameStateChangingCommand;
 		var gameId = lobbyCommand?.GameId ?? gameCommand?.GameId;
-		if (gameId is null)
-		{
-			return response;
-		}
+		if (gameId is null) return response;
 
 		// Only broadcast if the command was successful
 		if (!IsSuccessfulResponse(response))
@@ -103,19 +100,16 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
 			.Include(g => g.GameType)
 			.FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
-		if (game is null)
-		{
-			return null;
-		}
+		if (game is null) return null;
 
 		var gameTypeCode = game.GameType?.Code ?? (game.IsDealersChoice ? "DEALERSCHOICE" : "Unknown");
 		var gameTypeName = game.GameType?.Name ?? (game.IsDealersChoice ? "Dealer's Choice" : "Unknown");
 
 		// Look up metadata from registry for image and description
 		string? metadataName = null;
-		string? description = game.GameType?.Description;
+		var description = game.GameType?.Description;
 		string? imageName = null;
-		Guid? leagueId = await _dbContext.LeagueSeasonEvents
+		var leagueId = await _dbContext.LeagueSeasonEvents
 			.AsNoTracking()
 			.Where(x => x.LaunchedGameId == gameId)
 			.Select(x => (Guid?)x.LeagueId)
@@ -166,10 +160,7 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
 	/// </summary>
 	private static bool IsSuccessfulResponse(TResponse response)
 	{
-		if (response is null)
-		{
-			return false;
-		}
+		if (response is null) return false;
 
 		// Handle OneOf<TSuccess, TError> pattern used by command handlers
 		// The first type parameter is typically the success type

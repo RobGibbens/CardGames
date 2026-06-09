@@ -30,10 +30,7 @@ public static class TopicNames
 	public static IReadOnlyList<string> GetStringValuesUnderChild(Type parentType, string childClassName)
 	{
 		var childType = parentType.GetNestedType(childClassName, BindingFlags.Public | BindingFlags.NonPublic);
-		if (childType is null)
-		{
-			return [];
-		}
+		if (childType is null) return [];
 
 		var results = new HashSet<string>(StringComparer.Ordinal);
 
@@ -43,12 +40,8 @@ public static class TopicNames
 			// Find public static string fields (add NonPublic if needed)
 			var fields = grandchild.GetFields(BindingFlags.Public | BindingFlags.Static);
 			foreach (var f in fields.Where(f => f.FieldType == typeof(string)))
-			{
 				if (f.GetValue(null) is string s)
-				{
 					results.Add(s);
-				}
-			}
 		}
 
 		return results.ToArray();
@@ -60,12 +53,8 @@ public static class TopicNames
 	{
 		var results = new HashSet<string>(StringComparer.Ordinal);
 		foreach (var name in childClassNames)
-		{
-			foreach (var s in GetStringValuesUnderChild(parentType, name))
-			{
-				results.Add(s);
-			}
-		}
+		foreach (var s in GetStringValuesUnderChild(parentType, name))
+			results.Add(s);
 
 		return results.ToArray();
 	}

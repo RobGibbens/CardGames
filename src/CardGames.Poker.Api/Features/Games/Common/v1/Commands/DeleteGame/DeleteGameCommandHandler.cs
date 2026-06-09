@@ -29,23 +29,19 @@ public sealed class DeleteGameCommandHandler(
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
-		{
 			return new DeleteGameError
 			{
 				Code = DeleteGameErrorCode.GameNotFound,
 				Message = $"Game with ID {command.GameId} not found."
 			};
-		}
 
 		// 2. Check if already deleted
 		if (game.IsDeleted)
-		{
 			return new DeleteGameError
 			{
 				Code = DeleteGameErrorCode.AlreadyDeleted,
 				Message = $"Game with ID {command.GameId} has already been deleted."
 			};
-		}
 
 		// 3. Verify authorization - only the creator can delete
 		if (!IsAuthorized(game.CreatedById))
@@ -95,10 +91,7 @@ public sealed class DeleteGameCommandHandler(
 
 	private bool IsAuthorized(string? creatorId)
 	{
-		if (string.IsNullOrEmpty(currentUserService.UserId))
-		{
-			return false;
-		}
+		if (string.IsNullOrEmpty(currentUserService.UserId)) return false;
 
 		return string.Equals(creatorId, currentUserService.UserId, StringComparison.OrdinalIgnoreCase);
 	}

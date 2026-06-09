@@ -23,11 +23,9 @@ public sealed class SeedDevelopmentUsersCommandHandler(
 		var configuredUsers = options.Value.Users;
 
 		if (configuredUsers.Count == 0)
-		{
 			return new SeedDevelopmentUsersError(
 				SeedDevelopmentUsersErrorCode.NoUsersConfigured,
 				$"No users are configured under '{DevelopmentUserSeedOptions.SectionName}:Users'.");
-		}
 
 		var results = new List<SeedDevelopmentUserResult>(configuredUsers.Count);
 		var createdCount = 0;
