@@ -14,6 +14,7 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<ExternalLogin> Logger
+@inject CardGames.Poker.Web.Services.AccountTelemetry AccountTelemetry
 
 <PageTitle>Register</PageTitle>
 
@@ -137,6 +138,7 @@
 				"{Name} logged in with {LoginProvider} provider.",
 				_externalLoginInfo.Principal.Identity?.Name,
 				_externalLoginInfo.LoginProvider);
+			AccountTelemetry.RecordSignInAttempt("external", "success", _externalLoginInfo.LoginProvider);
 
 			// Update profile fields from OAuth claims if they are missing.
 			await UpdateUserProfileFromClaimsAsync(_externalLoginInfo);
@@ -147,6 +149,7 @@
 
 		if (result.IsLockedOut)
 		{
+			AccountTelemetry.RecordSignInAttempt("external", "locked_out", _externalLoginInfo.LoginProvider);
 			RedirectManager.RedirectTo("Account/Lockout");
 			return;
 		}
@@ -198,6 +201,8 @@
 			if (result.Succeeded)
 			{
 				Logger.LogInformation("User created an account using {Name} provider.", _externalLoginInfo.LoginProvider);
+				AccountTelemetry.RecordUserCreated("social", _externalLoginInfo.LoginProvider,
+					UserManager.Options.SignIn.RequireConfirmedAccount);
 
 				// If account confirmation is required, we need to show the link if we don't have a real email sender
 				if (UserManager.Options.SignIn.RequireConfirmedAccount)

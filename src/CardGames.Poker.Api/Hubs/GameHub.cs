@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
 
 namespace CardGames.Poker.Api.Hubs;
@@ -19,14 +21,19 @@ public sealed class GameHub : Hub
 	private const string GameGroupPrefix = "game:";
 
 	private readonly ILogger<GameHub> _logger;
+	private readonly GameEventsTelemetry _telemetry;
 	private readonly ITableStateBuilder _tableStateBuilder;
+	private readonly CardsDbContext _context;
 
 	/// <summary>
 	///     Initializes a new instance of the <see cref="GameHub" /> class.
 	/// </summary>
-	public GameHub(ITableStateBuilder tableStateBuilder, ILogger<GameHub> logger)
+	public GameHub(ITableStateBuilder tableStateBuilder, CardsDbContext context, GameEventsTelemetry telemetry,
+		ILogger<GameHub> logger)
 	{
 		_tableStateBuilder = tableStateBuilder;
+		_context = context;
+		_telemetry = telemetry;
 		_logger = logger;
 	}
 
@@ -37,6 +44,7 @@ public sealed class GameHub : Hub
 	public async Task JoinGame(Guid gameId)
 	{
 		var userId = Context.UserIdentifier ?? GetUserIdentifier();
+		using var scope = CreateScope(userId, gameId);
 		if (string.IsNullOrEmpty(userId))
 		{
 			_logger.LogWarning("User attempted to join game {GameId} without valid identifier", gameId);
@@ -44,9 +52,18 @@ public sealed class GameHub : Hub
 		}
 
 		var groupName = GetGroupName(gameId);
+		var game = await _context.Games
+			.Include(g => g.GameType)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(g => g.Id == gameId);
 
 		// Add the caller to the game group
 		await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+		if (game is not null)
+		{
+			_telemetry.RecordPlayerEvent(GameEventsTelemetry.ResolveGameType(game),
+				GameEventsTelemetry.ResolveTableKind(game), "reconnected");
+		}
 
 		_logger.LogInformation(
 			"User {UserId} (connection {ConnectionId}) joined game group {GroupName}",
@@ -63,6 +80,7 @@ public sealed class GameHub : Hub
 	public async Task LeaveGame(Guid gameId)
 	{
 		var userId = Context.UserIdentifier ?? GetUserIdentifier();
+		using var scope = CreateScope(userId, gameId);
 		var groupName = GetGroupName(gameId);
 
 		await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
@@ -76,6 +94,7 @@ public sealed class GameHub : Hub
 	public override async Task OnConnectedAsync()
 	{
 		var userId = Context.UserIdentifier ?? GetUserIdentifier();
+		using var scope = CreateScope(userId);
 		_logger.LogInformation("User {UserId} connected with connection {ConnectionId}",
 			userId ?? "unknown", Context.ConnectionId);
 
@@ -85,7 +104,8 @@ public sealed class GameHub : Hub
 	/// <inheritdoc />
 	public override async Task OnDisconnectedAsync(Exception? exception)
 	{
-		var userId = GetUserIdentifier();
+		var userId = Context.UserIdentifier ?? GetUserIdentifier();
+		using var scope = CreateScope(userId);
 
 		if (exception is not null)
 			_logger.LogWarning(exception,
@@ -94,6 +114,8 @@ public sealed class GameHub : Hub
 		else
 			_logger.LogInformation("User {UserId} disconnected (connection {ConnectionId})",
 				userId ?? "unknown", Context.ConnectionId);
+
+		_telemetry.RecordPlayerEvent("unknown", "connection", "disconnected");
 
 		await base.OnDisconnectedAsync(exception);
 	}
@@ -138,6 +160,22 @@ public sealed class GameHub : Hub
 		       ?? Context.User?.FindFirst("email")?.Value
 		       ?? Context.User?.FindFirst("preferred_username")?.Value
 		       ?? Context.User?.Identity?.Name;
+	}
+
+	private IDisposable? CreateScope(string? userId, Guid? gameId = null)
+	{
+		var values = new Dictionary<string, object>
+		{
+			["ConnectionId"] = Context.ConnectionId,
+			["UserId"] = userId ?? "anonymous"
+		};
+
+		if (gameId.HasValue)
+		{
+			values["GameId"] = gameId.Value;
+		}
+
+		return _logger.BeginScope(values);
 	}
 
 	/// <summary>

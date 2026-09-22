@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.
 /// <summary>
 ///     Handles the <see cref="StartHandCommand" /> to start a new hand in a Five Card Draw game.
 /// </summary>
-public class StartHandCommandHandler(CardsDbContext context)
+public class StartHandCommandHandler(CardsDbContext context, GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -129,6 +130,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 
 		context.Pots.Add(mainPot);
 
+		var isFirstGameStart = !game.StartedAt.HasValue;
+
 		// 8. Update game state
 		game.CurrentHandNumber++;
 		game.CurrentPhase = nameof(Phases.CollectingAntes);
@@ -144,6 +147,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 
 		// 9. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+		if (isFirstGameStart) telemetry?.RecordGameStarted("TWOSJACKSMANWITHTHEAXE", "standard");
 
 		return new StartHandSuccessful
 		{

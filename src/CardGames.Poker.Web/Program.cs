@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Metrics;
 using Refit;
 using GameApiRouter = CardGames.Poker.Web.Services.GameApiRouter;
 using IGameApiRouter = CardGames.Poker.Web.Services.IGameApiRouter;
@@ -25,6 +26,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddServiceDiscovery();
+builder.Services.AddOpenTelemetry()
+	.WithMetrics(metrics => metrics.AddMeter(AccountTelemetry.MeterName));
+builder.Services.AddSingleton<AccountTelemetry>();
 // Add services to the container.
 builder.Services.AddRazorComponents()
 	.AddInteractiveServerComponents();

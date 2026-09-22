@@ -9,6 +9,7 @@
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
+@inject CardGames.Poker.Web.Services.AccountTelemetry AccountTelemetry
 
 <PageTitle>Log in</PageTitle>
 
@@ -95,8 +96,11 @@
 		if (!string.IsNullOrEmpty(Input.Passkey?.Error))
 		{
 			errorMessage = $"Error: {Input.Passkey.Error}";
+			AccountTelemetry.RecordSignInAttempt("passkey", "failed");
 			return;
 		}
+
+		var signInMethod = !string.IsNullOrEmpty(Input.Passkey?.CredentialJson) ? "passkey" : "password";
 
 		SignInResult result;
 		if (!string.IsNullOrEmpty(Input.Passkey?.CredentialJson))
@@ -120,10 +124,12 @@
 		if (result.Succeeded)
 		{
 			Logger.LogInformation("User logged in.");
+			AccountTelemetry.RecordSignInAttempt(signInMethod, "success");
 			RedirectManager.RedirectTo(ReturnUrl);
 		}
 		else if (result.RequiresTwoFactor)
 		{
+			AccountTelemetry.RecordSignInAttempt(signInMethod, "requires_two_factor");
 			RedirectManager.RedirectTo(
 				"Account/LoginWith2fa",
 				new Dictionary<string, object?> { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
@@ -131,11 +137,13 @@
 		else if (result.IsLockedOut)
 		{
 			Logger.LogWarning("User account locked out.");
+			AccountTelemetry.RecordSignInAttempt(signInMethod, "locked_out");
 			RedirectManager.RedirectTo("Account/Lockout");
 		}
 		else
 		{
 			errorMessage = "Error: Invalid login attempt.";
+			AccountTelemetry.RecordSignInAttempt(signInMethod, "failed");
 		}
 	}
 

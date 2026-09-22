@@ -71,7 +71,8 @@ public sealed class PerformShowdownCommandHandler(
 	IHandEvaluatorFactory handEvaluatorFactory,
 	IHandHistoryRecorder handHistoryRecorder,
 	IHandSettlementService handSettlementService,
-	ILogger<PerformShowdownCommandHandler> logger)
+	ILogger<PerformShowdownCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -365,6 +366,7 @@ public sealed class PerformShowdownCommandHandler(
 			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
+			RecordCompletedHandMetrics(game, currentHandPots, now);
 
 			// 13. Record hand history
 			await RecordHandHistoryAsync(
@@ -443,6 +445,7 @@ public sealed class PerformShowdownCommandHandler(
 			await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
+			RecordCompletedHandMetrics(game, currentHandPots, now);
 
 			// Record hand history for win-by-fold
 			await RecordHandHistoryAsync(
@@ -539,6 +542,7 @@ public sealed class PerformShowdownCommandHandler(
 			MoveDealer(game);
 
 			await context.SaveChangesAsync(cancellationToken);
+			RecordCompletedHandMetrics(game, currentHandPots, now);
 		}
 
 		return new PerformShowdownSuccessful
@@ -647,6 +651,24 @@ public sealed class PerformShowdownCommandHandler(
 		}
 
 		return evaluations;
+	}
+
+	private void RecordCompletedHandMetrics(Game game, IEnumerable<Pot> currentHandPots, DateTimeOffset completedAt)
+	{
+		var gameType = GameEventsTelemetry.ResolveGameType(game);
+		var tableKind = GameEventsTelemetry.ResolveTableKind(game);
+		telemetry?.RecordHandCompleted(gameType, tableKind);
+
+		var handDurationMs = GameEventsTelemetry.TryGetHandDurationMs(currentHandPots, completedAt);
+		if (handDurationMs.HasValue)
+		{
+			telemetry?.RecordHandDuration(gameType, tableKind, handDurationMs.Value);
+		}
+
+		if (game.Status == GameStatus.Completed || game.EndedAt.HasValue)
+		{
+			telemetry?.RecordGameEnded(gameType, tableKind, "completed");
+		}
 	}
 
 	/// <summary>

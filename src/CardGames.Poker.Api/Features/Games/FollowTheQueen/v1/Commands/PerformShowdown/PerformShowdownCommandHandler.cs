@@ -20,7 +20,8 @@ namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformS
 public class PerformShowdownCommandHandler(
 	CardsDbContext context,
 	IHandHistoryRecorder handHistoryRecorder,
-	IHandSettlementService handSettlementService)
+	IHandSettlementService handSettlementService,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />

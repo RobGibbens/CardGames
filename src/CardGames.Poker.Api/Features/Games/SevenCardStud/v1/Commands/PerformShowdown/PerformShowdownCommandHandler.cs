@@ -19,7 +19,8 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.PerformSh
 public class PerformShowdownCommandHandler(
 	CardsDbContext context,
 	IHandHistoryRecorder handHistoryRecorder,
-	IHandSettlementService handSettlementService)
+	IHandSettlementService handSettlementService,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />

@@ -23,7 +23,8 @@ namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.Perform
 public class PerformShowdownCommandHandler(
 	CardsDbContext context,
 	IHandHistoryRecorder handHistoryRecorder,
-	IHandSettlementService handSettlementService)
+	IHandSettlementService handSettlementService,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	public async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
@@ -130,6 +131,7 @@ public class PerformShowdownCommandHandler(
 				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
+				RecordCompletedHandMetrics(game, currentHandPots, now);
 
 				await RecordHandHistoryAsync(
 					game, game.GamePlayers.ToList(), now, totalPot,
@@ -253,6 +255,7 @@ public class PerformShowdownCommandHandler(
 			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
+			RecordCompletedHandMetrics(game, currentHandPots, now);
 
 			var winnerInfos = winners.Select(w =>
 			{
@@ -332,6 +335,19 @@ public class PerformShowdownCommandHandler(
 		var currentPosition = game.DealerPosition;
 		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
 		game.DealerPosition = seatsAfterCurrent.Count > 0 ? seatsAfterCurrent.First() : occupiedSeats.First();
+	}
+
+	private void RecordCompletedHandMetrics(Game game,
+		IEnumerable<CardGames.Poker.Api.Data.Entities.Pot> currentHandPots,
+		DateTimeOffset completedAt)
+	{
+		telemetry?.RecordHandCompleted("HOLDTHEBASEBALL", "standard");
+
+		var handDurationMs = GameEventsTelemetry.TryGetHandDurationMs(currentHandPots, completedAt);
+		if (handDurationMs.HasValue)
+		{
+			telemetry?.RecordHandDuration("HOLDTHEBASEBALL", "standard", handDurationMs.Value);
+		}
 	}
 
 	private static Suit MapSuit(CardSuit suit)

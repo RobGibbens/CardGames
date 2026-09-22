@@ -3,6 +3,7 @@ using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Models;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,7 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 /// <summary>
 ///     Handles the <see cref="DealHandsCommand" /> to deal five cards to each active player.
 /// </summary>
-public class DealHandsCommandHandler(CardsDbContext context)
+public class DealHandsCommandHandler(CardsDbContext context, GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<DealHandsCommand, OneOf<DealHandsSuccessful, DealHandsError>>
 {
 	private const int CardsPerPlayer = 5;
@@ -190,6 +191,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 
 		// 10. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+		telemetry?.RecordHandDealt("FIVECARDDRAW", "standard");
 
 		// Get current player name
 		var currentPlayerName = firstActorIndex >= 0

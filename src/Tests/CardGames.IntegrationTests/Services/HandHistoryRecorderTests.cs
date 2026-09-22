@@ -1,5 +1,12 @@
+using System.Diagnostics.Metrics;
+using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
 
 namespace CardGames.IntegrationTests.Services;
 
@@ -15,7 +22,7 @@ public class HandHistoryRecorderTests : IDisposable
 			.Options;
 
 		_context = new CardsDbContext(options);
-		_recorder = new HandHistoryRecorder(_context, NullLogger<HandHistoryRecorder>.Instance);
+		_recorder = new HandHistoryRecorder(_context, NullLogger<HandHistoryRecorder>.Instance, CreateTelemetry());
 	}
 
 	public void Dispose()
@@ -91,7 +98,7 @@ public class HandHistoryRecorderTests : IDisposable
 		// With an empty throwing context, AnyAsync returns false (record doesn't exist yet).
 		// Then SaveChangesAsync throws.
 
-		var recorder = new HandHistoryRecorder(throwingContext, NullLogger<HandHistoryRecorder>.Instance);
+		var recorder = new HandHistoryRecorder(throwingContext, NullLogger<HandHistoryRecorder>.Instance, CreateTelemetry());
 		var parameters = CreateDefaultParameters(Guid.NewGuid(), Guid.NewGuid());
 
 		// Act
@@ -102,7 +109,7 @@ public class HandHistoryRecorderTests : IDisposable
 	}
 
 	[Fact]
-	public async Task RecordHandHistoryAsync_GeneralException_ReturnsFalseAndLogs()
+	public async Task RecordHandHistoryAsync_GeneralException_RethrowsAndLogs()
 	{
 		// Arrange
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
@@ -112,14 +119,14 @@ public class HandHistoryRecorderTests : IDisposable
 		var generalEx = new Exception("Database connection lost");
 
 		await using var throwingContext = new ThrowingCardsDbContext(options, generalEx);
-		var recorder = new HandHistoryRecorder(throwingContext, NullLogger<HandHistoryRecorder>.Instance);
+		var recorder = new HandHistoryRecorder(throwingContext, NullLogger<HandHistoryRecorder>.Instance, CreateTelemetry());
 		var parameters = CreateDefaultParameters(Guid.NewGuid(), Guid.NewGuid());
 
 		// Act
-		var result = await recorder.RecordHandHistoryAsync(parameters);
+		var act = async () => await recorder.RecordHandHistoryAsync(parameters);
 
 		// Assert
-		result.Should().BeFalse("General exception returns false");
+		await act.Should().ThrowAsync<Exception>().WithMessage("Database connection lost");
 	}
 
 	[Theory]
@@ -272,7 +279,11 @@ public class HandHistoryRecorderTests : IDisposable
 			}
 		};
 	}
-
+	private static HandHistoryTelemetry CreateTelemetry()
+	{
+		var serviceProvider = new ServiceCollection().AddMetrics().BuildServiceProvider();
+		return new HandHistoryTelemetry(serviceProvider.GetRequiredService<IMeterFactory>());
+	}
 	private class ThrowingCardsDbContext : CardsDbContext
 	{
 		private readonly Exception _exceptionToThrow;

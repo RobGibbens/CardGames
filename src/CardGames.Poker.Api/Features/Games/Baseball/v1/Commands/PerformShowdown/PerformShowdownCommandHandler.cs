@@ -18,7 +18,8 @@ namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.PerformShowdow
 public class PerformShowdownCommandHandler(
 	CardsDbContext context,
 	IHandHistoryRecorder handHistoryRecorder,
-	IHandSettlementService handSettlementService)
+	IHandSettlementService handSettlementService,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	public async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
@@ -115,6 +116,7 @@ public class PerformShowdownCommandHandler(
 				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
+				RecordCompletedHandMetrics(game, currentHandPots, now);
 
 				await RecordHandHistoryAsync(
 					game,
@@ -240,6 +242,7 @@ public class PerformShowdownCommandHandler(
 			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
+			RecordCompletedHandMetrics(game, currentHandPots, now);
 
 			var winnerInfos = winners.Select(w =>
 			{
@@ -322,6 +325,20 @@ public class PerformShowdownCommandHandler(
 			Payouts = payouts,
 			PlayerHands = playerHandsList
 		};
+	}
+
+	private void RecordCompletedHandMetrics(Game game, IEnumerable<CardGames.Poker.Api.Data.Entities.Pot> currentHandPots,
+		DateTimeOffset completedAt)
+	{
+		telemetry?.RecordHandCompleted(GameEventsTelemetry.ResolveGameType(game),
+			GameEventsTelemetry.ResolveTableKind(game));
+
+		var handDurationMs = GameEventsTelemetry.TryGetHandDurationMs(currentHandPots, completedAt);
+		if (handDurationMs.HasValue)
+		{
+			telemetry?.RecordHandDuration(GameEventsTelemetry.ResolveGameType(game),
+				GameEventsTelemetry.ResolveTableKind(game), handDurationMs.Value);
+		}
 	}
 
 	private static void MoveDealer(Game game)

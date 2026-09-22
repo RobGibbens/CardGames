@@ -16,7 +16,8 @@ public sealed class ToggleSitOutCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
 	IGameStateBroadcaster broadcaster,
-	ILogger<ToggleSitOutCommandHandler> logger)
+	ILogger<ToggleSitOutCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<ToggleSitOutCommand, OneOf<ToggleSitOutSuccessful, ToggleSitOutError>>
 {
 	public async Task<OneOf<ToggleSitOutSuccessful, ToggleSitOutError>> Handle(
@@ -32,6 +33,7 @@ public sealed class ToggleSitOutCommandHandler(
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
 			.ThenInclude(gp => gp.Player)
+			.Include(g => g.GameType)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game == null) return new ToggleSitOutError("Game not found");
@@ -65,6 +67,9 @@ public sealed class ToggleSitOutCommandHandler(
 
 		game.UpdatedAt = DateTimeOffset.UtcNow;
 		await context.SaveChangesAsync(cancellationToken);
+		telemetry?.RecordPlayerEvent(GameEventsTelemetry.ResolveGameType(game),
+			GameEventsTelemetry.ResolveTableKind(game),
+			command.IsSittingOut ? "sitting_out" : "returned_from_sit_out");
 
 		// Broadcast update
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);

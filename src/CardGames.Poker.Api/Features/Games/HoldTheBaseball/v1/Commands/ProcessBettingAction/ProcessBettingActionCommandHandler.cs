@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -15,7 +16,8 @@ namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.Process
 /// </summary>
 public class ProcessBettingActionCommandHandler(
 	CardsDbContext context,
-	ILogger<ProcessBettingActionCommandHandler> logger)
+	ILogger<ProcessBettingActionCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
 {
 	private static readonly string[] ValidBettingPhases = ["PreFlop", "Flop", "Turn", "River"];
@@ -88,8 +90,10 @@ public class ProcessBettingActionCommandHandler(
 
 		var chipStackBefore = currentPlayer.ChipStack;
 		var potBefore = game.Pots.Sum(p => p.Amount);
+		var playerWasAllIn = currentPlayer.IsAllIn;
 
 		var (actualAmount, chipsMoved) = ExecuteAction(currentPlayer, command.ActionType, command.Amount, bettingRound);
+		var playerWentAllIn = !playerWasAllIn && currentPlayer.IsAllIn;
 
 		var actionRecord = new BettingActionRecord
 		{
@@ -136,6 +140,7 @@ public class ProcessBettingActionCommandHandler(
 
 				game.UpdatedAt = now;
 				await context.SaveChangesAsync(cancellationToken);
+				if (playerWentAllIn) telemetry?.RecordPlayerEvent("HOLDTHEBASEBALL", "standard", "all_in");
 
 				return new ProcessBettingActionSuccessful
 				{
@@ -208,6 +213,8 @@ public class ProcessBettingActionCommandHandler(
 			game.UpdatedAt = now;
 			await context.SaveChangesAsync(cancellationToken);
 		}
+
+		if (playerWentAllIn) telemetry?.RecordPlayerEvent("HOLDTHEBASEBALL", "standard", "all_in");
 
 		return new ProcessBettingActionSuccessful
 		{

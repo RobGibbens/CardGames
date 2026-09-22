@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.CollectAntes;
 
-public class CollectAntesCommandHandler(CardsDbContext context)
+public class CollectAntesCommandHandler(CardsDbContext context, GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<CollectAntesCommand, OneOf<CollectAntesSuccessful, CollectAntesError>>
 {
 	public async Task<OneOf<CollectAntesSuccessful, CollectAntesError>> Handle(
@@ -110,6 +111,10 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		foreach (var gamePlayer in game.GamePlayers) gamePlayer.CurrentBet = 0;
 
 		await context.SaveChangesAsync(cancellationToken);
+		foreach (var contribution in anteContributions.Where(contribution => contribution.WentAllIn))
+		{
+			telemetry?.RecordPlayerEvent("BASEBALL", "standard", "all_in");
+		}
 
 		return new CollectAntesSuccessful
 		{

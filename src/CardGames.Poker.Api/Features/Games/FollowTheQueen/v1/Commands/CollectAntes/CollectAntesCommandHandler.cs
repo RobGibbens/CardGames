@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.CollectA
 /// <summary>
 ///     Handles the <see cref="CollectAntesCommand" /> to collect mandatory ante bets from all players.
 /// </summary>
-public class CollectAntesCommandHandler(CardsDbContext context)
+public class CollectAntesCommandHandler(CardsDbContext context, GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<CollectAntesCommand, OneOf<CollectAntesSuccessful, CollectAntesError>>
 {
 	/// <inheritdoc />
@@ -128,6 +129,10 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 
 		// 7. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+		foreach (var contribution in anteContributions.Where(contribution => contribution.WentAllIn))
+		{
+			telemetry?.RecordPlayerEvent("FOLLOWTHEQUEEN", "standard", "all_in");
+		}
 
 		return new CollectAntesSuccessful
 		{

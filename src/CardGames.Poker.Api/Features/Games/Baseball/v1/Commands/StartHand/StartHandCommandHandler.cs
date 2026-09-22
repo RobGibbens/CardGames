@@ -1,6 +1,7 @@
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.StartHand;
 
 public class StartHandCommandHandler(
 	CardsDbContext context,
-	ILogger<StartHandCommandHandler> logger)
+	ILogger<StartHandCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -40,6 +42,7 @@ public class StartHandCommandHandler(
 			nameof(Phases.WaitingToStart),
 			nameof(Phases.Complete)
 		};
+		var isFirstGameStart = !game.StartedAt.HasValue;
 
 		if (!validPhases.Contains(game.CurrentPhase))
 			return new StartHandError
@@ -167,6 +170,10 @@ public class StartHandCommandHandler(
 		game.StartedAt ??= now;
 
 		await context.SaveChangesAsync(cancellationToken);
+		if (isFirstGameStart)
+		{
+			telemetry?.RecordGameStarted("BASEBALL", "standard");
+		}
 
 		return new StartHandSuccessful
 		{

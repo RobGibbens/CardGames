@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,8 @@ namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.DealHands;
 
 public class DealHandsCommandHandler(
 	CardsDbContext context,
-	ILogger<DealHandsCommandHandler> logger)
+	ILogger<DealHandsCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<DealHandsCommand, OneOf<DealHandsSuccessful, DealHandsError>>
 {
 	public async Task<OneOf<DealHandsSuccessful, DealHandsError>> Handle(
@@ -326,6 +328,10 @@ public class DealHandsCommandHandler(
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(cancellationToken);
+		if (streetPhase == nameof(Phases.ThirdStreet))
+		{
+			telemetry?.RecordHandDealt("BASEBALL", "standard");
+		}
 
 		var currentPlayerName =
 			activePlayers.FirstOrDefault(p => p.SeatPosition == firstActorSeatPosition)?.Player.Name;

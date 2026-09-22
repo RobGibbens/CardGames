@@ -17,6 +17,7 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEve
 public sealed class CreateLeagueSeasonEventCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
+	Features.Leagues.v1.Telemetry.LeaguesTelemetry telemetry,
 	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<CreateLeagueSeasonEventCommand,
 		OneOf<CreateLeagueSeasonEventResponse, CreateLeagueSeasonEventError>>
@@ -113,6 +114,7 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 
 		context.LeagueSeasonEvents.Add(seasonEvent);
 		await context.SaveChangesAsync(cancellationToken);
+		telemetry.RecordLeagueEventScheduled("season", seasonEvent.GameTypeCode);
 		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 		{
 			LeagueId = seasonEvent.LeagueId,

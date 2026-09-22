@@ -1,6 +1,7 @@
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,8 @@ namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.StartHan
 /// </summary>
 public class StartHandCommandHandler(
 	CardsDbContext context,
-	ILogger<StartHandCommandHandler> logger)
+	ILogger<StartHandCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -166,6 +168,8 @@ public class StartHandCommandHandler(
 
 		context.Pots.Add(mainPot);
 
+		var isFirstGameStart = !game.StartedAt.HasValue;
+
 		// 10. Update game state
 		game.CurrentHandNumber = newHandNumber;
 		game.CurrentPhase = nameof(Phases.CollectingAntes);
@@ -181,6 +185,7 @@ public class StartHandCommandHandler(
 
 		// 11. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+		if (isFirstGameStart) telemetry?.RecordGameStarted("FOLLOWTHEQUEEN", "standard");
 
 		return new StartHandSuccessful
 		{

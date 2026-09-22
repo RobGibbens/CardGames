@@ -16,6 +16,7 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 @inject IProfileApi ProfileApi
+@inject CardGames.Poker.Web.Services.AccountTelemetry AccountTelemetry
 
 <PageTitle>Create Account - Dealer's Choice Poker</PageTitle>
 
@@ -187,6 +188,7 @@
 		}
 
 		Logger.LogInformation("User created a new account with password.");
+		AccountTelemetry.RecordUserCreated("local", "local", UserManager.Options.SignIn.RequireConfirmedAccount);
 
 		if (UserManager.Options.SignIn.RequireConfirmedAccount)
 		{

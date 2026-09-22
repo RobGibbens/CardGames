@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands
 /// </summary>
 public class DealHandsCommandHandler(
 	CardsDbContext context,
-	ILogger<DealHandsCommandHandler> logger)
+	ILogger<DealHandsCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<DealHandsCommand, OneOf<DealHandsSuccessful, DealHandsError>>
 {
 	/// <inheritdoc />

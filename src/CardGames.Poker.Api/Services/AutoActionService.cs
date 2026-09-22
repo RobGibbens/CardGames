@@ -12,15 +12,18 @@ public sealed class AutoActionService : IAutoActionService
 {
 	private readonly ILogger<AutoActionService> _logger;
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly GameEventsTelemetry? _telemetry;
 
 	/// <summary>
 	///     Initializes a new instance of the <see cref="AutoActionService" /> class.
 	/// </summary>
 	public AutoActionService(
 		IServiceScopeFactory scopeFactory,
-		ILogger<AutoActionService> logger)
+		ILogger<AutoActionService> logger,
+		GameEventsTelemetry? telemetry = null)
 	{
 		_scopeFactory = scopeFactory;
+		_telemetry = telemetry;
 		_logger = logger;
 	}
 
@@ -59,6 +62,10 @@ public sealed class AutoActionService : IAutoActionService
 		_logger.LogDebug(
 			"Auto-action context: GameId={GameId}, Phase={Phase}, GameType={GameType}",
 			gameId, currentPhase, gameTypeCode);
+
+		_telemetry?.RecordPlayerEvent(GameEventsTelemetry.ResolveGameType(game),
+			GameEventsTelemetry.ResolveTableKind(game),
+			"timed_out");
 
 		var actionContext = new AutoActionContext(
 			gameId,

@@ -16,7 +16,8 @@ public sealed class DeleteGameCommandHandler(
 	ICurrentUserService currentUserService,
 	ILobbyBroadcaster lobbyBroadcaster,
 	HybridCache hybridCache,
-	ILogger<DeleteGameCommandHandler> logger)
+	ILogger<DeleteGameCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<DeleteGameCommand, OneOf<DeleteGameSuccessful, DeleteGameError>>
 {
 	/// <inheritdoc />
@@ -26,6 +27,7 @@ public sealed class DeleteGameCommandHandler(
 	{
 		// 1. Load the game
 		var game = await context.Games
+			.Include(g => g.GameType)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -70,6 +72,8 @@ public sealed class DeleteGameCommandHandler(
 		game.UpdatedByName = currentUserService.UserName ?? currentUserService.UserEmail;
 
 		await context.SaveChangesAsync(cancellationToken);
+		telemetry?.RecordGameCancelled(GameEventsTelemetry.ResolveGameType(game),
+			GameEventsTelemetry.ResolveTableKind(game));
 
 		logger.LogInformation(
 			"User {UserId} deleted game {GameId} ({GameName})",

@@ -23,7 +23,8 @@ public class PerformShowdownCommandHandler(
 	CardsDbContext context,
 	IHandHistoryRecorder handHistoryRecorder,
 	IHandSettlementService handSettlementService,
-	IHandEvaluatorFactory handEvaluatorFactory)
+	IHandEvaluatorFactory handEvaluatorFactory,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -134,6 +135,7 @@ public class PerformShowdownCommandHandler(
 				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
+				RecordCompletedHandMetrics(game, currentHandPots, now);
 
 				// Record hand history for win-by-fold
 				await RecordHandHistoryAsync(
@@ -472,6 +474,19 @@ public class PerformShowdownCommandHandler(
 			:
 			// No seats after current position, wrap around to first occupied seat
 			occupiedSeats.First();
+	}
+
+	private void RecordCompletedHandMetrics(Game game,
+		IEnumerable<CardGames.Poker.Api.Data.Entities.Pot> currentHandPots,
+		DateTimeOffset completedAt)
+	{
+		telemetry?.RecordHandCompleted("FIVECARDDRAW", "standard");
+
+		var handDurationMs = GameEventsTelemetry.TryGetHandDurationMs(currentHandPots, completedAt);
+		if (handDurationMs.HasValue)
+		{
+			telemetry?.RecordHandDuration("FIVECARDDRAW", "standard", handDurationMs.Value);
+		}
 	}
 
 	/// <summary>

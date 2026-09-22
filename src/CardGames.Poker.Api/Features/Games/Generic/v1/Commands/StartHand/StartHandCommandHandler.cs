@@ -70,7 +70,8 @@ public sealed class StartHandCommandHandler(
 	CardsDbContext context,
 	IGameFlowHandlerFactory flowHandlerFactory,
 	IGameStateBroadcaster broadcaster,
-	ILogger<StartHandCommandHandler> logger)
+	ILogger<StartHandCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	/// <inheritdoc />
@@ -148,6 +149,7 @@ public sealed class StartHandCommandHandler(
 		logger.LogInformation(
 			"Starting hand for game {GameId} using {GameType} flow handler",
 			game.Id, flowHandler.GameTypeCode);
+		var isFirstGameStart = !game.StartedAt.HasValue;
 
 		// 4. Validate game state allows starting a new hand
 		var validPhases = new[]
@@ -240,6 +242,11 @@ public sealed class StartHandCommandHandler(
 
 		// 13. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+		if (isFirstGameStart)
+		{
+			telemetry?.RecordGameStarted(GameEventsTelemetry.ResolveGameType(game),
+				GameEventsTelemetry.ResolveTableKind(game));
+		}
 
 		// Blind-based / skip-ante variants should auto-deal immediately after the initial hand state is saved.
 		// Ante-based variants intentionally wait in CollectingAntes until antes are posted.
@@ -250,6 +257,8 @@ public sealed class StartHandCommandHandler(
 				game.Id, game.CurrentHandNumber, game.SmallBlind, game.BigBlind, eligiblePlayers.Count);
 
 			await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+			telemetry?.RecordHandDealt(GameEventsTelemetry.ResolveGameType(game),
+				GameEventsTelemetry.ResolveTableKind(game));
 
 			logger.LogInformation(
 				"Generic post-DealCardsAsync – Game {GameId} Hand {Hand}: PlayerContributions=[{Contributions}]",

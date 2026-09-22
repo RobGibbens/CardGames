@@ -11,7 +11,8 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 
 public sealed class CreateLeagueCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	Telemetry.LeaguesTelemetry telemetry)
 	: IRequestHandler<CreateLeagueCommand, OneOf<CreateLeagueResponse, CreateLeagueError>>
 {
 	public async Task<OneOf<CreateLeagueResponse, CreateLeagueError>> Handle(CreateLeagueCommand request,
@@ -65,6 +66,7 @@ public sealed class CreateLeagueCommandHandler(
 		context.LeagueMembershipEvents.Add(joinedEvent);
 
 		await context.SaveChangesAsync(cancellationToken);
+		telemetry.RecordLeagueCreated();
 
 		return new CreateLeagueResponse
 		{

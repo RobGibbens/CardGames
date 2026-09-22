@@ -1,12 +1,14 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Hubs;
+using CardGames.Poker.Api.Infrastructure.Telemetry;
 using Microsoft.AspNetCore.SignalR;
+using System.Diagnostics;
 
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
-///     Broadcasts game state updates to connected SignalR clients.
+/// Broadcasts game state updates to connected SignalR clients.
 /// </summary>
 public sealed class GameStateBroadcaster : IGameStateBroadcaster
 {
@@ -14,12 +16,12 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 	private const int ClientDealAnimationStepDelayMs = 750;
 
 	/// <summary>
-	///     Group name prefix for game groups.
+	/// Group name prefix for game groups.
 	/// </summary>
 	private const string GameGroupPrefix = "game:";
 
 	/// <summary>
-	///     Phases that require a player action timer.
+	/// Phases that require a player action timer.
 	/// </summary>
 	private static readonly HashSet<string> ActionPhases = new(StringComparer.OrdinalIgnoreCase)
 	{
@@ -35,28 +37,32 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 	private readonly IHubContext<GameHub> _hubContext;
 	private readonly ILogger<GameStateBroadcaster> _logger;
 	private readonly ITableStateBuilder _tableStateBuilder;
-
+	private readonly BroadcastTelemetry _telemetry;
 	/// <summary>
-	///     Initializes a new instance of the <see cref="GameStateBroadcaster" /> class.
+	/// Initializes a new instance of the <see cref="GameStateBroadcaster" /> class.
 	/// </summary>
 	public GameStateBroadcaster(
 		IHubContext<GameHub> hubContext,
 		ITableStateBuilder tableStateBuilder,
 		IActionTimerService actionTimerService,
 		IAutoActionService autoActionService,
-		ILogger<GameStateBroadcaster> logger)
+		ILogger<GameStateBroadcaster> logger,
+		BroadcastTelemetry telemetry)
 	{
 		_hubContext = hubContext;
 		_tableStateBuilder = tableStateBuilder;
 		_actionTimerService = actionTimerService;
 		_autoActionService = autoActionService;
 		_logger = logger;
+		_telemetry = telemetry;
 	}
 
 	/// <inheritdoc />
 	public async Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
 	{
 		var groupName = GetGroupName(gameId);
+
+		using var scope = CreateScope(gameId);
 
 		try
 		{
@@ -68,8 +74,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 					"Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
 					gameId, publicState.CurrentPhase, publicState.Seats.Count);
 
-				await _hubContext.Clients.Group(groupName)
-					.SendAsync("TableStateUpdated", publicState, cancellationToken);
+				await SendGameBroadcastAsync(
+					_hubContext.Clients.Group(groupName),
+					"TableStateUpdated",
+					publicState,
+					gameId,
+					null,
+					cancellationToken);
 
 				_logger.LogDebug("Broadcast public state to group {GroupName}", groupName);
 
@@ -97,14 +108,21 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		CancellationToken cancellationToken = default)
 	{
 		var groupName = GetGroupName(gameId);
-
+		using var scope = CreateScope(gameId, userId);
 		try
 		{
 			// Send public state to the user
 			var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
 			if (publicState is not null)
-				await _hubContext.Clients.User(userId)
-					.SendAsync("TableStateUpdated", publicState, cancellationToken);
+			{
+				await SendGameBroadcastAsync(
+					_hubContext.Clients.User(userId),
+					"TableStateUpdated",
+					publicState,
+					gameId,
+					userId,
+					cancellationToken);
+			}
 
 			// Send private state to the user
 			await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
@@ -127,7 +145,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		CancellationToken cancellationToken = default)
 	{
 		var groupName = GetGroupName(gameId);
-
+		using var scope = CreateScope(gameId);
 		try
 		{
 			var notification = new PlayerJoinedDto
@@ -142,8 +160,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 			};
 
 			// Send to all in the group except the player who just joined
-			await _hubContext.Clients.GroupExcept(groupName, [playerName])
-				.SendAsync("PlayerJoined", notification, cancellationToken);
+			await SendGameBroadcastAsync(
+				_hubContext.Clients.GroupExcept(groupName, [playerName]),
+				"PlayerJoined",
+				notification,
+				gameId,
+				null,
+				cancellationToken);
 
 			_logger.LogInformation(
 				"Broadcast PlayerJoined notification for {PlayerName} at seat {SeatIndex} in game {GameId}",
@@ -163,11 +186,16 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		CancellationToken cancellationToken = default)
 	{
 		var groupName = GetGroupName(notification.GameId);
-
+		using var scope = CreateScope(notification.GameId);
 		try
 		{
-			await _hubContext.Clients.Group(groupName)
-				.SendAsync("TableToastNotification", notification, cancellationToken);
+			await SendGameBroadcastAsync(
+				_hubContext.Clients.Group(groupName),
+				"TableToastNotification",
+				notification,
+				notification.GameId,
+				null,
+				cancellationToken);
 
 			_logger.LogInformation(
 				"Broadcast TableToastNotification for game {GameId}: {Message}",
@@ -188,11 +216,16 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		CancellationToken cancellationToken = default)
 	{
 		var groupName = GetGroupName(notification.GameId);
-
+		using var scope = CreateScope(notification.GameId, notification.UpdatedById);
 		try
 		{
-			await _hubContext.Clients.Group(groupName)
-				.SendAsync("TableSettingsUpdated", notification, cancellationToken);
+			await SendGameBroadcastAsync(
+				_hubContext.Clients.Group(groupName),
+				"TableSettingsUpdated",
+				notification,
+				notification.GameId,
+				notification.UpdatedById,
+				cancellationToken);
 
 			_logger.LogInformation(
 				"Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
@@ -214,11 +247,16 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		CancellationToken cancellationToken = default)
 	{
 		var groupName = GetGroupName(notification.GameId);
-
+		using var scope = CreateScope(notification.GameId, notification.UpdatedById);
 		try
 		{
-			await _hubContext.Clients.Group(groupName)
-				.SendAsync("OddsVisibilityUpdated", notification, cancellationToken);
+			await SendGameBroadcastAsync(
+				_hubContext.Clients.Group(groupName),
+				"OddsVisibilityUpdated",
+				notification,
+				notification.GameId,
+				notification.UpdatedById,
+				cancellationToken);
 
 			_logger.LogInformation(
 				"Broadcast OddsVisibilityUpdated notification for game {GameId} by user {UserId}",
@@ -243,7 +281,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		CancellationToken cancellationToken = default)
 	{
 		var groupName = GetGroupName(gameId);
-
+		using var scope = CreateScope(gameId);
 		try
 		{
 			var notification = new PlayerActionPerformedDto
@@ -256,8 +294,14 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 				DisplayDurationSeconds = 5
 			};
 
-			await _hubContext.Clients.Group(groupName)
-				.SendAsync("PlayerActionPerformed", notification, cancellationToken);
+			await SendGameBroadcastAsync(
+				_hubContext.Clients.Group(groupName),
+				"PlayerActionPerformed",
+				notification,
+				gameId,
+				null,
+				cancellationToken);
+
 
 			_logger.LogDebug(
 				"Broadcast PlayerActionPerformed for game {GameId}, seat {SeatIndex}: {Action}",
@@ -273,8 +317,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 	}
 
 	/// <summary>
-	///     Manages the action timer based on the current game state. Starts/restarts the timer when a new player needs to
-	///     act, stops it otherwise.
+	/// Manages the action timer based on the current game state. Starts/restarts the timer when a new player needs to act,
+	/// stops it otherwise.
 	/// </summary>
 	private void ManageActionTimer(Guid gameId, TableStatePublicDto state)
 	{
@@ -296,14 +340,14 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
 		// Check if we're in a phase that requires player action
 		var requiresAction = ActionPhases.Contains(state.CurrentPhase) ||
-		                     state.CurrentPhaseRequiresAction;
+							 state.CurrentPhaseRequiresAction;
 
 		var currentActorSeatIndex = state.CurrentActorSeatIndex;
 		var isSimultaneousAction = string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)
-		                           || (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.BobBarkerCode,
-			                               StringComparison.OrdinalIgnoreCase)
-		                               && string.Equals(state.CurrentPhase, "DrawPhase",
-			                               StringComparison.OrdinalIgnoreCase));
+								   || (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.BobBarkerCode,
+										   StringComparison.OrdinalIgnoreCase)
+									   && string.Equals(state.CurrentPhase, "DrawPhase",
+										   StringComparison.OrdinalIgnoreCase));
 
 		if (!requiresAction || (currentActorSeatIndex < 0 && !isSimultaneousAction) || state.IsPaused)
 		{
@@ -320,8 +364,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		// Check if the current actor has changed
 		var effectiveActorSeatIndex = isSimultaneousAction ? -1 : currentActorSeatIndex;
 		if (existingTimer is not null &&
-		    existingTimer.TimerType == ActionTimerType.PlayerAction &&
-		    existingTimer.PlayerSeatIndex == effectiveActorSeatIndex)
+			existingTimer.TimerType == ActionTimerType.PlayerAction &&
+			existingTimer.PlayerSeatIndex == effectiveActorSeatIndex)
 		{
 			// Same player/state, timer already running - don't restart
 			_logger.LogDebug(
@@ -340,14 +384,14 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
 		// Use 30 seconds for short decision phases.
 		if ((string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode,
-			     StringComparison.OrdinalIgnoreCase) &&
-		     string.Equals(state.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase)) ||
-		    (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.TollboothCode,
-			     StringComparison.OrdinalIgnoreCase) &&
-		     string.Equals(state.CurrentPhase, "TollboothOffer", StringComparison.OrdinalIgnoreCase)) ||
-		    (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.InBetweenCode,
-			     StringComparison.OrdinalIgnoreCase) &&
-		     string.Equals(state.CurrentPhase, "InBetweenTurn", StringComparison.OrdinalIgnoreCase)))
+				 StringComparison.OrdinalIgnoreCase) &&
+			 string.Equals(state.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase)) ||
+			(string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.TollboothCode,
+				 StringComparison.OrdinalIgnoreCase) &&
+			 string.Equals(state.CurrentPhase, "TollboothOffer", StringComparison.OrdinalIgnoreCase)) ||
+			(string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.InBetweenCode,
+				 StringComparison.OrdinalIgnoreCase) &&
+			 string.Equals(state.CurrentPhase, "InBetweenTurn", StringComparison.OrdinalIgnoreCase)))
 			durationSeconds = 30;
 
 		_actionTimerService.StartTimer(
@@ -357,6 +401,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 			startDelay: startDelay,
 			onExpired: async (gId, seatIndex) =>
 			{
+				using var timerScope = CreateScope(gId);
 				_logger.LogInformation(
 					"Timer expired for game {GameId}, player seat {SeatIndex} - performing auto-action",
 					gId, seatIndex);
@@ -367,8 +412,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 	private static TimeSpan GetActionTimerStartDelay(TableStatePublicDto state)
 	{
 		if (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode,
-			    StringComparison.OrdinalIgnoreCase) &&
-		    string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
+				StringComparison.OrdinalIgnoreCase) &&
+			string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
 			return CalculateKingsAndLowsDropOrStayStartDelay(state);
 
 		return TimeSpan.Zero;
@@ -394,6 +439,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
 	private async Task SendPrivateStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken)
 	{
+		using var scope = CreateScope(gameId, userId);
 		var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
 		if (privateState is not null)
 		{
@@ -401,8 +447,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 				"Sending private state to user {UserId} for game {GameId}: {CardCount} cards, seat {SeatPosition}",
 				userId, gameId, privateState.Hand.Count, privateState.SeatPosition);
 
-			await _hubContext.Clients.User(userId)
-				.SendAsync("PrivateStateUpdated", privateState, cancellationToken);
+			await SendGameBroadcastAsync(
+				_hubContext.Clients.User(userId),
+				"PrivateStateUpdated",
+				privateState,
+				gameId,
+				userId,
+				cancellationToken);
 
 			_logger.LogDebug("Sent private state to user {UserId} for game {GameId}", userId, gameId);
 		}
@@ -412,6 +463,54 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 				"BuildPrivateStateAsync returned null for user {UserId} in game {GameId}",
 				userId, gameId);
 		}
+	}
+	private async Task SendGameBroadcastAsync(
+		IClientProxy clientProxy,
+		string eventName,
+		object payload,
+		Guid gameId,
+		string? userId,
+		CancellationToken cancellationToken)
+	{
+		using var scope = CreateScope(gameId, userId);
+		using var activity = PokerActivitySource.Source.StartActivity("realtime.broadcast");
+		activity?.SetTag("hub", "game");
+		activity?.SetTag("event", eventName);
+		activity?.SetTag("game.id", gameId);
+		if (!string.IsNullOrWhiteSpace(userId))
+		{
+			activity?.SetTag("user.id", userId);
+		}
+
+		var stopwatch = Stopwatch.StartNew();
+		try
+		{
+			await clientProxy.SendAsync(eventName, payload, cancellationToken);
+			activity?.SetStatus(ActivityStatusCode.Ok);
+			_telemetry.RecordBroadcast("game", eventName, "ok", stopwatch.Elapsed.TotalMilliseconds);
+		}
+		catch (Exception ex)
+		{
+			activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+			_telemetry.RecordBroadcast("game", eventName, "failed", stopwatch.Elapsed.TotalMilliseconds);
+			_logger.LogError(ex, "Error broadcasting {EventName} for game {GameId}", eventName, gameId);
+			throw;
+		}
+	}
+
+	private IDisposable? CreateScope(Guid gameId, string? userId = null)
+	{
+		var values = new Dictionary<string, object>
+		{
+			["GameId"] = gameId
+		};
+
+		if (!string.IsNullOrWhiteSpace(userId))
+		{
+			values["UserId"] = userId;
+		}
+
+		return _logger.BeginScope(values);
 	}
 
 	private static string GetGroupName(Guid gameId)

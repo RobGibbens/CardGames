@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ namespace CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.StartHand;
 public class StartHandCommandHandler(
 	CardsDbContext context,
 	IGameFlowHandlerFactory flowHandlerFactory,
-	ILogger<StartHandCommandHandler> logger)
+	ILogger<StartHandCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -103,6 +105,7 @@ public class StartHandCommandHandler(
 		var gameTypeCode = game.GameType?.Code;
 		var flowHandler = flowHandlerFactory.GetHandler(
 			string.IsNullOrWhiteSpace(gameTypeCode) ? "HOLDEM" : gameTypeCode);
+		var isFirstGameStart = !game.StartedAt.HasValue;
 
 		game.CurrentHandNumber++;
 		game.CurrentPhase = flowHandler.GetInitialPhase(game);
@@ -127,6 +130,13 @@ public class StartHandCommandHandler(
 			eligiblePlayers.Count);
 
 		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+		if (isFirstGameStart)
+		{
+			telemetry?.RecordGameStarted(GameEventsTelemetry.ResolveGameType(game),
+				GameEventsTelemetry.ResolveTableKind(game));
+		}
+		telemetry?.RecordHandDealt(GameEventsTelemetry.ResolveGameType(game),
+			GameEventsTelemetry.ResolveTableKind(game));
 
 		var totalContributed = eligiblePlayers.Sum(p => p.TotalContributedThisHand);
 		logger.LogInformation(

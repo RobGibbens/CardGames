@@ -16,6 +16,7 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueOneOffEve
 public sealed class CreateLeagueOneOffEventCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
+	Features.Leagues.v1.Telemetry.LeaguesTelemetry telemetry,
 	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<CreateLeagueOneOffEventCommand,
 		OneOf<CreateLeagueOneOffEventResponse, CreateLeagueOneOffEventError>>
@@ -95,6 +96,7 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 
 		context.LeagueOneOffEvents.Add(oneOffEvent);
 		await context.SaveChangesAsync(cancellationToken);
+		telemetry.RecordLeagueEventScheduled("one_off", oneOffEvent.GameTypeCode);
 		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new LeagueEventChangedDto
 		{
 			LeagueId = oneOffEvent.LeagueId,

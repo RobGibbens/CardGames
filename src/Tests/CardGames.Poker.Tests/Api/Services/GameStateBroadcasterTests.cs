@@ -1,4 +1,8 @@
+#nullable enable
+
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,6 +10,7 @@ using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
@@ -23,7 +28,8 @@ public class GameStateBroadcasterTests
 			"KINGSANDLOWS",
 			"DropOrStay",
 			3,
-			true,
+			currentPhaseRequiresAction: true,
+			seats:
 			[
 				CreateSeat(0, 5, "Alice"),
 				CreateSeat(1, 5, "Bob"),
@@ -36,8 +42,7 @@ public class GameStateBroadcasterTests
 		await sut.BroadcastGameStateAsync(gameId);
 
 		actionTimerService.Received(1)
-			.StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(),
-				expectedStartDelay);
+			.StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), expectedStartDelay);
 		await tableStateBuilder.Received(1)
 			.BuildPublicStateAsync(gameId, Arg.Any<CancellationToken>());
 	}
@@ -46,7 +51,7 @@ public class GameStateBroadcasterTests
 	public async Task BroadcastGameStateAsync_ScrewYourNeighborKeepOrTrade_UsesThirtySecondTimer()
 	{
 		var gameId = Guid.NewGuid();
-		var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 3, true);
+		var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 3, currentPhaseRequiresAction: true);
 		var (sut, tableStateBuilder, actionTimerService, _) = CreateSubject(publicState);
 
 		await sut.BroadcastGameStateAsync(gameId);
@@ -67,22 +72,20 @@ public class GameStateBroadcasterTests
 		await sut.BroadcastGameStateAsync(gameId);
 
 		actionTimerService.Received(1)
-			.StartTimer(gameId, 1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(),
-				TimeSpan.Zero);
+			.StartTimer(gameId, 1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), TimeSpan.Zero);
 	}
 
 	[Fact]
 	public async Task BroadcastGameStateAsync_BobBarkerDrawPhase_UsesSharedTimer()
 	{
 		var gameId = Guid.NewGuid();
-		var publicState = CreateState(gameId, "BOBBARKER", "DrawPhase", 1, true);
+		var publicState = CreateState(gameId, "BOBBARKER", "DrawPhase", 1, currentPhaseRequiresAction: true);
 		var (sut, _, actionTimerService, _) = CreateSubject(publicState);
 
 		await sut.BroadcastGameStateAsync(gameId);
 
 		actionTimerService.Received(1)
-			.StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(),
-				TimeSpan.Zero);
+			.StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), TimeSpan.Zero);
 	}
 
 	[Fact]
@@ -118,9 +121,9 @@ public class GameStateBroadcasterTests
 
 		await sut.BroadcastGameStateAsync(gameId);
 
-		actionTimerService.DidNotReceiveWithAnyArgs().StopTimer(Guid.Empty);
-		actionTimerService.DidNotReceiveWithAnyArgs().StartTimer(Guid.Empty, 0, 0);
-		actionTimerService.DidNotReceiveWithAnyArgs().StartChipCheckPauseTimer(Guid.Empty, 0);
+		actionTimerService.DidNotReceiveWithAnyArgs().StopTimer(default);
+		actionTimerService.DidNotReceiveWithAnyArgs().StartTimer(default, default, default, default, default);
+		actionTimerService.DidNotReceiveWithAnyArgs().StartChipCheckPauseTimer(default, default, default, default);
 	}
 
 	[Fact]
@@ -146,8 +149,73 @@ public class GameStateBroadcasterTests
 			Arg.Any<CancellationToken>());
 	}
 
-	private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService
-		ActionTimerService, IClientProxy ClientProxy) CreateSubject(TableStatePublicDto publicState)
+	[Fact]
+	public async Task BroadcastTableToastAsync_CreatesGameIdScope()
+	{
+		var gameId = Guid.NewGuid();
+		var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 1);
+		var logger = new CapturingLogger<GameStateBroadcaster>();
+		var (sut, _, _, _) = CreateSubject(publicState, logger);
+
+		await sut.BroadcastTableToastAsync(new TableToastNotificationDto
+		{
+			GameId = gameId,
+			Message = "Starting new deck"
+		});
+
+		Assert.Contains(logger.Scopes, scope =>
+			scope.TryGetValue("GameId", out var value) && Equals(value, gameId));
+	}
+
+	[Fact]
+	public async Task BroadcastTableToastAsync_Success_RecordsOkMetric()
+	{
+		var gameId = Guid.NewGuid();
+		var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 1);
+		using var serviceProvider = new ServiceCollection().AddMetrics().BuildServiceProvider();
+		using var listener = CreateCounterListener(out var measurements);
+		var telemetry = new BroadcastTelemetry(serviceProvider.GetRequiredService<IMeterFactory>());
+		var (sut, _, _, _) = CreateSubject(publicState, telemetry: telemetry);
+
+		await sut.BroadcastTableToastAsync(new TableToastNotificationDto
+		{
+			GameId = gameId,
+			Message = "Starting new deck"
+		});
+
+		Assert.Contains(measurements, measurement => HasTags(measurement.Tags, "game", "TableToastNotification", "ok"));
+	}
+
+	[Fact]
+	public async Task BroadcastTableToastAsync_SendFails_RecordsFailedMetricAndLogsErrorWithoutThrowing()
+	{
+		var gameId = Guid.NewGuid();
+		var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 1);
+		using var serviceProvider = new ServiceCollection().AddMetrics().BuildServiceProvider();
+		using var listener = CreateCounterListener(out var measurements);
+		var telemetry = new BroadcastTelemetry(serviceProvider.GetRequiredService<IMeterFactory>());
+		var logger = new CapturingLogger<GameStateBroadcaster>();
+		var failure = new InvalidOperationException("send failed");
+		var (sut, _, _, clientProxy) = CreateSubject(publicState, logger, telemetry);
+		clientProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromException(failure));
+
+		var exception = await Record.ExceptionAsync(() => sut.BroadcastTableToastAsync(new TableToastNotificationDto
+		{
+			GameId = gameId,
+			Message = "Starting new deck"
+		}));
+
+		Assert.Null(exception);
+
+		Assert.Contains(measurements, measurement => HasTags(measurement.Tags, "game", "TableToastNotification", "failed"));
+		Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+	}
+
+	private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(
+		TableStatePublicDto publicState,
+		ILogger<GameStateBroadcaster>? logger = null,
+		BroadcastTelemetry? telemetry = null)
 	{
 		var tableStateBuilder = Substitute.For<ITableStateBuilder>();
 		tableStateBuilder.BuildPublicStateAsync(publicState.GameId, Arg.Any<CancellationToken>())
@@ -174,9 +242,72 @@ public class GameStateBroadcasterTests
 			tableStateBuilder,
 			actionTimerService,
 			Substitute.For<IAutoActionService>(),
-			Substitute.For<ILogger<GameStateBroadcaster>>());
+			logger ?? Substitute.For<ILogger<GameStateBroadcaster>>(),
+			telemetry ?? CreateTelemetry());
 
 		return (sut, tableStateBuilder, actionTimerService, clientProxy);
+	}
+
+	private static BroadcastTelemetry CreateTelemetry()
+	{
+		var serviceProvider = new ServiceCollection().AddMetrics().BuildServiceProvider();
+		return new BroadcastTelemetry(serviceProvider.GetRequiredService<IMeterFactory>());
+	}
+
+	private static MeterListener CreateCounterListener(out List<(long Value, KeyValuePair<string, object?>[] Tags)> measurements)
+	{
+		measurements = [];
+		var capturedMeasurements = measurements;
+		var listener = new MeterListener();
+		listener.InstrumentPublished = (instrument, meterListener) =>
+		{
+			if (instrument.Meter.Name == BroadcastTelemetry.MeterName &&
+				instrument.Name == "realtime_broadcasts_total")
+			{
+				meterListener.EnableMeasurementEvents(instrument);
+			}
+		};
+		listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+		{
+			capturedMeasurements.Add((value, tags.ToArray()));
+		});
+		listener.Start();
+		return listener;
+	}
+
+	private static bool HasTags(KeyValuePair<string, object?>[] tags, string hub, string eventName, string outcome)
+	{
+		return tags.Any(tag => tag.Key == "hub" && Equals(tag.Value, hub)) &&
+			tags.Any(tag => tag.Key == "event" && Equals(tag.Value, eventName)) &&
+			tags.Any(tag => tag.Key == "outcome" && Equals(tag.Value, outcome));
+	}
+
+	private sealed class CapturingLogger<T> : ILogger<T>
+	{
+		public List<(LogLevel Level, Exception? Exception)> Entries { get; } = [];
+		public List<IReadOnlyDictionary<string, object>> Scopes { get; } = [];
+		public IDisposable BeginScope<TState>(TState state) where TState : notnull
+		{
+			if (state is IEnumerable<KeyValuePair<string, object>> pairs)
+			{
+				Scopes.Add(pairs.ToDictionary(pair => pair.Key, pair => pair.Value));
+			}
+
+			return NullScope.Instance;
+		}
+
+		public bool IsEnabled(LogLevel logLevel) => true;
+
+		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+		{
+			Entries.Add((logLevel, exception));
+		}
+
+		private sealed class NullScope : IDisposable
+		{
+			public static readonly NullScope Instance = new();
+			public void Dispose() { }
+		}
 	}
 
 	private static TableStatePublicDto CreateState(
@@ -215,7 +346,7 @@ public class GameStateBroadcasterTests
 				.Select(index => new CardPublicDto
 				{
 					IsFaceUp = true,
-					Rank = (index % 9 + 2).ToString(),
+					Rank = ((index % 9) + 2).ToString(),
 					Suit = "Hearts"
 				})
 				.ToArray()

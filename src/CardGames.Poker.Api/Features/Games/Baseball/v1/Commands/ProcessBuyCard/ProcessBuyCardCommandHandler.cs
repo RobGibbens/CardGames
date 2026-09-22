@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.DealHands;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,8 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBuyCard;
 
-public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediator mediator)
+public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediator mediator,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<ProcessBuyCardCommand, OneOf<ProcessBuyCardSuccessful, ProcessBuyCardError>>
 {
 	public async Task<OneOf<ProcessBuyCardSuccessful, ProcessBuyCardError>> Handle(
@@ -66,6 +68,7 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 			};
 
 		var buyCardPrice = buyCardState.BuyCardPrice > 0 ? buyCardState.BuyCardPrice : game.MinBet ?? 0;
+		var playerWasAllIn = player.IsAllIn;
 		if (command.Accept && player.ChipStack < buyCardPrice)
 			return new ProcessBuyCardError
 			{

@@ -2,6 +2,7 @@
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,8 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 
 public class CreateGameCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
 	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command,
@@ -175,6 +177,10 @@ public class CreateGameCommandHandler(
 		context.Pots.Add(mainPot);
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		telemetry?.RecordGameCreated(
+			gameType?.Code ?? "DEALERSCHOICE",
+			command.IsDealersChoice ? "dealers_choice" : "standard");
 
 		return new CreateGameSuccessful
 		{

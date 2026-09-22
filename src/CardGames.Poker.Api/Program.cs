@@ -20,6 +20,7 @@ using CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
 using CardGames.Poker.Api.Infrastructure.Storage;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Evaluation;
+using CardGames.Poker.Api.Infrastructure.Telemetry;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MediatR;
@@ -31,7 +32,6 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Identity.Web;
 using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using ZiggyCreatures.Caching.Fusion;
@@ -149,12 +149,6 @@ public class Program
 			.WithRegisteredDistributedCache()
 			.AsHybridCache();
 
-		builder.Logging.AddOpenTelemetry(x =>
-		{
-			x.IncludeScopes = true;
-			x.IncludeFormattedMessage = true;
-		});
-
 
 		builder.Services.AddMediatR(cfg =>
 			{
@@ -162,6 +156,7 @@ public class Program
 				cfg.LicenseKey =
 					"eyJhbGciOiJSUzI1NiIsImtpZCI6Ikx1Y2t5UGVubnlTb2Z0d2FyZUxpY2Vuc2VLZXkvYmJiMTNhY2I1OTkwNGQ4OWI0Y2IxYzg1ZjA4OGNjZjkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2x1Y2t5cGVubnlzb2Z0d2FyZS5jb20iLCJhdWQiOiJMdWNreVBlbm55U29mdHdhcmUiLCJleHAiOiIxNzg2NTc5MjAwIiwiaWF0IjoiMTc1NTA1Mjg0NSIsImFjY291bnRfaWQiOiIwMTk3ZDFlN2Q4ZmQ3NWRjYmIwODA1OWVlZGEyZDU0ZCIsImN1c3RvbWVyX2lkIjoiY3RtXzAxano4eWdiMmJ4cTY3N2VhdmNqcmR6cTg1Iiwic3ViX2lkIjoiLSIsImVkaXRpb24iOiIwIiwidHlwZSI6IjIifQ.CpYPuTeHrEmaVt4v2sk5dDH9UGc-QkA7ThBphJcUFA8jr27yDsvD6Ts_CYiySDRzEQdbXeorGfx2ce1Ue5vZ8pk3c7qAj717cU-BP4qdk18dz1LXXkDgQj6v61hvg3OTdGUfV6wxR0Mq2NITiKIPz7q5v052KDXfaXSlwECSRTGwVGuTrn8q0JpcKuS8ZtcM9x32YiEXyiFR3f4cPiMePLMZvOZO-TOeMdVHUJDbAxbra-j5nScamIWbpnrlp4-8SQLYo9VR8xajnmQAiql6Vc5Zk_sKziZSmYcQmr52BFfP5K15STtgA3u9YQ4qQMNFcQ9jEK0BnTFCE45iHvcC3A";
 			})
+			.AddScoped(typeof(IPipelineBehavior<,>), typeof(TracingPipelineBehavior<,>))
 			.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>))
 			.AddScoped(typeof(IPipelineBehavior<,>), typeof(GameStateBroadcastingBehavior<,>))
 			.AddScoped(typeof(IPipelineBehavior<,>), typeof(LobbyStateBroadcastingBehavior<,>))
@@ -177,26 +172,27 @@ public class Program
 			{
 				if (builder.Environment.IsDevelopment()) x.SetSampler<AlwaysOnSampler>();
 
-				x.AddFusionCacheInstrumentation(o => { o.IncludeMemoryLevel = true; });
-
-				x.SetResourceBuilder(ResourceBuilder.CreateDefault()
-						.AddService("api"))
-					.AddAspNetCoreInstrumentation() // For HTTP request tracing
-					.AddHttpClientInstrumentation() // For outgoing HTTP calls
-					.AddConsoleExporter(); // Use other exporters as needed
+				x.AddFusionCacheInstrumentation(o =>
+				{
+					o.IncludeMemoryLevel = true;
+				});
+				x.AddEntityFrameworkCoreInstrumentation(o =>
+				{
+					o.SetDbStatementForText = builder.Environment.IsDevelopment();
+				});
+				// Resource, ASP.NET Core/HttpClient instrumentation and exporters come from ServiceDefaults.
 
 				x.AddSource("Azure.Messaging.ServiceBus");
+				x.AddSource(PokerActivitySource.Name);
 			})
 			.WithMetrics(x =>
 			{
 				x.AddPrometheusExporter();
-				x.AddMeter("Forkful.ApiService");
 				x.AddMeter("CardGames.Poker.Api.Leagues");
-				x.SetResourceBuilder(ResourceBuilder.CreateDefault()
-						.AddService("api"))
-					.AddAspNetCoreInstrumentation() // Captures request metrics
-					.AddConsoleExporter(); // Export metrics to the console
-
+				x.AddMeter(ContinuousPlayTelemetry.MeterName);
+				x.AddMeter(BroadcastTelemetry.MeterName);
+				x.AddMeter(HandHistoryTelemetry.MeterName);
+				x.AddMeter(GameEventsTelemetry.MeterName);
 				x.AddFusionCacheInstrumentation(o =>
 				{
 					o.IncludeMemoryLevel = true;
@@ -209,6 +205,9 @@ public class Program
 		builder.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
 		builder.Services.AddMetrics();
 		builder.Services.AddSingleton<LeaguesTelemetry>();
+		builder.Services.AddSingleton<BroadcastTelemetry>();
+		builder.Services.AddSingleton<HandHistoryTelemetry>();
+		builder.Services.AddSingleton<GameEventsTelemetry>();
 		builder.Services.AddRateLimiter(limiterOptions =>
 		{
 			limiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

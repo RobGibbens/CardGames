@@ -48,6 +48,12 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	public override async Task OnConnectedAsync()
 	{
 		var userId = GetCurrentUserId();
+		using var scope = CreateScope(userId);
+		logger.LogInformation(
+			"User {UserId} connected to league hub with connection {ConnectionId}",
+			userId ?? "unknown",
+			Context.ConnectionId);
+
 		if (!string.IsNullOrWhiteSpace(userId))
 		{
 			var groupName = GetJoinRequesterGroupName(userId);
@@ -69,7 +75,11 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	public async Task JoinManagedLeague(Guid leagueId)
 	{
 		var userId = GetCurrentUserId();
-		if (string.IsNullOrWhiteSpace(userId)) throw new HubException("User identifier not found.");
+		using var scope = CreateScope(userId, leagueId);
+		if (string.IsNullOrWhiteSpace(userId))
+		{
+			throw new HubException("User identifier not found.");
+		}
 
 		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
@@ -102,6 +112,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	public async Task JoinViewedLeague(Guid leagueId)
 	{
 		var userId = GetCurrentUserId();
+		using var scope = CreateScope(userId, leagueId);
 		if (string.IsNullOrWhiteSpace(userId)) throw new HubException("User identifier not found.");
 
 		var canViewLeague = await CanViewLeagueAsync(leagueId, userId);
@@ -127,6 +138,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	/// </summary>
 	public async Task LeaveManagedLeague(Guid leagueId)
 	{
+		using var scope = CreateScope(GetCurrentUserId(), leagueId);
 		var groupName = GetManagedLeagueGroupName(leagueId);
 		await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
 
@@ -141,6 +153,7 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	/// </summary>
 	public async Task LeaveViewedLeague(Guid leagueId)
 	{
+		using var scope = CreateScope(GetCurrentUserId(), leagueId);
 		var groupName = GetViewedLeagueGroupName(leagueId);
 		await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
 
@@ -168,5 +181,45 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 		return Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
 		       ?? Context.User?.FindFirst("sub")?.Value
 		       ?? Context.UserIdentifier;
+	}
+
+	public override async Task OnDisconnectedAsync(Exception? exception)
+	{
+		var userId = GetCurrentUserId();
+		using var scope = CreateScope(userId);
+
+		if (exception is not null)
+		{
+			logger.LogWarning(
+				exception,
+				"User {UserId} disconnected from league hub with error (connection {ConnectionId})",
+				userId ?? "unknown",
+				Context.ConnectionId);
+		}
+		else
+		{
+			logger.LogInformation(
+				"User {UserId} disconnected from league hub (connection {ConnectionId})",
+				userId ?? "unknown",
+				Context.ConnectionId);
+		}
+
+		await base.OnDisconnectedAsync(exception);
+	}
+
+	private IDisposable? CreateScope(string? userId, Guid? leagueId = null)
+	{
+		var values = new Dictionary<string, object>
+		{
+			["ConnectionId"] = Context.ConnectionId,
+			["UserId"] = userId ?? "anonymous"
+		};
+
+		if (leagueId.HasValue)
+		{
+			values["LeagueId"] = leagueId.Value;
+		}
+
+		return logger.BeginScope(values);
 	}
 }

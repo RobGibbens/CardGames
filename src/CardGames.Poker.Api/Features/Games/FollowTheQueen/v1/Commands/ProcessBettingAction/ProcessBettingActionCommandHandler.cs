@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformShowdown;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,8 @@ namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.ProcessB
 public class ProcessBettingActionCommandHandler(
 	CardsDbContext context,
 	IMediator mediator,
-	ILogger<ProcessBettingActionCommandHandler> logger)
+	ILogger<ProcessBettingActionCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
 {
 	/// <inheritdoc />
@@ -139,9 +141,11 @@ public class ProcessBettingActionCommandHandler(
 		// 7. Calculate values before execution
 		var chipStackBefore = currentPlayer.ChipStack;
 		var potBefore = game.Pots.Sum(p => p.Amount);
+		var playerWasAllIn = currentPlayer.IsAllIn;
 
 		// 8. Execute the action
 		var (actualAmount, chipsMoved) = ExecuteAction(currentPlayer, command.ActionType, command.Amount, bettingRound);
+		var playerWentAllIn = !playerWasAllIn && currentPlayer.IsAllIn;
 
 		// 9. Create action record
 		var actionRecord = new BettingActionRecord

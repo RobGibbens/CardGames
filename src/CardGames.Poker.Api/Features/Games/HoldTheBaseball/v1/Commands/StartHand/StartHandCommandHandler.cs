@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHa
 public class StartHandCommandHandler(
 	CardsDbContext context,
 	IGameFlowHandlerFactory flowHandlerFactory,
-	ILogger<StartHandCommandHandler> logger)
+	ILogger<StartHandCommandHandler> logger,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -86,6 +88,7 @@ public class StartHandCommandHandler(
 		context.Pots.Add(mainPot);
 
 		var flowHandler = flowHandlerFactory.GetHandler("HOLDTHEBASEBALL");
+		var isFirstGameStart = !game.StartedAt.HasValue;
 
 		game.CurrentHandNumber++;
 		game.CurrentPhase = flowHandler.GetInitialPhase(game);
@@ -101,6 +104,8 @@ public class StartHandCommandHandler(
 		await context.SaveChangesAsync(cancellationToken);
 
 		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+		if (isFirstGameStart) telemetry?.RecordGameStarted("HOLDTHEBASEBALL", "standard");
+		telemetry?.RecordHandDealt("HOLDTHEBASEBALL", "standard");
 
 		logger.LogInformation(
 			"Started Hold the Baseball hand {HandNumber} for game {GameId} in phase {Phase} with {PlayerCount} eligible players",
