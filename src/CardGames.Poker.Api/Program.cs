@@ -178,7 +178,12 @@ public class Program
 				});
 				x.AddEntityFrameworkCoreInstrumentation(o =>
 				{
-					o.SetDbStatementForText = builder.Environment.IsDevelopment();
+					// 1.19+ emits sanitized db.query.summary by default; raw SQL only in Development (PII risk).
+					if (builder.Environment.IsDevelopment())
+					{
+						o.EnrichWithIDbCommand = (activity, command) =>
+							activity.SetTag("db.statement", command.CommandText);
+					}
 				});
 				// Resource, ASP.NET Core/HttpClient instrumentation and exporters come from ServiceDefaults.
 
