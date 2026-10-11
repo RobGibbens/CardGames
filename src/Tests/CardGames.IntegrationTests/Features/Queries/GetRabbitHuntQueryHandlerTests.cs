@@ -77,9 +77,15 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
 			.Select(card => new { Suit = MapContractSuit(card.Suit), Symbol = MapContractSymbol(card.Symbol) })
 			.ToListAsync();
 
-		(await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Fold))).IsT0.Should()
+		(await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		})).IsT0.Should()
 			.BeTrue();
-		(await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Fold))).IsT0.Should()
+		(await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		})).IsT0.Should()
 			.BeTrue();
 
 		var result = await Mediator.Send(new GetRabbitHuntQuery(setup.Game.Id));
@@ -179,9 +185,15 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
 			.Select(card => new { Suit = MapContractSuit(card.Suit), Symbol = MapContractSymbol(card.Symbol) })
 			.ToListAsync();
 
-		(await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Fold))).IsT0.Should()
+		(await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		})).IsT0.Should()
 			.BeTrue();
-		(await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Fold))).IsT0.Should()
+		(await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		})).IsT0.Should()
 			.BeTrue();
 
 		var result = await Mediator.Send(new GetRabbitHuntQuery(setup.Game.Id));

@@ -17,6 +17,14 @@ public interface IRequiresSeatedPlayer : IRequiresAuthentication;
 public interface IRequiresCurrentActor : IRequiresSeatedPlayer;
 
 /// <summary>
+///     The seat this command may act for. Null means no seat was approved.
+/// </summary>
+public interface IBoundToActorSeat
+{
+	int? BoundSeat { get; set; }
+}
+
+/// <summary>
 ///     Caller must be seated or the table host/creator (start hand, deal, antes).
 /// </summary>
 public interface IRequiresHostOrSeatedPlayer : IRequiresAuthentication;

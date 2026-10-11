@@ -20,7 +20,10 @@ public sealed class ProcessBettingActionCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		return innerHandler.Handle(
-			new SharedProcessBettingActionCommand(command.GameId, command.ActionType, command.Amount),
+			new SharedProcessBettingActionCommand(command.GameId, command.ActionType, command.Amount)
+			{
+				BoundSeat = command.BoundSeat
+			},
 			cancellationToken);
 	}
 }

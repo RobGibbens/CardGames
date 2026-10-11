@@ -148,7 +148,10 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		setup.Game.CurrentPhase = "CollectingBlinds";
 		await DbContext.SaveChangesAsync();
 
-		var result = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check));
+		var result = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidGameState);
@@ -175,7 +178,10 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		preAllInRiverCards.Should().NotBeEmpty();
 		preAllInRiverCards.Should().AllSatisfy(c => c.Suit.Should().Be(CardSuit.Hearts));
 
-		var firstAllIn = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn));
+		var firstAllIn = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 		firstAllIn.IsT0.Should().BeTrue("first all-in at River should succeed");
 
 		var stateAfterFirstAllIn = await GetFreshDbContext().Games
@@ -185,7 +191,10 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		if (string.Equals(stateAfterFirstAllIn.CurrentPhase, "River", StringComparison.OrdinalIgnoreCase))
 		{
 			var secondAllIn =
-				await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn));
+				await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 			secondAllIn.IsT0.Should()
 				.BeTrue("second all-in at River should succeed when runout does not occur on first action");
 		}
@@ -275,7 +284,10 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Hearts);
 		await ConfigureNextDeckCardAsync(setup.Game.Id, CardSuit.Clubs, CardSymbol.King);
 
-		var firstAllIn = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn));
+		var firstAllIn = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 		firstAllIn.IsT0.Should().BeTrue("first all-in at River should succeed");
 
 		var stateAfterFirstAllIn = await GetFreshDbContext().Games
@@ -285,7 +297,10 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		if (string.Equals(stateAfterFirstAllIn.CurrentPhase, "River", StringComparison.OrdinalIgnoreCase))
 		{
 			var secondAllIn =
-				await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn));
+				await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 			secondAllIn.IsT0.Should().BeTrue("second all-in at River should complete the runout");
 		}
 
@@ -479,6 +494,9 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 			? BettingActionType.Call
 			: BettingActionType.Check;
 
-		return await Mediator.Send(new ProcessBettingActionCommand(gameId, action));
+		return await Mediator.Send(new ProcessBettingActionCommand(gameId, action)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(gameId)
+		});
 	}
 }

@@ -105,7 +105,10 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 		setup.Game.CurrentPhase = "CollectingBlinds";
 		await DbContext.SaveChangesAsync();
 
-		var result = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check));
+		var result = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidGameState);
@@ -125,7 +128,10 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 
 		// Both players go all-in at the Flop to trigger runout
 		var firstAllIn = await Mediator.Send(
-			new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn));
+			new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 		firstAllIn.IsT0.Should().BeTrue("first all-in should succeed");
 
 		// Check if we need a second all-in (depends on whether first action completed the round)
@@ -136,7 +142,10 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 		if (!string.Equals(stateAfterFirst.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
 		{
 			var secondAllIn = await Mediator.Send(
-				new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn));
+				new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 			secondAllIn.IsT0.Should().BeTrue("second all-in should succeed");
 		}
 
@@ -437,7 +446,10 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 			? BettingActionType.Call
 			: BettingActionType.Check;
 
-		return await Mediator.Send(new ProcessBettingActionCommand(gameId, action));
+		return await Mediator.Send(new ProcessBettingActionCommand(gameId, action)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(gameId)
+		});
 	}
 
 	#endregion

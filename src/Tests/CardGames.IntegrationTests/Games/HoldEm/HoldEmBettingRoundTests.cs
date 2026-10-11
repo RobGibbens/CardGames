@@ -96,7 +96,10 @@ public class HoldEmBettingRoundTests : IntegrationTestBase
 
 	private async Task<ProcessBettingActionSuccessful> Act(Guid gameId, BettingActionType action, int amount = 0)
 	{
-		var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, action, amount));
+		var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, action, amount)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(gameId)
+		});
 		result.IsT0.Should().BeTrue(result.IsT1 ? result.AsT1.Message : "action should succeed");
 		return result.AsT0;
 	}

@@ -32,7 +32,10 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 			if (freshRound is null) break;
 
 			var result = await Mediator.Send(
-				new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+				new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 			result.IsT0.Should().BeTrue($"check by player at iteration {i} should succeed");
 		}
@@ -65,18 +68,27 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 		var setup = await CreateDealtIrishHoldEmGameAsync(3, 0);
 		var game = setup.Game;
 
-		// First actor bets
+		// Blinds are already posted, so the first actor raises and the others can fold.
 		var betResult = await Mediator.Send(
-			new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 20));
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Raise, 20)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		betResult.IsT0.Should().BeTrue("opening bet should succeed");
 
 		// Two remaining actors fold
 		var result1 = await Mediator.Send(
-			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		result1.IsT0.Should().BeTrue("first fold should succeed");
 
 		var result2 = await Mediator.Send(
-			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		result2.IsT0.Should().BeTrue("second fold should succeed");
 
 		var freshGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
@@ -275,7 +287,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 		for (var i = 0; i < activePlayers.Count; i++)
 		{
 			var discardResult = await Mediator.Send(
-				new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }));
+				new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }, await CurrentDrawSeatAsync(game.Id)));
 
 			discardResult.IsT0.Should().BeTrue($"discard for player {i} should succeed");
 		}
@@ -295,7 +307,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 
 		// Try discarding only 1 card (must be exactly 2)
 		var result = await Mediator.Send(
-			new ProcessDiscardCommand(setup.Game.Id, new List<int> { 0 }));
+			new ProcessDiscardCommand(setup.Game.Id, new List<int> { 0 }, await CurrentDrawSeatAsync(setup.Game.Id)));
 
 		result.IsT1.Should().BeTrue("discarding 1 card should fail");
 		result.AsT1.Message.Should().Contain("exactly 2");
@@ -314,14 +326,14 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 
 		for (var i = 0; i < activePlayers.Count; i++)
 			await Mediator.Send(
-				new ProcessDiscardCommand(game.Id, new List<int> { 2, 3 }));
+				new ProcessDiscardCommand(game.Id, new List<int> { 2, 3 }, await CurrentDrawSeatAsync(game.Id)));
 
 		var freshGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
 		freshGame.CurrentPhase.Should().Be("Turn", "after all players discard, phase should advance to Turn");
 	}
 
 	[Fact]
-	public async Task ProcessDiscard_AllowsOutOfOrderDiscard_BySeatIndex()
+	public async Task ProcessDiscard_WhenSeatIsNotCurrentDrawPlayer_ReturnsNotPlayerTurn()
 	{
 		var setup = await CreateGameInDrawPhaseAsync(3, 0);
 		var game = setup.Game;
@@ -342,13 +354,13 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 		var discardResult = await Mediator.Send(
 			new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }, nonCurrentSeat));
 
-		discardResult.IsT0.Should()
-			.BeTrue("an eligible Irish Hold 'Em player should be able to discard without waiting for seat order");
-		discardResult.AsT0.PlayerSeatIndex.Should().Be(nonCurrentSeat);
+		discardResult.IsT1.Should().BeTrue();
+		discardResult.AsT1.Code.Should().Be(ProcessDiscardErrorCode.NotPlayerTurn);
+		discardResult.AsT1.Message.Should().Be("It is not your turn.");
 
 		var gamePlayer = await GetFreshDbContext().GamePlayers
 			.FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == nonCurrentSeat);
-		gamePlayer.HasDrawnThisRound.Should().BeTrue();
+		gamePlayer.HasDrawnThisRound.Should().BeFalse();
 	}
 
 	[Fact]
@@ -357,7 +369,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 		var setup = await CreateGameInDrawPhaseAsync(3, 0);
 		var game = setup.Game;
 
-		var firstResult = await Mediator.Send(new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }));
+		var firstResult = await Mediator.Send(new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }, await CurrentDrawSeatAsync(game.Id)));
 		firstResult.IsT0.Should().BeTrue();
 
 		var afterOneDiscard = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
@@ -399,7 +411,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 		for (var i = 0; i < activeCount; i++)
 		{
 			var discardResult = await Mediator.Send(
-				new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }));
+				new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }, await CurrentDrawSeatAsync(game.Id)));
 			discardResult.IsT0.Should().BeTrue($"discard for player {i} should succeed");
 		}
 
@@ -426,7 +438,10 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 			if (current.CurrentPhase != startingPhase)
 				return;
 
-			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.AllIn));
+			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(gameId)
+		});
 			result.IsT0.Should().BeTrue($"all-in at iteration {i} should succeed");
 		}
 	}
@@ -538,7 +553,10 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 			if (freshRound is null) break;
 
 			var result = await Mediator.Send(
-				new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+				new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 			result.IsT0.Should().BeTrue($"check at iteration {i} should succeed");
 		}

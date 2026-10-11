@@ -1,6 +1,7 @@
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,10 @@ namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
 /// <summary>
 ///     Handles the <see cref="StartHandCommand" /> to start a new hand in a Kings and Lows game.
 /// </summary>
-public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCommandHandler> logger)
+public class StartHandCommandHandler(
+	CardsDbContext context,
+	IPlayerChipWalletService playerChipWalletService,
+	ILogger<StartHandCommandHandler> logger)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -63,6 +67,9 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			player.IsSittingOut = true;
 		}
 
+		// 4. Apply pending chips to player stacks
+		await PendingRebuyApplicator.ApplyAsync(game, playerChipWalletService, cancellationToken);
+
 		// 4. Auto-sit-out players with insufficient chips for the ante
 		var ante = game.Ante ?? 0;
 		var playersWithInsufficientChips = game.GamePlayers
@@ -73,17 +80,6 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			.ToList();
 
 		foreach (var player in playersWithInsufficientChips) player.IsSittingOut = true;
-
-		// 4. Apply pending chips to player stacks
-		var playersWithPendingChips = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.PendingChipsToAdd > 0)
-			.ToList();
-
-		foreach (var player in playersWithPendingChips)
-		{
-			player.ChipStack += player.PendingChipsToAdd;
-			player.PendingChipsToAdd = 0;
-		}
 
 		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
 		var eligiblePlayers = game.GamePlayers

@@ -201,7 +201,7 @@ public class IrishHoldEmSmokeTests : IntegrationTestBase
 		for (var i = 0; i < activePlayers.Count; i++)
 		{
 			var discardResult = await Mediator.Send(
-				new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }));
+				new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }, await CurrentDrawSeatAsync(game.Id)));
 			discardResult.IsT0.Should().BeTrue($"discard for player {i} should succeed");
 		}
 
@@ -492,7 +492,10 @@ public class IrishHoldEmSmokeTests : IntegrationTestBase
 			if (freshRound is null) break;
 
 			var result = await Mediator.Send(
-				new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+				new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 			result.IsT0.Should().BeTrue($"check at iteration {i} should succeed");
 		}

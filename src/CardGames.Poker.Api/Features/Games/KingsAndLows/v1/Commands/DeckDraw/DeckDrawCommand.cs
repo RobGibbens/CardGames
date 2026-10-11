@@ -17,7 +17,10 @@ public record DeckDrawCommand(
 	Guid GameId,
 	Guid PlayerId,
 	IReadOnlyCollection<int> DiscardIndices
-) : IRequest<OneOf<DeckDrawSuccessful, DeckDrawError>>, IGameStateChangingCommand, IRequiresCurrentActor;
+) : IRequest<OneOf<DeckDrawSuccessful, DeckDrawError>>, IGameStateChangingCommand, IRequiresCurrentActor, IBoundToActorSeat
+{
+	public int? BoundSeat { get; set; }
+}
 
 /// <summary>
 ///     Request model for the deck draw endpoint.

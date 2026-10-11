@@ -12,7 +12,10 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.StartHand;
 /// <summary>
 ///     Handles the <see cref="StartHandCommand" /> to start a new hand in a Five Card Draw game.
 /// </summary>
-public class StartHandCommandHandler(CardsDbContext context, GameEventsTelemetry? telemetry = null)
+public class StartHandCommandHandler(
+	CardsDbContext context,
+	IPlayerChipWalletService playerChipWalletService,
+	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -63,15 +66,7 @@ public class StartHandCommandHandler(CardsDbContext context, GameEventsTelemetry
 		}
 
 		// 4. Apply pending chips to player stacks
-		var playersWithPendingChips = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.PendingChipsToAdd > 0)
-			.ToList();
-
-		foreach (var player in playersWithPendingChips)
-		{
-			player.ChipStack += player.PendingChipsToAdd;
-			player.PendingChipsToAdd = 0;
-		}
+		await PendingRebuyApplicator.ApplyAsync(game, playerChipWalletService, cancellationToken);
 
 		// 5. Auto-sit-out players with insufficient chips for the ante
 		var ante = game.Ante ?? 0;

@@ -77,7 +77,7 @@ public class PerformShowdownCommandHandler(
 			.AsNoTracking()
 			.Where(u => u.Email != null && playerEmails.Contains(u.Email))
 			.Select(u => new { Email = u.Email!, u.FirstName })
-			.ToDictionaryAsync(u => u.Email, StringComparer.OrdinalIgnoreCase, cancellationToken);
+			.ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
 		// 4. Load hole cards for players in hand (each player's own cards)
 		var playerCards = await context.GameCards
@@ -153,10 +153,11 @@ public class PerformShowdownCommandHandler(
 					[winner.Player.Name],
 					null,
 					null,
+					false,
 					cancellationToken);
 			}
 
-			usersByEmail.TryGetValue(winner.Player.Email ?? string.Empty, out var winnerUser);
+			usersByEmail.TryGetValue(winner.Player.Email ?? string.Empty, out var winnerFirstName);
 
 			return new PerformShowdownSuccessful
 			{
@@ -169,7 +170,7 @@ public class PerformShowdownCommandHandler(
 					new ShowdownPlayerHand
 					{
 						PlayerName = winner.Player.Name,
-						PlayerFirstName = winnerUser?.FirstName,
+						PlayerFirstName = winnerFirstName,
 						Cards = WinByFoldResponseBuilder.HiddenCards<ShowdownCard>(),
 						HandType = null,
 						HandStrength = null,
@@ -215,96 +216,298 @@ public class PerformShowdownCommandHandler(
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 
-		// 10. Determine winners (highest strength)
-		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-		var winners = playerHandEvaluations
-			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-			.Select(kvp => kvp.Key)
-			.ToList();
+		if (isAlreadyAwarded)
+			return BuildContestedSuccess(game, playerHandEvaluations, usersByEmail, ReadStoredPayouts(currentHandPots));
 
-		if (winners.Count == 0)
+		var contributionSum = game.GamePlayers.Sum(gamePlayer => gamePlayer.TotalContributedThisHand);
+		if (totalPot != contributionSum)
 			return new PerformShowdownError
 			{
-				Message = "No eligible winning hand could be determined at showdown.",
+				Message = $"Pot total {totalPot} does not equal contributed chips {contributionSum}.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 
-		// 11. Calculate payouts (split pot if multiple winners)
-		var payoutPerWinner = totalPot / winners.Count;
-		var remainder = totalPot % winners.Count;
-		var payouts = new Dictionary<string, int>();
+		var playersInHandIds = playersInHand.Select(gamePlayer => gamePlayer.Id).ToHashSet();
+		var stakes = game.GamePlayers.Select(gamePlayer => new HoldEmPotLayers.Stake(
+			gamePlayer.Id,
+			gamePlayer.Player.Name,
+			gamePlayer.TotalContributedThisHand,
+			playersInHandIds.Contains(gamePlayer.Id),
+			gamePlayer.IsAllIn || gamePlayer.ChipStack == 0)).ToList();
 
-		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
+		var layers = HoldEmPotLayers.Build(stakes);
+		var layerError = ValidateLayers(layers, stakes.Sum(stake => stake.Contributed));
+		if (layerError is not null)
+			return layerError;
 
-		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
-
-		// 12. Update player chip stacks and mark pots as awarded
-		if (!isAlreadyAwarded)
+		if (layers.Uncalled > 0 && layers.UncalledPlayerId is Guid refundedId)
 		{
-			foreach (var payout in payouts)
-			{
-				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
-				gamePlayer.ChipStack += payout.Value;
-			}
-
-			var winReason = winners.Count > 1
-				? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
-				: playerHandEvaluations[winners[0]].hand.Type.ToString();
-
-			var winnerPayoutsList = payouts.Select(p =>
-			{
-				var gp = playerHandEvaluations[p.Key].gamePlayer;
-				return new { playerId = gp.PlayerId.ToString(), playerName = p.Key, amount = p.Value };
-			}).ToList();
-			var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
-
-			foreach (var pot in currentHandPots)
-			{
-				pot.IsAwarded = true;
-				pot.AwardedAt = now;
-				pot.WinReason = winReason;
-				pot.WinnerPayouts = winnerPayoutsJson;
-			}
-
-			game.CurrentPhase = "Complete";
-			game.UpdatedAt = now;
-			game.HandCompletedAt = now;
-			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
-			MoveDealer(game);
-
-			// Settle hand results to cashier ledger
-			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
-
-			await context.SaveChangesAsync(cancellationToken);
-			RecordCompletedHandMetrics(game, currentHandPots, now);
-
-			// Record hand history
-			var winnerInfos = winners.Select(w =>
-			{
-				var gp = playerHandEvaluations[w].gamePlayer;
-				return (gp.PlayerId, w, payouts[w]);
-			}).ToList();
-
-			await RecordHandHistoryAsync(
-				game,
-				game.GamePlayers.ToList(),
-				now,
-				totalPot,
-				false,
-				winnerInfos,
-				winners,
-				winReason,
-				playerHandEvaluations,
-				cancellationToken);
+			var refunded = game.GamePlayers.First(gamePlayer => gamePlayer.Id == refundedId);
+			refunded.ChipStack += layers.Uncalled;
+			refunded.TotalContributedThisHand -= layers.Uncalled;
 		}
 
-		// 13. Build response
+		var newPots = await ReplaceCurrentHandPotsAsync(game, currentHandPots, layers.Layers, now, cancellationToken);
+		var payouts = new Dictionary<string, int>();
+		var anyPotSplit = false;
+		foreach (var pot in newPots.OrderBy(pot => pot.PotOrder))
+		{
+			var awardError = AwardPot(
+				pot, playersInHand, playerHandEvaluations, payouts, now, game.DealerPosition, ref anyPotSplit);
+			if (awardError is not null)
+				return awardError;
+		}
+
+		foreach (var payout in payouts)
+			playerHandEvaluations[payout.Key].gamePlayer.ChipStack += payout.Value;
+
+		await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
+
+		game.CurrentPhase = "Complete";
+		game.UpdatedAt = now;
+		game.HandCompletedAt = now;
+		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+		MoveDealer(game);
+
+		await context.SaveChangesAsync(cancellationToken);
+		RecordCompletedHandMetrics(game, currentHandPots, now);
+
+		var winnerInfos = payouts
+			.Where(payout => payout.Value > 0)
+			.Select(payout =>
+			{
+				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
+				return (PlayerId: gamePlayer.PlayerId, PlayerName: payout.Key, AmountWon: payout.Value);
+			}).ToList();
+
+		await RecordHandHistoryAsync(
+			game,
+			game.GamePlayers.ToList(),
+			now,
+			newPots.Sum(pot => pot.Amount),
+			false,
+			winnerInfos,
+			winnerInfos.Select(winner => winner.PlayerName).ToList(),
+			newPots.FirstOrDefault(pot => pot.PotOrder == 0)?.WinReason,
+			playerHandEvaluations,
+			anyPotSplit,
+			cancellationToken);
+
+		return BuildContestedSuccess(game, playerHandEvaluations, usersByEmail, payouts);
+	}
+
+	private static Dictionary<string, int> ReadStoredPayouts(IEnumerable<Pot> currentHandPots)
+	{
+		var payouts = new Dictionary<string, int>();
+		foreach (var pot in currentHandPots.Where(pot => pot.WinnerPayouts != null))
+			try
+			{
+				var potPayouts = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(pot.WinnerPayouts!);
+				if (potPayouts is null)
+					continue;
+
+				foreach (var potPayout in potPayouts)
+					if (potPayout.TryGetValue("playerName", out var nameObj) &&
+					    potPayout.TryGetValue("amount", out var amountObj))
+					{
+						var name = nameObj.ToString()!;
+						var amount = Convert.ToInt32(((JsonElement)amountObj).GetInt32());
+						if (payouts.TryGetValue(name, out var existing))
+							payouts[name] = existing + amount;
+						else
+							payouts[name] = amount;
+					}
+			}
+			catch
+			{
+				// Ignore parsing errors for legacy data
+			}
+
+		return payouts;
+	}
+
+	private static PerformShowdownError? ValidateLayers(HoldEmPotLayers.BuildResult layers, int contributedSum)
+	{
+		var layered = layers.Uncalled + layers.Layers.Sum(layer => layer.Amount);
+		if (layered != contributedSum)
+			return new PerformShowdownError
+			{
+				Message =
+					$"Uncalled chips plus pot layers ({layered}) do not equal contributed chips ({contributedSum}).",
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
+
+		foreach (var layer in layers.Layers)
+		{
+			var sliceSum = layer.Slices.Sum(slice => slice.Amount);
+			if (sliceSum != layer.Amount)
+				return new PerformShowdownError
+				{
+					Message = $"Layer {layer.PotOrder} slices total {sliceSum} but the layer amount is {layer.Amount}.",
+					Code = PerformShowdownErrorCode.InvalidGameState
+				};
+
+			if (layer.Amount <= 0 || !layer.Slices.Any(slice => slice.Eligible))
+				return new PerformShowdownError
+				{
+					Message = $"Layer {layer.PotOrder} amount {layer.Amount} has no eligible winner.",
+					Code = PerformShowdownErrorCode.InvalidGameState
+				};
+		}
+
+		return null;
+	}
+
+	private async Task<List<Pot>> ReplaceCurrentHandPotsAsync(
+		Game game,
+		List<Pot> currentHandPots,
+		IReadOnlyList<HoldEmPotLayers.Layer> layers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var potIds = currentHandPots.Select(pot => pot.Id).ToList();
+		var existingContributions = await context.PotContributions
+			.Where(contribution => potIds.Contains(contribution.PotId))
+			.ToListAsync(cancellationToken);
+		context.PotContributions.RemoveRange(existingContributions);
+
+		foreach (var pot in currentHandPots)
+		{
+			context.Pots.Remove(pot);
+			game.Pots.Remove(pot);
+		}
+
+		var newPots = new List<Pot>();
+		foreach (var layer in layers)
+		{
+			var pot = new Pot
+			{
+				GameId = game.Id,
+				Game = game,
+				HandNumber = game.CurrentHandNumber,
+				PotOrder = layer.PotOrder,
+				PotType = layer.PotOrder == 0 ? PotType.Main : PotType.Side,
+				Amount = layer.Amount,
+				MaxContributionPerPlayer = layer.MaxContributionPerPlayer,
+				CreatedAt = now,
+				IsAwarded = false
+			};
+
+			foreach (var slice in layer.Slices.Where(slice => slice.Amount > 0 || slice.Eligible))
+			{
+				var gamePlayer = game.GamePlayers.First(player => player.Id == slice.GamePlayerId);
+				pot.Contributions.Add(new PotContribution
+				{
+					Pot = pot,
+					GamePlayerId = slice.GamePlayerId,
+					GamePlayer = gamePlayer,
+					Amount = slice.Amount,
+					IsEligibleToWin = slice.Eligible,
+					ContributedAt = now
+				});
+			}
+
+			context.Pots.Add(pot);
+			newPots.Add(pot);
+		}
+
+		return newPots;
+	}
+
+	private static PerformShowdownError? AwardPot(
+		Pot pot,
+		List<GamePlayer> playersInHand,
+		Dictionary<string, (HoldemHand hand, List<GameCard> allCards, GamePlayer gamePlayer)> playerHandEvaluations,
+		Dictionary<string, int> payouts,
+		DateTimeOffset now,
+		int dealerPosition,
+		ref bool anyPotSplit)
+	{
+		var eligibleIds = pot.Contributions
+			.Where(contribution => contribution.IsEligibleToWin)
+			.Select(contribution => contribution.GamePlayerId)
+			.ToHashSet();
+		var evaluatedIds = playerHandEvaluations.Values.Select(evaluation => evaluation.gamePlayer.Id).ToHashSet();
+		if (eligibleIds.Count > 0 && !eligibleIds.Any(evaluatedIds.Contains))
+			return new PerformShowdownError
+			{
+				Message =
+					$"Pot {pot.PotOrder} has eligible contributions but none of those players were evaluated.",
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
+
+		var contenders = new List<(string Name, HoldemHand Hand, GamePlayer Player)>();
+		foreach (var gamePlayer in playersInHand)
+		{
+			if (!eligibleIds.Contains(gamePlayer.Id))
+				continue;
+			if (!playerHandEvaluations.TryGetValue(gamePlayer.Player.Name, out var evaluation))
+				continue;
+
+			contenders.Add((gamePlayer.Player.Name, evaluation.hand, evaluation.gamePlayer));
+		}
+
+		if (contenders.Count == 0)
+			return new PerformShowdownError
+			{
+				Message = $"Pot {pot.PotOrder} has no evaluated player eligible to win it.",
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
+
+		var maxStrength = contenders.Max(contender => contender.Hand.Strength);
+		var winners = contenders.Where(contender => contender.Hand.Strength == maxStrength).ToList();
+		var orderedWinners = winners
+			.OrderBy(winner => winner.Player.SeatPosition > dealerPosition ? 0 : 1)
+			.ThenBy(winner => winner.Player.SeatPosition)
+			.ToList();
+		var share = pot.Amount / orderedWinners.Count;
+		var remainder = pot.Amount % orderedWinners.Count;
+		var potWinnerPayouts = new List<(GamePlayer Player, string Name, int Amount)>();
+		foreach (var winner in orderedWinners)
+		{
+			var amount = share;
+			if (remainder > 0)
+			{
+				amount++;
+				remainder--;
+			}
+
+			if (amount <= 0)
+				continue;
+
+			potWinnerPayouts.Add((winner.Player, winner.Name, amount));
+			payouts[winner.Name] = payouts.GetValueOrDefault(winner.Name) + amount;
+		}
+
+		if (winners.Count > 1)
+			anyPotSplit = true;
+
+		var winningHand = winners[0].Hand;
+		pot.IsAwarded = true;
+		pot.AwardedAt = now;
+		pot.WinReason = winners.Count > 1
+			? $"Split pot - {winningHand.Type}"
+			: winningHand.Type.ToString();
+		pot.WinnerPayouts = JsonSerializer.Serialize(potWinnerPayouts.Select(payout => new
+		{
+			playerId = payout.Player.PlayerId.ToString(),
+			playerName = payout.Name,
+			amount = payout.Amount
+		}));
+		return null;
+	}
+
+	private static PerformShowdownSuccessful BuildContestedSuccess(
+		Game game,
+		Dictionary<string, (HoldemHand hand, List<GameCard> allCards, GamePlayer gamePlayer)> playerHandEvaluations,
+		Dictionary<string, string?> usersByEmail,
+		Dictionary<string, int> payouts)
+	{
 		var playerHandsList = playerHandEvaluations.Select(kvp =>
 		{
-			var isWinner = winners.Contains(kvp.Key);
-			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
+			var amountWon = payouts.GetValueOrDefault(kvp.Key, 0);
+			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var firstName);
 
-			// Get the best 5-card hand and find their indexes in the full card list (hole + community)
 			var bestHand = FindBestFiveCardHand(kvp.Value.hand);
 			var cardsList = kvp.Value.allCards;
 			var bestCardIndexes = new List<int>();
@@ -324,7 +527,7 @@ public class PerformShowdownCommandHandler(
 			return new ShowdownPlayerHand
 			{
 				PlayerName = kvp.Key,
-				PlayerFirstName = user?.FirstName,
+				PlayerFirstName = firstName,
 				Cards = kvp.Value.allCards.Select(c => new ShowdownCard
 				{
 					Suit = c.Suit,
@@ -332,11 +535,11 @@ public class PerformShowdownCommandHandler(
 				}).ToList(),
 				HandType = kvp.Value.hand.Type.ToString(),
 				HandStrength = kvp.Value.hand.Strength,
-				IsWinner = isWinner,
-				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
+				IsWinner = amountWon > 0,
+				AmountWon = amountWon,
 				BestCardIndexes = bestCardIndexes
 			};
-		}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+		}).OrderByDescending(hand => hand.HandStrength ?? 0).ToList();
 
 		return new PerformShowdownSuccessful
 		{
@@ -426,9 +629,9 @@ public class PerformShowdownCommandHandler(
 		List<string> winnerNames,
 		string? winningHandDescription,
 		Dictionary<string, (HoldemHand hand, List<GameCard> allCards, GamePlayer gamePlayer)>? playerHandEvaluations,
+		bool isSplitPot,
 		CancellationToken cancellationToken)
 	{
-		var isSplitPot = winners.Count > 1;
 		var winnerNameSet = winnerNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 		var playerResults = allPlayers.Select(gp =>

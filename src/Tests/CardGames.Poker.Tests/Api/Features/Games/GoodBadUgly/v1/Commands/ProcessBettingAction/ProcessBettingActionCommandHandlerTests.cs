@@ -70,7 +70,7 @@ public class ProcessBettingActionCommandHandlerTests
 		var game = await SeedGameAsync(context, currentBet: 20);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check),
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check) { BoundSeat = 0 },
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -85,7 +85,7 @@ public class ProcessBettingActionCommandHandlerTests
 		var game = await SeedGameAsync(context, currentBet: 0, minBet: 10);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 5),
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 5) { BoundSeat = 0 },
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();

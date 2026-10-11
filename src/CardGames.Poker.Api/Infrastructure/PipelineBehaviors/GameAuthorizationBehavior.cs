@@ -31,7 +31,7 @@ public sealed class GameAuthorizationBehavior<TRequest, TResponse>(
 			return await next(cancellationToken);
 
 		if (request is IRequiresCurrentActor)
-			await EnsureCurrentActorAsync(gameCommand.GameId, cancellationToken);
+			await EnsureCurrentActorAsync(request, gameCommand.GameId, cancellationToken);
 		else if (request is IRequiresSeatedPlayer)
 			await EnsureSeatedAsync(gameCommand.GameId, cancellationToken);
 		else if (request is IRequiresHostOrSeatedPlayer)
@@ -40,7 +40,7 @@ public sealed class GameAuthorizationBehavior<TRequest, TResponse>(
 		return await next(cancellationToken);
 	}
 
-	private async Task EnsureCurrentActorAsync(Guid gameId, CancellationToken cancellationToken)
+	private async Task EnsureCurrentActorAsync(TRequest request, Guid gameId, CancellationToken cancellationToken)
 	{
 		if (!await GameExistsAsync(gameId, cancellationToken))
 			return;
@@ -50,12 +50,14 @@ public sealed class GameAuthorizationBehavior<TRequest, TResponse>(
 			throw Forbidden("Not seated at this table.");
 
 		var actorSeat = await ResolveActorSeatAsync(gameId, cancellationToken);
-		if (actorSeat is null)
+		if (actorSeat is null || actorSeat.Value == seated.SeatPosition)
+		{
+			((IBoundToActorSeat)request).BoundSeat = seated.SeatPosition;
 			return;
+		}
 
-		if (seated.SeatPosition != actorSeat.Value)
-			throw new GameAuthorizationException(StatusCodes.Status403Forbidden, "NotPlayerTurn",
-				"It is not your turn.");
+		throw new GameAuthorizationException(StatusCodes.Status403Forbidden, "NotPlayerTurn",
+			"It is not your turn.");
 	}
 
 	private async Task EnsureSeatedAsync(Guid gameId, CancellationToken cancellationToken)

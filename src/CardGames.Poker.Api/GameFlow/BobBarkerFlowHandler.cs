@@ -85,7 +85,10 @@ public sealed class BobBarkerFlowHandler : BaseGameFlowHandler
 		var command = new ProcessBettingActionCommand(
 			context.GameId,
 			action,
-			amount);
+			amount)
+		{
+			BoundSeat = context.PlayerSeatIndex
+		};
 
 		try
 		{

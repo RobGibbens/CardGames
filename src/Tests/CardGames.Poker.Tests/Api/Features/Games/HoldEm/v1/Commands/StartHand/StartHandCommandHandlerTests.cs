@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.StartHand;
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,7 @@ public class StartHandCommandHandlerTests
 
 		return new StartHandCommandHandler(
 			context,
+			new PlayerChipWalletService(context),
 			flowHandlerFactory,
 			Substitute.For<ILogger<StartHandCommandHandler>>());
 	}

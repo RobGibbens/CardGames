@@ -10,14 +10,16 @@ namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDisc
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="DiscardIndices">Zero-based indices (0-3) of exactly 2 cards to discard from the player's hand.</param>
 /// <param name="PlayerSeatIndex">
-///     Optional seat index of the player performing the discard.
-///     When omitted, falls back to CurrentDrawPlayerIndex for backward compatibility.
+///     Seat index of the player performing the discard. Must be the current draw seat.
 /// </param>
 public record ProcessDiscardCommand(
 	Guid GameId,
 	IReadOnlyCollection<int> DiscardIndices,
 	int? PlayerSeatIndex = null
-) : IRequest<OneOf<ProcessDiscardSuccessful, ProcessDiscardError>>, IGameStateChangingCommand, IRequiresCurrentActor;
+) : IRequest<OneOf<ProcessDiscardSuccessful, ProcessDiscardError>>, IGameStateChangingCommand, IRequiresCurrentActor, IBoundToActorSeat
+{
+	public int? BoundSeat { get; set; }
+}
 
 /// <summary>
 ///     Request model for the discard action endpoint.

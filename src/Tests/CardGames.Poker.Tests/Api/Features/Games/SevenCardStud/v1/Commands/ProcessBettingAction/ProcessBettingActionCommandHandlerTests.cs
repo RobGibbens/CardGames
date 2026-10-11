@@ -70,7 +70,7 @@ public class ProcessBettingActionCommandHandlerTests
 		var game = await SeedGameAsync(context, currentBet: 20);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check),
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Check) { BoundSeat = 0 },
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -85,7 +85,7 @@ public class ProcessBettingActionCommandHandlerTests
 		var game = await SeedGameAsync(context, currentBet: 2, firstPlayerStack: 100);
 		var sut = CreateSut(context);
 
-		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Raise, 1000),
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Raise, 1000) { BoundSeat = 0 },
 			CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
@@ -96,6 +96,86 @@ public class ProcessBettingActionCommandHandlerTests
 		player.ChipStack.Should().Be(100);
 		var pot = await context.Pots.SingleAsync(p => p.GameId == game.Id);
 		pot.Amount.Should().Be(0);
+	}
+
+	[Fact]
+	public async Task Handle_WhenBoundSeatMatchesCurrentActor_FoldsThatPlayer()
+	{
+		await using var context = CreateContext();
+		var game = await SeedThreeHandedStudAsync(context);
+		var sut = CreateSut(context);
+
+		var result = await sut.Handle(
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold) { BoundSeat = 0 },
+			CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		var players = await context.GamePlayers.Where(player => player.GameId == game.Id)
+			.OrderBy(player => player.SeatPosition).ToListAsync();
+		players[0].HasFolded.Should().BeTrue();
+		players[1].HasFolded.Should().BeFalse();
+		var round = await context.BettingRounds.SingleAsync(bettingRound => bettingRound.GameId == game.Id);
+		round.CurrentActorIndex.Should().Be(1);
+		(await context.BettingActionRecords.CountAsync(action => action.BettingRoundId == round.Id)).Should().Be(1);
+	}
+
+	[Fact]
+	public async Task Handle_WhenBoundSeatIsNull_ReturnsNotPlayerTurn()
+	{
+		await using var context = CreateContext();
+		var game = await SeedThreeHandedStudAsync(context);
+		var sut = CreateSut(context);
+
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold),
+			CancellationToken.None);
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.NotPlayerTurn);
+		result.AsT1.Message.Should().Be("It is not your turn.");
+		var players = await context.GamePlayers.Where(player => player.GameId == game.Id).ToListAsync();
+		players.Should().OnlyContain(player => !player.HasFolded);
+		var round = await context.BettingRounds.SingleAsync(bettingRound => bettingRound.GameId == game.Id);
+		round.CurrentActorIndex.Should().Be(0);
+		(await context.BettingActionRecords.CountAsync(action => action.BettingRoundId == round.Id)).Should().Be(0);
+	}
+
+	[Fact]
+	public async Task Handle_WhenBoundSeatIsThePreviousActor_ReturnsNotPlayerTurn()
+	{
+		await using var context = CreateContext();
+		var game = await SeedThreeHandedStudAsync(context);
+		var sut = CreateSut(context);
+
+		var first = await sut.Handle(
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold) { BoundSeat = 0 },
+			CancellationToken.None);
+		var second = await sut.Handle(
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold) { BoundSeat = 0 },
+			CancellationToken.None);
+
+		first.IsT0.Should().BeTrue();
+		second.IsT1.Should().BeTrue();
+		second.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.NotPlayerTurn);
+		var players = await context.GamePlayers.Where(player => player.GameId == game.Id)
+			.OrderBy(player => player.SeatPosition).ToListAsync();
+		players[1].HasFolded.Should().BeFalse();
+		var round = await context.BettingRounds.SingleAsync(bettingRound => bettingRound.GameId == game.Id);
+		round.CurrentActorIndex.Should().Be(1);
+		(await context.BettingActionRecords.CountAsync(action => action.BettingRoundId == round.Id)).Should().Be(1);
+	}
+
+	private static async Task<Game> SeedThreeHandedStudAsync(CardsDbContext context)
+	{
+		var game = await SeedGameAsync(context, currentBet: 20);
+		var now = DateTimeOffset.UtcNow;
+		var carolPlayer = CreatePlayer("Carol", now);
+		var carol = CreateGamePlayer(game, carolPlayer, 2, 200, now);
+		context.Players.Add(carolPlayer);
+		context.GamePlayers.Add(carol);
+		var round = await context.BettingRounds.SingleAsync(bettingRound => bettingRound.GameId == game.Id);
+		round.PlayersInHand = 3;
+		await context.SaveChangesAsync();
+		return game;
 	}
 
 	private static ProcessBettingActionCommandHandler CreateSut(CardsDbContext context)

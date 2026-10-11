@@ -32,7 +32,10 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 
 		// First betting round - everyone checks
 		for (var i = 0; i < numPlayers; i++)
-			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
+			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		// Draw phase - everyone stands pat
 		for (var i = 0; i < numPlayers; i++)
@@ -41,12 +44,18 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 				.Include(g => g.GamePlayers)
 				.FirstAsync(g => g.Id == setup.Game.Id);
 
-			await Mediator.Send(new ProcessDrawCommand(game.Id, new List<int>()));
+			await Mediator.Send(new ProcessDrawCommand(game.Id, new List<int>())
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		});
 		}
 
 		// Second betting round - everyone checks
 		for (var i = 0; i < numPlayers; i++)
-			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
+			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		// Reload game
 		var finalGame = await DbContext.Games
@@ -126,9 +135,18 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		await Mediator.Send(new DealHandsCommand(setup.Game.Id));
 
 		// One player bets, others fold
-		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Bet, 10));
-		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Fold));
-		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Fold));
+		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Bet, 10)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
+		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
+		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		// Game should have advanced to showdown with one player remaining
 		var game = await DbContext.Games
@@ -171,15 +189,30 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 		await Mediator.Send(new DealHandsCommand(setup.Game.Id));
 
 		// Betting round
-		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
-		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
+		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
+		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		// Draw phase
-		for (var i = 0; i < 2; i++) await Mediator.Send(new ProcessDrawCommand(setup.Game.Id, new List<int>()));
+		for (var i = 0; i < 2; i++) await Mediator.Send(new ProcessDrawCommand(setup.Game.Id, new List<int>())
+		{
+			BoundSeat = await CurrentDrawSeatAsync(setup.Game.Id)
+		});
 
 		// Second betting
-		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
-		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check));
+		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
+		await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		// Perform showdown
 		var result = await Mediator.Send(new PerformShowdownCommand(setup.Game.Id));

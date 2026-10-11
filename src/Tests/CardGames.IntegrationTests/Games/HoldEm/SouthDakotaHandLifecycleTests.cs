@@ -96,7 +96,10 @@ public class SouthDakotaHandLifecycleTests : IntegrationTestBase
 		setup.Game.CurrentPhase = "CollectingBlinds";
 		await DbContext.SaveChangesAsync();
 
-		var result = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check));
+		var result = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidGameState);
@@ -188,6 +191,9 @@ public class SouthDakotaHandLifecycleTests : IntegrationTestBase
 		var amountToCall = Math.Max(0, bettingRound.CurrentBet - actor.CurrentBet);
 		var action = amountToCall > 0 ? BettingActionType.Call : BettingActionType.Check;
 
-		return await Mediator.Send(new ProcessBettingActionCommand(gameId, action, amountToCall));
+		return await Mediator.Send(new ProcessBettingActionCommand(gameId, action, amountToCall)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(gameId)
+		});
 	}
 }

@@ -1,8 +1,10 @@
 using System.Reflection;
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
+using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Games.GameFlow;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
@@ -887,6 +889,160 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 	}
 
 	[Fact]
+	public async Task ProcessGamesReadyForNextHandAsync_ExpiredRebuyGraceWithoutNextHandStartsAt_EndsGame()
+	{
+		var game = SeedExpiredCashRebuyGrace(bobChipStack: 0, bobStatus: GamePlayerStatus.SittingOut,
+			bobIsSittingOut: true);
+		var bob = game.GamePlayers.Single(gp => gp.SeatPosition == 1);
+		_dbContext.Games.Add(game);
+		await _dbContext.SaveChangesAsync();
+
+		var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+
+		await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+		var updatedGame = await _dbContext.Games.Include(g => g.GamePlayers).FirstAsync(g => g.Id == game.Id);
+		updatedGame.CurrentPhase.Should().Be("Ended");
+		updatedGame.Status.Should().Be(GameStatus.Completed);
+		updatedGame.EndedAt.Should().NotBeNull();
+		updatedGame.HandCompletedAt.Should().NotBeNull();
+		updatedGame.NextHandStartsAt.Should().NotBeNull();
+		updatedGame.NextHandStartsAt.Should().BeAfter(updatedGame.HandCompletedAt!.Value);
+		updatedGame.NextHandStartsAt.Should().BeOnOrBefore(
+			updatedGame.HandCompletedAt.Value.AddSeconds(
+				ContinuousPlayBackgroundService.CashRebuyGameOverDisplayDurationSeconds + 1));
+		updatedGame.IsPausedForRebuyGrace.Should().BeFalse();
+		updatedGame.IsPausedForChipCheck.Should().BeFalse();
+		updatedGame.GamePlayers.Single(gp => gp.Id == bob.Id).ChipStack.Should().Be(0);
+		handler.DealCardsCalled.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task ProcessGamesReadyForNextHandAsync_ExpiredRebuyGraceAfterRebuy_Resumes()
+	{
+		var game = SeedExpiredCashRebuyGrace(bobChipStack: 100, bobStatus: GamePlayerStatus.Active,
+			bobIsSittingOut: false);
+		var bob = game.GamePlayers.Single(gp => gp.SeatPosition == 1);
+		_dbContext.Games.Add(game);
+		await _dbContext.SaveChangesAsync();
+
+		var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+
+		await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+		var updatedGame = await _dbContext.Games.Include(g => g.GamePlayers).FirstAsync(g => g.Id == game.Id);
+		updatedGame.Status.Should().Be(GameStatus.BetweenHands);
+		updatedGame.CurrentPhase.Should().Be("WaitingForPlayers");
+		updatedGame.EndedAt.Should().BeNull();
+		updatedGame.IsPausedForRebuyGrace.Should().BeFalse();
+		updatedGame.NextHandStartsAt.Should().NotBeNull();
+		updatedGame.GamePlayers.Single(gp => gp.Id == bob.Id).ChipStack.Should().Be(100);
+		handler.DealCardsCalled.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task ApplyCashRebuyGraceExpiryAsync_ReloadsStaleBustedPlayer_DoesNotEnd()
+	{
+		var databaseName = Guid.NewGuid().ToString();
+		var databaseRoot = new InMemoryDatabaseRoot();
+		await using var contextA = CreateSharedContext(databaseName, databaseRoot);
+		await using var contextB = CreateSharedContext(databaseName, databaseRoot);
+
+		var game = SeedExpiredCashRebuyGrace(bobChipStack: 0, bobStatus: GamePlayerStatus.SittingOut,
+			bobIsSittingOut: true);
+		contextA.Games.Add(game);
+		await contextA.SaveChangesAsync();
+
+		var staleGame = await contextA.Games
+			.Include(g => g.GamePlayers)
+			.FirstAsync(g => g.Id == game.Id);
+		staleGame.GamePlayers.Should().Contain(gp => gp.SeatPosition == 1 && gp.ChipStack == 0);
+
+		var freshGame = await contextB.Games
+			.Include(g => g.GamePlayers)
+			.FirstAsync(g => g.Id == game.Id);
+		var bob = freshGame.GamePlayers.Single(gp => gp.SeatPosition == 1);
+		bob.ChipStack = 100;
+		bob.IsSittingOut = false;
+		bob.Status = GamePlayerStatus.Active;
+		freshGame.UpdatedAt = DateTimeOffset.UtcNow;
+		await contextB.SaveChangesAsync();
+
+		var method = typeof(ContinuousPlayBackgroundService).GetMethod(
+			"ApplyCashRebuyGraceExpiryAsync",
+			BindingFlags.Instance | BindingFlags.NonPublic);
+		method.Should().NotBeNull();
+
+		var task = method!.Invoke(
+			_service,
+			[contextA, new FakeGameStateBroadcaster(), null, staleGame, DateTimeOffset.UtcNow, CancellationToken.None]) as Task;
+		task.Should().NotBeNull();
+		await task!;
+
+		var updatedGame = await contextA.Games
+			.Include(g => g.GamePlayers)
+			.FirstAsync(g => g.Id == game.Id);
+		updatedGame.Status.Should().NotBe(GameStatus.Completed);
+		updatedGame.GamePlayers.Single(gp => gp.SeatPosition == 1).ChipStack.Should().Be(100);
+		updatedGame.IsPausedForRebuyGrace.Should().BeFalse();
+		updatedGame.NextHandStartsAt.Should().NotBeNull();
+	}
+
+	private static Game SeedExpiredCashRebuyGrace(int bobChipStack, GamePlayerStatus bobStatus, bool bobIsSittingOut)
+	{
+		var now = DateTimeOffset.UtcNow;
+		var game = new Game
+		{
+			Id = Guid.NewGuid(),
+			CurrentPhase = "WaitingForPlayers",
+			Status = GameStatus.BetweenHands,
+			NextHandStartsAt = null,
+			CurrentHandNumber = 1,
+			Ante = 10,
+			TournamentBuyIn = null,
+			IsPausedForChipCheck = true,
+			ChipCheckPauseStartedAt = now.AddSeconds(-21),
+			ChipCheckPauseEndsAt = now.AddSeconds(-1),
+			IsPausedForRebuyGrace = true,
+			RebuyGraceStartedAt = now.AddSeconds(-21),
+			RebuyGraceEndsAt = now.AddSeconds(-1),
+			GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+		};
+
+		game.GamePlayers.Add(new GamePlayer
+		{
+			GameId = game.Id,
+			PlayerId = Guid.NewGuid(),
+			Status = GamePlayerStatus.Active,
+			IsSittingOut = false,
+			SeatPosition = 0,
+			ChipStack = 1000,
+			LeftAtHandNumber = -1
+		});
+		game.GamePlayers.Add(new GamePlayer
+		{
+			GameId = game.Id,
+			PlayerId = Guid.NewGuid(),
+			Status = bobStatus,
+			IsSittingOut = bobIsSittingOut,
+			SeatPosition = 1,
+			ChipStack = bobChipStack,
+			LeftAtHandNumber = -1
+		});
+
+		return game;
+	}
+
+	private static CardsDbContext CreateSharedContext(string databaseName, InMemoryDatabaseRoot databaseRoot)
+	{
+		var options = new DbContextOptionsBuilder<CardsDbContext>()
+			.UseInMemoryDatabase(databaseName, databaseRoot)
+			.EnableSensitiveDataLogging()
+			.Options;
+		return new CardsDbContext(options);
+	}
+
+	[Fact]
 	public async Task ProcessGamesReadyForNextHandAsync_FinalizesQueuedLeave_CreditsWallet()
 	{
 		// Arrange
@@ -942,17 +1098,152 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 		// Assert
 		var account = await _dbContext.PlayerChipAccounts.FirstOrDefaultAsync(x => x.PlayerId == leavingPlayer.Id);
 		account.Should().NotBeNull();
-		account!.Balance.Should().Be(250);
+		account!.Balance.Should().Be(CashierAccountInitializer.StartingChipAmount);
 
 		var ledgerEntry = await _dbContext.PlayerChipLedgerEntries
 			.Where(x => x.PlayerId == leavingPlayer.Id && x.Type == PlayerChipLedgerEntryType.CashOut)
 			.FirstOrDefaultAsync();
 		ledgerEntry.Should().NotBeNull();
-		ledgerEntry!.AmountDelta.Should().Be(250);
+		ledgerEntry!.AmountDelta.Should().Be(0);
 
 		var finalizedPlayer = await _dbContext.GamePlayers.FirstAsync(x => x.Id == p1.Id);
 		finalizedPlayer.Status.Should().Be(GamePlayerStatus.Left);
 		finalizedPlayer.FinalChipCount.Should().Be(250);
+	}
+
+	[Fact]
+	public async Task ProcessGamesReadyForNextHandAsync_ShortBalance_LeavesQueuedRebuy()
+	{
+		var now = DateTimeOffset.UtcNow;
+		var aliceId = Guid.NewGuid();
+		var otherId = Guid.NewGuid();
+		var game = new Game
+		{
+			Id = Guid.NewGuid(),
+			CurrentPhase = "Complete",
+			Status = GameStatus.InProgress,
+			NextHandStartsAt = now.AddSeconds(-1),
+			CurrentHandNumber = 1,
+			Ante = 10,
+			GameType = new GameType { Code = "TESTGAME", Name = "Test Game" },
+			DealerPosition = 0
+		};
+
+		var alice = new GamePlayer
+		{
+			GameId = game.Id,
+			PlayerId = aliceId,
+			Status = GamePlayerStatus.Active,
+			SeatPosition = 0,
+			ChipStack = 40,
+			BringInAmount = 40,
+			PendingChipsToAdd = 80,
+			LeftAtHandNumber = -1
+		};
+		var other = new GamePlayer
+		{
+			GameId = game.Id,
+			PlayerId = otherId,
+			Status = GamePlayerStatus.Active,
+			SeatPosition = 1,
+			ChipStack = 100,
+			LeftAtHandNumber = -1
+		};
+		game.GamePlayers.Add(alice);
+		game.GamePlayers.Add(other);
+
+		_dbContext.Games.Add(game);
+		_dbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = aliceId,
+			Balance = 30,
+			CreatedAtUtc = now,
+			UpdatedAtUtc = now
+		});
+		await _dbContext.SaveChangesAsync();
+
+		var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+		handler.SkipsAnteCollection = true;
+
+		await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+		var updatedAlice = await _dbContext.GamePlayers.FirstAsync(gp => gp.Id == alice.Id);
+		updatedAlice.PendingChipsToAdd.Should().Be(80);
+		updatedAlice.ChipStack.Should().Be(40);
+
+		var bringIn = await _dbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == aliceId && x.Type == PlayerChipLedgerEntryType.BringIn)
+			.ToListAsync();
+		bringIn.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task ProcessGamesReadyForNextHandAsync_CoveredBalance_AppliesQueuedRebuy()
+	{
+		var now = DateTimeOffset.UtcNow;
+		var aliceId = Guid.NewGuid();
+		var otherId = Guid.NewGuid();
+		var game = new Game
+		{
+			Id = Guid.NewGuid(),
+			CurrentPhase = "Complete",
+			Status = GameStatus.InProgress,
+			NextHandStartsAt = now.AddSeconds(-1),
+			CurrentHandNumber = 1,
+			Ante = 10,
+			GameType = new GameType { Code = "TESTGAME", Name = "Test Game" },
+			DealerPosition = 0
+		};
+
+		var alice = new GamePlayer
+		{
+			GameId = game.Id,
+			PlayerId = aliceId,
+			Status = GamePlayerStatus.Active,
+			SeatPosition = 0,
+			ChipStack = 40,
+			BringInAmount = 40,
+			PendingChipsToAdd = 80,
+			LeftAtHandNumber = -1
+		};
+		var other = new GamePlayer
+		{
+			GameId = game.Id,
+			PlayerId = otherId,
+			Status = GamePlayerStatus.Active,
+			SeatPosition = 1,
+			ChipStack = 100,
+			LeftAtHandNumber = -1
+		};
+		game.GamePlayers.Add(alice);
+		game.GamePlayers.Add(other);
+
+		_dbContext.Games.Add(game);
+		_dbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = aliceId,
+			Balance = 100,
+			CreatedAtUtc = now,
+			UpdatedAtUtc = now
+		});
+		await _dbContext.SaveChangesAsync();
+
+		var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+		handler.SkipsAnteCollection = true;
+
+		await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+		var updatedAlice = await _dbContext.GamePlayers.FirstAsync(gp => gp.Id == alice.Id);
+		updatedAlice.PendingChipsToAdd.Should().Be(0);
+		updatedAlice.ChipStack.Should().Be(120);
+		updatedAlice.BringInAmount.Should().Be(120);
+
+		var account = await _dbContext.PlayerChipAccounts.SingleAsync(x => x.PlayerId == aliceId);
+		account.Balance.Should().Be(100);
+
+		var bringIn = await _dbContext.PlayerChipLedgerEntries
+			.SingleAsync(x => x.PlayerId == aliceId && x.Type == PlayerChipLedgerEntryType.BringIn);
+		bringIn.AmountDelta.Should().Be(0);
 	}
 
 	// Fakes

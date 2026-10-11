@@ -19,6 +19,7 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand
 /// </summary>
 public class StartHandCommandHandler(
 	CardsDbContext context,
+	IPlayerChipWalletService playerChipWalletService,
 	ILogger<StartHandCommandHandler> logger,
 	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
@@ -58,15 +59,7 @@ public class StartHandCommandHandler(
 			};
 
 		// 3. Apply pending chips to player stacks
-		var playersWithPendingChips = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.PendingChipsToAdd > 0)
-			.ToList();
-
-		foreach (var player in playersWithPendingChips)
-		{
-			player.ChipStack += player.PendingChipsToAdd;
-			player.PendingChipsToAdd = 0;
-		}
+		await PendingRebuyApplicator.ApplyAsync(game, playerChipWalletService, cancellationToken);
 
 		// 4. Auto-sit-out players with insufficient chips for the ante (including 0 chips)
 		var ante = game.Ante ?? 0;

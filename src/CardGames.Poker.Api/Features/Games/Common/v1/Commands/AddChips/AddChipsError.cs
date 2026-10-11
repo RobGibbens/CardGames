@@ -33,7 +33,12 @@ public enum AddChipsErrorCode
 	/// <summary>
 	///     The caller is not this player and is not the table host.
 	/// </summary>
-	NotAuthorized
+	NotAuthorized,
+
+	/// <summary>
+	///     The player's cashier balance cannot cover the requested chips.
+	/// </summary>
+	InsufficientAccountChips
 }
 
 /// <summary>

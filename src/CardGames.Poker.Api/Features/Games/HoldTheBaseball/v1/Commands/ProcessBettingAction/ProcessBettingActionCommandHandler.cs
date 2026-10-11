@@ -21,6 +21,9 @@ public class ProcessBettingActionCommandHandler(
 	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
 {
+	private static bool IsStale(int? boundSeat, int liveSeat) =>
+		boundSeat is null || boundSeat.Value != liveSeat;
+
 	private static readonly string[] ValidBettingPhases = ["PreFlop", "Flop", "Turn", "River"];
 
 	public async Task<OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>> Handle(
@@ -79,6 +82,13 @@ public class ProcessBettingActionCommandHandler(
 			{
 				Message = "Could not determine current player.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
+			};
+
+		if (IsStale(command.BoundSeat, currentPlayer.SeatPosition))
+			return new ProcessBettingActionError
+			{
+				Message = "It is not your turn.",
+				Code = ProcessBettingActionErrorCode.NotPlayerTurn
 			};
 
 		var validationResult = ValidateAction(command.ActionType, command.Amount, currentPlayer, bettingRound);

@@ -48,10 +48,27 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0], 0), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDiscardErrorCode.InvalidDiscardCount);
+	}
+
+	[Fact]
+	public async Task Handle_WhenPlayerSeatIndexIsOmitted_ReturnsNotPlayerTurn()
+	{
+		await using var context = CreateContext();
+		var game = await SeedGameAsync(context);
+		var sut = new ProcessDiscardCommandHandler(context);
+		var discardedBefore = await context.GameCards.CountAsync(card => card.GameId == game.Id && card.IsDiscarded);
+
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1]), CancellationToken.None);
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(ProcessDiscardErrorCode.NotPlayerTurn);
+		result.AsT1.Message.Should().Be("It is not your turn.");
+		(await context.GameCards.CountAsync(card => card.GameId == game.Id && card.IsDiscarded)).Should()
+			.Be(discardedBefore);
 	}
 
 	[Fact]
@@ -75,7 +92,7 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context, firstPlayerCardCount: 3);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], 0), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDiscardErrorCode.InsufficientCards);
@@ -88,7 +105,7 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 4]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 4], 0), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDiscardErrorCode.InvalidCardIndex);
@@ -101,7 +118,7 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [1, 1]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [1, 1], 0), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDiscardErrorCode.InvalidCardIndex);
@@ -114,7 +131,7 @@ public class ProcessDiscardCommandHandlerTests
 		var game = await SeedGameAsync(context, firstPlayerHasDrawn: true, secondPlayerHasDrawn: true);
 		var sut = new ProcessDiscardCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDiscardCommand(game.Id, [0, 1], 0), CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDiscardErrorCode.NoEligiblePlayers);

@@ -46,7 +46,10 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 			if (freshRound is null) break; // Round already completed
 
 			var result = await Mediator.Send(
-				new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+				new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 			result.IsT0.Should().BeTrue($"check by player at iteration {i} should succeed");
 		}
@@ -81,18 +84,27 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 		var setup = await CreateDealtHoldEmGameAsync(3, 0);
 		var game = setup.Game;
 
-		// First actor bets so others can fold (can't fold when you can check)
+		// Blinds are already posted, so the first actor raises and the others can fold.
 		var betResult = await Mediator.Send(
-			new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 20));
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Raise, 20)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		betResult.IsT0.Should().BeTrue("opening bet should succeed");
 
 		// Two remaining actors fold
 		var result1 = await Mediator.Send(
-			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		result1.IsT0.Should().BeTrue("first fold should succeed");
 
 		var result2 = await Mediator.Send(
-			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		result2.IsT0.Should().BeTrue("second fold should succeed");
 
 		// Assert — phase should advance to Showdown (fold-to-win triggers showdown)
@@ -115,9 +127,15 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 		var game = setup.Game;
 
 		// Blinds are already posted, so the first actor faces a bet and may fold.
-		var firstFold = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+		var firstFold = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		firstFold.IsT0.Should().BeTrue(firstFold.IsT1 ? firstFold.AsT1.Message : "first fold should succeed");
-		var secondFold = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+		var secondFold = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		secondFold.IsT0.Should().BeTrue(secondFold.IsT1 ? secondFold.AsT1.Message : "second fold should succeed");
 
 		var tableStateBuilder = Scope.ServiceProvider.GetRequiredService<ITableStateBuilder>();

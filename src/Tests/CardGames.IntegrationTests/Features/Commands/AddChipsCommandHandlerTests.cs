@@ -282,6 +282,9 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 		stillBustedPlayer.Status = GamePlayerStatus.SittingOut;
 		stillBustedPlayer.IsSittingOut = true;
 
+		var seededUpdatedAt = DateTimeOffset.UtcNow.AddHours(-1);
+		setup.Game.UpdatedAt = seededUpdatedAt;
+
 		await DbContext.SaveChangesAsync();
 
 		var result = await Mediator.Send(new AddChipsCommand(setup.Game.Id, rebuyingPlayer.PlayerId, 50));
@@ -294,6 +297,7 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 		updatedGame!.IsPausedForRebuyGrace.Should().BeTrue();
 		updatedGame.IsPausedForChipCheck.Should().BeTrue();
 		updatedGame.NextHandStartsAt.Should().BeNull();
+		updatedGame.UpdatedAt.Should().BeAfter(seededUpdatedAt);
 
 		var updatedRebuyingPlayer = await DbContext.GamePlayers.FindAsync(rebuyingPlayer.Id);
 		updatedRebuyingPlayer.Should().NotBeNull();
@@ -305,5 +309,175 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
 		updatedStillBustedPlayer.Should().NotBeNull();
 		updatedStillBustedPlayer!.Status.Should().Be(GamePlayerStatus.SittingOut);
 		updatedStillBustedPlayer.IsSittingOut.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task Handle_WaitingForPlayers_BalanceBelowAmount_ReturnsInsufficientAccountChips()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 40);
+		setup.Game.CurrentPhase = nameof(Phases.WaitingForPlayers);
+		var player = setup.GamePlayers[0];
+		player.ChipStack = 40;
+		player.BringInAmount = 40;
+		player.PendingChipsToAdd = 0;
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.PlayerId,
+			Balance = 100,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new AddChipsCommand(setup.Game.Id, player.PlayerId, 250));
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(AddChipsErrorCode.InsufficientAccountChips);
+		result.AsT1.Message.Should().Be("Insufficient chips in your account. Balance: 100, requested: 250.");
+
+		var updatedPlayer = await DbContext.GamePlayers.FindAsync(player.Id);
+		updatedPlayer!.ChipStack.Should().Be(40);
+		updatedPlayer.BringInAmount.Should().Be(40);
+		updatedPlayer.PendingChipsToAdd.Should().Be(0);
+
+		var account = await DbContext.PlayerChipAccounts.SingleAsync(x => x.PlayerId == player.PlayerId);
+		account.Balance.Should().Be(100);
+
+		var bringIn = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == player.PlayerId &&
+			            x.ReferenceId == setup.Game.Id &&
+			            x.Type == PlayerChipLedgerEntryType.BringIn)
+			.ToListAsync();
+		bringIn.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task Handle_WaitingForPlayers_BalanceCoversAmount_WritesBringInAndKeepsBalance()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 40);
+		setup.Game.CurrentPhase = nameof(Phases.WaitingForPlayers);
+		var player = setup.GamePlayers[0];
+		player.ChipStack = 40;
+		player.BringInAmount = 40;
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.PlayerId,
+			Balance = 500,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new AddChipsCommand(setup.Game.Id, player.PlayerId, 200));
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.NewChipStack.Should().Be(240);
+
+		var updatedPlayer = await DbContext.GamePlayers.FindAsync(player.Id);
+		updatedPlayer!.ChipStack.Should().Be(240);
+		updatedPlayer.BringInAmount.Should().Be(240);
+		updatedPlayer.PendingChipsToAdd.Should().Be(0);
+
+		var account = await DbContext.PlayerChipAccounts.SingleAsync(x => x.PlayerId == player.PlayerId);
+		account.Balance.Should().Be(500);
+
+		var bringIn = await DbContext.PlayerChipLedgerEntries
+			.SingleAsync(x => x.PlayerId == player.PlayerId && x.Type == PlayerChipLedgerEntryType.BringIn);
+		bringIn.AmountDelta.Should().Be(0);
+		bringIn.BalanceAfter.Should().Be(500);
+		bringIn.ReferenceId.Should().Be(setup.Game.Id);
+	}
+
+	[Fact]
+	public async Task Handle_PreFlop_QueuesWhenBalanceCoversAmount()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 40);
+		setup.Game.CurrentPhase = nameof(Phases.PreFlop);
+		var player = setup.GamePlayers[0];
+		player.ChipStack = 40;
+		player.BringInAmount = 40;
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.PlayerId,
+			Balance = 100,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new AddChipsCommand(setup.Game.Id, player.PlayerId, 80));
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.PendingChipsToAdd.Should().Be(80);
+		result.AsT0.NewChipStack.Should().Be(40);
+
+		var updatedPlayer = await DbContext.GamePlayers.FindAsync(player.Id);
+		updatedPlayer!.ChipStack.Should().Be(40);
+		updatedPlayer.PendingChipsToAdd.Should().Be(80);
+
+		var bringIn = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == player.PlayerId && x.Type == PlayerChipLedgerEntryType.BringIn)
+			.ToListAsync();
+		bringIn.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task Handle_PreFlop_SecondQueueAboveBalance_LeavesTheFirstQueue()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, 40);
+		setup.Game.CurrentPhase = nameof(Phases.PreFlop);
+		var player = setup.GamePlayers[0];
+		player.ChipStack = 40;
+		player.BringInAmount = 40;
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.PlayerId,
+			Balance = 100,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		await Mediator.Send(new AddChipsCommand(setup.Game.Id, player.PlayerId, 80));
+		var result = await Mediator.Send(new AddChipsCommand(setup.Game.Id, player.PlayerId, 30));
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(AddChipsErrorCode.InsufficientAccountChips);
+		result.AsT1.Message.Should().Contain("requested: 110");
+
+		var updatedPlayer = await DbContext.GamePlayers.FindAsync(player.Id);
+		updatedPlayer!.PendingChipsToAdd.Should().Be(80);
+		updatedPlayer.ChipStack.Should().Be(40);
+
+		var bringIn = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == player.PlayerId && x.Type == PlayerChipLedgerEntryType.BringIn)
+			.ToListAsync();
+		bringIn.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task Handle_KingsAndLows_BalanceBelowAmount_DoesNotApplyImmediately()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 2, 40);
+		setup.Game.Status = GameStatus.InProgress;
+		setup.Game.CurrentPhase = nameof(Phases.FirstBettingRound);
+		var player = setup.GamePlayers[0];
+		var initialChips = player.ChipStack;
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.PlayerId,
+			Balance = 100,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new AddChipsCommand(setup.Game.Id, player.PlayerId, 200));
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(AddChipsErrorCode.InsufficientAccountChips);
+
+		var updatedPlayer = await DbContext.GamePlayers.FindAsync(player.Id);
+		updatedPlayer!.ChipStack.Should().Be(initialChips);
 	}
 }

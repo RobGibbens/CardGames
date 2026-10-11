@@ -214,7 +214,10 @@ public class TollboothChooseCardTests : IntegrationTestBase
 
 		var staleBettingAction = await Mediator.Send(new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Check));
+			BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		staleBettingAction.IsT0.Should().BeTrue();
 		staleBettingAction.AsT0.CurrentPhase.Should().Be(nameof(Phases.Showdown));
@@ -331,12 +334,18 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		// Complete the SeventhStreet betting round: first player checks, second player checks
 		var firstBet = await Mediator.Send(new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Check));
+			BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		firstBet.IsT0.Should().BeTrue("first player check should succeed");
 
 		var secondBet = await Mediator.Send(new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Check));
+			BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		secondBet.IsT0.Should().BeTrue("second player check should succeed");
 		secondBet.AsT0.RoundComplete.Should().BeTrue("both players checked so round is complete");
 		secondBet.AsT0.CurrentPhase.Should().Be(nameof(Phases.Showdown),
@@ -372,10 +381,16 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		r1b.AsT0.CurrentPhase.Should().Be(nameof(Phases.FourthStreet));
 
 		// FourthStreet betting: check/check
-		var b1a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var b1a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		b1a.IsT0.Should().BeTrue("cycle 1: first player check should succeed");
 
-		var b1b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var b1b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		b1b.IsT0.Should().BeTrue("cycle 1: second player check should succeed");
 		b1b.AsT0.RoundComplete.Should().BeTrue();
 		b1b.AsT0.CurrentPhase.Should().Be(nameof(Phases.TollboothOffer),
@@ -402,10 +417,16 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		r2b.AsT0.CurrentPhase.Should().Be(nameof(Phases.FifthStreet));
 
 		// FifthStreet betting: check/check
-		var b2a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var b2a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		b2a.IsT0.Should().BeTrue("cycle 2: first player check should succeed");
 
-		var b2b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var b2b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		b2b.IsT0.Should().BeTrue("cycle 2: second player check should succeed");
 		b2b.AsT0.RoundComplete.Should().BeTrue();
 		b2b.AsT0.CurrentPhase.Should().Be(nameof(Phases.TollboothOffer),
@@ -423,10 +444,16 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		r3b.AsT0.CurrentPhase.Should().Be(nameof(Phases.SixthStreet));
 
 		// SixthStreet betting: check/check
-		var b3a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var b3a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		b3a.IsT0.Should().BeTrue("cycle 3: first player check should succeed");
 
-		var b3b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var b3b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		b3b.IsT0.Should().BeTrue("cycle 3: second player check should succeed");
 		b3b.AsT0.RoundComplete.Should().BeTrue();
 		b3b.AsT0.CurrentPhase.Should().Be(nameof(Phases.TollboothOffer),
@@ -444,10 +471,16 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		r4b.AsT0.CurrentPhase.Should().Be(nameof(Phases.SeventhStreet));
 
 		// SeventhStreet betting: check/check
-		var b4a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var b4a = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		b4a.IsT0.Should().BeTrue("cycle 4: first player check should succeed");
 
-		var b4b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		var b4b = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 		b4b.IsT0.Should().BeTrue("cycle 4: second player check should succeed");
 		b4b.AsT0.RoundComplete.Should().BeTrue();
 		b4b.AsT0.CurrentPhase.Should().Be(nameof(Phases.Showdown),

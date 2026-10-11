@@ -47,7 +47,7 @@ public class ProcessDrawCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [5]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [5]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDrawErrorCode.InvalidCardIndex);
@@ -60,7 +60,7 @@ public class ProcessDrawCommandHandlerTests
 		var game = await SeedGameAsync(context, currentPlayerCardCount: 4);
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDrawErrorCode.InvalidCardIndex);
@@ -73,7 +73,7 @@ public class ProcessDrawCommandHandlerTests
 		var game = await SeedGameAsync(context, currentPlayerHasAce: false);
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1, 2, 3]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1, 2, 3]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDrawErrorCode.TooManyDiscards);
@@ -119,7 +119,7 @@ public class ProcessDrawCommandHandlerTests
 			.SingleAsync();
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.NewCards.Should().HaveCount(2);
@@ -155,7 +155,7 @@ public class ProcessDrawCommandHandlerTests
 			.ToListAsync();
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.NewCards.Should().HaveCount(2);
@@ -187,7 +187,7 @@ public class ProcessDrawCommandHandlerTests
 		await context.SaveChangesAsync();
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		var newCards = result.AsT0.NewCards.ToList();
@@ -222,7 +222,7 @@ public class ProcessDrawCommandHandlerTests
 		var bobDiscardIds = new[] { firstBobDiscard.Id, secondBobDiscard.Id };
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var aliceResult = await sut.Handle(new ProcessDrawCommand(game.Id, [0]), CancellationToken.None);
+		var aliceResult = await sut.Handle(new ProcessDrawCommand(game.Id, [0]) { BoundSeat = 0 }, CancellationToken.None);
 
 		aliceResult.IsT0.Should().BeTrue();
 		aliceResult.AsT0.NewCards.Should().ContainSingle();
@@ -241,7 +241,7 @@ public class ProcessDrawCommandHandlerTests
 		if (remainingStubOrders.Count > 0)
 			parked.DealOrder.Should().BeGreaterThan(remainingStubOrders.Max());
 
-		var bobResult = await sut.Handle(new ProcessDrawCommand(game.Id, [0]), CancellationToken.None);
+		var bobResult = await sut.Handle(new ProcessDrawCommand(game.Id, [0]) { BoundSeat = 1 }, CancellationToken.None);
 
 		bobResult.IsT0.Should().BeTrue();
 		var cards = await context.GameCards.Where(c => c.GameId == game.Id).ToListAsync();
@@ -252,6 +252,26 @@ public class ProcessDrawCommandHandlerTests
 		cards.Single(c => c.Id == aliceDiscardId).IsDiscarded.Should().BeTrue();
 		bobResult.AsT0.NewCards.Should().ContainSingle()
 			.Which.Symbol.Should().Be(parked.Symbol);
+	}
+
+	[Fact]
+	public async Task Handle_WhenBoundSeatIsThePreviousDrawSeat_ReturnsNotPlayerTurn()
+	{
+		await using var context = CreateContext();
+		var game = await SeedGameAsync(context);
+		var bob = await PlayerAtSeatAsync(context, game.Id, 1);
+		var bobCardsBefore = (await LiveHandAsync(context, bob.Id)).Select(card => card.Id).ToList();
+		var sut = new ProcessDrawCommandHandler(context);
+
+		var first = await sut.Handle(new ProcessDrawCommand(game.Id, [0]) { BoundSeat = 0 }, CancellationToken.None);
+		var second = await sut.Handle(new ProcessDrawCommand(game.Id, [0]) { BoundSeat = 0 }, CancellationToken.None);
+
+		first.IsT0.Should().BeTrue();
+		second.IsT1.Should().BeTrue();
+		second.AsT1.Code.Should().Be(ProcessDrawErrorCode.NotPlayerTurn);
+		second.AsT1.Message.Should().Be("It is not your turn.");
+		var bobCardsAfter = (await LiveHandAsync(context, bob.Id)).Select(card => card.Id).ToList();
+		bobCardsAfter.Should().Equal(bobCardsBefore);
 	}
 
 	private static CardsDbContext CreateContext()

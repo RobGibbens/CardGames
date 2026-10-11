@@ -252,7 +252,10 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	{
 		// Default: Use FiveCardDraw command (legacy behavior)
 		// Games that use different commands MUST override this method
-		var command = new ProcessBettingActionCommand(context.GameId, action, amount);
+		var command = new ProcessBettingActionCommand(context.GameId, action, amount)
+		{
+			BoundSeat = context.PlayerSeatIndex
+		};
 
 		try
 		{
@@ -294,7 +297,10 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	protected virtual async Task SendDrawActionAsync(AutoActionContext context)
 	{
 		// Default: Use FiveCardDraw command (legacy behavior)
-		var command = new ProcessDrawCommand(context.GameId, []);
+		var command = new ProcessDrawCommand(context.GameId, [])
+		{
+			BoundSeat = context.PlayerSeatIndex
+		};
 
 		try
 		{

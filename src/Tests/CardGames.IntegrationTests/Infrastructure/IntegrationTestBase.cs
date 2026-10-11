@@ -146,6 +146,33 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 	}
 
 	/// <summary>
+	///     The seat that may act on the current incomplete betting round, if one exists.
+	/// </summary>
+	protected async Task<int?> TryCurrentBettingSeatAsync(Guid gameId)
+	{
+		using var scope = CreateNewScope();
+		var db = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		return await db.BettingRounds.AsNoTracking()
+			.Where(round => round.GameId == gameId && !round.IsComplete)
+			.OrderByDescending(round => round.RoundNumber)
+			.Select(round => (int?)round.CurrentActorIndex)
+			.FirstOrDefaultAsync();
+	}
+
+	/// <summary>
+	///     The seat stored as the current draw player.
+	/// </summary>
+	protected async Task<int> CurrentDrawSeatAsync(Guid gameId)
+	{
+		using var scope = CreateNewScope();
+		var db = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		return await db.Games.AsNoTracking()
+			.Where(game => game.Id == gameId)
+			.Select(game => game.CurrentDrawPlayerIndex)
+			.FirstAsync();
+	}
+
+	/// <summary>
 	///     Gets a fresh DbContext from a new scope.
 	/// </summary>
 	protected CardsDbContext GetFreshDbContext()

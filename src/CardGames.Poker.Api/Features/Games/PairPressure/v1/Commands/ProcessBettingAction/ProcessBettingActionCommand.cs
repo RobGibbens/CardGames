@@ -13,4 +13,7 @@ public record ProcessBettingActionCommand(
 	Guid GameId,
 	BettingActionType ActionType,
 	int Amount = 0
-) : IRequest<OneOf<SharedProcessBettingActionSuccessful, SharedProcessBettingActionError>>, IGameStateChangingCommand, IRequiresCurrentActor;
+) : IRequest<OneOf<SharedProcessBettingActionSuccessful, SharedProcessBettingActionError>>, IGameStateChangingCommand, IRequiresCurrentActor, IBoundToActorSeat
+{
+	public int? BoundSeat { get; set; }
+}

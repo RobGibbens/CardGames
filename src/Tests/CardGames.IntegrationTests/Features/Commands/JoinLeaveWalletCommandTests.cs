@@ -3,6 +3,8 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
 using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
+using OneOf;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -387,6 +389,267 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		var updatedGamePlayer = await DbContext.GamePlayers.FirstAsync(x => x.Id == gamePlayer.Id);
 		updatedGamePlayer.Status.Should().Be(GamePlayerStatus.Left);
 	}
+
+	[Fact]
+	public async Task LeaveGame_FoldedPlayerDuringPreFlop_QueuesLeaveWithoutCharging()
+	{
+		var seeded = await SeedFoldedCarolHandAsync(nameof(Phases.PreFlop), dealCarolACard: true);
+
+		SetCurrentUser("carol-user-id", seeded.Carol.Name, seeded.Carol.Email);
+
+		var result = await Mediator.Send(new LeaveGameCommand(seeded.Game.Id));
+
+		await AssertFoldedLeaveWasQueued(result, seeded.CarolSeat);
+	}
+
+	[Fact]
+	public async Task LeaveGame_FoldedPlayerDuringShowdown_QueuesLeaveWithoutCharging()
+	{
+		var seeded = await SeedFoldedCarolHandAsync(nameof(Phases.Showdown), dealCarolACard: true);
+
+		SetCurrentUser("carol-user-id", seeded.Carol.Name, seeded.Carol.Email);
+
+		var result = await Mediator.Send(new LeaveGameCommand(seeded.Game.Id));
+
+		await AssertFoldedLeaveWasQueued(result, seeded.CarolSeat);
+	}
+
+	[Fact]
+	public async Task LeaveGame_FoldedPlayerDuringSecondBettingRound_QueuesLeaveWithoutCharging()
+	{
+		var seeded = await SeedFoldedCarolHandAsync(nameof(Phases.SecondBettingRound), dealCarolACard: true);
+
+		SetCurrentUser("carol-user-id", seeded.Carol.Name, seeded.Carol.Email);
+
+		var result = await Mediator.Send(new LeaveGameCommand(seeded.Game.Id));
+
+		await AssertFoldedLeaveWasQueued(result, seeded.CarolSeat);
+	}
+
+	[Fact]
+	public async Task LeaveGame_FoldedPlayerDuringComplete_LeavesImmediatelyWithAuditCashOut()
+	{
+		var seeded = await SeedFoldedCarolHandAsync(nameof(Phases.Complete), dealCarolACard: true);
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = seeded.Carol.Id,
+			Balance = 100,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		SetCurrentUser("carol-user-id", seeded.Carol.Name, seeded.Carol.Email);
+
+		var result = await Mediator.Send(new LeaveGameCommand(seeded.Game.Id));
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.Immediate.Should().BeTrue();
+
+		var updated = await DbContext.GamePlayers.FirstAsync(x => x.Id == seeded.CarolSeat.Id);
+		updated.Status.Should().Be(GamePlayerStatus.Left);
+		updated.ChipStack.Should().Be(0);
+		updated.FinalChipCount.Should().Be(490);
+
+		var cashOuts = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == seeded.Carol.Id && x.Type == PlayerChipLedgerEntryType.CashOut)
+			.ToListAsync();
+		cashOuts.Should().ContainSingle();
+		cashOuts[0].AmountDelta.Should().Be(0);
+
+		var settlements = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == seeded.Carol.Id && x.Type == PlayerChipLedgerEntryType.HandSettlement)
+			.ToListAsync();
+		settlements.Should().BeEmpty();
+
+		var account = await DbContext.PlayerChipAccounts.FirstAsync(x => x.PlayerId == seeded.Carol.Id);
+		account.Balance.Should().Be(100);
+	}
+
+	[Fact]
+	public async Task LeaveGame_FoldedPlayerWithNoCardForCurrentHand_LeavesImmediately()
+	{
+		var seeded = await SeedFoldedCarolHandAsync(nameof(Phases.PreFlop), dealCarolACard: false);
+
+		SetCurrentUser("carol-user-id", seeded.Carol.Name, seeded.Carol.Email);
+
+		var result = await Mediator.Send(new LeaveGameCommand(seeded.Game.Id));
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.Immediate.Should().BeTrue();
+
+		var updated = await DbContext.GamePlayers.FirstAsync(x => x.Id == seeded.CarolSeat.Id);
+		updated.Status.Should().Be(GamePlayerStatus.Left);
+	}
+
+	[Fact]
+	public async Task SettleHand_QueuedFoldedPlayer_ChargesContributionOnce()
+	{
+		var seeded = await SeedFoldedCarolHandAsync(nameof(Phases.PreFlop), dealCarolACard: true);
+
+		SetCurrentUser("carol-user-id", seeded.Carol.Name, seeded.Carol.Email);
+		var leave = await Mediator.Send(new LeaveGameCommand(seeded.Game.Id));
+		leave.IsT0.Should().BeTrue();
+		leave.AsT0.Immediate.Should().BeFalse();
+
+		seeded.AliceSeat.Status = GamePlayerStatus.Active;
+		seeded.AliceSeat.TotalContributedThisHand = 30;
+		seeded.AliceSeat.IsAllIn = false;
+		seeded.BobSeat.Status = GamePlayerStatus.Active;
+		seeded.BobSeat.TotalContributedThisHand = 10;
+		seeded.BobSeat.HasFolded = true;
+		seeded.BobSeat.IsAllIn = false;
+		seeded.Game.CurrentHandNumber = 1;
+
+		var now = DateTimeOffset.UtcNow;
+		foreach (var player in new[] { seeded.Alice, seeded.Bob, seeded.Carol })
+		{
+			DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+			{
+				PlayerId = player.Id,
+				Balance = 100,
+				CreatedAtUtc = now,
+				UpdatedAtUtc = now
+			});
+		}
+
+		await DbContext.SaveChangesAsync();
+
+		var game = await DbContext.Games
+			.Include(g => g.GamePlayers)
+			.ThenInclude(gp => gp.Player)
+			.FirstAsync(g => g.Id == seeded.Game.Id);
+
+		var wallet = new PlayerChipWalletService(DbContext);
+		var settlement = new HandSettlementService(wallet);
+		var payouts = new Dictionary<string, int> { ["Alice"] = 50 };
+
+		await settlement.SettleHandAsync(game, payouts, CancellationToken.None);
+		await DbContext.SaveChangesAsync();
+
+		await AssertHandSettlement(seeded.Alice.Id, 20, 120);
+		await AssertHandSettlement(seeded.Bob.Id, -10, 90);
+		await AssertHandSettlement(seeded.Carol.Id, -10, 90);
+
+		var carolSeat = await DbContext.GamePlayers.FirstAsync(x => x.Id == seeded.CarolSeat.Id);
+		carolSeat.ChipStack.Should().Be(490);
+		carolSeat.Status.Should().Be(GamePlayerStatus.Active);
+
+		await settlement.SettleHandAsync(game, payouts, CancellationToken.None);
+		await DbContext.SaveChangesAsync();
+
+		var carolSettlements = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == seeded.Carol.Id && x.Type == PlayerChipLedgerEntryType.HandSettlement)
+			.ToListAsync();
+		carolSettlements.Should().ContainSingle();
+
+		var carolAccount = await DbContext.PlayerChipAccounts.FirstAsync(x => x.PlayerId == seeded.Carol.Id);
+		carolAccount.Balance.Should().Be(90);
+	}
+
+	private async Task<FoldedCarolHand> SeedFoldedCarolHandAsync(string phase, bool dealCarolACard)
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "HOLDEM", 3, 500);
+		var alice = setup.Players[0];
+		var bob = setup.Players[1];
+		var carol = setup.Players[2];
+		alice.Name = "Alice";
+		bob.Name = "Bob";
+		carol.Name = "Carol";
+
+		var game = setup.Game;
+		game.CurrentHandNumber = 1;
+		game.StartedAt = DateTimeOffset.UtcNow;
+		game.Status = GameStatus.InProgress;
+		game.CurrentPhase = phase;
+
+		var carolSeat = setup.GamePlayers[2];
+		carolSeat.HasFolded = true;
+		carolSeat.ChipStack = 490;
+		carolSeat.TotalContributedThisHand = 10;
+		carolSeat.Status = GamePlayerStatus.Active;
+		carolSeat.IsAllIn = false;
+		carolSeat.IsSittingOut = false;
+		carolSeat.LeftAtHandNumber = -1;
+
+		if (dealCarolACard)
+		{
+			DbContext.GameCards.Add(new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				GamePlayerId = carolSeat.Id,
+				HandNumber = 1,
+				Location = CardLocation.Hole,
+				Suit = CardSuit.Clubs,
+				Symbol = CardSymbol.Ace,
+				DealOrder = 1,
+				IsVisible = false,
+				IsDiscarded = false,
+				DealtAt = DateTimeOffset.UtcNow,
+				DealtAtPhase = nameof(Phases.Dealing)
+			});
+		}
+
+		await DbContext.SaveChangesAsync();
+
+		return new FoldedCarolHand(
+			game,
+			alice,
+			bob,
+			carol,
+			setup.GamePlayers[0],
+			setup.GamePlayers[1],
+			carolSeat);
+	}
+
+	private async Task AssertFoldedLeaveWasQueued(
+		OneOf<LeaveGameSuccessful, LeaveGameError> result,
+		GamePlayer carolSeat)
+	{
+		result.IsT0.Should().BeTrue();
+		result.AsT0.Immediate.Should().BeFalse();
+		result.AsT0.LeftAtHandNumber.Should().Be(-1);
+		result.AsT0.FinalChipCount.Should().BeNull();
+		result.AsT0.Message.Should().Be("You will leave the table after the current hand completes.");
+
+		var updated = await DbContext.GamePlayers.FirstAsync(x => x.Id == carolSeat.Id);
+		updated.Status.Should().Be(GamePlayerStatus.Active);
+		updated.ChipStack.Should().Be(490);
+		updated.TotalContributedThisHand.Should().Be(10);
+		updated.HasFolded.Should().BeTrue();
+		updated.IsSittingOut.Should().BeTrue();
+		updated.LeftAtHandNumber.Should().Be(1);
+		updated.LeftAt.Should().BeNull();
+
+		var ledgerRows = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == carolSeat.PlayerId &&
+			            (x.Type == PlayerChipLedgerEntryType.HandSettlement ||
+			             x.Type == PlayerChipLedgerEntryType.CashOut))
+			.ToListAsync();
+		ledgerRows.Should().BeEmpty();
+	}
+
+	private async Task AssertHandSettlement(Guid playerId, int amountDelta, int balanceAfter)
+	{
+		var rows = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == playerId && x.Type == PlayerChipLedgerEntryType.HandSettlement)
+			.ToListAsync();
+		rows.Should().ContainSingle();
+		rows[0].AmountDelta.Should().Be(amountDelta);
+
+		var account = await DbContext.PlayerChipAccounts.FirstAsync(x => x.PlayerId == playerId);
+		account.Balance.Should().Be(balanceAfter);
+	}
+
+	private sealed record FoldedCarolHand(
+		Game Game,
+		Player Alice,
+		Player Bob,
+		Player Carol,
+		GamePlayer AliceSeat,
+		GamePlayer BobSeat,
+		GamePlayer CarolSeat);
 
 	private void SetCurrentUser(string userId, string userName, string? userEmail)
 	{

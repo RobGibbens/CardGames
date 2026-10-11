@@ -18,6 +18,9 @@ public class ProcessBettingActionCommandHandler(
 	ILogger<ProcessBettingActionCommandHandler> logger)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
 {
+	private static bool IsStale(int? boundSeat, int liveSeat) =>
+		boundSeat is null || boundSeat.Value != liveSeat;
+
 	public async Task<OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>> Handle(
 		ProcessBettingActionCommand command,
 		CancellationToken cancellationToken)
@@ -78,6 +81,13 @@ public class ProcessBettingActionCommandHandler(
 			{
 				Message = "Current player not found.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
+			};
+
+		if (IsStale(command.BoundSeat, currentPlayer.SeatPosition))
+			return new ProcessBettingActionError
+			{
+				Message = "It is not your turn.",
+				Code = ProcessBettingActionErrorCode.NotPlayerTurn
 			};
 
 		if (currentPlayer.SeatPosition != game.CurrentPlayerIndex)

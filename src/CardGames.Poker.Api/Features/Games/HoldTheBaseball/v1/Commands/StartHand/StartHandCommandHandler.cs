@@ -15,6 +15,7 @@ namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHa
 /// </summary>
 public class StartHandCommandHandler(
 	CardsDbContext context,
+	IPlayerChipWalletService playerChipWalletService,
 	IGameFlowHandlerFactory flowHandlerFactory,
 	ILogger<StartHandCommandHandler> logger,
 	GameEventsTelemetry? telemetry = null)
@@ -54,7 +55,7 @@ public class StartHandCommandHandler(
 			};
 
 		ProcessPendingLeaveRequests(game, now);
-		ApplyPendingChips(game);
+		await PendingRebuyApplicator.ApplyAsync(game, playerChipWalletService, cancellationToken);
 		AutoSitOutPlayersWithNoChips(game);
 
 		var eligiblePlayers = game.GamePlayers
@@ -135,19 +136,6 @@ public class StartHandCommandHandler(
 			player.LeftAt = now;
 			player.FinalChipCount = player.ChipStack;
 			player.IsSittingOut = true;
-		}
-	}
-
-	private static void ApplyPendingChips(Game game)
-	{
-		var playersWithPendingChips = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.PendingChipsToAdd > 0)
-			.ToList();
-
-		foreach (var player in playersWithPendingChips)
-		{
-			player.ChipStack += player.PendingChipsToAdd;
-			player.PendingChipsToAdd = 0;
 		}
 	}
 

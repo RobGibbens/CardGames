@@ -51,7 +51,10 @@ public sealed class RedRiverFlowHandler : BaseGameFlowHandler
 		int amount = 0)
 	{
 		var command = new ProcessBettingActionCommand(
-			context.GameId, action, amount);
+			context.GameId, action, amount)
+		{
+			BoundSeat = context.PlayerSeatIndex
+		};
 
 		try
 		{

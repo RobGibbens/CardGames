@@ -53,7 +53,10 @@ public sealed class HoldTheBaseballFlowHandler : BaseGameFlowHandler
 		int amount = 0)
 	{
 		var command = new ProcessBettingActionCommand(
-			context.GameId, action, amount);
+			context.GameId, action, amount)
+		{
+			BoundSeat = context.PlayerSeatIndex
+		};
 		try
 		{
 			await context.Mediator.Send(command, context.CancellationToken);

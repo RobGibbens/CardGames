@@ -248,14 +248,16 @@ public class GameAuthorizationBehaviorTests
 		await using var db = await SeedBettingAsync(actorSeat: 1);
 		var behavior = Behavior(db, "a@example.com", "Ada", "ext-a", http: true);
 
+		var command = new ProcessBettingActionCommand(GameId, BettingActionType.Fold);
 		var act = () => behavior.Handle(
-			new ProcessBettingActionCommand(GameId, BettingActionType.Fold),
+			command,
 			_ => Task.FromResult("should-not-run"),
 			CancellationToken.None);
 
 		var error = (await act.Should().ThrowAsync<GameAuthorizationException>()).Which;
 		error.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
 		error.Code.Should().Be("NotPlayerTurn");
+		command.BoundSeat.Should().BeNull();
 	}
 
 	[Fact]
@@ -264,9 +266,14 @@ public class GameAuthorizationBehaviorTests
 		await using var db = await SeedBettingAsync(actorSeat: 0);
 		var behavior = Behavior(db, "a@example.com", "Ada", "ext-a", http: true);
 
+		var command = new ProcessBettingActionCommand(GameId, BettingActionType.Fold);
 		var result = await behavior.Handle(
-			new ProcessBettingActionCommand(GameId, BettingActionType.Fold),
-			_ => Task.FromResult("ok"),
+			command,
+			_ =>
+			{
+				command.BoundSeat.Should().Be(0);
+				return Task.FromResult("ok");
+			},
 			CancellationToken.None);
 
 		result.Should().Be("ok");
@@ -278,12 +285,14 @@ public class GameAuthorizationBehaviorTests
 		await using var db = await SeedBettingAsync(actorSeat: 1);
 		var behavior = Behavior(db, "a@example.com", "Ada", "ext-a", http: false);
 
+		var command = new ProcessBettingActionCommand(GameId, BettingActionType.Fold) { BoundSeat = 1 };
 		var result = await behavior.Handle(
-			new ProcessBettingActionCommand(GameId, BettingActionType.Fold),
+			command,
 			_ => Task.FromResult("timer"),
 			CancellationToken.None);
 
 		result.Should().Be("timer");
+		command.BoundSeat.Should().Be(1);
 	}
 
 	private static readonly Guid GameId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");

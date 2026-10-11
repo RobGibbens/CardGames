@@ -12,7 +12,10 @@ namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringD
 public record FoldDuringDrawCommand(
 	Guid GameId,
 	int PlayerSeatIndex
-) : IRequest<OneOf<FoldDuringDrawSuccessful, FoldDuringDrawError>>, IGameStateChangingCommand, IRequiresCurrentActor;
+) : IRequest<OneOf<FoldDuringDrawSuccessful, FoldDuringDrawError>>, IGameStateChangingCommand, IRequiresCurrentActor, IBoundToActorSeat
+{
+	public int? BoundSeat { get; set; }
+}
 
 /// <summary>
 ///     Successful result of folding during draw phase.

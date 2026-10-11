@@ -58,7 +58,10 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
 		var command = new ProcessBettingActionCommand(
 			setup.Game.Id,
-			BettingActionType.Check);
+			BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -78,11 +81,17 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		await Mediator.Send(new ProcessBettingActionCommand(
 			game.Id,
 			BettingActionType.Bet,
-			10));
+			10)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		var command = new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Fold);
+			BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -105,7 +114,10 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var (setup, game) = await CreateGameInBettingPhaseAsync();
 		var command = new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Check);
+			BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -125,7 +137,10 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var command = new ProcessBettingActionCommand(
 			game.Id,
 			BettingActionType.Bet,
-			betAmount);
+			betAmount)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		var potBefore = game.Pots.Sum(p => p.Amount);
 
@@ -148,12 +163,18 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
 		// First player bets
-		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		// Second player calls
 		var command = new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Call);
+			BettingActionType.Call)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -172,13 +193,19 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
 		// First player bets 50
-		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		// Second player raises to 100
 		var command = new ProcessBettingActionCommand(
 			game.Id,
 			BettingActionType.Raise,
-			100);
+			100)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -201,7 +228,10 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 
 		var command = new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.AllIn);
+			BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -226,12 +256,18 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
 		// First player bets
-		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		// Second player tries to check
 		var command = new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Check);
+			BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -248,13 +284,19 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var (setup, game) = await CreateGameInBettingPhaseAsync();
 
 		// First player bets
-		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50));
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 50)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		// Second player tries to bet again instead of raise/call
 		var command = new ProcessBettingActionCommand(
 			game.Id,
 			BettingActionType.Bet,
-			75);
+			75)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -271,8 +313,14 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var (setup, game) = await CreateGameInBettingPhaseAsync(2);
 
 		// Both players check - round should complete
-		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
-		var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check));
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
+		var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		// Assert
 		result.IsT0.Should().BeTrue();
@@ -288,7 +336,10 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var (setup, game) = await CreateGameInBettingPhaseAsync();
 		var command = new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Check);
+			BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		await Mediator.Send(command);
@@ -316,7 +367,10 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var command = new ProcessBettingActionCommand(
 			game.Id,
 			BettingActionType.Bet,
-			betAmount);
+			betAmount)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		await Mediator.Send(command);
@@ -338,7 +392,10 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 
 		var command = new ProcessBettingActionCommand(
 			game.Id,
-			BettingActionType.Check);
+			BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -357,13 +414,22 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 		var (setup, game) = await CreateGameInBettingPhaseAsync(3);
 
 		// Player 1 bets (to allow others to fold)
-		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 10));
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 10)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		// Player 2 folds
-		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+		await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		// Player 3 folds
-		var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+		var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
+		});
 
 		// Assert - With only one player remaining, should go to showdown
 		result.IsT0.Should().BeTrue();

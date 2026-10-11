@@ -21,6 +21,9 @@ public class ProcessBettingActionCommandHandler(
 	ILogger<ProcessBettingActionCommandHandler> logger)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
 {
+	private static bool IsStale(int? boundSeat, int liveSeat) =>
+		boundSeat is null || boundSeat.Value != liveSeat;
+
 	/// <inheritdoc />
 	public async Task<OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>> Handle(
 		ProcessBettingActionCommand command,
@@ -137,6 +140,13 @@ public class ProcessBettingActionCommandHandler(
 			{
 				Message = "Could not determine current player.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
+			};
+
+		if (IsStale(command.BoundSeat, currentPlayer.SeatPosition))
+			return new ProcessBettingActionError
+			{
+				Message = "It is not your turn.",
+				Code = ProcessBettingActionErrorCode.NotPlayerTurn
 			};
 
 		// 6. Validate and process the action

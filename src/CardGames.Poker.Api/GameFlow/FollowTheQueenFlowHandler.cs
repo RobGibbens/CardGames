@@ -99,7 +99,10 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
 	protected override async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action,
 		int amount = 0)
 	{
-		var command = new ProcessBettingActionCommand(context.GameId, action, amount);
+		var command = new ProcessBettingActionCommand(context.GameId, action, amount)
+		{
+			BoundSeat = context.PlayerSeatIndex
+		};
 
 		try
 		{

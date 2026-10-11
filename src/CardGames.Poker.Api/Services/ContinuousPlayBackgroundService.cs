@@ -158,6 +158,34 @@ public sealed partial class ContinuousPlayBackgroundService : BackgroundService
 					_logger.LogError(ex, "Failed to start next hand for game {GameId}", game.Id);
 				}
 			}
+
+			var expiredRebuyGraceGames = await context.Games
+				.Where(g => g.IsPausedForRebuyGrace &&
+							g.RebuyGraceEndsAt != null &&
+							g.RebuyGraceEndsAt <= now &&
+							g.TournamentBuyIn == null &&
+							(g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
+				.Include(g => g.GamePlayers)
+				.Include(g => g.GameType)
+				.ToListAsync(cancellationToken);
+
+			foreach (var game in expiredRebuyGraceGames)
+			{
+				try
+				{
+					await ApplyCashRebuyGraceExpiryAsync(
+						context,
+						broadcaster,
+						leagueCompletionSync,
+						game,
+						now,
+						cancellationToken);
+				}
+				catch (Exception ex)
+				{
+					_logger.LogError(ex, "Failed to expire cash rebuy grace for game {GameId}", game.Id);
+				}
+			}
 		}
 		finally
 		{

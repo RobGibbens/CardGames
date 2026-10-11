@@ -17,7 +17,10 @@ public record DrawCardsCommand(
 	Guid GameId,
 	Guid PlayerId,
 	IReadOnlyCollection<int> DiscardIndices
-) : IRequest<OneOf<DrawCardsSuccessful, DrawCardsError>>, IGameStateChangingCommand, IRequiresCurrentActor;
+) : IRequest<OneOf<DrawCardsSuccessful, DrawCardsError>>, IGameStateChangingCommand, IRequiresCurrentActor, IBoundToActorSeat
+{
+	public int? BoundSeat { get; set; }
+}
 
 /// <summary>
 ///     Request model for the draw action endpoint.

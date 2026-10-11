@@ -127,7 +127,7 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 		await CheckAllPlayersThrough(game.Id);
 
 		var result = await Mediator.Send(
-			new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }));
+			new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }, await CurrentDrawSeatAsync(game.Id)));
 
 		result.IsT1.Should().BeTrue("Phil's Mom should require a single-card discard in each discard round");
 	}
@@ -269,7 +269,10 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 			if (current.CurrentPhase != startingPhase)
 				return;
 
-			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.AllIn));
+			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.AllIn)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(gameId)
+		});
 			result.IsT0.Should().BeTrue($"all-in at iteration {i} should succeed");
 		}
 	}
@@ -320,7 +323,10 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 				.FirstOrDefaultAsync(br => br.Id == targetRound.Id);
 			if (currentTargetRound is null || currentTargetRound.IsComplete) break;
 
-			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.Check));
+			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(gameId)
+		});
 			result.IsT0.Should().BeTrue($"check at iteration {i} should succeed");
 		}
 	}
@@ -335,7 +341,7 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 		for (var i = 0; i < activePlayers.Count; i++)
 		{
 			var discardResult = await Mediator.Send(
-				new ProcessDiscardCommand(gameId, new List<int> { 0 }));
+				new ProcessDiscardCommand(gameId, new List<int> { 0 }, await CurrentDrawSeatAsync(gameId)));
 
 			discardResult.IsT0.Should().BeTrue($"single-card discard for player iteration {i} should succeed");
 		}

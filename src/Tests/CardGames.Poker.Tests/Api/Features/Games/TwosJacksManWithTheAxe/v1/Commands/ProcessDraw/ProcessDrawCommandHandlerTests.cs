@@ -48,7 +48,7 @@ public class ProcessDrawCommandHandlerTests
 		var game = await SeedGameAsync(context);
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [5]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [5]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDrawErrorCode.InvalidCardIndex);
@@ -61,7 +61,7 @@ public class ProcessDrawCommandHandlerTests
 		var game = await SeedGameAsync(context, currentPlayerCardCount: 4);
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDrawErrorCode.InvalidCardIndex);
@@ -74,7 +74,7 @@ public class ProcessDrawCommandHandlerTests
 		var game = await SeedGameAsync(context, currentPlayerHasAce: false);
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1, 2, 3]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1, 2, 3]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDrawErrorCode.TooManyDiscards);
@@ -113,7 +113,7 @@ public class ProcessDrawCommandHandlerTests
 		var game = await SeedGameAsync(context, deckCardCount: 1);
 		var sut = new ProcessDrawCommandHandler(context);
 
-		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1]), CancellationToken.None);
+		var result = await sut.Handle(new ProcessDrawCommand(game.Id, [0, 1]) { BoundSeat = 0 }, CancellationToken.None);
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessDrawErrorCode.InvalidCardIndex);
@@ -145,8 +145,8 @@ public class ProcessDrawCommandHandlerTests
 		var freshSut = new ProcessDrawCommandHandler(freshContext);
 		var staleSut = new ProcessDrawCommandHandler(staleContext);
 
-		var firstResult = await freshSut.Handle(new ProcessDrawCommand(gameId, [0, 1]), CancellationToken.None);
-		var secondResult = await staleSut.Handle(new ProcessDrawCommand(gameId, [0, 1]), CancellationToken.None);
+		var firstResult = await freshSut.Handle(new ProcessDrawCommand(gameId, [0, 1]) { BoundSeat = 0 }, CancellationToken.None);
+		var secondResult = await staleSut.Handle(new ProcessDrawCommand(gameId, [0, 1]) { BoundSeat = 1 }, CancellationToken.None);
 
 		firstResult.IsT0.Should().BeTrue();
 		secondResult.IsT0.Should().BeTrue();

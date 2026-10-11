@@ -97,8 +97,14 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 				Code = ProcessDiscardErrorCode.NoEligiblePlayers
 			};
 
-		var requestedSeatIndex = command.PlayerSeatIndex ?? game.CurrentDrawPlayerIndex;
-		var currentDrawPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == requestedSeatIndex);
+		if (command.PlayerSeatIndex is null || command.PlayerSeatIndex != game.CurrentDrawPlayerIndex)
+			return new ProcessDiscardError
+			{
+				Message = "It is not your turn.",
+				Code = ProcessDiscardErrorCode.NotPlayerTurn
+			};
+
+		var currentDrawPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == command.PlayerSeatIndex);
 		if (currentDrawPlayer is null)
 			return new ProcessDiscardError
 			{

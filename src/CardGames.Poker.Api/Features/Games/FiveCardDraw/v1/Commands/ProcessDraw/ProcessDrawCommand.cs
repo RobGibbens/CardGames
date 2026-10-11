@@ -16,7 +16,10 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDra
 public record ProcessDrawCommand(
 	Guid GameId,
 	IReadOnlyCollection<int> DiscardIndices
-) : IRequest<OneOf<ProcessDrawSuccessful, ProcessDrawError>>, IGameStateChangingCommand, IRequiresCurrentActor;
+) : IRequest<OneOf<ProcessDrawSuccessful, ProcessDrawError>>, IGameStateChangingCommand, IRequiresCurrentActor, IBoundToActorSeat
+{
+	public int? BoundSeat { get; set; }
+}
 
 /// <summary>
 ///     Request model for the draw action endpoint.

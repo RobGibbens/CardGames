@@ -28,7 +28,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
 		// Complete first betting round (everyone checks)
 		for (var i = 0; i < 4; i++)
-			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check));
+			await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.Check)
+		{
+			BoundSeat = await TryCurrentBettingSeatAsync(setup.Game.Id)
+		});
 
 		// Reload game
 		var game = await DbContext.Games
@@ -67,7 +70,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
 		var command = new ProcessDrawCommand(
 			setup.Game.Id,
-			new List<int>());
+			new List<int>())
+		{
+			BoundSeat = await CurrentDrawSeatAsync(setup.Game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -84,7 +90,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int>()); // Empty list = stand pat
+			new List<int>())
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		}; // Empty list = stand pat
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -103,7 +112,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int> { 0 }); // Discard first card
+			new List<int> { 0 })
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		}; // Discard first card
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -122,7 +134,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int> { 0, 1, 2 }); // Discard three cards
+			new List<int> { 0, 1, 2 })
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		}; // Discard three cards
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -141,7 +156,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int> { 0, 1, 2, 3, 4 }); // Discard all 5 cards (max is usually 3)
+			new List<int> { 0, 1, 2, 3, 4 })
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		}; // Discard all 5 cards (max is usually 3)
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -158,7 +176,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int> { 10 }); // Invalid index
+			new List<int> { 10 })
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		}; // Invalid index
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -175,7 +196,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 		var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int> { -1 }); // Negative index
+			new List<int> { -1 })
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		}; // Negative index
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -200,7 +224,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int> { 0, 2 }); // Discard 1st and 3rd cards
+			new List<int> { 0, 2 })
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		}; // Discard 1st and 3rd cards
 
 		// Act
 		await Mediator.Send(command);
@@ -223,7 +250,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int> { 0, 1, 2 }); // Discard 3 cards
+			new List<int> { 0, 1, 2 })
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		}; // Discard 3 cards
 
 		// Act
 		await Mediator.Send(command);
@@ -252,7 +282,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int>());
+			new List<int>())
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -282,7 +315,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
 			await Mediator.Send(new ProcessDrawCommand(
 				game.Id,
-				new List<int>()));
+				new List<int>())
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		});
 		}
 
 		// Assert - Should have advanced past draw phase
@@ -299,7 +335,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int>());
+			new List<int>())
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		};
 
 		// Act
 		await Mediator.Send(command);
@@ -319,7 +358,10 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
 		var command = new ProcessDrawCommand(
 			game.Id,
-			new List<int> { 0, 1 });
+			new List<int> { 0, 1 })
+		{
+			BoundSeat = await CurrentDrawSeatAsync(game.Id)
+		};
 
 		// Act
 		await Mediator.Send(command);

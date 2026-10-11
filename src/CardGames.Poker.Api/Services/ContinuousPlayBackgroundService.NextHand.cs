@@ -172,35 +172,7 @@ public sealed partial class ContinuousPlayBackgroundService
 						gp.PendingChipsToAdd > 0)
 				.ToList();
 
-		foreach (var player in playersWithPendingChips)
-		{
-			// Validate cashier balance can cover the pending amount
-			var cashierBalance = await playerChipWalletService.GetBalanceAsync(player.PlayerId, cancellationToken);
-			if (cashierBalance < player.PendingChipsToAdd)
-			{
-				_logger.LogWarning(
-					"Insufficient cashier balance for pending chips: player {PlayerName} in game {GameId}. Balance: {Balance}, Pending: {Pending}. Cancelling pending chips.",
-					player.Player?.Name ?? player.PlayerId.ToString(),
-					game.Id,
-					cashierBalance,
-					player.PendingChipsToAdd);
-				player.PendingChipsToAdd = 0;
-				continue;
-			}
-
-			player.ChipStack += player.PendingChipsToAdd;
-			player.BringInAmount += player.PendingChipsToAdd;
-			_logger.LogInformation(
-				"Applied {PendingChips} pending chips to player {PlayerName} in game {GameId} (new stack: {NewStack})",
-				player.PendingChipsToAdd,
-				player.Player?.Name ?? player.PlayerId.ToString(),
-				game.Id,
-				player.ChipStack);
-
-			player.PendingChipsToAdd = 0;
-			player.IsSittingOut = false;
-			player.Status = GamePlayerStatus.Active;
-		}
+		await PendingRebuyApplicator.ApplyAsync(game, playerChipWalletService, cancellationToken);
 
 		if (playersWithPendingChips.Count > 0)
 		{

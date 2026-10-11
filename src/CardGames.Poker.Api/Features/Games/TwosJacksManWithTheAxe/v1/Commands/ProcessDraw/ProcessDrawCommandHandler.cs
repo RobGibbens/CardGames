@@ -16,6 +16,9 @@ namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.
 public class ProcessDrawCommandHandler(CardsDbContext context)
 	: IRequestHandler<ProcessDrawCommand, OneOf<ProcessDrawSuccessful, ProcessDrawError>>
 {
+	private static bool IsStale(int? boundSeat, int liveSeat) =>
+		boundSeat is null || boundSeat.Value != liveSeat;
+
 	private const int HandSize = 5;
 
 	/// <inheritdoc />
@@ -71,6 +74,13 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			return new ProcessDrawError
 			{
 				Message = "Current draw player not found.",
+				Code = ProcessDrawErrorCode.NotPlayerTurn
+			};
+
+		if (IsStale(command.BoundSeat, currentDrawPlayer.SeatPosition))
+			return new ProcessDrawError
+			{
+				Message = "It is not your turn.",
 				Code = ProcessDrawErrorCode.NotPlayerTurn
 			};
 

@@ -154,24 +154,24 @@ public sealed class LeaveGameCommandHandler(
 
 	private bool IsPlayerInActiveHand(GamePlayer gamePlayer, Game game)
 	{
-		// Player is in an active hand if:
+		// A folded player is still in the hand until the hand is settled, as long as the other three checks pass:
 		// 1. Game is in progress (not between hands)
-		// 2. Player has not folded
-		// 3. Current phase is an "active" phase (betting, drawing, decision)
-		// 4. Player has cards dealt in the current hand
+		// 2. Current phase is an "active" phase (betting, drawing, decision, or a phase after a fold and before settlement)
+		// 3. Player has cards dealt in the current hand
 
 		if (game.Status != GameStatus.InProgress) return false;
 
-		if (gamePlayer.HasFolded) return false;
-
-		// Check if current phase is an "active" phase (betting, drawing, decision)
+		// Check if current phase is an "active" phase (betting, drawing, decision, or awaiting settlement)
 		var activePhases = new[]
 		{
 			"Dealing", "PreFlop", "Flop", "Turn", "River",
 			"FirstBettingRound", "SecondBettingRound", "ThirdBettingRound", "FourthBettingRound",
 			"DrawPhase", "Drawing",
 			"DropOrStay", "PlayerVsDeck",
-			"ThirdStreet", "FourthStreet", "FifthStreet", "SixthStreet", "SeventhStreet"
+			"ThirdStreet", "FourthStreet", "FifthStreet", "SixthStreet", "SeventhStreet",
+			"Showdown", "DrawComplete", "PotMatching", "Reveal", "KlondikeReveal",
+			"RevealTheGood", "RevealTheBad", "RevealTheUgly",
+			"BuyCardOffer", "TollboothOffer", "KeepOrTrade", "InBetweenTurn"
 		};
 
 		if (!activePhases.Contains(game.CurrentPhase, StringComparer.OrdinalIgnoreCase)) return false;
