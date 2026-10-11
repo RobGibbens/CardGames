@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Features.Games.Tollbooth;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ProcessBettingAction;
@@ -232,23 +233,12 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 		var bringInSeatPosition = bringInPlayer?.SeatPosition ??
 		                          playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
 
+		await StudGameStakesNormalizer.EnsureLegacyBringInAsync(context, game, cancellationToken);
 		var bringIn = game.BringIn ?? 0;
 		var currentBet = 0;
 		if (bringIn > 0 && bringInPlayer is not null)
-		{
-			var actualBringIn = Math.Min(bringIn, bringInPlayer.ChipStack);
-			bringInPlayer.CurrentBet = actualBringIn;
-			bringInPlayer.ChipStack -= actualBringIn;
-			bringInPlayer.TotalContributedThisHand += actualBringIn;
-			currentBet = actualBringIn;
-
-			var pot = await context.Pots
-				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-				                          p.HandNumber == game.CurrentHandNumber &&
-				                          p.PotType == PotType.Main,
-					cancellationToken);
-			if (pot is not null) pot.Amount += actualBringIn;
-		}
+			currentBet = await StudBringInPosting.PostBringInForThirdStreetAsync(
+				context, game, bringInPlayer, bringIn, now, cancellationToken);
 
 		var minBet = game.SmallBet ?? game.MinBet ?? 0;
 		var bettingRound = new BettingRound

@@ -9,7 +9,7 @@ namespace CardGames.Poker.Api.Infrastructure;
 ///     of game state to all connected clients via the GameStateBroadcastingBehavior
 ///     MediatR pipeline behavior.
 /// </remarks>
-public interface IGameStateChangingCommand
+public interface IGameStateChangingCommand : IRequiresAuthentication
 {
 	/// <summary>
 	///     Gets the unique identifier of the game being modified.

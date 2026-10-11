@@ -1,4 +1,4 @@
-﻿using Asp.Versioning.Builder;
+using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.PerformShowdown;
@@ -17,7 +17,8 @@ public static class V1
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/five-card-draw")
 			.HasApiVersion(1.0)
 			.WithTags(Feature.Name)
-			.AddFluentValidationAutoValidation();
+			.AddFluentValidationAutoValidation()
+			.RequireAuthorization();
 
 		mapGroup
 			.MapStartHand()

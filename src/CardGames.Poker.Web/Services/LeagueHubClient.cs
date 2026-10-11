@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json.Serialization;
-using System.Web;
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Web.Infrastructure;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -90,12 +90,13 @@ public sealed class LeagueHubClient : IAsyncDisposable
 		}
 
 		var userInfo = await GetUserInfoAsync();
-		var hubUrl = GetHubUrl(userInfo);
+		var hubUrl = HubConnectionIdentity.HubUrl(_configuration, "/hubs/leagues");
 
 		_hubConnection = new HubConnectionBuilder()
 			.WithUrl(hubUrl, options =>
 			{
-				if (userInfo is not null)
+				HubConnectionIdentity.Apply(options, _configuration, _authStateProvider);
+				if (userInfo is not null && HubConnectionIdentity.AllowUnsafeHeaders(_configuration))
 				{
 					options.Headers["X-User-Authenticated"] = "true";
 					if (!string.IsNullOrEmpty(userInfo.Value.UserId))
@@ -445,28 +446,6 @@ public sealed class LeagueHubClient : IAsyncDisposable
 		return Task.CompletedTask;
 	}
 
-	private string GetHubUrl((string? UserId, string? UserName)? userInfo)
-	{
-		var baseUrl = _configuration["Services:Api:Https:0"]
-		              ?? _configuration["Services:Api:Http:0"]
-		              ?? "https://localhost:7001";
-
-		var url = $"{baseUrl}/hubs/leagues";
-
-		if (userInfo is not null)
-		{
-			var queryParams = new List<string> { "authenticated=true" };
-			if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
-
-			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
-
-			url = $"{url}?{string.Join("&", queryParams)}";
-		}
-
-		return url;
-	}
 
 	private async Task<(string? UserId, string? UserName)?> GetUserInfoAsync()
 	{

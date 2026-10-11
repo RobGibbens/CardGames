@@ -9,4 +9,4 @@ namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHa
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 public record StartHandCommand(Guid GameId)
-	: IRequest<OneOf<StartHandSuccessful, StartHandError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<StartHandSuccessful, StartHandError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

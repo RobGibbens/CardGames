@@ -16,7 +16,7 @@ namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.
 public record ProcessDrawCommand(
 	Guid GameId,
 	IReadOnlyCollection<int> DiscardIndices
-) : IRequest<OneOf<ProcessDrawSuccessful, ProcessDrawError>>, IGameStateChangingCommand;
+) : IRequest<OneOf<ProcessDrawSuccessful, ProcessDrawError>>, IGameStateChangingCommand, IRequiresCurrentActor;
 
 /// <summary>
 ///     Request model for the draw action endpoint.

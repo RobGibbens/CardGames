@@ -1,4 +1,6 @@
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
@@ -8,10 +10,13 @@ public static class KeepOrTradeEndpoint
 	public static RouteGroupBuilder MapKeepOrTrade(this RouteGroupBuilder group)
 	{
 		group.MapPost("/{gameId:guid}/keep-or-trade",
-				async (Guid gameId, KeepOrTradeRequest request, IMediator mediator,
+				async (Guid gameId, KeepOrTradeRequest request, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					var command = new KeepOrTradeCommand(gameId, request.PlayerId, request.Decision);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new KeepOrTradeCommand(gameId, seated.PlayerId, request.Decision);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
@@ -38,4 +43,4 @@ public static class KeepOrTradeEndpoint
 /// <summary>
 ///     Request body for keep or trade decision.
 /// </summary>
-public record KeepOrTradeRequest(Guid PlayerId, string Decision);
+public record KeepOrTradeRequest(string Decision);

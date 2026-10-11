@@ -32,17 +32,19 @@ public static class V1
 			.WithTags(Feature.Name)
 			.AddFluentValidationAutoValidation();
 
-		//Commands
-		mapGroup.MapAddChips();
-		mapGroup.MapChooseDealerGame();
-		mapGroup.MapCreateGame();
-		mapGroup.MapDeleteGame();
-		mapGroup.MapJoinGame();
-		mapGroup.MapLeaveGame();
-		mapGroup.MapResolveJoinRequest();
-		mapGroup.MapSitOut();
-		mapGroup.MapToggleOddsVisibility();
-		mapGroup.MapUpdateTableSettings();
+		var mutations = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
+
+		mutations.MapAddChips();
+		mutations.MapChooseDealerGame();
+		mutations.MapCreateGame();
+		mutations.MapDeleteGame();
+		mutations.MapJoinGame();
+		mutations.MapLeaveGame();
+		mutations.MapResolveJoinRequest();
+		mutations.MapSitOut();
+		mutations.MapToggleOddsVisibility();
+		mutations.MapUpdateTableSettings();
 
 		//Queries
 		mapGroup.MapGetCurrentBettingRound();

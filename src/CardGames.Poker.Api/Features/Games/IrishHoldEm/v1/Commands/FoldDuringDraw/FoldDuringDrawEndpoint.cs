@@ -1,3 +1,5 @@
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringDraw;
@@ -13,10 +15,13 @@ public static class FoldDuringDrawEndpoint
 	public static RouteGroupBuilder MapFoldDuringDraw(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/fold-during-draw",
-				async (Guid gameId, FoldDuringDrawRequest request, IMediator mediator,
+				async (Guid gameId, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					var command = new FoldDuringDrawCommand(gameId, request.PlayerSeatIndex);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new FoldDuringDrawCommand(gameId, seated.SeatPosition);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
@@ -38,9 +43,3 @@ public static class FoldDuringDrawEndpoint
 		return group;
 	}
 }
-
-/// <summary>
-///     Request body for folding during the discard phase.
-/// </summary>
-/// <param name="PlayerSeatIndex">The seat index of the player to fold.</param>
-public record FoldDuringDrawRequest(int PlayerSeatIndex);

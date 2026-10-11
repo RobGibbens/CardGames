@@ -9,4 +9,4 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand
 /// </summary>
 /// <param name="GameId">The unique identifier of the game to start a new hand in.</param>
 public record StartHandCommand(Guid GameId)
-	: IRequest<OneOf<StartHandSuccessful, StartHandError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<StartHandSuccessful, StartHandError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

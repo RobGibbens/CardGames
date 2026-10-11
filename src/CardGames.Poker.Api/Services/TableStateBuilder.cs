@@ -164,9 +164,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				StringComparer.OrdinalIgnoreCase,
 				cancellationToken);
 
+		var currentHandPots = game.Pots
+			.Where(p => p.HandNumber == game.CurrentHandNumber)
+			.ToList();
+		var isWinByFold = HandVisibilityHelper.IsWinByFoldHand(game, gamePlayers, currentHandPots);
+
 		var seats = gamePlayers
 			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code,
-				game.CurrentPhase, userProfilesByEmail))
+				game.CurrentPhase, userProfilesByEmail, isWinByFold))
 			.ToList();
 
 		var serverUtcNow = DateTimeOffset.UtcNow;
@@ -240,7 +245,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 			: null;
 
-		var showdown = await BuildShowdownPublicDtoAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
+		var showdown = await BuildShowdownPublicDtoAsync(game, gamePlayers, userProfilesByEmail, isWinByFold,
+			cancellationToken);
 		var soundEffects = BuildTableSoundEffects(game, showdown);
 
 		return new TableStatePublicDto
@@ -592,7 +598,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		int ante,
 		string? gameTypeCode,
 		string? currentPhase,
-		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
+		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail,
+		bool isWinByFoldHand)
 	{
 		var firstName = GetPlayerFirstName(gamePlayer, userProfilesByEmail);
 		var avatarUrl = GetPlayerAvatarUrl(gamePlayer, userProfilesByEmail);
@@ -619,19 +626,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Use street-aware ordering for Seven Card Stud to handle multi-street dealing correctly
 		var playerCards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
 
-		// During showdown, show cards for staying players (not folded)
-		// Folded players should not have their cards revealed
-		var shouldShowCardsForShowdown = isShowdownPhase && !gamePlayer.HasFolded;
+		// Contested showdown reveals staying players' cards. A fold-win does not:
+		// only cards that were already public during the hand stay face-up.
+		var shouldShowCardsForContestedShowdown =
+			isShowdownPhase && !gamePlayer.HasFolded && !isWinByFoldHand;
 
 		var publicCards = playerCards.Select(card =>
 		{
-			// For stud games, respect the IsVisible flag; otherwise default to face-down
-			// During showdown, show cards face-up for staying players
 			var shouldShowCard =
 				(isSevenCardStud && card.IsVisible)
 				|| (isScrewYourNeighbor && card.IsVisible)
 				|| (isInBetween && card.IsVisible)
-				|| shouldShowCardsForShowdown;
+				|| shouldShowCardsForContestedShowdown
+				|| (isWinByFoldHand && !gamePlayer.HasFolded && card.IsVisible);
 
 			return new CardPublicDto
 			{
@@ -882,6 +889,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		Game game,
 		List<GamePlayer> gamePlayers,
 		Dictionary<string, UserProfile> userProfilesByEmail,
+		bool isWinByFoldHand,
 		CancellationToken cancellationToken)
 	{
 		var isTwosJacksAxe = IsTwosJacksAxeGame(game.GameType?.Code);
@@ -1616,7 +1624,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				List<int>? wildIndexes = null;
 				List<int>? bestCardIndexes = null;
 
-				if (playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
+				if (!isWinByFoldHand && playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
 				{
 					handRanking = eval.hand.Type.ToString();
 					wildIndexes = eval.wildIndexes.Count > 0 ? eval.wildIndexes : null;
@@ -1641,12 +1649,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					PlayerFirstName = GetPlayerFirstName(gp, userProfilesByEmail),
 					SeatPosition = gp.SeatPosition,
 					HandRanking = handRanking,
-					HandDescription = isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED",
-						StringComparison.OrdinalIgnoreCase)
-						? "Dead Hand (The Ugly)"
-						: playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
-							? HandDescriptionFormatter.GetHandDescription(e.hand)
-							: null,
+					HandDescription = isWinByFoldHand
+						? null
+						: isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED",
+							StringComparison.OrdinalIgnoreCase)
+							? "Dead Hand (The Ugly)"
+							: playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
+								? HandDescriptionFormatter.GetHandDescription(e.hand)
+								: null,
 					AmountWon = payouts.Total,
 					SevensAmountWon = payouts.Sevens,
 					HighHandAmountWon = payouts.High,
@@ -1677,9 +1687,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							isStudStyleShowdown)
 						.Select(c => new CardPublicDto
 						{
-							IsFaceUp = true,
-							Rank = MapSymbolToRank(c.Symbol),
-							Suit = GetCardSuitString(c.Suit),
+							IsFaceUp = isWinByFoldHand ? c.IsVisible : true,
+							Rank = isWinByFoldHand && !c.IsVisible ? null : MapSymbolToRank(c.Symbol),
+							Suit = isWinByFoldHand && !c.IsVisible ? null : GetCardSuitString(c.Suit),
 							DealOrder = c.DealOrder
 						})
 						.ToList()
@@ -1741,7 +1751,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					MainHandWinners = mainHandWinners.OrderBy(name => name).ToList(),
 					ShowcaseWinners = showcaseWinners.OrderBy(name => name).ToList()
 				}
-				: null
+				: null,
+			WonByFold = isWinByFoldHand
 		};
 	}
 

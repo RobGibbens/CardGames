@@ -13,4 +13,4 @@ namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay
 public record DropOrStayCommand(
 	Guid GameId,
 	Guid PlayerId,
-	string Decision) : IRequest<OneOf<DropOrStaySuccessful, DropOrStayError>>, IGameStateChangingCommand;
+	string Decision) : IRequest<OneOf<DropOrStaySuccessful, DropOrStayError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

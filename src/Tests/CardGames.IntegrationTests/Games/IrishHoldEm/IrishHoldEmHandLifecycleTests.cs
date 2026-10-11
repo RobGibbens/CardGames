@@ -367,6 +367,91 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 
 	#endregion
 
+	#region All-in discards
+
+	[Fact]
+	public async Task ProcessBettingAction_PreFlopAllIn_StopsAtDrawPhaseUntilDiscardsThenShowdown()
+	{
+		var setup = await CreateDealtIrishHoldEmGameAsync(2, 0);
+		var game = setup.Game;
+
+		await AllInUntilPhaseChanges(game.Id);
+
+		var atDraw = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atDraw.CurrentPhase.Should().Be("DrawPhase");
+
+		var communityAtDraw = await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber);
+		communityAtDraw.Should().HaveCount(3);
+		communityAtDraw.Should().AllSatisfy(card => card.DealtAtPhase.Should().Be("Flop"));
+		communityAtDraw.Count(card => card.DealtAtPhase == "Turn").Should().Be(0);
+		communityAtDraw.Count(card => card.DealtAtPhase == "River").Should().Be(0);
+
+		var holeAtDraw = await GetLiveHoleCardsAsync(game.Id);
+		holeAtDraw.GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(4));
+
+		var playersAtDraw = await GetFreshDbContext().GamePlayers
+			.Where(gp => gp.GameId == game.Id && !gp.HasFolded)
+			.ToListAsync();
+		playersAtDraw.Should().AllSatisfy(player => player.HasDrawnThisRound.Should().BeFalse());
+
+		var activeCount = playersAtDraw.Count;
+		for (var i = 0; i < activeCount; i++)
+		{
+			var discardResult = await Mediator.Send(
+				new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }));
+			discardResult.IsT0.Should().BeTrue($"discard for player {i} should succeed");
+		}
+
+		var atShowdown = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atShowdown.CurrentPhase.Should().Be("Showdown");
+
+		var holeAtShowdown = await GetLiveHoleCardsAsync(game.Id);
+		holeAtShowdown.GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(2));
+
+		var communityAtShowdown = await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber);
+		communityAtShowdown.Should().HaveCount(5);
+		communityAtShowdown.Count(card => card.DealtAtPhase == "Turn").Should().Be(1);
+		communityAtShowdown.Count(card => card.DealtAtPhase == "River").Should().Be(1);
+		communityAtShowdown.Select(card => card.Id).Should().OnlyHaveUniqueItems();
+	}
+
+	private async Task AllInUntilPhaseChanges(Guid gameId)
+	{
+		var startingPhase = (await GetFreshDbContext().Games.FirstAsync(g => g.Id == gameId)).CurrentPhase;
+		for (var i = 0; i < 4; i++)
+		{
+			var current = await GetFreshDbContext().Games.FirstAsync(g => g.Id == gameId);
+			if (current.CurrentPhase != startingPhase)
+				return;
+
+			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.AllIn));
+			result.IsT0.Should().BeTrue($"all-in at iteration {i} should succeed");
+		}
+	}
+
+	private async Task<List<GameCard>> GetLiveHoleCardsAsync(Guid gameId)
+	{
+		return await GetFreshDbContext().GameCards
+			.Where(gc => gc.GameId == gameId
+			             && gc.Location == CardLocation.Hand
+			             && gc.GamePlayerId != null
+			             && !gc.IsDiscarded)
+			.ToListAsync();
+	}
+
+	private async Task<List<GameCard>> GetCommunityCardsAsync(Guid gameId, int handNumber)
+	{
+		return await GetFreshDbContext().GameCards
+			.Where(gc => gc.GameId == gameId
+			             && gc.HandNumber == handNumber
+			             && gc.Location == CardLocation.Community)
+			.ToListAsync();
+	}
+
+	#endregion
+
 	#region Helpers
 
 	/// <summary>

@@ -8,4 +8,4 @@ using SharedDealHandsSuccessful =
 namespace CardGames.Poker.Api.Features.Games.PairPressure.v1.Commands.DealHands;
 
 public record DealHandsCommand(Guid GameId)
-	: IRequest<OneOf<SharedDealHandsSuccessful, SharedDealHandsError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<SharedDealHandsSuccessful, SharedDealHandsError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

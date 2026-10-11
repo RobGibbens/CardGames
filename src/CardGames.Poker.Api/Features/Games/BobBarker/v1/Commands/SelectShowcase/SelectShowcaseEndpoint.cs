@@ -1,3 +1,5 @@
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.BobBarker.v1.Commands.SelectShowcase;
@@ -7,10 +9,13 @@ public static class SelectShowcaseEndpoint
 	public static RouteGroupBuilder MapSelectShowcase(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/showcase",
-				async (Guid gameId, SelectShowcaseRequest request, IMediator mediator,
+				async (Guid gameId, SelectShowcaseRequest request, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					var command = new SelectShowcaseCommand(gameId, request.ShowcaseCardIndex, request.PlayerSeatIndex);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new SelectShowcaseCommand(gameId, request.ShowcaseCardIndex, seated.SeatPosition);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(

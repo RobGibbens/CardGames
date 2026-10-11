@@ -2,25 +2,42 @@
 
 ## Overview
 
-This document describes the new extensible architecture for the Card Games poker system that allows multiple game types to coexist without hardcoding game-specific logic in the UI or API layer.
+This document describes the current hybrid architecture for the Card Games poker system. Metadata discovery registers game types and exposes rules JSON. Starting a hand, betting, showdown, and timer auto-actions are still wired explicitly per variant.
 
 ## Problem Statement
 
 The original architecture had several issues:
 
-1. **Tight Coupling**: The UI (TablePlay.razor) and API handlers contained hardcoded game-specific logic with conditionals like `if (game == FiveCardDraw) {} else if (game == TwosJacksManWithTheAxe) {}`
+1. **Tight Coupling**: The UI (`TablePlay.razor`) and API handlers contained hardcoded game-specific logic with conditionals like `if (game == FiveCardDraw) {} else if (game == TwosJacksManWithTheAxe) {}`
 2. **Limited Scalability**: Adding a new game type required changes across multiple layers (domain, API, contracts, and UI)
 3. **Game Flow Assumptions**: The system assumed all games follow a Five Card Draw pattern (antes, deal 5 face-down cards, draw, two betting rounds, showdown)
 4. **Duplication**: Similar logic was duplicated across different game implementations
 
 ## Solution: Rule-Driven Architecture
 
-The new architecture introduces a **metadata-driven system** where:
+The architecture is **partially metadata-driven**:
 
-1. **Game rules live in the domain layer** as structured metadata
-2. **The API exposes these rules** via REST endpoints
-3. **The UI adapts dynamically** based on the game rules received from the API
-4. **Shared orchestration can stay mostly metadata-driven**, while variant-specific behavior remains localized to dedicated handlers, DTO extensions, and UI seams when the game introduces mechanics that metadata alone does not cover
+1. **Game rules live in the domain layer** as structured metadata. `IPokerGame.GetGameRules()` is the wire; most games return a static `*Rules.CreateGameRules()` result.
+2. **The API exposes these rules** via REST (`GET /api/v1/games/rules/{gameTypeCode}`).
+3. **The UI uses those rules for some behavior** (phase labels, whether a phase requires action, available-action lists) through `GameRulesService.GetGameRulesAsync`.
+4. **Hand lifecycle is still explicit.** Start, antes, deal, betting, showdown, and timer auto-actions are wired through MediatR feature folders, `IGameFlowHandler`, `TableStateBuilder`, `IGameApiRouter`, and `gameTypeCode` branches in `TablePlay.razor`.
+
+Discovery is automatic for metadata and flow handlers. Behavior is still wired explicitly. `GameRules` drive some UI, and they do not drive every table action.
+
+### Architecture truth table
+
+| Subsystem | Metadata-driven? | Where wired when not |
+|-----------|------------------|----------------------|
+| Game list / lobby images | Yes | `PokerGameMetadataRegistry` |
+| `GET` game rules JSON | Yes | `PokerGameRulesRegistry` |
+| Phase labels / `RequiresPlayerAction` on table | Mostly | `TableStateBuilder` + rules registry |
+| Start hand / antes / deal sequence | No (variant branches) | `TablePlay.razor`, per-variant APIs |
+| Betting commands | No | `Features/Games/{Variant}/.../ProcessBettingAction` |
+| Showdown | No | Variant or `Generic/PerformShowdown` |
+| Timer auto-action | No | `IGameFlowHandler.SendBettingActionAsync` overrides |
+| Create-game stakes (ante, blinds, stud bring-in) | No | `CreateGameCommandHandler` (stud `BringIn` / `SmallBet` / `BigBet` are not set there today; see `docs/Auditing/10-fix-bring-in-never-posted.md`) |
+
+The live start-hand matrix is in [ADDING_NEW_GAMES.md](ADDING_NEW_GAMES.md). Update that table when `TablePlay.razor` `StartGameAsync` changes.
 
 ## Core Components
 
@@ -76,7 +93,9 @@ public interface IPokerGame
 ### 2. API Layer (CardGames.Poker.Api)
 
 #### PokerGameRulesRegistry
-Centralized registry that maps game type codes to their rule factories:
+`PokerGameRulesRegistry` discovers rules by scanning `IPokerGame` implementations that carry `[PokerGameMetadata]`. For each constructible type it calls `GetGameRules()` and caches the result by game-type code. There is no dictionary to edit when adding a game. The instance must have a parameterless constructor, or a public constructor the scanner can invoke with default arguments. Static `*Rules.CreateGameRules()` is the usual implementation behind `GetGameRules()`.
+
+Public lookup API:
 
 ```csharp
 public static class PokerGameRulesRegistry
@@ -86,6 +105,8 @@ public static class PokerGameRulesRegistry
     public static IEnumerable<string> GetAvailableGameTypeCodes();
 }
 ```
+
+`PokerGameMetadataRegistry` uses the same attribute scan for lobby metadata (name, player counts, image). `GameFlowHandlerFactory` separately scans `IGameFlowHandler` implementations in the API assembly.
 
 #### New Endpoint
 `GET /api/v1/games/rules/{gameTypeCode}` returns the game rules as JSON.
@@ -146,7 +167,7 @@ To add a new game (e.g., "Seven Card Stud"):
 
 1. **Implement the domain game class** as usual (e.g., `SevenCardStudGame.cs`)
 
-2. **Create a rules factory** (e.g., `SevenCardStudRules.cs`):
+2. **Create a rules factory** whose phase IDs match the strings stored on the hand. Live stud streets are `ThirdStreet` through `SeventhStreet` (`SevenCardStudRules.cs`). The object below is abbreviated; `MinPlayers`, `MaxPlayers`, `CardDealing`, `Betting`, and `Showdown` are also required on `GameRules`.
 
 ```csharp
 public static class SevenCardStudRules
@@ -157,88 +178,42 @@ public static class SevenCardStudRules
         {
             GameTypeCode = "SEVENCARDSTUD",
             GameTypeName = "Seven Card Stud",
-            Phases = new List<GamePhaseDescriptor>
-            {
-                new() { 
-                    PhaseId = "CollectingAntes", 
-                    Name = "Collecting Antes",
-                    Category = "Setup"
-                },
-                new() { 
-                    PhaseId = "DealingTwoDown", 
-                    Name = "Dealing Two Down",
-                    Category = "Dealing"
-                },
-                // ... define all phases
-            },
-            CardDealing = new CardDealingConfig
-            {
-                InitialCards = 2,
-                InitialVisibility = CardVisibility.FaceDown,
-                DealingRounds = new List<DealingRound>
-                {
-                    new() { CardCount = 2, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-                    // ... more rounds
-                }
-            },
-            Betting = new BettingConfig
-            {
-                HasAntes = true,
-                BettingRounds = 5,
-                Structure = "Fixed Limit"
-            }
+            Phases =
+            [
+                new() { PhaseId = "WaitingToStart", Name = "Waiting to Start", Description = "Waiting for players", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "CollectingAntes", Name = "Collecting Antes", Description = "Collect antes", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "ThirdStreet", Name = "Third Street", Description = "Bring-in betting", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "FourthStreet", Name = "Fourth Street", Description = "Fourth street betting", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "FifthStreet", Name = "Fifth Street", Description = "Fifth street betting", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "SixthStreet", Name = "Sixth Street", Description = "Sixth street betting", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "SeventhStreet", Name = "Seventh Street", Description = "Seventh street betting", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "Showdown", Name = "Showdown", Description = "Compare hands", Category = "Resolution", RequiresPlayerAction = false },
+                new() { PhaseId = "Complete", Name = "Complete", Description = "Hand is complete", Category = "Resolution", RequiresPlayerAction = false, IsTerminal = true }
+            ]
         };
     }
 }
 ```
 
-3. **Register in PokerGameRulesRegistry**:
+3. **Return those rules from the game instance** and add a flow handler. Do not edit a registry file.
 
 ```csharp
-private static readonly FrozenDictionary<string, Func<GameRules>> RulesByGameTypeCode =
-    new Dictionary<string, Func<GameRules>>(StringComparer.OrdinalIgnoreCase)
-    {
-        [PokerGameMetadataRegistry.SevenCardStudCode] = SevenCardStudRules.CreateGameRules,
-        // ... other games
-    }.ToFrozenDictionary();
+public GameRules GetGameRules() => SevenCardStudRules.CreateGameRules();
 ```
 
-**That's the baseline integration path.** Many variants can stop there, and the UI can automatically:
-- Display the correct phases
-- Show appropriate action buttons based on `availableActions`
-- Adapt the table display based on `cardDealing` configuration
+`PokerGameRulesRegistry` and `GameFlowHandlerFactory` pick up the type and the handler by reflection. The step-by-step checklist, including `TablePlay` and router branches, is [ADDING_NEW_GAMES.md](ADDING_NEW_GAMES.md).
 
-Variants with bespoke turn actions or showdown payloads still need targeted integration in the current codebase. Bob Barker is the reference example: it reuses Hold'Em-family betting flow, but required a dedicated showcase-selection endpoint, Bob Barker-specific showdown DTOs, and localized table/showdown rendering updates.
+Metadata alone does not start the hand or send timer actions. Bob Barker is the reference for a dedicated action: it reuses Hold'em-family betting, and it still needed a showcase-selection endpoint, Bob Barker-specific showdown DTOs, and localized table rendering.
 
-### UI Consumption (Future Implementation)
+### UI consumption (today)
 
-The UI layer will query game rules on table load:
+`TablePlay.razor` loads rules when the table state arrives:
 
 ```csharp
-// Fetch rules for current game
-var rulesResponse = await GamesApiClient.GetGameRulesAsync(gameTypeCode);
-var rules = rulesResponse.Rules;
-
-// Render phases dynamically
-foreach (var phase in rules.Phases)
-{
-    if (phase.RequiresPlayerAction)
-    {
-        // Show action UI based on phase.AvailableActions
-        foreach (var action in phase.AvailableActions)
-        {
-            // Render button/control for this action
-        }
-    }
-}
-
-// Configure card display
-if (rules.CardDealing.HasCommunityCards)
-{
-    // Show community card area
-}
+_gameRules = await GameRulesService.GetGameRulesAsync(_gameTypeCode);
 ```
+
+`GameRulesService` calls `GET /api/v1/games/rules/{gameTypeCode}` (`GetGameRulesEndpoint.MapGetGameRules`). The page uses that payload for phase metadata such as `CurrentPhaseRequiresAction`. Start-hand, collect-antes, deal, and showdown still switch on `_gameTypeCode` and call a specific API client. Action buttons are not rendered from `AvailableActions` alone.
 
 ## Benefits of This Architecture
 
@@ -251,11 +226,11 @@ if (rules.CardDealing.HasCommunityCards)
 
 ## Migration Path
 
-This is a **non-breaking change**. Existing games continue to work as before. The new architecture provides:
+Rules metadata shipped beside the existing handlers. The UI has **partially** adopted it:
 
-1. **Backward compatibility**: Current game implementations are not affected
-2. **Gradual adoption**: UI can be refactored incrementally to use rules
-3. **Coexistence**: Old and new approaches work side-by-side during transition
+1. **Rules JSON is live** for every discovered game type.
+2. **Variant switches remain** in `TablePlay.razor`, flow handlers, and per-variant MediatR commands. Generic `StartHand` and dedicated `StartHand` handlers both exist; the web client often calls the dedicated route.
+3. **Further metadata adoption** (one start path, rules-only action panel) is a separate code change. Do not treat this document as a promise that those switches are gone.
 
 ## Future Enhancements
 
@@ -291,25 +266,21 @@ else if (gameTypeCode == "TWOSJACKSMANWITHTHEAXE")
 }
 ```
 
-### After (Rule-Driven)
+### After (partially rule-driven)
 ```csharp
-// In UI layer
 var phase = rules.Phases.FirstOrDefault(p => p.PhaseId == currentPhase);
 if (phase?.Category == "Drawing" && phase.RequiresPlayerAction)
 {
-    // Rules tell us everything we need
-    var maxCards = rules.Drawing.MaxDiscards ?? 5;
-    var hasWildCards = rules.SpecialRules?.ContainsKey("WildCards") ?? false;
-    
-    ShowDrawUI(maxCards, hasWildCards);
+    var maxCards = rules.Drawing?.MaxDiscards ?? 5;
+    ShowDrawUI(maxCards);
 }
 ```
 
+That pattern is used for phase metadata. Start, deal, showdown, and several action panels still use `gameTypeCode` branches.
+
 ## Conclusion
 
-This architecture transforms the card games system from a hardcoded, game-specific implementation to a flexible, metadata-driven platform. New game types can be added by simply defining their rules in the domain layer, with no changes required to the UI or API orchestration logic.
-
-The system remains backward compatible while providing a clear path forward for scaling to dozens or hundreds of game variants without increasing code complexity.
+Metadata removes manual registry edits and supplies phase and dealing descriptors to the API and parts of the UI. Adding a variant that plays through the existing table still requires a flow handler and, when the sequence differs, MediatR features, a router entry, and a `TablePlay` branch. See [ADDING_NEW_GAMES.md](ADDING_NEW_GAMES.md).
 
 ## Display-Only Community Cards
 

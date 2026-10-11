@@ -2,6 +2,7 @@ using System.Text.Json;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common.Showdown;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
@@ -430,11 +431,7 @@ public class PerformShowdownCommandHandler(
 					{
 						PlayerName = player.Player.Name,
 						PlayerFirstName = playerUser?.FirstName,
-						Cards = playerCardsForHand.Select(c => new ShowdownCard
-						{
-							Suit = c.Suit,
-							Symbol = c.Symbol
-						}).ToList(),
+						Cards = WinByFoldResponseBuilder.HiddenCards<ShowdownCard>(),
 						HandType = null,
 						HandStrength = null,
 						IsWinner = true,

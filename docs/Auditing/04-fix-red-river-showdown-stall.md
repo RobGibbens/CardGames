@@ -2,7 +2,7 @@
 
 **Audit finding:** “Table stalls: Red River never runs a showdown.”  
 **Audience:** LLM or engineer implementing the fix.  
-**Scope:** End-to-end path from `CurrentPhase == "Showdown"` through **PerformShowdown** API call, pot award, overlay, and transition to **Complete**. Server-side betting/bonus-card logic is largely correct; the primary defect is **missing client routing**.
+**Scope:** End-to-end path from `CurrentPhase == "Showdown"` through **PerformShowdown** API call, pot award, overlay, and transition to **Complete**. The primary defect is **missing client routing**. All-in runouts can also deal a second bonus card; that defect is `docs/Auditing/12-fix-red-river-double-bonus.md` and is out of scope here.
 
 ---
 
@@ -37,7 +37,6 @@ throw new NotSupportedException(
 
 ### What is **not** broken (do not re-implement)
 
-- Red River bonus card after red river suit (`DealRedRiverBonusCommunityCardIfNeededAsync`).
 - Betting routed via `IGameApiRouter` → `HoldEmProcessBettingActionAsync` for `REDRIVER`.
 - Start hand via `HoldEmStartHandAsync` when `IsHoldEm \|\| IsRedRiver \|\| IsKlondike` (`TablePlay.razor` ~3470).
 - **Generic** `PerformShowdownCommandHandler` already treats `REDRIVER` as shared-community Hold’em-style (`UsesSharedCommunityCards` includes `PokerGameMetadataRegistry.RedRiverCode` ~1300–1301).
@@ -273,7 +272,13 @@ If the solution has bUnit coverage for `TablePlay`, add a test that `_gameTypeCo
 | Hold’em showdown | `CardGames.Poker.Api/Features/Games/HoldEm/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs` |
 | Table state / odds family | `CardGames.Poker.Api/Services/TableStateBuilder.cs` (`IsHoldEmGame` includes Red River) |
 | Integration tests | `Tests/CardGames.IntegrationTests/Games/HoldEm/RedRiverHandLifecycleTests.cs` |
-| Onboarding doc | `docs/AddingNewGames20.md` §12 Red River |
+| Onboarding doc | `docs/ADDING_NEW_GAMES.md` (Red River addendum; `AddingNewGames20.md` is deprecated) |
+
+---
+
+## Related
+
+Orchestration path: see [11-fix-doc-vs-code.md](11-fix-doc-vs-code.md) §5.2 and the matrix in `docs/ADDING_NEW_GAMES.md` before assuming a Generic-only flow. Red River showdown is a `TablePlay` / `TryLoadShowdownAsync` branch, not Generic `PerformShowdown` by default.
 
 ---
 

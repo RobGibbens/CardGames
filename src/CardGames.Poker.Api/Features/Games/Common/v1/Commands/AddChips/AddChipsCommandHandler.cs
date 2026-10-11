@@ -16,6 +16,8 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
 public sealed class AddChipsCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
+	IGamePlayerResolver gamePlayerResolver,
+	IHttpContextAccessor httpContextAccessor,
 	IGameStateBroadcaster broadcaster,
 	ILogger<AddChipsCommandHandler> logger)
 	: IRequestHandler<AddChipsCommand, OneOf<AddChipsResponse, AddChipsError>>
@@ -65,6 +67,19 @@ public sealed class AddChipsCommandHandler(
 			return new AddChipsError(
 				AddChipsErrorCode.PlayerNotInGame,
 				"Player has already left this game.");
+
+		if (httpContextAccessor.HttpContext is not null)
+		{
+			if (!currentUserService.IsAuthenticated)
+				return new AddChipsError(AddChipsErrorCode.NotAuthorized, "Authentication is required.");
+
+			var seated = await gamePlayerResolver.ResolveSeatedPlayerAsync(command.GameId, cancellationToken);
+			var isSelf = seated is not null && seated.PlayerId == command.PlayerId;
+			var isHost = await gamePlayerResolver.IsTableHostAsync(command.GameId, cancellationToken);
+			if (!isSelf && !isHost)
+				return new AddChipsError(AddChipsErrorCode.NotAuthorized,
+					"You can only add chips to your own stack unless you are the table host.");
+		}
 
 		// Determine if chips should be applied immediately.
 		// During chip-related pauses and between-hands waiting states, apply immediately so play can resume.

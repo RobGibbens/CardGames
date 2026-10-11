@@ -8,11 +8,9 @@ public record SelectShowcaseCommand(
 	Guid GameId,
 	int ShowcaseCardIndex,
 	int? PlayerSeatIndex = null)
-	: IRequest<OneOf<SelectShowcaseSuccessful, SelectShowcaseError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<SelectShowcaseSuccessful, SelectShowcaseError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;
 
 public record SelectShowcaseRequest
 {
 	public int ShowcaseCardIndex { get; init; }
-
-	public int? PlayerSeatIndex { get; init; }
 }

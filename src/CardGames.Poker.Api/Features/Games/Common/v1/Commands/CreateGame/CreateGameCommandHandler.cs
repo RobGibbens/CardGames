@@ -127,6 +127,12 @@ public class CreateGameCommandHandler(
 		if (command.IsDealersChoice && allowedDealerChoiceGameCodes.Count > 0)
 			DealersChoiceGameSettings.SaveAllowedGameCodes(game, allowedDealerChoiceGameCodes);
 
+		if (!command.IsDealersChoice &&
+		    gameType is not null &&
+		    PokerGameRulesRegistry.TryGet(gameType.Code, out var rules) &&
+		    rules is not null)
+			StudGameStakesNormalizer.ApplyToGame(game, rules, command.Ante, command.MinBet);
+
 		context.Games.Add(game);
 
 		// 3. Get or create players and add them to the game

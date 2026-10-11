@@ -41,6 +41,13 @@ public class FoldDuringDrawCommandHandler(
 
 		if (player.HasFolded) return new FoldDuringDrawError { Message = "Player has already folded." };
 
+		if (command.PlayerSeatIndex != game.CurrentDrawPlayerIndex)
+			return new FoldDuringDrawError
+			{
+				Message =
+					$"Cannot fold seat {command.PlayerSeatIndex} during draw. Current draw player is seat {game.CurrentDrawPlayerIndex}."
+			};
+
 		logger.LogInformation(
 			"Folding player {PlayerName} (seat {SeatIndex}) during draw phase for game {GameId}",
 			player.Player.Name, command.PlayerSeatIndex, command.GameId);

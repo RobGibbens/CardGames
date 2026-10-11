@@ -30,6 +30,8 @@ public static class AddChipsEndpoint
 							AddChipsErrorCode.InvalidAmount => Results.BadRequest(new { error.Message }),
 							AddChipsErrorCode.GameEnded => Results.BadRequest(new { error.Message }),
 							AddChipsErrorCode.TournamentRebuyNotAllowed => Results.Conflict(new { error.Message }),
+							AddChipsErrorCode.NotAuthorized => Results.Json(new { error.Message },
+								statusCode: StatusCodes.Status403Forbidden),
 							_ => Results.Problem(error.Message)
 						}
 					);

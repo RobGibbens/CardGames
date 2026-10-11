@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using MediatR;
 
@@ -10,9 +11,12 @@ public static class DeckDrawEndpoint
 	{
 		group.MapPost("/{gameId:guid}/deck-draw",
 				async (Guid gameId, DeckDrawRequest request, IMediator mediator, IGameStateBroadcaster broadcaster,
-					CancellationToken cancellationToken) =>
+					IGamePlayerResolver players, CancellationToken cancellationToken) =>
 				{
-					var command = new DeckDrawCommand(gameId, request.PlayerId, request.DiscardIndices);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new DeckDrawCommand(gameId, seated.PlayerId, request.DiscardIndices);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return await result.Match(

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Poker.Api.Data;
@@ -77,6 +78,26 @@ public class ProcessBettingActionCommandHandlerTests
 		result.AsT1.Message.Should().Contain("Cannot check");
 	}
 
+	[Fact]
+	public async Task Handle_RaiseAboveStack_ReturnsInvalidAction()
+	{
+		await using var context = CreateContext();
+		var game = await SeedGameAsync(context, currentBet: 2, firstPlayerStack: 100);
+		var sut = CreateSut(context);
+
+		var result = await sut.Handle(new ProcessBettingActionCommand(game.Id, BettingActionType.Raise, 1000),
+			CancellationToken.None);
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidAction);
+		result.AsT1.Message.Should().Contain("stack");
+
+		var player = await context.GamePlayers.SingleAsync(gp => gp.GameId == game.Id && gp.SeatPosition == 0);
+		player.ChipStack.Should().Be(100);
+		var pot = await context.Pots.SingleAsync(p => p.GameId == game.Id);
+		pot.Amount.Should().Be(0);
+	}
+
 	private static ProcessBettingActionCommandHandler CreateSut(CardsDbContext context)
 	{
 		return new ProcessBettingActionCommandHandler(
@@ -105,7 +126,8 @@ public class ProcessBettingActionCommandHandlerTests
 		bool includeBettingRound = true,
 		int currentBet = 0,
 		int minBet = 10,
-		int currentActorIndex = 0)
+		int currentActorIndex = 0,
+		int firstPlayerStack = 200)
 	{
 		var now = DateTimeOffset.UtcNow;
 		var gameType = new GameType
@@ -144,7 +166,7 @@ public class ProcessBettingActionCommandHandlerTests
 		var alice = CreatePlayer("Alice", now);
 		var bob = CreatePlayer("Bob", now);
 
-		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, 200, now);
+		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, firstPlayerStack, now);
 		var bobGamePlayer = CreateGamePlayer(game, bob, 1, 200, now);
 
 		context.GameTypes.Add(gameType);

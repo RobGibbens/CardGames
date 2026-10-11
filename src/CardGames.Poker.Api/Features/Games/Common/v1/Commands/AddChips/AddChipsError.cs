@@ -28,7 +28,12 @@ public enum AddChipsErrorCode
 	/// <summary>
 	///     Cannot add chips because tournament tables do not allow rebuys.
 	/// </summary>
-	TournamentRebuyNotAllowed
+	TournamentRebuyNotAllowed,
+
+	/// <summary>
+	///     The caller is not this player and is not the table host.
+	/// </summary>
+	NotAuthorized
 }
 
 /// <summary>

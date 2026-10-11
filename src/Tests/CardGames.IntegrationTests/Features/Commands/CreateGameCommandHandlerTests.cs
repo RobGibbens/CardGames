@@ -101,6 +101,83 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task Handle_SevenCardStud_PersistsDerivedBringInStakes()
+	{
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.SevenCardStudCode,
+			"Stud Table",
+			5,
+			10,
+			new List<PlayerInfo>
+			{
+				new("Player1", 1000),
+				new("Player2", 1000)
+			});
+
+		var result = await Mediator.Send(command);
+
+		result.IsT0.Should().BeTrue();
+		var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+		game.BringIn.Should().Be(5);
+		game.SmallBet.Should().Be(10);
+		game.BigBet.Should().Be(20);
+	}
+
+	[Fact]
+	public async Task Handle_GoodBadUgly_PersistsStreetBetsWithoutBringIn()
+	{
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.GoodBadUglyCode,
+			"GBU Table",
+			5,
+			10,
+			new List<PlayerInfo>
+			{
+				new("Player1", 1000),
+				new("Player2", 1000)
+			});
+
+		var result = await Mediator.Send(command);
+
+		result.IsT0.Should().BeTrue();
+		var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+		game.BringIn.Should().BeNull();
+		game.SmallBet.Should().Be(10);
+		game.BigBet.Should().Be(20);
+	}
+
+	[Fact]
+	public async Task Handle_HoldEm_DoesNotPersistStudStakes()
+	{
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			PokerGameMetadataRegistry.HoldEmCode,
+			"HoldEm Table",
+			0,
+			10,
+			new List<PlayerInfo>
+			{
+				new("Player1", 1000),
+				new("Player2", 1000)
+			},
+			SmallBlind: 5,
+			BigBlind: 10);
+
+		var result = await Mediator.Send(command);
+
+		result.IsT0.Should().BeTrue();
+		var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+		game.BringIn.Should().BeNull();
+		game.SmallBet.Should().BeNull();
+		game.BigBet.Should().BeNull();
+	}
+
+	[Fact]
 	public async Task Handle_WithMaxBuyIn_PersistsMaxBuyIn()
 	{
 		// Arrange

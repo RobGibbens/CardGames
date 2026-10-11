@@ -1,5 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
@@ -257,6 +259,8 @@ public class DealHandsCommandHandler(
 
 		if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 		{
+			await StudGameStakesNormalizer.EnsureLegacyBringInAsync(context, game, cancellationToken);
+
 			// Third Street: bring-in player is lowest up card
 			firstActorSeatPosition = FindBringInPlayer(activePlayers, playerHands);
 
@@ -266,12 +270,8 @@ public class DealHandsCommandHandler(
 			{
 				var bringInPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == firstActorSeatPosition);
 				if (bringInPlayer is not null)
-				{
-					var actualBringIn = Math.Min(bringIn, bringInPlayer.ChipStack);
-					bringInPlayer.CurrentBet = actualBringIn;
-					bringInPlayer.ChipStack -= actualBringIn;
-					currentBet = actualBringIn;
-				}
+					currentBet = await StudBringInPosting.PostBringInForThirdStreetAsync(
+						context, game, bringInPlayer, bringIn, now, cancellationToken);
 			}
 		}
 		else

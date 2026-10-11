@@ -1,11 +1,15 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Baseball;
+using CardGames.Poker.Api.Features.Games.Common;
+using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBuyCard;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.Baseball;
 using CardGames.Poker.Games.GameFlow;
 using Microsoft.EntityFrameworkCore;
+using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.GameFlow;
@@ -226,23 +230,12 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		var bringInSeatPosition = bringInPlayer?.SeatPosition ??
 		                          playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
 
+		await StudGameStakesNormalizer.EnsureLegacyBringInAsync(context, game, cancellationToken);
 		var bringIn = game.BringIn ?? 0;
 		var currentBet = 0;
 		if (bringIn > 0 && bringInPlayer is not null)
-		{
-			var actualBringIn = Math.Min(bringIn, bringInPlayer.ChipStack);
-			bringInPlayer.CurrentBet = actualBringIn;
-			bringInPlayer.ChipStack -= actualBringIn;
-			bringInPlayer.TotalContributedThisHand += actualBringIn;
-			currentBet = actualBringIn;
-
-			var pot = await context.Pots
-				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-				                          p.HandNumber == game.CurrentHandNumber &&
-				                          p.PotType == PotType.Main,
-					cancellationToken);
-			if (pot is not null) pot.Amount += actualBringIn;
-		}
+			currentBet = await StudBringInPosting.PostBringInForThirdStreetAsync(
+				context, game, bringInPlayer, bringIn, now, cancellationToken);
 
 		var minBet = game.SmallBet ?? game.MinBet ?? 0;
 		var bettingRound = new BettingRound
@@ -303,6 +296,26 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		}
 
 		await base.PerformAutoActionAsync(context);
+	}
+
+	/// <summary>
+	///     Sends the Baseball betting command so street timer expiry does not use Five Card Draw.
+	/// </summary>
+	protected override async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action,
+		int amount = 0)
+	{
+		var command = new ProcessBettingActionCommand(context.GameId, action, amount);
+
+		try
+		{
+			await context.Mediator.Send(command, context.CancellationToken);
+		}
+		catch (Exception ex)
+		{
+			context.Logger.LogError(ex,
+				"Error performing auto-betting action for Baseball game {GameId}",
+				context.GameId);
+		}
 	}
 
 	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)

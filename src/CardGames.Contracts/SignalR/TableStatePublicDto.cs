@@ -415,6 +415,12 @@ public sealed record ShowdownPublicDto
 	///     Bob Barker-specific showdown details, including the dealer card and showcase winners.
 	/// </summary>
 	public BobBarkerShowdownStateDto? BobBarker { get; init; }
+
+	/// <summary>
+	///     True when the pot was awarded because every other player folded.
+	///     Hidden hole cards are omitted from <see cref="PlayerResults" /> in that case.
+	/// </summary>
+	public bool WonByFold { get; init; }
 }
 
 /// <summary>

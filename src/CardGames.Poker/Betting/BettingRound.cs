@@ -136,6 +136,10 @@ public class BettingRound
 			BettingActionType.Call when !available.CanCall && !available.CanAllIn =>
 				"Cannot call - no bet to match or insufficient chips",
 			BettingActionType.Raise when !available.CanRaise => "Cannot raise - raising is not available",
+			BettingActionType.Raise when amount > player.ChipStack + player.CurrentBet =>
+				$"Cannot raise more than your stack ({player.ChipStack})",
+			BettingActionType.Raise when amount <= CurrentBet =>
+				$"Cannot raise to {amount} - must raise above the current bet of {CurrentBet}",
 			BettingActionType.Raise when amount < available.MinRaise && amount < player.ChipStack + player.CurrentBet =>
 				$"Raise must be to at least {available.MinRaise}",
 			BettingActionType.Fold when !available.CanFold && available.CanCheck => "Cannot fold when you can check",

@@ -207,31 +207,27 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	protected virtual async Task PerformAutoBettingActionAsync(AutoActionContext context)
 	{
 		var gameId = context.GameId;
-		var playerSeatIndex = context.PlayerSeatIndex;
 		var cancellationToken = context.CancellationToken;
 
-		// Get the player's current bet
-		// We can't rely on context.Game.GamePlayers being fully loaded/up-to-date depending on how context was created, 
-		// but AutoActionService passed the game with GameType included. 
-		// Let's assume we need to check current round state carefully.
-		// The implementation in AutoActionService loaded GamePlayers again to be sure? 
-		// No, it used context.Game.GamePlayers if available?
-		// AutoActionService loaded: 
-		// var game = await context.Games.Include(g => g.GameType)...
-		// var gamePlayer = await context.GamePlayers...
+		var round = await AutoActionSeatResolver.FindActiveBettingRoundAsync(
+			context.DbContext, gameId, context.Game.CurrentHandNumber, cancellationToken);
 
-		// We should query DB to be safe as this runs in a fresh scope/timer
-		var gamePlayer = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == playerSeatIndex);
-		if (gamePlayer is null)
-			// If the collection wasn't loaded or player missing, try to fetch
-			gamePlayer = await context.DbContext.GamePlayers
-				.AsNoTracking()
-				.FirstOrDefaultAsync(gp => gp.GameId == gameId && gp.SeatPosition == playerSeatIndex,
-					cancellationToken);
+		if (round is not null && context.PlayerSeatIndex != round.CurrentActorIndex)
+		{
+			context.Logger.LogWarning(
+				"Skipping auto-betting action for game {GameId}: timer seat {TimerSeat} but current actor is {ActorSeat}",
+				gameId, context.PlayerSeatIndex, round.CurrentActorIndex);
+			return;
+		}
+
+		var actorSeat = round?.CurrentActorIndex ?? context.PlayerSeatIndex;
+		var gamePlayer = await context.DbContext.GamePlayers
+			.AsNoTracking()
+			.FirstOrDefaultAsync(gp => gp.GameId == gameId && gp.SeatPosition == actorSeat, cancellationToken);
 
 		if (gamePlayer is null) return;
 
-		// Calculate if can check
+		// Calculate if can check from the actor who will receive the command.
 		var currentBetInRound = await context.DbContext.GamePlayers
 			.Where(gp => gp.GameId == gameId && gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
 			.Select(gp => gp.CurrentBet)
@@ -273,6 +269,20 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	/// </summary>
 	protected virtual async Task PerformAutoDrawActionAsync(AutoActionContext context)
 	{
+		var drawSeat = await context.DbContext.Games
+			.AsNoTracking()
+			.Where(g => g.Id == context.GameId)
+			.Select(g => (int?)g.CurrentDrawPlayerIndex)
+			.FirstOrDefaultAsync(context.CancellationToken);
+
+		if (drawSeat is null || context.PlayerSeatIndex != drawSeat.Value)
+		{
+			context.Logger.LogWarning(
+				"Skipping auto-draw for game {GameId}: timer seat {TimerSeat} but current draw player is {ActorSeat}",
+				context.GameId, context.PlayerSeatIndex, drawSeat);
+			return;
+		}
+
 		context.Logger.LogInformation("Performing auto-draw action (stand pat) for game {GameId}", context.GameId);
 		await SendDrawActionAsync(context);
 	}
@@ -568,6 +578,11 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 		player.ChipStack -= actualAmount;
 		player.CurrentBet += actualAmount;
 		player.TotalContributedThisHand += actualAmount;
+
+		// A short blind that empties the stack is an all-in, same as posting an ante with the last chips.
+		// A zero post (nothing left to put in) does not mark the player all-in.
+		if (actualAmount > 0 && player.ChipStack == 0 && !player.HasFolded)
+			player.IsAllIn = true;
 
 		var pot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&

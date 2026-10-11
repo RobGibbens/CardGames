@@ -1,3 +1,4 @@
+using CardGames.Poker.Api.Games;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.IntegrationTests.Infrastructure;
@@ -41,6 +42,9 @@ public static class DatabaseSeeder
 			UpdatedAt = DateTimeOffset.UtcNow,
 			RowVersion = Guid.NewGuid().ToByteArray()[..8]
 		};
+
+		if (PokerGameRulesRegistry.TryGet(gameTypeCode, out var rules) && rules is not null)
+			StudGameStakesNormalizer.ApplyToGame(game, rules, ante ?? 0, minBet ?? 0);
 
 		context.Games.Add(game);
 		await context.SaveChangesAsync(cancellationToken);

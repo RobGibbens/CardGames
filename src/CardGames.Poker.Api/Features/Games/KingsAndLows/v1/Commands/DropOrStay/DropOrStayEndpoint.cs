@@ -1,4 +1,6 @@
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
@@ -8,10 +10,13 @@ public static class DropOrStayEndpoint
 	public static RouteGroupBuilder MapDropOrStay(this RouteGroupBuilder group)
 	{
 		group.MapPost("/{gameId:guid}/drop-or-stay",
-				async (Guid gameId, DropOrStayRequest request, IMediator mediator,
+				async (Guid gameId, DropOrStayRequest request, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					var command = new DropOrStayCommand(gameId, request.PlayerId, request.Decision);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new DropOrStayCommand(gameId, seated.PlayerId, request.Decision);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
@@ -38,4 +43,4 @@ public static class DropOrStayEndpoint
 /// <summary>
 ///     Request body for drop or stay decision.
 /// </summary>
-public record DropOrStayRequest(Guid PlayerId, string Decision);
+public record DropOrStayRequest(string Decision);

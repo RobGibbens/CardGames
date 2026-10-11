@@ -5,4 +5,4 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.PairPressure.v1.Commands.StartHand;
 
 public record StartHandCommand(Guid GameId)
-	: IRequest<OneOf<StartHandSuccessful, StartHandError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<StartHandSuccessful, StartHandError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

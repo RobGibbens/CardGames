@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CardGames.Poker.Api.Betting;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
@@ -179,7 +180,9 @@ public class ProcessBettingActionCommandHandler(
 		string? nextPlayerName = null;
 
 		nextPlayerIndex = FindNextActivePlayer(activePlayers, bettingRound.CurrentActorIndex);
-		roundComplete = IsRoundComplete(activePlayers, bettingRound, nextPlayerIndex);
+		var actedPlayerIds = BettingRoundCompletion.ActedPlayerIds(bettingRound, currentPlayer.Id);
+		roundComplete = BettingRoundCompletion.IsRoundComplete(
+			activePlayers, bettingRound, nextPlayerIndex, actedPlayerIds);
 
 		if (roundComplete)
 		{
@@ -192,17 +195,53 @@ public class ProcessBettingActionCommandHandler(
 
 			if (allPlayersAllIn)
 			{
+				var closedPhase = game.CurrentPhase;
+				var discardDecision =
+					await TryEnterOwedDiscardPhaseAsync(game, activePlayers, now, cancellationToken);
+				if (discardDecision.IsT1)
+					return discardDecision.AsT1;
+
+				if (discardDecision.AsT0)
+				{
+					logger.LogInformation(
+						"Fewer than two players can bet after {Phase} for game {GameId}. Entering DrawPhase before the remaining board is dealt.",
+						closedPhase, game.Id);
+
+					game.UpdatedAt = now;
+					await context.SaveChangesAsync(cancellationToken);
+					if (playerWentAllIn)
+					{
+						telemetry?.RecordPlayerEvent(GameEventsTelemetry.ResolveGameType(game),
+							GameEventsTelemetry.ResolveTableKind(game), "all_in");
+					}
+
+					var nextDrawPlayer =
+						activePlayers.FirstOrDefault(p => p.SeatPosition == game.CurrentDrawPlayerIndex);
+					return new ProcessBettingActionSuccessful
+					{
+						GameId = game.Id,
+						RoundComplete = true,
+						CurrentPhase = game.CurrentPhase,
+						Action = new BettingActionResult
+						{
+							PlayerName = currentPlayer.Player.Name,
+							ActionType = actionType,
+							Amount = actualAmount,
+							ChipStackAfter = currentPlayer.ChipStack
+						},
+						PlayerSeatIndex = currentPlayer.SeatPosition,
+						NextPlayerIndex = game.CurrentDrawPlayerIndex,
+						NextPlayerName = nextDrawPlayer?.Player.Name,
+						PotTotal = game.Pots.Sum(p => p.Amount),
+						CurrentBet = bettingRound.CurrentBet
+					};
+				}
+
 				logger.LogInformation(
 					"All players are all-in after {Phase} for game {GameId}. Dealing remaining community cards and proceeding to showdown.",
-					game.CurrentPhase, game.Id);
+					closedPhase, game.Id);
 
-				// Deal all remaining community cards and go to showdown
 				await DealRemainingCommunityCardsAsync(game, game.CurrentPhase, now, cancellationToken);
-
-				// Safety check: ensure Red River bonus-card rule is applied on all-in runouts at River.
-				if (IsRedRiverGame(game) &&
-				    string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
-					await DealRedRiverBonusCommunityCardIfNeededAsync(game, now, cancellationToken);
 
 				game.UpdatedAt = now;
 				await context.SaveChangesAsync(cancellationToken);
@@ -436,9 +475,12 @@ public class ProcessBettingActionCommandHandler(
 				"Cannot call - no bet to match",
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
-			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount
-			                             && amount < player.ChipStack + player.CurrentBet =>
-				$"Raise must be to at least {bettingRound.CurrentBet + bettingRound.LastRaiseAmount}",
+			BettingActionType.Raise => BettingActionMath.ValidateRaise(
+				amount,
+				bettingRound.CurrentBet,
+				bettingRound.LastRaiseAmount,
+				player.CurrentBet,
+				player.ChipStack),
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
 				"Cannot fold when you can check",
 			BettingActionType.AllIn when player.ChipStack == 0 =>
@@ -505,11 +547,14 @@ public class ProcessBettingActionCommandHandler(
 				break;
 
 			case BettingActionType.Raise:
-				var raiseTotal = amount;
-				var raiseChips = raiseTotal - player.CurrentBet;
+				var streetBet = bettingRound.CurrentBet;
+				var (raiseTotal, raiseChips, raiseIncrement) = BettingActionMath.ComputeRaise(
+					amount,
+					streetBet,
+					player.CurrentBet,
+					player.ChipStack);
 				actualAmount = raiseTotal;
 				chipsMoved = raiseChips;
-				var raiseIncrement = raiseTotal - bettingRound.CurrentBet;
 				player.ChipStack -= raiseChips;
 				player.CurrentBet = raiseTotal;
 				player.TotalContributedThisHand += raiseChips;
@@ -592,34 +637,28 @@ public class ProcessBettingActionCommandHandler(
 		return -1;
 	}
 
+	/// <summary>
+	///     First seat still in the hand, left of the dealer. All-in seats still discard.
+	/// </summary>
+	private static int FindFirstPlayerInHandAfterDealer(Game game, List<GamePlayer> activePlayers)
+	{
+		var totalPlayers = activePlayers.Max(p => p.SeatPosition) + 1;
+		var searchIndex = (game.DealerPosition + 1) % totalPlayers;
+
+		for (var i = 0; i < totalPlayers; i++)
+		{
+			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
+			if (player is not null && !player.HasFolded) return searchIndex;
+
+			searchIndex = (searchIndex + 1) % totalPlayers;
+		}
+
+		return -1;
+	}
+
 	#endregion
 
 	#region Round Completion
-
-	private bool IsRoundComplete(List<GamePlayer> activePlayers, BettingRound bettingRound, int nextPlayerIndex)
-	{
-		// Round is complete if only one player remains
-		var playersInHand = activePlayers.Count(p => !p.HasFolded);
-		if (playersInHand <= 1) return true;
-
-		// Round is complete if all non-folded, non-all-in players have matched the current bet
-		var playersWhoCanAct = activePlayers.Where(p => !p.HasFolded && !p.IsAllIn).ToList();
-
-		// If no players can act (all are all-in or folded), round is complete
-		if (playersWhoCanAct.Count == 0) return true;
-
-		// Check if all players have matched the current bet and have had a chance to act
-		var allMatched = playersWhoCanAct.All(p => p.CurrentBet == bettingRound.CurrentBet);
-
-		// If there's a last aggressor, we need to complete the round back to them
-		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex &&
-		    allMatched) return true;
-
-		// If everyone has acted at least once and all bets are matched
-		if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched) return true;
-
-		return false;
-	}
 
 	private static bool AreAllPlayersAllIn(List<GamePlayer> activePlayers)
 	{
@@ -725,6 +764,127 @@ public class ProcessBettingActionCommandHandler(
 	#endregion
 
 	#region Community Card Dealing
+
+	/// <summary>
+	///     Irish, Phil's Mom, and Crazy Pineapple still owe a discard when fewer than two players can bet.
+	///     Returns true when DrawPhase is set, false when the caller should run the board out, or an error to stop.
+	/// </summary>
+	private async Task<OneOf<bool, ProcessBettingActionError>> TryEnterOwedDiscardPhaseAsync(
+		Game game,
+		List<GamePlayer> activePlayers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
+		var isIrish = string.Equals(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode,
+			StringComparison.OrdinalIgnoreCase);
+		var isPhilsMom = string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode,
+			StringComparison.OrdinalIgnoreCase);
+		var isCrazyPineapple = string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode,
+			StringComparison.OrdinalIgnoreCase);
+		if (!isIrish && !isPhilsMom && !isCrazyPineapple)
+			return false;
+
+		var holeCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Hand
+			             && gc.GamePlayerId != null
+			             && !gc.IsDiscarded)
+			.Select(gc => new { gc.GamePlayerId, gc.Id })
+			.ToListAsync(cancellationToken);
+
+		var countByPlayer = holeCards
+			.GroupBy(card => card.GamePlayerId!.Value)
+			.ToDictionary(group => group.Key, group => group.Count());
+
+		var seatCounts = activePlayers
+			.Where(player => !player.HasFolded)
+			.Select(player => (Seat: player.SeatPosition, Count: countByPlayer.GetValueOrDefault(player.Id)))
+			.OrderBy(seat => seat.Seat)
+			.ToList();
+
+		if (seatCounts.Count == 0 || seatCounts.Select(seat => seat.Count).Distinct().Count() != 1)
+			return InvalidHoleCardState(gameTypeCode, seatCounts);
+
+		var holeCount = seatCounts[0].Count;
+		if (holeCount == 2)
+			return false;
+
+		var owesDiscard = (isIrish && holeCount == 4)
+		                  || (isCrazyPineapple && holeCount == 3)
+		                  || (isPhilsMom && holeCount is 4 or 3);
+		if (!owesDiscard)
+			return InvalidHoleCardState(gameTypeCode, seatCounts);
+
+		var communityCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Community)
+			.ToListAsync(cancellationToken);
+		var flopCount = communityCards.Count(card => card.DealtAtPhase == "Flop");
+
+		if (isPhilsMom && holeCount == 4)
+		{
+			if (communityCards.Count != 0)
+				return InvalidCommunityState(gameTypeCode, communityCards.Count, flopCount);
+		}
+		else if (flopCount == 0)
+		{
+			if (communityCards.Count != 0)
+				return InvalidCommunityState(gameTypeCode, communityCards.Count, flopCount);
+
+			await DealCommunityCardsForPhaseAsync(game, "Flop", now, cancellationToken);
+		}
+		else if (flopCount != 3 || communityCards.Count != 3)
+		{
+			return InvalidCommunityState(gameTypeCode, communityCards.Count, flopCount);
+		}
+
+		foreach (var player in activePlayers)
+			player.HasDrawnThisRound = false;
+
+		var firstDrawPlayerIndex = FindFirstPlayerInHandAfterDealer(game, activePlayers);
+		if (firstDrawPlayerIndex < 0)
+			return new ProcessBettingActionError
+			{
+				Code = ProcessBettingActionErrorCode.InvalidGameState,
+				Message = $"Cannot enter discard for '{gameTypeCode}': no player remains in the hand."
+			};
+
+		game.CurrentPhase = "DrawPhase";
+		game.CurrentDrawPlayerIndex = firstDrawPlayerIndex;
+		game.CurrentPlayerIndex = firstDrawPlayerIndex;
+		return true;
+	}
+
+	private static ProcessBettingActionError InvalidHoleCardState(
+		string? gameTypeCode,
+		IReadOnlyList<(int Seat, int Count)> seatCounts)
+	{
+		var details = seatCounts.Count == 0
+			? "no non-folded seats"
+			: string.Join(", ", seatCounts.Select(seat => $"seat {seat.Seat} has {seat.Count}"));
+
+		return new ProcessBettingActionError
+		{
+			Code = ProcessBettingActionErrorCode.InvalidGameState,
+			Message = $"Invalid hole-card counts for '{gameTypeCode}': {details}."
+		};
+	}
+
+	private static ProcessBettingActionError InvalidCommunityState(
+		string? gameTypeCode,
+		int communityCount,
+		int flopCount)
+	{
+		return new ProcessBettingActionError
+		{
+			Code = ProcessBettingActionErrorCode.InvalidGameState,
+			Message =
+				$"Invalid community cards for '{gameTypeCode}' before discard: {communityCount} community, {flopCount} flop."
+		};
+	}
 
 	/// <summary>
 	///     Deals community cards for the specified phase (Flop = 3 cards, Turn = 1 card, River = 1 card).
@@ -914,15 +1074,24 @@ public class ProcessBettingActionCommandHandler(
 
 		if (riverCard.Suit is not CardSuit.Hearts and not CardSuit.Diamonds) return false;
 
-		var hasBonusCard = await context.GameCards
-			.AsNoTracking()
-			.AnyAsync(
-				gc => gc.GameId == game.Id
-				      && gc.HandNumber == game.CurrentHandNumber
-				      && gc.Location == CardLocation.Community
-				      && !gc.IsDiscarded
-				      && gc.DealtAtPhase == "RedRiverBonus",
-				cancellationToken);
+		var hasBonusCard = context.GameCards.Local.Any(gc =>
+			gc.GameId == game.Id
+			&& gc.HandNumber == game.CurrentHandNumber
+			&& gc.Location == CardLocation.Community
+			&& !gc.IsDiscarded
+			&& gc.DealtAtPhase == "RedRiverBonus"
+			&& context.Entry(gc).State != EntityState.Deleted);
+
+		if (!hasBonusCard)
+			hasBonusCard = await context.GameCards
+				.AsNoTracking()
+				.AnyAsync(
+					gc => gc.GameId == game.Id
+					      && gc.HandNumber == game.CurrentHandNumber
+					      && gc.Location == CardLocation.Community
+					      && !gc.IsDiscarded
+					      && gc.DealtAtPhase == "RedRiverBonus",
+					cancellationToken);
 
 		if (hasBonusCard) return false;
 

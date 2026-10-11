@@ -58,10 +58,39 @@ public sealed class AutoActionService : IAutoActionService
 		var gameTypeCode = game.GameType?.Code;
 
 		var handler = handlerFactory.GetHandler(gameTypeCode);
+		var target = await AutoActionSeatResolver.ResolveAsync(
+			context, game, handler.GetGameRules(), cancellationToken);
+
+		if (target.Kind == AutoActionTargetKind.None)
+		{
+			_logger.LogInformation(
+				"Skipping auto-action for game {GameId}: phase {Phase} requires no actor",
+				gameId, currentPhase);
+			return;
+		}
+
+		if (target.Kind != AutoActionTargetKind.Simultaneous
+		    && playerSeatIndex >= 0
+		    && playerSeatIndex != target.SeatIndex)
+		{
+			_logger.LogWarning(
+				"Skipping stale auto-action for game {GameId}: timer seat {TimerSeat} but current actor is {ActorSeat} (phase {Phase})",
+				gameId, playerSeatIndex, target.SeatIndex, currentPhase);
+			return;
+		}
+
+		if (target.UsedCurrentPlayerIndexFallback)
+		{
+			_logger.LogWarning(
+				"No active betting round for game {GameId} in phase {Phase}; using CurrentPlayerIndex {ActorSeat}",
+				gameId, currentPhase, target.SeatIndex);
+		}
+
+		var effectiveSeat = target.Kind == AutoActionTargetKind.Simultaneous ? -1 : target.SeatIndex;
 
 		_logger.LogDebug(
-			"Auto-action context: GameId={GameId}, Phase={Phase}, GameType={GameType}",
-			gameId, currentPhase, gameTypeCode);
+			"Auto-action context: GameId={GameId}, Phase={Phase}, GameType={GameType}, Seat={SeatIndex}",
+			gameId, currentPhase, gameTypeCode, effectiveSeat);
 
 		_telemetry?.RecordPlayerEvent(GameEventsTelemetry.ResolveGameType(game),
 			GameEventsTelemetry.ResolveTableKind(game),
@@ -69,7 +98,7 @@ public sealed class AutoActionService : IAutoActionService
 
 		var actionContext = new AutoActionContext(
 			gameId,
-			playerSeatIndex,
+			effectiveSeat,
 			currentPhase,
 			game,
 			context,

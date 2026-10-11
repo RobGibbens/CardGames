@@ -187,6 +187,93 @@ public class PhilsMomHandLifecycleTests : IntegrationTestBase
 			"flop-stage evaluation must consider community cards before the second discard");
 	}
 
+	[Fact]
+	public async Task ProcessBettingAction_PreFlopAllIn_DiscardsTwiceBeforeShowdown()
+	{
+		var setup = await CreateDealtPhilsMomGameAsync(2, 0);
+		var game = setup.Game;
+
+		await AllInUntilPhaseChanges(game.Id);
+
+		var atFirstDraw = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atFirstDraw.CurrentPhase.Should().Be("DrawPhase");
+		(await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber)).Should().BeEmpty();
+		(await GetNonDiscardedHoleCardsAsync(game.Id)).GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(4));
+
+		await DiscardOneCardForAllActivePlayers(game.Id);
+
+		var atSecondDraw = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atSecondDraw.CurrentPhase.Should().Be("DrawPhase");
+
+		var flop = await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber);
+		flop.Should().HaveCount(3);
+		flop.Should().AllSatisfy(card => card.DealtAtPhase.Should().Be("Flop"));
+		flop.Count(card => card.DealtAtPhase == "Turn").Should().Be(0);
+		flop.Count(card => card.DealtAtPhase == "River").Should().Be(0);
+
+		(await GetNonDiscardedHoleCardsAsync(game.Id)).GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(3));
+
+		var players = await GetFreshDbContext().GamePlayers
+			.Where(gp => gp.GameId == game.Id && !gp.HasFolded)
+			.ToListAsync();
+		players.Should().AllSatisfy(player => player.HasDrawnThisRound.Should().BeFalse());
+
+		await DiscardOneCardForAllActivePlayers(game.Id);
+
+		var atShowdown = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atShowdown.CurrentPhase.Should().Be("Showdown");
+		(await GetNonDiscardedHoleCardsAsync(game.Id)).GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(2));
+		(await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber)).Should().HaveCount(5);
+	}
+
+	[Fact]
+	public async Task ProcessBettingAction_FlopAllIn_RequiresSecondDiscardBeforeRunout()
+	{
+		var setup = await CreateDealtPhilsMomGameAsync(2, 0);
+		var game = setup.Game;
+
+		await CheckAllPlayersThrough(game.Id);
+		await DiscardOneCardForAllActivePlayers(game.Id);
+
+		var atFlop = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atFlop.CurrentPhase.Should().Be("Flop");
+		(await GetNonDiscardedHoleCardsAsync(game.Id)).GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(3));
+
+		await AllInUntilPhaseChanges(game.Id);
+
+		var atDraw = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atDraw.CurrentPhase.Should().Be("DrawPhase");
+		(await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber)).Should().HaveCount(3);
+		(await GetNonDiscardedHoleCardsAsync(game.Id)).GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(3));
+
+		await DiscardOneCardForAllActivePlayers(game.Id);
+
+		var atShowdown = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atShowdown.CurrentPhase.Should().Be("Showdown");
+		(await GetNonDiscardedHoleCardsAsync(game.Id)).GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(2));
+		(await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber)).Should().HaveCount(5);
+	}
+
+	private async Task AllInUntilPhaseChanges(Guid gameId)
+	{
+		var startingPhase = (await GetFreshDbContext().Games.FirstAsync(g => g.Id == gameId)).CurrentPhase;
+		for (var i = 0; i < 4; i++)
+		{
+			var current = await GetFreshDbContext().Games.FirstAsync(g => g.Id == gameId);
+			if (current.CurrentPhase != startingPhase)
+				return;
+
+			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.AllIn));
+			result.IsT0.Should().BeTrue($"all-in at iteration {i} should succeed");
+		}
+	}
+
 	private async Task<GameSetup> CreatePhilsMomGameSetupAsync(
 		int playerCount,
 		int dealerPosition,

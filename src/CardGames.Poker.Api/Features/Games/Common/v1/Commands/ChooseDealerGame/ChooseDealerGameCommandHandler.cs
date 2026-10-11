@@ -153,6 +153,9 @@ public class ChooseDealerGameCommandHandler(
 		game.Ante = command.Ante;
 		game.MinBet = command.MinBet;
 
+		if (PokerGameRulesRegistry.TryGet(command.GameTypeCode, out var rules) && rules is not null)
+			StudGameStakesNormalizer.ApplyToGame(game, rules, command.Ante, command.MinBet);
+
 		// Apply blind values for Hold 'Em (or other blind-based games)
 		if (command.SmallBlind.HasValue)
 			game.SmallBlind = command.SmallBlind.Value;

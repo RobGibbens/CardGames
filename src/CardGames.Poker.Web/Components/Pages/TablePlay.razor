@@ -2358,7 +2358,7 @@
 				highHandPayouts: highHandPayouts,
 				playerHands: playerHands,
 				sevensPayouts: sevensPayouts,
-				wonByFold: false,
+				wonByFold: showdown.WonByFold,
 				sevensWinners: sevensWinners);
 
 			if (!HasUsableShowdownResult(publicShowdownResult))
@@ -3728,7 +3728,7 @@
 			}
 			else if (IsRazz)
 			{
-				showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
+				showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
 			}
 			else if (IsGoodBadUgly)
 			{
@@ -3742,8 +3742,9 @@
 			{
 				showdownResponse = await KingsAndLowsApi.KingsAndLowsPerformShowdownAsync(GameId);
 			}
-			else if (IsHoldEm)
+			else if (IsHoldEm || IsRedRiver)
 			{
+				// Red River reuses the Hold'em showdown endpoint, matching its betting route.
 				showdownResponse = await HoldEmApi.HoldEmPerformShowdownAsync(GameId);
 			}
 			else if (IsHoldTheBaseball)
@@ -3775,6 +3776,10 @@
 			else if (IsFiveCardDraw)
 			{
 				showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
+			}
+			else if (IsFollowTheQueen)
+			{
+				showdownResponse = await FollowTheQueenApi.FollowTheQueenPerformShowdownAsync(GameId);
 			}
 			else
 			{

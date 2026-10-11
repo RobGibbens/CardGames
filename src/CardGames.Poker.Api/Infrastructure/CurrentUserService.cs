@@ -1,15 +1,20 @@
 using System.Security.Claims;
+using Microsoft.Extensions.Options;
 
 namespace CardGames.Poker.Api.Infrastructure;
 
 /// <summary>
 ///     Implementation of <see cref="ICurrentUserService" /> that retrieves user information
-///     from the current HTTP context's claims principal or custom headers from Blazor frontend.
+///     from the validated claims principal. Unsigned headers are read only when
+///     <see cref="InternalIdentityOptions.AllowUnsafeHeaders" /> is enabled.
 /// </summary>
-public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
+public class CurrentUserService(
+	IHttpContextAccessor httpContextAccessor,
+	IOptions<InternalIdentityOptions> identityOptions) : ICurrentUserService
 {
 	private ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
 	private HttpContext? HttpContext => httpContextAccessor.HttpContext;
+	private bool AllowUnsafeHeaders => identityOptions.Value.AllowUnsafeHeaders;
 
 	/// <inheritdoc />
 	public string? UserId
@@ -21,6 +26,9 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 			                  ?? User?.FindFirstValue("sub");
 
 			if (!string.IsNullOrWhiteSpace(claimUserId)) return claimUserId;
+
+			if (!AllowUnsafeHeaders)
+				return null;
 
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Id", out var headerUserId) == true)
 			{
@@ -44,6 +52,9 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 
 			if (!string.IsNullOrWhiteSpace(claimUserName)) return claimUserName;
 
+			if (!AllowUnsafeHeaders)
+				return null;
+
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Name", out var headerUserName) == true)
 			{
 				var value = headerUserName.ToString();
@@ -64,6 +75,9 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 
 			if (!string.IsNullOrWhiteSpace(claimEmail)) return claimEmail;
 
+			if (!AllowUnsafeHeaders)
+				return null;
+
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Email", out var headerEmail) == true)
 			{
 				var value = headerEmail.ToString();
@@ -80,6 +94,9 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 		get
 		{
 			if (User?.Identity?.IsAuthenticated == true) return true;
+
+			if (!AllowUnsafeHeaders)
+				return false;
 
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Authenticated", out var headerAuth) == true)
 				return string.Equals(headerAuth.ToString(), "true", StringComparison.OrdinalIgnoreCase);

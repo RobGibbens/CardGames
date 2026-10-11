@@ -9,7 +9,8 @@ namespace CardGames.Poker.Web.Infrastructure;
 /// </summary>
 public class AuthenticationStateHandler(
 	CircuitServicesAccessor circuitServicesAccessor,
-	IHttpContextAccessor httpContextAccessor) : DelegatingHandler
+	IHttpContextAccessor httpContextAccessor,
+	IConfiguration configuration) : DelegatingHandler
 {
 	protected override Task<HttpResponseMessage> SendAsync(
 		HttpRequestMessage request,
@@ -19,8 +20,17 @@ public class AuthenticationStateHandler(
 
 		if (user?.Identity is { IsAuthenticated: true })
 		{
-			// Add user identity claims as headers for the API to consume
-			// Support both local Identity and external providers (Google, etc.)
+			var token = HubConnectionIdentity.Issue(configuration, user);
+			if (!string.IsNullOrWhiteSpace(token))
+			{
+				request.Headers.TryAddWithoutValidation("X-Internal-User-Token", token);
+				return base.SendAsync(request, cancellationToken);
+			}
+
+			if (!HubConnectionIdentity.AllowUnsafeHeaders(configuration))
+				return base.SendAsync(request, cancellationToken);
+
+			// Development-only fallback when no signing key is configured.
 			var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
 			             ?? user.FindFirstValue("sub");
 

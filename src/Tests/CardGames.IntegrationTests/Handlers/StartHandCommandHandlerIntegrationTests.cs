@@ -421,6 +421,8 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 
 		players[1].CurrentBet.Should().Be(5);
 		players[2].CurrentBet.Should().Be(10);
+		players[1].IsAllIn.Should().BeFalse("a full small blind does not empty the stack");
+		players[2].IsAllIn.Should().BeFalse("a full big blind does not empty the stack");
 
 		var dealtCards = await freshContext.GameCards
 			.Where(gc => gc.GameId == setup.Game.Id &&
@@ -431,6 +433,85 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 		dealtCards.Should().HaveCount(2 * setup.GamePlayers.Count);
 
 		foreach (var player in setup.GamePlayers) dealtCards.Count(c => c.GamePlayerId == player.Id).Should().Be(2);
+	}
+
+	[Fact]
+	public async Task Handle_HoldEm_ShortSmallBlind_MarksSmallBlindAllIn()
+	{
+		// Arrange — dealer 0, SB seat 1, BB seat 2, UTG seat 3
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "HOLDEM", 4, 1000, 0);
+		setup.Game.SmallBlind = 5;
+		setup.Game.BigBlind = 10;
+		setup.Game.DealerPosition = 0;
+		setup.GamePlayers.Single(p => p.SeatPosition == 1).ChipStack = 3;
+		await DbContext.SaveChangesAsync();
+
+		// Act
+		var result = await Mediator.Send(new StartHandCommand(setup.Game.Id));
+
+		// Assert
+		result.IsT0.Should().BeTrue();
+		result.AsT0.CurrentPhase.Should().Be("PreFlop");
+
+		var freshContext = GetFreshDbContext();
+		var game = await freshContext.Games.FirstAsync(g => g.Id == setup.Game.Id);
+		game.CurrentPhase.Should().Be("PreFlop");
+		game.CurrentPlayerIndex.Should().Be(3, "action starts at UTG, not the short small blind");
+
+		var players = await freshContext.GamePlayers
+			.Where(gp => gp.GameId == setup.Game.Id)
+			.OrderBy(gp => gp.SeatPosition)
+			.ToListAsync();
+
+		players[1].ChipStack.Should().Be(0);
+		players[1].CurrentBet.Should().Be(3);
+		players[1].IsAllIn.Should().BeTrue();
+		players[2].ChipStack.Should().Be(990);
+		players[2].CurrentBet.Should().Be(10);
+		players[2].IsAllIn.Should().BeFalse();
+
+		var mainPot = await freshContext.Pots
+			.SingleAsync(p => p.GameId == setup.Game.Id && p.HandNumber == 1 && p.PotType == PotType.Main);
+		mainPot.Amount.Should().Be(13);
+	}
+
+	[Fact]
+	public async Task Handle_HoldEm_ShortBigBlind_MarksBigBlindAllIn()
+	{
+		// Arrange — dealer 0, SB seat 1, BB seat 2
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "HOLDEM", 4, 1000, 0);
+		setup.Game.SmallBlind = 5;
+		setup.Game.BigBlind = 10;
+		setup.Game.DealerPosition = 0;
+		setup.GamePlayers.Single(p => p.SeatPosition == 2).ChipStack = 7;
+		await DbContext.SaveChangesAsync();
+
+		// Act
+		var result = await Mediator.Send(new StartHandCommand(setup.Game.Id));
+
+		// Assert
+		result.IsT0.Should().BeTrue();
+		result.AsT0.CurrentPhase.Should().Be("PreFlop");
+
+		var freshContext = GetFreshDbContext();
+		var game = await freshContext.Games.FirstAsync(g => g.Id == setup.Game.Id);
+		game.CurrentPlayerIndex.Should().Be(3, "action starts under the gun after a short big blind");
+
+		var players = await freshContext.GamePlayers
+			.Where(gp => gp.GameId == setup.Game.Id)
+			.OrderBy(gp => gp.SeatPosition)
+			.ToListAsync();
+
+		players[1].ChipStack.Should().Be(995);
+		players[1].CurrentBet.Should().Be(5);
+		players[1].IsAllIn.Should().BeFalse();
+		players[2].ChipStack.Should().Be(0);
+		players[2].CurrentBet.Should().Be(7);
+		players[2].IsAllIn.Should().BeTrue();
+
+		var mainPot = await freshContext.Pots
+			.SingleAsync(p => p.GameId == setup.Game.Id && p.HandNumber == 1 && p.PotType == PotType.Main);
+		mainPot.Amount.Should().Be(12);
 	}
 
 	[Fact]

@@ -17,20 +17,27 @@ public sealed class HeaderAuthenticationHandler : AuthenticationHandler<Authenti
 	/// </summary>
 	public const string SchemeName = "HeaderAuth";
 
+	private readonly InternalIdentityOptions _identityOptions;
+
 	/// <summary>
 	///     Initializes a new instance of the <see cref="HeaderAuthenticationHandler" /> class.
 	/// </summary>
 	public HeaderAuthenticationHandler(
 		IOptionsMonitor<AuthenticationSchemeOptions> options,
 		ILoggerFactory logger,
-		UrlEncoder encoder)
+		UrlEncoder encoder,
+		IOptions<InternalIdentityOptions> identityOptions)
 		: base(options, logger, encoder)
 	{
+		_identityOptions = identityOptions.Value;
 	}
 
 	/// <inheritdoc />
 	protected override Task<AuthenticateResult> HandleAuthenticateAsync()
 	{
+		if (!_identityOptions.AllowUnsafeHeaders)
+			return Task.FromResult(AuthenticateResult.NoResult());
+
 		// Check for custom headers from Blazor frontend
 		var hasUserId = Request.Headers.TryGetValue("X-User-Id", out var userIdValue);
 		var hasUserName = Request.Headers.TryGetValue("X-User-Name", out var userNameValue);

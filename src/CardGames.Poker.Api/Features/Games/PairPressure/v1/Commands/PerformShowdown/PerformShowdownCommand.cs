@@ -9,4 +9,4 @@ using SharedPerformShowdownSuccessful =
 namespace CardGames.Poker.Api.Features.Games.PairPressure.v1.Commands.PerformShowdown;
 
 public record PerformShowdownCommand(Guid GameId)
-	: IRequest<OneOf<SharedPerformShowdownSuccessful, SharedPerformShowdownError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<SharedPerformShowdownSuccessful, SharedPerformShowdownError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

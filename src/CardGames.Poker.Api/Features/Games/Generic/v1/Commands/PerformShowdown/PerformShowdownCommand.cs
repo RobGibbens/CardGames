@@ -16,4 +16,4 @@ namespace CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown
 ///     to get the appropriate hand evaluator for each game type.
 /// </remarks>
 public record PerformShowdownCommand(Guid GameId)
-	: IRequest<OneOf<PerformShowdownSuccessful, PerformShowdownError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<PerformShowdownSuccessful, PerformShowdownError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

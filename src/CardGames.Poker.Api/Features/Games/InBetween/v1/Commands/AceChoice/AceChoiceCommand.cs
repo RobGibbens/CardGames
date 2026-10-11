@@ -13,4 +13,4 @@ namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.AceChoice;
 public record AceChoiceCommand(
 	Guid GameId,
 	Guid PlayerId,
-	bool AceIsHigh) : IRequest<OneOf<AceChoiceSuccessful, AceChoiceError>>, IGameStateChangingCommand;
+	bool AceIsHigh) : IRequest<OneOf<AceChoiceSuccessful, AceChoiceError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

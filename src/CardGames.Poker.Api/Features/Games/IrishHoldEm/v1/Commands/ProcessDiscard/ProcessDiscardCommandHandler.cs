@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
@@ -205,13 +206,19 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 
 		if (discardComplete)
 		{
+			// Return before SaveChangesAsync when the advance fails. The discard is only in the
+			// change tracker; not saving drops it so a short deck does not persist a partial runout.
+			ProcessDiscardError? advanceError;
 			if (isCrazyPineapple)
-				await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken, false);
+				advanceError = await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken, false);
 			else if (isPhilsMom && drawRound == 1)
-				await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken);
+				advanceError = await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken);
 			else
 				// Irish Hold 'Em and Phil's Mom second discard both advance to Turn.
-				await StartTurnPhaseAsync(game, activePlayers, now, cancellationToken);
+				advanceError = await StartTurnPhaseAsync(game, activePlayers, now, cancellationToken);
+
+			if (advanceError is not null)
+				return advanceError;
 		}
 		else
 		{
@@ -270,7 +277,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		};
 	}
 
-	private async Task StartFlopPhaseAsync(
+	private async Task<ProcessDiscardError?> StartFlopPhaseAsync(
 		Game game,
 		List<GamePlayer> activePlayers,
 		DateTimeOffset now,
@@ -279,19 +286,53 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 	{
 		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
-		var firstActorIndex = FindFirstActivePlayerAfterDealerForBetting(game, activePlayers);
-
-		if (firstActorIndex < 0)
+		// Fewer than two players who can bet means deal the streets this method owes, or open Phil's Mom's second discard; do not skip the deal.
+		if (dealFlopCards)
 		{
-			game.CurrentPhase = nameof(Phases.Showdown);
-			game.CurrentPlayerIndex = -1;
-			game.CurrentDrawPlayerIndex = -1;
-			return;
+			var flopAlreadyDealt = await context.GameCards.AnyAsync(
+				gc => gc.GameId == game.Id
+				      && gc.HandNumber == game.CurrentHandNumber
+				      && gc.Location == CardLocation.Community
+				      && gc.DealtAtPhase == nameof(Phases.Flop),
+				cancellationToken);
+			if (!flopAlreadyDealt)
+				await DealCommunityCardsAsync(game, nameof(Phases.Flop), 3, 1, now, cancellationToken);
 		}
 
-		if (dealFlopCards)
-			await DealCommunityCardsAsync(game, nameof(Phases.Flop), 3, 1, now,
-				cancellationToken);
+		if (FewerThanTwoCanBet(activePlayers) && dealFlopCards)
+		{
+			foreach (var player in activePlayers)
+				player.HasDrawnThisRound = false;
+
+			var firstDrawPlayerIndex = FindFirstPlayerInHandAfterDealer(game, activePlayers);
+			if (firstDrawPlayerIndex < 0)
+				return new ProcessDiscardError
+				{
+					Message = "No eligible player remains to discard.",
+					Code = ProcessDiscardErrorCode.NoEligiblePlayers
+				};
+
+			game.CurrentPhase = nameof(Phases.DrawPhase);
+			game.CurrentDrawPlayerIndex = firstDrawPlayerIndex;
+			game.CurrentPlayerIndex = firstDrawPlayerIndex;
+			return null;
+		}
+
+		if (FewerThanTwoCanBet(activePlayers))
+		{
+			if (!await RunOutTurnAndRiverAsync(game, now, cancellationToken))
+				return InsufficientRunoutCards();
+
+			return null;
+		}
+
+		var firstActorIndex = FindFirstActivePlayerAfterDealerForBetting(game, activePlayers);
+		if (firstActorIndex < 0)
+			return new ProcessDiscardError
+			{
+				Message = "No eligible player can act on the flop.",
+				Code = ProcessDiscardErrorCode.NoEligiblePlayers
+			};
 
 		var nextRoundNumber = await context.BettingRounds
 			.Where(br => br.GameId == game.Id && br.HandNumber == game.CurrentHandNumber)
@@ -321,25 +362,30 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		game.CurrentPhase = nameof(Phases.Flop);
 		game.CurrentPlayerIndex = firstActorIndex;
 		game.CurrentDrawPlayerIndex = -1;
+		return null;
 	}
 
-	private async Task StartTurnPhaseAsync(Game game, List<GamePlayer> activePlayers, DateTimeOffset now,
+	private async Task<ProcessDiscardError?> StartTurnPhaseAsync(Game game, List<GamePlayer> activePlayers, DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
-		// Reset draw state
 		foreach (var gamePlayer in activePlayers) gamePlayer.CurrentBet = 0;
 
-		// Find first active player after dealer who can bet (not folded, not all-in)
-		var firstActorIndex = FindFirstActivePlayerAfterDealerForBetting(game, activePlayers);
-
-		// If no players can bet (all are all-in or folded), skip directly to showdown
-		if (firstActorIndex < 0)
+		// Fewer than two players who can bet means deal the streets this method owes, or open Phil's Mom's second discard; do not skip the deal.
+		if (FewerThanTwoCanBet(activePlayers))
 		{
-			game.CurrentPhase = nameof(Phases.Showdown);
-			game.CurrentPlayerIndex = -1;
-			game.CurrentDrawPlayerIndex = -1;
-			return;
+			if (!await RunOutTurnAndRiverAsync(game, now, cancellationToken))
+				return InsufficientRunoutCards();
+
+			return null;
 		}
+
+		var firstActorIndex = FindFirstActivePlayerAfterDealerForBetting(game, activePlayers);
+		if (firstActorIndex < 0)
+			return new ProcessDiscardError
+			{
+				Message = "No eligible player can act on the turn.",
+				Code = ProcessDiscardErrorCode.NoEligiblePlayers
+			};
 
 		// Deal the Turn community card (4th community card)
 		await DealCommunityCardsAsync(game, nameof(Phases.Turn), 1, 4, now,
@@ -375,6 +421,111 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		game.CurrentPhase = nameof(Phases.Turn);
 		game.CurrentPlayerIndex = firstActorIndex;
 		game.CurrentDrawPlayerIndex = -1;
+		return null;
+	}
+
+	private static bool FewerThanTwoCanBet(List<GamePlayer> activePlayers)
+	{
+		return activePlayers.Count(p => !p.HasFolded && !p.IsAllIn && p.ChipStack > 0) < 2;
+	}
+
+	private static ProcessDiscardError InsufficientRunoutCards()
+	{
+		return new ProcessDiscardError
+		{
+			Message = "Not enough cards remain to deal the turn and river.",
+			Code = ProcessDiscardErrorCode.InsufficientCards
+		};
+	}
+
+	/// <summary>
+	///     Deals a missing turn and river from one deck read. Returns false when a required street has no card left.
+	/// </summary>
+	private async Task<bool> RunOutTurnAndRiverAsync(
+		Game game,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var dealtPhases = await context.GameCards
+			.Where(gc => gc.GameId == game.Id
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Community)
+			.Select(gc => gc.DealtAtPhase)
+			.ToListAsync(cancellationToken);
+
+		var trackedPhases = context.GameCards.Local
+			.Where(gc => gc.GameId == game.Id
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Community)
+			.Select(gc => gc.DealtAtPhase);
+		dealtPhases.AddRange(trackedPhases);
+
+		var hasTurn = dealtPhases.Contains("Turn");
+		var hasRiver = dealtPhases.Contains("River");
+
+		var deckCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id
+			             && gc.HandNumber == game.CurrentHandNumber
+			             && gc.Location == CardLocation.Deck)
+			.OrderBy(gc => gc.DealOrder)
+			.ToListAsync(cancellationToken);
+
+		deckCards = deckCards.Where(gc => gc.Location == CardLocation.Deck).ToList();
+
+		var cardsNeeded = (hasTurn ? 0 : 1) + (hasRiver ? 0 : 1);
+		if (deckCards.Count < cardsNeeded)
+			return false;
+
+		var deckIndex = 0;
+		if (!hasTurn)
+			MoveDeckCardToStreet(deckCards[deckIndex++], "Turn", 4, now);
+		if (!hasRiver)
+			MoveDeckCardToStreet(deckCards[deckIndex], "River", 5, now);
+
+		var existingSettings = string.IsNullOrEmpty(game.GameSettings)
+			? new Dictionary<string, object>()
+			: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ??
+			  new Dictionary<string, object>();
+
+		existingSettings["allInRunout"] = true;
+		existingSettings["runoutStreets"] = new List<string> { "Turn", "River" };
+		existingSettings["runoutHandNumber"] = game.CurrentHandNumber;
+		existingSettings["runoutTimestamp"] = now.ToString("O");
+		game.GameSettings = JsonSerializer.Serialize(existingSettings);
+
+		game.CurrentPhase = nameof(Phases.Showdown);
+		game.CurrentPlayerIndex = -1;
+		game.CurrentDrawPlayerIndex = -1;
+		return true;
+	}
+
+	private static void MoveDeckCardToStreet(GameCard card, string dealtAtPhase, int dealOrder, DateTimeOffset now)
+	{
+		card.Location = CardLocation.Community;
+		card.GamePlayerId = null;
+		card.IsVisible = true;
+		card.DealtAtPhase = dealtAtPhase;
+		card.DealOrder = dealOrder;
+		card.DealtAt = now;
+	}
+
+	/// <summary>
+	///     First seat still in the hand, left of the dealer. All-in seats still discard.
+	/// </summary>
+	private static int FindFirstPlayerInHandAfterDealer(Game game, List<GamePlayer> activePlayers)
+	{
+		var totalPlayers = game.GamePlayers.Count;
+		var searchIndex = (game.DealerPosition + 1) % totalPlayers;
+
+		for (var i = 0; i < totalPlayers; i++)
+		{
+			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
+			if (player is not null && !player.HasFolded) return searchIndex;
+
+			searchIndex = (searchIndex + 1) % totalPlayers;
+		}
+
+		return -1;
 	}
 
 	/// <summary>

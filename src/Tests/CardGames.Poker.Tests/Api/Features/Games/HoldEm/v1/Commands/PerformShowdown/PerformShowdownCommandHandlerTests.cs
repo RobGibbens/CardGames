@@ -57,6 +57,29 @@ public class PerformShowdownCommandHandlerTests
 		result.AsT1.Message.Should().Contain("No eligible hands could be evaluated");
 	}
 
+	[Fact]
+	public async Task Handle_WhenOnlyOnePlayerRemains_ReturnsFoldWinWithoutHoleCards()
+	{
+		await using var context = CreateContext();
+		var game = await SeedGameAsync(context, nameof(Phases.Showdown), holeCardsPerPlayer: 2);
+		var bob = await context.GamePlayers.Include(gp => gp.Player).FirstAsync(gp => gp.Player.Name == "Bob");
+		bob.HasFolded = true;
+		await context.SaveChangesAsync();
+
+		var sut = CreateSut(context);
+		var result = await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.WonByFold.Should().BeTrue();
+		success.PlayerHands.Should().ContainSingle();
+		success.PlayerHands[0].PlayerName.Should().Be("Alice");
+		success.PlayerHands[0].IsWinner.Should().BeTrue();
+		success.PlayerHands[0].Cards.Should().BeEmpty();
+		success.PlayerHands[0].HandType.Should().BeNull();
+		success.PlayerHands[0].HandStrength.Should().BeNull();
+	}
+
 	private static PerformShowdownCommandHandler CreateSut(CardsDbContext context)
 	{
 		return new PerformShowdownCommandHandler(

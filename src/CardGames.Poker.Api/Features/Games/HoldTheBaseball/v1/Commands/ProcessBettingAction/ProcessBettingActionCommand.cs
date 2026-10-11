@@ -15,4 +15,4 @@ public record ProcessBettingActionCommand(
 	Guid GameId,
 	BettingActionType ActionType,
 	int Amount = 0
-) : IRequest<OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>, IGameStateChangingCommand;
+) : IRequest<OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>, IGameStateChangingCommand, IRequiresCurrentActor;

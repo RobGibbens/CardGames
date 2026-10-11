@@ -67,6 +67,22 @@ public class FoldDuringDrawCommandHandlerTests
 	}
 
 	[Fact]
+	public async Task Handle_WhenSeatIsNotCurrentDrawPlayer_ReturnsErrorAndDoesNotFold()
+	{
+		await using var context = CreateContext();
+		var game = await SeedGameAsync(context);
+		var sut = new FoldDuringDrawCommandHandler(context, NullLogger<FoldDuringDrawCommandHandler>.Instance);
+
+		var result = await sut.Handle(new FoldDuringDrawCommand(game.Id, 1), CancellationToken.None);
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Message.Should().Contain("Current draw player");
+
+		var folded = await context.GamePlayers.SingleAsync(gp => gp.GameId == game.Id && gp.SeatPosition == 1);
+		folded.HasFolded.Should().BeFalse();
+	}
+
+	[Fact]
 	public async Task Handle_WhenFoldLeavesOneActivePlayer_AdvancesToShowdown()
 	{
 		await using var context = CreateContext();

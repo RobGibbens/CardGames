@@ -9,4 +9,4 @@ namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformS
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 public record PerformShowdownCommand(Guid GameId)
-	: IRequest<OneOf<PerformShowdownSuccessful, PerformShowdownError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<PerformShowdownSuccessful, PerformShowdownError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

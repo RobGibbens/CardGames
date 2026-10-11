@@ -1,3 +1,4 @@
+using CardGames.Core.Random;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
@@ -106,12 +107,14 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 
 		// 7. Process discards - mark cards as discarded
 		var discardedCards = new List<CardInfo>();
+		var justDiscarded = new List<GameCard>();
 		foreach (var index in command.DiscardIndices.Distinct().OrderByDescending(i => i))
 			if (index < playerCards.Count)
 			{
 				var cardToDiscard = playerCards[index];
 				cardToDiscard.IsDiscarded = true;
 				cardToDiscard.DiscardedAtDrawRound = 1; // First draw round in Five Card Draw
+				justDiscarded.Add(cardToDiscard);
 
 				discardedCards.Add(new CardInfo
 				{
@@ -127,52 +130,99 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 		// Reverse to maintain original order
 		discardedCards.Reverse();
 
-		// 8. Deal new cards from deck
+		// 8. Deal replacements. The stub is used as stored. Earlier discards, then this call's
+		// own discards, are shuffled back only when the stub cannot fill the draw.
+		var drawCount = discardedCards.Count;
 		var newCards = new List<CardInfo>();
-		if (command.DiscardIndices.Count > 0)
+		if (drawCount > 0)
 		{
-			// Check if there are pre-shuffled deck cards available (from ContinuousPlayBackgroundService)
-			// These are cards with GamePlayerId = null and Location = Deck
-			var availableDeckCards = await context.GameCards
+			var stub = await context.GameCards
 				.Where(gc => gc.GameId == game.Id
 				             && gc.HandNumber == game.CurrentHandNumber
 				             && gc.GamePlayerId == null
-				             && gc.Location == CardLocation.Deck)
+				             && gc.Location == CardLocation.Deck
+				             && !gc.IsDiscarded)
 				.OrderBy(gc => gc.DealOrder)
-				.Take(command.DiscardIndices.Count)
 				.ToListAsync(cancellationToken);
 
-			var maxDealOrder = playerCards.Max(c => c.DealOrder);
+			stub = stub.Where(gc => gc.GamePlayerId == null && gc.Location == CardLocation.Deck && !gc.IsDiscarded)
+				.ToList();
 
-			if (availableDeckCards.Count >= command.DiscardIndices.Count)
-				// Use pre-shuffled deck cards - assign them to the current player
-				foreach (var deckCard in availableDeckCards)
-				{
-					deckCard.GamePlayerId = currentDrawPlayer.Id;
-					deckCard.Location = CardLocation.Hole;
-					deckCard.DealOrder = ++maxDealOrder;
-					deckCard.DealtAtPhase = nameof(Phases.DrawPhase);
-					deckCard.IsDrawnCard = true;
-					deckCard.DrawnAtRound = 1;
-					deckCard.DealtAt = now;
-
-					newCards.Add(new CardInfo
-					{
-						Suit = deckCard.Suit,
-						Symbol = deckCard.Symbol,
-						Display = FormatCard(deckCard.Symbol, deckCard.Suit)
-					});
-				}
+			List<GameCard> replacements;
+			if (stub.Count >= drawCount)
+			{
+				replacements = stub.Take(drawCount).ToList();
+			}
 			else
-				// No pre-shuffled deck cards available — this indicates an inconsistent deck state.
-				// All hands should have a persisted deck generated via FrenchDeckDealer at hand start.
-				return new ProcessDrawError
+			{
+				var justDiscardedIds = justDiscarded.Select(c => c.Id).ToHashSet();
+				var priorDiscards = await context.GameCards
+					.Where(gc => gc.GameId == game.Id
+					             && gc.HandNumber == game.CurrentHandNumber
+					             && gc.IsDiscarded
+					             && gc.Location != CardLocation.Deck)
+					.ToListAsync(cancellationToken);
+
+				priorDiscards = priorDiscards.Where(gc => !justDiscardedIds.Contains(gc.Id)).ToList();
+
+				var rng = new StandardRandomNumberGenerator();
+				Shuffle(priorDiscards, rng);
+
+				var returned = new List<GameCard>(priorDiscards);
+				if (stub.Count + priorDiscards.Count < drawCount)
 				{
-					Message =
-						$"Not enough cards remaining in the deck to deal {command.DiscardIndices.Count} replacement card(s). " +
-						$"Available: {availableDeckCards.Count}. This indicates an inconsistent deck state.",
-					Code = ProcessDrawErrorCode.InsufficientDeckCards
-				};
+					Shuffle(justDiscarded, rng);
+					var shortfall = drawCount - stub.Count - priorDiscards.Count;
+					returned.AddRange(justDiscarded.Take(shortfall));
+				}
+
+				var nextOrder = (stub.Count == 0 ? 0 : stub.Max(c => c.DealOrder)) + 1;
+				foreach (var card in returned)
+				{
+					card.Location = CardLocation.Deck;
+					card.GamePlayer = null;
+					card.GamePlayerId = null;
+					card.IsDiscarded = false;
+					card.DiscardedAtDrawRound = null;
+					card.IsVisible = false;
+					card.IsDrawnCard = false;
+					card.DrawnAtRound = null;
+					card.DealtAtPhase = null;
+					card.DealOrder = nextOrder++;
+				}
+
+				replacements = stub.Concat(returned).Take(drawCount).ToList();
+				if (replacements.Count < drawCount)
+					return new ProcessDrawError
+					{
+						Message =
+							$"Not enough cards remaining to deal {drawCount} replacement card(s). " +
+							$"Available: {replacements.Count}.",
+						Code = ProcessDrawErrorCode.InsufficientDeckCards
+					};
+			}
+
+			var maxDealOrder = playerCards.Max(c => c.DealOrder);
+			foreach (var deckCard in replacements)
+			{
+				deckCard.GamePlayer = currentDrawPlayer;
+				deckCard.GamePlayerId = currentDrawPlayer.Id;
+				deckCard.Location = CardLocation.Hole;
+				deckCard.DealOrder = ++maxDealOrder;
+				deckCard.DealtAtPhase = nameof(Phases.DrawPhase);
+				deckCard.IsDrawnCard = true;
+				deckCard.DrawnAtRound = 1;
+				deckCard.DealtAt = now;
+				deckCard.IsDiscarded = false;
+				deckCard.DiscardedAtDrawRound = null;
+
+				newCards.Add(new CardInfo
+				{
+					Suit = deckCard.Suit,
+					Symbol = deckCard.Symbol,
+					Display = FormatCard(deckCard.Symbol, deckCard.Suit)
+				});
+			}
 		}
 
 		// 9. Move to next draw player or advance phase
@@ -210,6 +260,15 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			NextDrawPlayerIndex = nextDrawPlayerIndex,
 			NextDrawPlayerName = nextPlayerName
 		};
+
+		static void Shuffle(List<GameCard> cards, StandardRandomNumberGenerator rng)
+		{
+			for (var i = cards.Count - 1; i > 0; i--)
+			{
+				var j = rng.Next(i + 1);
+				(cards[i], cards[j]) = (cards[j], cards[i]);
+			}
+		}
 	}
 
 	private static int FindNextDrawPlayer(Game game, List<GamePlayer> activePlayers, int currentIndex)

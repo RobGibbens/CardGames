@@ -46,6 +46,44 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task Handle_SevenCardStudChoice_PersistsDerivedBringInStakes()
+	{
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
+		var command = new ChooseDealerGameCommand(
+			setup.Game.Id,
+			PokerGameMetadataRegistry.SevenCardStudCode,
+			5,
+			10);
+
+		var result = await Mediator.Send(command);
+
+		result.IsT0.Should().BeTrue();
+		var game = await DbContext.Games.FirstAsync(g => g.Id == setup.Game.Id);
+		game.BringIn.Should().Be(5);
+		game.SmallBet.Should().Be(10);
+		game.BigBet.Should().Be(20);
+	}
+
+	[Fact]
+	public async Task Handle_GoodBadUglyChoice_DoesNotPersistBringIn()
+	{
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
+		var command = new ChooseDealerGameCommand(
+			setup.Game.Id,
+			PokerGameMetadataRegistry.GoodBadUglyCode,
+			5,
+			10);
+
+		var result = await Mediator.Send(command);
+
+		result.IsT0.Should().BeTrue();
+		var game = await DbContext.Games.FirstAsync(g => g.Id == setup.Game.Id);
+		game.BringIn.Should().BeNull();
+		game.SmallBet.Should().Be(10);
+		game.BigBet.Should().Be(20);
+	}
+
+	[Fact]
 	public async Task Handle_GameNotFound_ReturnsError()
 	{
 		var command = new ChooseDealerGameCommand(

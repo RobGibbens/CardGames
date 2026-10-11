@@ -17,7 +17,7 @@ public record DrawCardsCommand(
 	Guid GameId,
 	Guid PlayerId,
 	IReadOnlyCollection<int> DiscardIndices
-) : IRequest<OneOf<DrawCardsSuccessful, DrawCardsError>>, IGameStateChangingCommand;
+) : IRequest<OneOf<DrawCardsSuccessful, DrawCardsError>>, IGameStateChangingCommand, IRequiresCurrentActor;
 
 /// <summary>
 ///     Request model for the draw action endpoint.
@@ -25,13 +25,9 @@ public record DrawCardsCommand(
 public record DrawCardsRequest
 {
 	/// <summary>
-	///     The player making the draw.
-	/// </summary>
-	public required Guid PlayerId { get; init; }
-
-	/// <summary>
 	///     Zero-based indices (0-4) of the cards to discard from the player's hand.
 	///     Pass an empty array to "stand pat" (keep all cards). In Kings and Lows, up to 5 cards can be discarded.
+	///     The acting player is the authenticated seat; a client-supplied player id is ignored.
 	/// </summary>
 	public IReadOnlyCollection<int> DiscardIndices { get; init; } = [];
 }

@@ -141,6 +141,85 @@ public class CrazyPineappleHandLifecycleTests : IntegrationTestBase
 		result.AsT1.Message.Should().Contain("only allowed during");
 	}
 
+	[Fact]
+	public async Task ProcessBettingAction_PreFlopAllIn_StopsAtDrawPhaseUntilDiscardThenShowdown()
+	{
+		var setup = await CreateDealtCrazyPineappleGameAsync(2, 0);
+		var game = setup.Game;
+
+		await AllInUntilPhaseChanges(game.Id);
+
+		var atDraw = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atDraw.CurrentPhase.Should().Be("DrawPhase");
+
+		var communityAtDraw = await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber);
+		communityAtDraw.Should().HaveCount(3);
+		communityAtDraw.Should().AllSatisfy(card => card.DealtAtPhase.Should().Be("Flop"));
+		communityAtDraw.Count(card => card.DealtAtPhase == "Turn").Should().Be(0);
+		communityAtDraw.Count(card => card.DealtAtPhase == "River").Should().Be(0);
+
+		var holeAtDraw = await GetNonDiscardedHoleCardsAsync(game.Id);
+		holeAtDraw.GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(3));
+
+		await DiscardOneCardForAllActivePlayers(game.Id);
+
+		var atShowdown = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atShowdown.CurrentPhase.Should().Be("Showdown");
+		atShowdown.CurrentPhase.Should().NotBe("Flop");
+
+		var holeAtShowdown = await GetNonDiscardedHoleCardsAsync(game.Id);
+		holeAtShowdown.GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(2));
+
+		var communityAtShowdown = await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber);
+		communityAtShowdown.Should().HaveCount(5);
+		communityAtShowdown.Count(card => card.DealtAtPhase == "Flop").Should().Be(3);
+	}
+
+	[Fact]
+	public async Task ProcessBettingAction_AllInAfterDiscard_RunsOutWithoutAnotherDrawPhase()
+	{
+		var setup = await CreateDealtCrazyPineappleGameAsync(2, 0);
+		var game = setup.Game;
+
+		await CheckAllPlayersThrough(game.Id);
+		await DiscardOneCardForAllActivePlayers(game.Id);
+
+		var atFlop = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atFlop.CurrentPhase.Should().Be("Flop");
+		var holeAtFlop = await GetNonDiscardedHoleCardsAsync(game.Id);
+		holeAtFlop.GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(2));
+
+		await AllInUntilPhaseChanges(game.Id);
+
+		var atShowdown = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		atShowdown.CurrentPhase.Should().Be("Showdown");
+		atShowdown.CurrentPhase.Should().NotBe("DrawPhase");
+
+		var holeAtShowdown = await GetNonDiscardedHoleCardsAsync(game.Id);
+		holeAtShowdown.GroupBy(card => card.GamePlayerId)
+			.Should().AllSatisfy(group => group.Count().Should().Be(2));
+
+		var community = await GetCommunityCardsAsync(game.Id, game.CurrentHandNumber);
+		community.Should().HaveCount(5);
+	}
+
+	private async Task AllInUntilPhaseChanges(Guid gameId)
+	{
+		var startingPhase = (await GetFreshDbContext().Games.FirstAsync(g => g.Id == gameId)).CurrentPhase;
+		for (var i = 0; i < 4; i++)
+		{
+			var current = await GetFreshDbContext().Games.FirstAsync(g => g.Id == gameId);
+			if (current.CurrentPhase != startingPhase)
+				return;
+
+			var result = await Mediator.Send(new ProcessBettingActionCommand(gameId, BettingActionType.AllIn));
+			result.IsT0.Should().BeTrue($"all-in at iteration {i} should succeed");
+		}
+	}
+
 	private async Task<GameSetup> CreateCrazyPineappleGameSetupAsync(
 		int playerCount,
 		int dealerPosition,

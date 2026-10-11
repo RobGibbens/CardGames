@@ -15,10 +15,26 @@ namespace CardGames.IntegrationTests.Infrastructure;
 public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
 {
 	private readonly string _databaseName = $"ApiTestDb_{Guid.NewGuid():N}";
+	private readonly bool _useTestAuthentication;
+
+	public ApiWebApplicationFactory()
+		: this(true)
+	{
+	}
+
+	protected ApiWebApplicationFactory(bool useTestAuthentication)
+	{
+		_useTestAuthentication = useTestAuthentication;
+	}
 
 	protected override void ConfigureWebHost(IWebHostBuilder builder)
 	{
 		builder.UseEnvironment("Development");
+		if (!_useTestAuthentication)
+		{
+			builder.UseSetting("InternalIdentity:AllowUnsafeHeaders", "false");
+			builder.UseSetting("InternalIdentity:SigningKey", TrustedIdentityTestKey.Value);
+		}
 		// Provide dummy connection string to satisfy basic validation if cleanup misses something
 		builder.UseSetting("ConnectionStrings:cardsdb",
 			"Server=(localdb)\\mssqllocaldb;Database=TestDb;Trusted_Connection=True;ConnectRetryCount=0");
@@ -27,12 +43,15 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
 
 		builder.ConfigureTestServices(services =>
 		{
-			services.AddAuthentication(options =>
+			if (_useTestAuthentication)
 			{
-				options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
-				options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
-				options.DefaultScheme = TestAuthHandler.SchemeName;
-			}).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+				services.AddAuthentication(options =>
+				{
+					options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+					options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
+					options.DefaultScheme = TestAuthHandler.SchemeName;
+				}).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+			}
 
 			// Remove the app's DbContext registration and pooling
 			// Also serve to remove the Aspire configuration options that validate connection strings

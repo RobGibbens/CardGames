@@ -55,7 +55,9 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 		services.AddSingleton<ILeagueBroadcaster>(sp => sp.GetRequiredService<FakeLeagueBroadcaster>());
 		services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
 		services.AddSingleton<IHandSettlementService, FakeHandSettlementService>();
+		services.AddHttpContextAccessor();
 		services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
+		services.AddScoped<IGamePlayerResolver, GamePlayerResolver>();
 		services.AddScoped<ITableStateBuilder, TableStateBuilder>();
 		services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
 

@@ -10,4 +10,4 @@ namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.Acknowledg
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 public record AcknowledgePotMatchCommand(Guid GameId)
-	: IRequest<OneOf<AcknowledgePotMatchSuccessful, AcknowledgePotMatchError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<AcknowledgePotMatchSuccessful, AcknowledgePotMatchError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

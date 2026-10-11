@@ -27,27 +27,25 @@ I assume this project will be slow, because of several reasons. First of all, it
 
 ## Game-Agnostic Design
 
-The CardGames system uses a **metadata-driven architecture** that allows multiple poker variants to coexist without hardcoding game-specific logic in the UI or API layers. This enables adding new game types without modifying the user interface.
+The CardGames system mixes **metadata-driven discovery** with **explicit per-variant wiring**. `[PokerGameMetadata]` and `GetGameRules()` register the game list and rules JSON automatically. Starting a hand, betting, showdown, and the action timer are still routed in API handlers, flow handlers, and `TablePlay.razor`.
 
 Key features:
-- **Rule-Driven**: Each game variant defines its rules, phases, and mechanics as structured metadata
-- **API-Exposed**: Game rules are available via REST endpoints for dynamic UI adaptation
-- **Extensible**: New games can be added by implementing domain logic and defining rules
-- **Type-Safe**: Strong typing ensures compile-time validation of game configurations
+- **Rule metadata**: Each variant defines phases and dealing/betting descriptors as `GameRules`
+- **API-exposed**: `GET /api/v1/games/rules/{gameTypeCode}` returns that metadata
+- **Explicit behavior**: Flow handlers, MediatR features, and web branches implement what metadata does not
+- **Type-safe**: Strong typing on the metadata attribute and rules objects
 
-For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
+For the current split between metadata and hard-coded wiring, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Adding New Games
 
 To add a new poker variant:
 
-1. Implement the game logic in `CardGames.Poker/Games/YourGame/`
-2. Define game rules metadata in a `YourGameRules.cs` factory
-3. Register the game in `PokerGameRulesRegistry`
+1. Domain game + `[PokerGameMetadata]` + `*Rules.cs` (`GetGameRules()`).
+2. API `*FlowHandler.cs` (discovered by `GameFlowHandlerFactory`).
+3. Wire behavior: MediatR features, `TableStateBuilder`, `IGameApiRouter`, and `TablePlay` as needed per [ADDING_NEW_GAMES.md](ADDING_NEW_GAMES.md).
 
-Many variants can stop there, but the current app is not fully condition-free. Variants with dedicated player decisions or custom showdown/state payloads may still need targeted API, contract, router, and UI updates. Bob Barker is the current reference example: it reuses Hold'Em-family betting flow, but adds a dedicated showcase-selection action and Bob Barker-specific showdown display.
-
-For a complete guide with examples, see [ADDING_NEW_GAMES.md](ADDING_NEW_GAMES.md).
+Variants that stay inside an existing family can reuse that family's command handlers. Variants with dedicated player decisions or custom showdown payloads still need targeted API, contract, router, and UI updates. Bob Barker is the reference example: it reuses Hold'em-family betting, and it adds a showcase-selection action plus Bob Barker-specific showdown display.
 
 # CardGames.Core
 Available at Nuget: [EluciusFTW.CardGames.Core](https://www.nuget.org/packages/EluciusFTW.CardGames.Core/)

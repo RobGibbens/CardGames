@@ -9,4 +9,4 @@ namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.Perform
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 public record PerformShowdownCommand(Guid GameId)
-	: IRequest<OneOf<PerformShowdownSuccessful, PerformShowdownError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<PerformShowdownSuccessful, PerformShowdownError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

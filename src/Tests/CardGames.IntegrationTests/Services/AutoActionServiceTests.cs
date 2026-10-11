@@ -156,6 +156,7 @@ public class AutoActionServiceTests : IDisposable
 
 		_dbContext.Games.Add(game);
 		_dbContext.GamePlayers.AddRange(player, opponent);
+		AddOpenBettingRound(gameId, playerSeat);
 		await _dbContext.SaveChangesAsync();
 
 		await _service.PerformAutoActionAsync(gameId, playerSeat);
@@ -197,6 +198,7 @@ public class AutoActionServiceTests : IDisposable
 
 		_dbContext.Games.Add(game);
 		_dbContext.GamePlayers.AddRange(player, opponent);
+		AddOpenBettingRound(gameId, playerSeat);
 		await _dbContext.SaveChangesAsync();
 
 		await _service.PerformAutoActionAsync(gameId, playerSeat);
@@ -215,6 +217,7 @@ public class AutoActionServiceTests : IDisposable
 		{
 			Id = gameId,
 			CurrentPhase = "DrawPhase",
+			CurrentDrawPlayerIndex = playerSeat,
 			GameType = new GameType { Code = "FIVECARDDRAW", Name = "Five Card Draw" }
 		};
 
@@ -246,6 +249,7 @@ public class AutoActionServiceTests : IDisposable
 		{
 			Id = gameId,
 			CurrentPhase = "DrawPhase",
+			CurrentDrawPlayerIndex = playerSeat,
 			GameType = new GameType { Code = "KINGSANDLOWS", Name = "Kings and Lows" }
 		};
 
@@ -511,6 +515,7 @@ public class AutoActionServiceTests : IDisposable
 
 		_dbContext.Games.Add(game);
 		_dbContext.GamePlayers.Add(player);
+		AddOpenBettingRound(gameId, playerSeat);
 		await _dbContext.SaveChangesAsync();
 
 		await _service.PerformAutoActionAsync(gameId, playerSeat);
@@ -542,6 +547,7 @@ public class AutoActionServiceTests : IDisposable
 
 		_dbContext.Games.Add(game);
 		_dbContext.GamePlayers.Add(player);
+		AddOpenBettingRound(gameId, playerSeat);
 		await _dbContext.SaveChangesAsync();
 
 		_mediator.ForceException = true;
@@ -549,6 +555,280 @@ public class AutoActionServiceTests : IDisposable
 		await _service.PerformAutoActionAsync(gameId, playerSeat);
 
 		_logger.ErrorLogs.Should().Contain(l => l.Contains("Error performing auto-betting action"));
+	}
+
+	[Fact]
+	public async Task PerformAutoActionAsync_StaleTimerSeat_DoesNotSendCommand()
+	{
+		var gameId = Guid.NewGuid();
+		var game = new Game
+		{
+			Id = gameId,
+			CurrentPhase = "FirstBettingRound",
+			CurrentPlayerIndex = 2,
+			GameType = new GameType { Code = "FIVECARDDRAW", Name = "Five Card Draw" }
+		};
+
+		_dbContext.Games.Add(game);
+		_dbContext.GamePlayers.AddRange(
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 1,
+				CurrentBet = 10,
+				Status = GamePlayerStatus.Active
+			},
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 2,
+				CurrentBet = 20,
+				Status = GamePlayerStatus.Active
+			});
+		AddOpenBettingRound(gameId, actorSeat: 2);
+		await _dbContext.SaveChangesAsync();
+
+		await _service.PerformAutoActionAsync(gameId, playerSeatIndex: 1);
+
+		_mediator.SentCommands.Should().BeEmpty();
+		_logger.WarningLogs.Should().Contain(l => l.Contains("stale") || l.Contains("Skipping"));
+	}
+
+	[Fact]
+	public async Task PerformAutoActionAsync_CurrentActor_SendsBettingCommand()
+	{
+		var gameId = Guid.NewGuid();
+		var game = new Game
+		{
+			Id = gameId,
+			CurrentPhase = "FirstBettingRound",
+			CurrentPlayerIndex = 2,
+			GameType = new GameType { Code = "FIVECARDDRAW", Name = "Five Card Draw" }
+		};
+
+		_dbContext.Games.Add(game);
+		_dbContext.GamePlayers.AddRange(
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 1,
+				CurrentBet = 20,
+				Status = GamePlayerStatus.Active
+			},
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 2,
+				CurrentBet = 20,
+				Status = GamePlayerStatus.Active
+			});
+		AddOpenBettingRound(gameId, actorSeat: 2);
+		await _dbContext.SaveChangesAsync();
+
+		await _service.PerformAutoActionAsync(gameId, playerSeatIndex: 2);
+
+		_mediator.SentCommands.Should().ContainSingle(c => c is ProcessBettingActionCommand);
+	}
+
+	[Fact]
+	public async Task PerformAutoActionAsync_HoldEmCurrentActor_SendsHoldEmBettingCommand()
+	{
+		var gameId = Guid.NewGuid();
+		var game = new Game
+		{
+			Id = gameId,
+			CurrentPhase = "PreFlop",
+			CurrentPlayerIndex = 2,
+			GameType = new GameType { Code = "HOLDEM", Name = "Texas Hold'em" }
+		};
+
+		_dbContext.Games.Add(game);
+		_dbContext.GamePlayers.AddRange(
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 1,
+				CurrentBet = 10,
+				Status = GamePlayerStatus.Active
+			},
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 2,
+				CurrentBet = 20,
+				Status = GamePlayerStatus.Active
+			});
+		AddOpenBettingRound(gameId, actorSeat: 2, street: "PreFlop");
+		await _dbContext.SaveChangesAsync();
+
+		await _service.PerformAutoActionAsync(gameId, playerSeatIndex: 2);
+
+		_mediator.SentCommands.Should().ContainSingle(c =>
+			c is CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand);
+		_mediator.SentCommands.Should().NotContain(c => c is ProcessBettingActionCommand);
+	}
+
+	[Theory]
+	[InlineData("SEVENCARDSTUD")]
+	[InlineData("RAZZ")]
+	public async Task PerformAutoActionAsync_StudFamilyCurrentActor_SendsStudBettingCommand(string gameTypeCode)
+	{
+		var gameId = Guid.NewGuid();
+		var game = new Game
+		{
+			Id = gameId,
+			CurrentPhase = "ThirdStreet",
+			CurrentPlayerIndex = 2,
+			GameType = new GameType { Code = gameTypeCode, Name = gameTypeCode }
+		};
+
+		_dbContext.Games.Add(game);
+		_dbContext.GamePlayers.AddRange(
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 1,
+				CurrentBet = 5,
+				Status = GamePlayerStatus.Active
+			},
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 2,
+				CurrentBet = 5,
+				Status = GamePlayerStatus.Active
+			});
+		AddOpenBettingRound(gameId, actorSeat: 2, street: "ThirdStreet");
+		await _dbContext.SaveChangesAsync();
+
+		await _service.PerformAutoActionAsync(gameId, playerSeatIndex: 2);
+
+		_mediator.SentCommands.Should().ContainSingle(c =>
+			c is CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand);
+		_mediator.SentCommands.Should().NotContain(c => c is ProcessBettingActionCommand);
+	}
+
+	[Theory]
+	[InlineData("FOLLOWTHEQUEEN")]
+	[InlineData("PAIRPRESSURE")]
+	[InlineData("BASEBALL")]
+	[InlineData("GOODBADUGLY")]
+	public async Task PerformAutoActionAsync_StudVariantCurrentActor_SendsGameSpecificBettingCommand(
+		string gameTypeCode)
+	{
+		var gameId = Guid.NewGuid();
+		var game = new Game
+		{
+			Id = gameId,
+			CurrentPhase = "ThirdStreet",
+			CurrentPlayerIndex = 0,
+			GameType = new GameType { Code = gameTypeCode, Name = gameTypeCode }
+		};
+
+		_dbContext.Games.Add(game);
+		_dbContext.GamePlayers.AddRange(
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 0,
+				CurrentBet = 10,
+				Status = GamePlayerStatus.Active
+			},
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 1,
+				CurrentBet = 10,
+				Status = GamePlayerStatus.Active
+			});
+		AddOpenBettingRound(gameId, actorSeat: 0, street: "ThirdStreet");
+		await _dbContext.SaveChangesAsync();
+
+		await _service.PerformAutoActionAsync(gameId, playerSeatIndex: 0);
+
+		_mediator.SentCommands.Should().ContainSingle();
+		_mediator.SentCommands[0].Should().BeOfType(ExpectedBettingCommandType(gameTypeCode));
+		_mediator.SentCommands.Should().NotContain(c => c is ProcessBettingActionCommand);
+		_mediator.SentCommands.Should().NotContain(c =>
+			c is CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand);
+	}
+
+	[Fact]
+	public async Task PerformAutoActionAsync_FollowTheQueen_BehindInBet_Folds()
+	{
+		var gameId = Guid.NewGuid();
+		var game = new Game
+		{
+			Id = gameId,
+			CurrentPhase = "FourthStreet",
+			CurrentPlayerIndex = 0,
+			GameType = new GameType { Code = "FOLLOWTHEQUEEN", Name = "Follow the Queen" }
+		};
+
+		_dbContext.Games.Add(game);
+		_dbContext.GamePlayers.AddRange(
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 0,
+				CurrentBet = 5,
+				Status = GamePlayerStatus.Active
+			},
+			new GamePlayer
+			{
+				GameId = gameId,
+				PlayerId = Guid.NewGuid(),
+				SeatPosition = 1,
+				CurrentBet = 20,
+				Status = GamePlayerStatus.Active
+			});
+		AddOpenBettingRound(gameId, actorSeat: 0, street: "FourthStreet");
+		await _dbContext.SaveChangesAsync();
+
+		await _service.PerformAutoActionAsync(gameId, playerSeatIndex: 0);
+
+		var cmd = _mediator.SentCommands.Should().ContainSingle()
+			.Which.Should().BeOfType<CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand>()
+			.Subject;
+		cmd.ActionType.Should().Be(EntityBettingActionType.Fold);
+		_mediator.SentCommands.Should().NotContain(c => c is ProcessBettingActionCommand);
+	}
+
+	private static Type ExpectedBettingCommandType(string gameTypeCode)
+	{
+		return gameTypeCode switch
+		{
+			"FOLLOWTHEQUEEN" => typeof(CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand),
+			"PAIRPRESSURE" => typeof(CardGames.Poker.Api.Features.Games.PairPressure.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand),
+			"BASEBALL" => typeof(CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand),
+			"GOODBADUGLY" => typeof(CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand),
+			_ => throw new ArgumentOutOfRangeException(nameof(gameTypeCode), gameTypeCode, null)
+		};
+	}
+
+	private void AddOpenBettingRound(Guid gameId, int actorSeat, string street = "FirstBettingRound")
+	{
+		_dbContext.BettingRounds.Add(new CardGames.Poker.Api.Data.Entities.BettingRound
+		{
+			GameId = gameId,
+			HandNumber = 1,
+			RoundNumber = 1,
+			Street = street,
+			CurrentActorIndex = actorSeat,
+			IsComplete = false,
+			StartedAt = DateTimeOffset.UtcNow
+		});
 	}
 
 	private static GameCard CreateBobBarkerCard(Guid gameId, Guid gamePlayerId, int dealOrder, CardSymbol symbol)

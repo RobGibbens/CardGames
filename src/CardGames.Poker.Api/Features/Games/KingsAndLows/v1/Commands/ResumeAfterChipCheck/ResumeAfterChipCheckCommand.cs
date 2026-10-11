@@ -15,4 +15,4 @@ namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.ResumeAfte
 ///     auto-drop).
 /// </param>
 public record ResumeAfterChipCheckCommand(Guid GameId, bool ForceResume = false)
-	: IRequest<OneOf<ResumeAfterChipCheckSuccessful, ResumeAfterChipCheckError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<ResumeAfterChipCheckSuccessful, ResumeAfterChipCheckError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

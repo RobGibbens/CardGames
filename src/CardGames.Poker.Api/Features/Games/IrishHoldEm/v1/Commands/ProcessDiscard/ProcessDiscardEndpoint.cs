@@ -1,3 +1,5 @@
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDiscard;
@@ -13,10 +15,13 @@ public static class ProcessDiscardEndpoint
 	public static RouteGroupBuilder MapProcessDiscard(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/discard",
-				async (Guid gameId, ProcessDiscardRequest request, IMediator mediator,
+				async (Guid gameId, ProcessDiscardRequest request, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					var command = new ProcessDiscardCommand(gameId, request.DiscardIndices, request.PlayerSeatIndex);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new ProcessDiscardCommand(gameId, request.DiscardIndices, seated.SeatPosition);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(

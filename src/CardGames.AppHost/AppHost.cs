@@ -27,7 +27,10 @@ var migrations = builder.AddProject<CardGames_MigrationService>("migrations")
 	.WithReference(sqldb)
 	.WaitFor(sqldb);
 
+var internalIdentitySigningKey = builder.AddParameter("internalIdentitySigningKey", secret: true);
+
 var api = builder.AddProject<CardGames_Poker_Api>("api")
+	.WithEnvironment("InternalIdentity__SigningKey", internalIdentitySigningKey)
 	.WithEnvironment("OTEL_SERVICE_NAME", "cardgames-poker-api")
 	.WithReference(serviceBus)
 	.WaitFor(serviceBus)
@@ -41,6 +44,7 @@ var api = builder.AddProject<CardGames_Poker_Api>("api")
 	.WaitForCompletion(migrations);
 
 var web = builder.AddProject<CardGames_Poker_Web>("web")
+	.WithEnvironment("InternalIdentity__SigningKey", internalIdentitySigningKey)
 	.WithReference(sqldb)
 	.WaitFor(sqldb)
 	.WithReference(api)

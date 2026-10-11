@@ -337,6 +337,7 @@ dotnet test Tests/CardGames.Poker.Tests/CardGames.Poker.Tests.csproj --filter "F
 | `fix-razz-showdown-lowball.md` | Razz showdown; unrelated to timer betting but same game family |
 | `fix-short-blind-all-in.md` | All-in players should not receive timers; reduces edge cases |
 | `fix-big-blind-option.md` | Hold’em-only; listed for timer/seat race context |
+| `11-fix-doc-vs-code.md` | Orchestration path: see §5.2 and the matrix in `docs/ADDING_NEW_GAMES.md` before assuming a Generic-only flow |
 
 ---
 

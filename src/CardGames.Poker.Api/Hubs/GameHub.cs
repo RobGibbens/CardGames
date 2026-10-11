@@ -12,7 +12,7 @@ namespace CardGames.Poker.Api.Hubs;
 ///     SignalR hub for real-time poker game state updates.
 ///     Clients join per-game groups to receive table state broadcasts.
 /// </summary>
-[Authorize(AuthenticationSchemes = HeaderAuthenticationHandler.SchemeName)]
+[Authorize(AuthenticationSchemes = InternalUserTokenAuthenticationHandler.HubSchemes)]
 public sealed class GameHub : Hub
 {
 	/// <summary>
@@ -23,17 +23,19 @@ public sealed class GameHub : Hub
 	private readonly ILogger<GameHub> _logger;
 	private readonly GameEventsTelemetry _telemetry;
 	private readonly ITableStateBuilder _tableStateBuilder;
+	private readonly IGamePlayerResolver _gamePlayerResolver;
 	private readonly CardsDbContext _context;
 
 	/// <summary>
 	///     Initializes a new instance of the <see cref="GameHub" /> class.
 	/// </summary>
 	public GameHub(ITableStateBuilder tableStateBuilder, CardsDbContext context, GameEventsTelemetry telemetry,
-		ILogger<GameHub> logger)
+		IGamePlayerResolver gamePlayerResolver, ILogger<GameHub> logger)
 	{
 		_tableStateBuilder = tableStateBuilder;
 		_context = context;
 		_telemetry = telemetry;
+		_gamePlayerResolver = gamePlayerResolver;
 		_logger = logger;
 	}
 
@@ -50,6 +52,18 @@ public sealed class GameHub : Hub
 			_logger.LogWarning("User attempted to join game {GameId} without valid identifier", gameId);
 			throw new HubException("User identifier not found");
 		}
+
+		var seated = await _gamePlayerResolver.ResolveSeatedPlayerAsync(gameId, Context.User ?? new ClaimsPrincipal(),
+			Context.ConnectionAborted);
+		if (seated is null)
+		{
+			_logger.LogWarning("User {UserId} attempted to join game {GameId} without a seat", userId, gameId);
+			throw new HubException("Not seated at this table");
+		}
+
+		var privateStateUserId = seated.Player.Email ?? seated.Player.Name ?? seated.Player.ExternalId;
+		if (string.IsNullOrWhiteSpace(privateStateUserId))
+			throw new HubException("Not seated at this table");
 
 		var groupName = GetGroupName(gameId);
 		var game = await _context.Games
@@ -69,8 +83,8 @@ public sealed class GameHub : Hub
 			"User {UserId} (connection {ConnectionId}) joined game group {GroupName}",
 			userId, Context.ConnectionId, groupName);
 
-		// Send initial state snapshot to the caller
-		await SendStateSnapshotToCallerAsync(gameId, userId);
+		// Send initial state snapshot to the caller. Private cards use the seated player's identity.
+		await SendStateSnapshotToCallerAsync(gameId, privateStateUserId);
 	}
 
 	/// <summary>

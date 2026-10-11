@@ -24,7 +24,8 @@ public static class V1
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/generic")
 			.HasApiVersion(1.0)
 			.WithTags(Feature.Name)
-			.AddFluentValidationAutoValidation();
+			.AddFluentValidationAutoValidation()
+			.RequireAuthorization();
 
 		mapGroup
 			.MapGetGeneratedTableName()

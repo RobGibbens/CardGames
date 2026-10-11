@@ -48,45 +48,65 @@ public class Program
 		builder.AddServiceDefaults();
 
 		// Add services to the container.
+		builder.Services.Configure<InternalIdentityOptions>(
+			builder.Configuration.GetSection(InternalIdentityOptions.SectionName));
+
 		builder.Services.AddAuthentication(options =>
 			{
 				// Select auth scheme based on request characteristics
 				options.DefaultScheme = "SmartAuth";
-				options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+				options.DefaultChallengeScheme = "SmartAuth";
 			})
-			.AddPolicyScheme("SmartAuth", "JWT or Header authentication", options =>
+			.AddPolicyScheme("SmartAuth", "JWT, signed internal token, or development headers", options =>
 			{
 				options.ForwardDefaultSelector = context =>
 				{
-					var hasHeaderAuth =
-						context.Request.Headers.ContainsKey("X-User-Authenticated") ||
-						context.Request.Headers.ContainsKey("X-User-Id");
+					if (context.Request.Headers.ContainsKey(InternalUserTokenAuthenticationHandler.HeaderName) ||
+					    context.Request.Query.ContainsKey("access_token"))
+						return InternalUserTokenAuthenticationHandler.SchemeName;
 
-					return hasHeaderAuth
+					var identity = context.RequestServices.GetRequiredService<
+						Microsoft.Extensions.Options.IOptions<InternalIdentityOptions>>().Value;
+					var hasUnsafeHeader = identity.AllowUnsafeHeaders &&
+					                      (context.Request.Headers.ContainsKey("X-User-Authenticated") ||
+					                       context.Request.Headers.ContainsKey("X-User-Id") ||
+					                       context.Request.Headers.ContainsKey("X-User-Email") ||
+					                       context.Request.Query.ContainsKey("authenticated") ||
+					                       context.Request.Query.ContainsKey("userEmail"));
+
+					return hasUnsafeHeader
 						? HeaderAuthenticationHandler.SchemeName
 						: JwtBearerDefaults.AuthenticationScheme;
 				};
 			})
 			.AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
-		// Add header-based auth scheme for SignalR from Blazor frontend (separate registration)
 		builder.Services.AddAuthentication()
+			.AddScheme<AuthenticationSchemeOptions, InternalUserTokenAuthenticationHandler>(
+				InternalUserTokenAuthenticationHandler.SchemeName, _ => { })
 			.AddScheme<AuthenticationSchemeOptions, HeaderAuthenticationHandler>(
 				HeaderAuthenticationHandler.SchemeName, _ => { });
 
-		// Configure authorization with multiple schemes
-		builder.Services.AddAuthorization();
+		builder.Services.AddAuthorization(options =>
+		{
+			options.AddPolicy("GamePlay", policy =>
+				policy.RequireAuthenticatedUser());
+		});
 		builder.Services.AddHttpContextAccessor();
 		builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+		builder.Services.AddScoped<IGamePlayerResolver, GamePlayerResolver>();
 		builder.Services.Configure<DevelopmentUserSeedOptions>(
 			builder.Configuration.GetSection(DevelopmentUserSeedOptions.SectionName));
 
 		// Configure CORS for SignalR (requires credentials support)
+		var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 		builder.Services.AddCors(options =>
 		{
 			options.AddPolicy("SignalRPolicy", policy =>
 			{
-				policy.SetIsOriginAllowed(_ => true) // Allow any origin for development
+				policy.SetIsOriginAllowed(origin =>
+						builder.Environment.IsDevelopment() ||
+						allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
 					.AllowAnyMethod()
 					.AllowAnyHeader()
 					.AllowCredentials();
@@ -158,6 +178,7 @@ public class Program
 			})
 			.AddScoped(typeof(IPipelineBehavior<,>), typeof(TracingPipelineBehavior<,>))
 			.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>))
+			.AddScoped(typeof(IPipelineBehavior<,>), typeof(GameAuthorizationBehavior<,>))
 			.AddScoped(typeof(IPipelineBehavior<,>), typeof(GameStateBroadcastingBehavior<,>))
 			.AddScoped(typeof(IPipelineBehavior<,>), typeof(LobbyStateBroadcastingBehavior<,>))
 			.AddScoped(typeof(IPipelineBehavior<,>), typeof(LeagueGameCompletionSyncBehavior<,>));

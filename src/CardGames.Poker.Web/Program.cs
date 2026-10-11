@@ -245,6 +245,7 @@ builder.Services.AddScoped<IGameApiClient, FollowTheQueenApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, KingsAndLowsApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, TwosJacksManWithTheAxeApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, HoldEmApiClientWrapper>();
+builder.Services.AddScoped<IGameApiClient, RedRiverApiClientWrapper>();
 builder.Services.AddScoped<IGameApiRouter, GameApiRouter>();
 
 builder.Services.AddAuthentication(options =>

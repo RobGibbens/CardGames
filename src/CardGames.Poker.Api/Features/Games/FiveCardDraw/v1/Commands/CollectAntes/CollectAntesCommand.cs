@@ -9,4 +9,4 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAnt
 /// </summary>
 /// <param name="GameId">The unique identifier of the game to collect antes from.</param>
 public record CollectAntesCommand(Guid GameId)
-	: IRequest<OneOf<CollectAntesSuccessful, CollectAntesError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<CollectAntesSuccessful, CollectAntesError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

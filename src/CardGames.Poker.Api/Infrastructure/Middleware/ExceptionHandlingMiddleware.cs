@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text.Json;
+using CardGames.Poker.Api.Infrastructure;
 
 namespace CardGames.Poker.Api.Infrastructure.Middleware;
 
@@ -18,8 +19,24 @@ public sealed class ExceptionHandlingMiddleware
 		{
 			await _next(context);
 		}
+		catch (GameAuthorizationException authEx)
+		{
+			if (context.Response.HasStarted)
+				throw;
+
+			context.Response.StatusCode = authEx.StatusCode;
+			context.Response.ContentType = "application/json";
+			await context.Response.WriteAsJsonAsync(new { Message = authEx.Message, Code = authEx.Code },
+				new JsonSerializerOptions
+				{
+					PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+				});
+		}
 		catch (Exception ex)
 		{
+			if (context.Response.HasStarted)
+				throw;
+
 			context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 			context.Response.ContentType = "application/json";
 

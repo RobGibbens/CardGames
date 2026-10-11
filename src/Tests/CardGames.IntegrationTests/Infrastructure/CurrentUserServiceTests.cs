@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using CardGames.Poker.Api.Infrastructure;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace CardGames.IntegrationTests.Infrastructure;
 
@@ -19,7 +20,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var userId = service.UserId;
@@ -37,7 +38,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var userId = service.UserId;
@@ -55,7 +56,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var userId = service.UserId;
@@ -72,7 +73,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var userId = service.UserId;
@@ -90,7 +91,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var userName = service.UserName;
@@ -108,7 +109,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var userName = service.UserName;
@@ -126,7 +127,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var userName = service.UserName;
@@ -144,7 +145,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var email = service.UserEmail;
@@ -162,7 +163,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var email = service.UserEmail;
@@ -180,7 +181,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var email = service.UserEmail;
@@ -194,7 +195,7 @@ public class CurrentUserServiceTests
 	{
 		// Arrange
 		var accessor = new TestHttpContextAccessor(null);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Assert
 		service.UserId.Should().BeNull();
@@ -215,7 +216,7 @@ public class CurrentUserServiceTests
 		var principal = new ClaimsPrincipal(identity);
 		var httpContext = new DefaultHttpContext { User = principal };
 		var accessor = new TestHttpContextAccessor(httpContext);
-		var service = new CurrentUserService(accessor);
+		var service = CreateService(accessor);
 
 		// Act
 		var userName = service.UserName;
@@ -223,6 +224,9 @@ public class CurrentUserServiceTests
 		// Assert - Email should take priority
 		userName.Should().Be("email@test.com");
 	}
+
+	private static CurrentUserService CreateService(IHttpContextAccessor accessor) =>
+		new(accessor, Options.Create(new InternalIdentityOptions { AllowUnsafeHeaders = false }));
 
 	private class TestHttpContextAccessor : IHttpContextAccessor
 	{

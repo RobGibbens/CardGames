@@ -16,4 +16,4 @@ namespace CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 ///     to encapsulate game-specific logic in flow handlers.
 /// </remarks>
 public record StartHandCommand(Guid GameId)
-	: IRequest<OneOf<StartHandSuccessful, StartHandError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<StartHandSuccessful, StartHandError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

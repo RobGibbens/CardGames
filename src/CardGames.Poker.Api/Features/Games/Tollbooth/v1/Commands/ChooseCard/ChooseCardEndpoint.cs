@@ -1,3 +1,5 @@
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
@@ -7,10 +9,13 @@ public static class ChooseCardEndpoint
 	public static RouteGroupBuilder MapChooseCard(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/choose-card",
-				async (Guid gameId, ChooseCardRequest request, IMediator mediator,
+				async (Guid gameId, ChooseCardRequest request, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					var command = new ChooseCardCommand(gameId, request.Choice, request.PlayerSeatIndex);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new ChooseCardCommand(gameId, request.Choice, seated.SeatPosition);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(

@@ -222,7 +222,8 @@ public class BaseballGame : IPokerGame
 			SpecialRules = new Dictionary<string, object>
 			{
 				["WildCards"] = "All 3s and 9s are wild",
-				["BuyCard"] = true
+				["BuyCard"] = true,
+				["HasBringIn"] = true
 			}
 		};
 	}

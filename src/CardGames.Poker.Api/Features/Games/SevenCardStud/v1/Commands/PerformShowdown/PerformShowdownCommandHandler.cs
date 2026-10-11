@@ -2,9 +2,12 @@ using System.Text.Json;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common.Showdown;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Hands.StudHands;
+using GenericShowdown = CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -20,6 +23,7 @@ public class PerformShowdownCommandHandler(
 	CardsDbContext context,
 	IHandHistoryRecorder handHistoryRecorder,
 	IHandSettlementService handSettlementService,
+	IMediator mediator,
 	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
@@ -44,6 +48,12 @@ public class PerformShowdownCommandHandler(
 				Message = $"Game with ID '{command.GameId}' was not found.",
 				Code = PerformShowdownErrorCode.GameNotFound
 			};
+
+		// Razz reuses stud streets, but showdown is ace-to-five lowball.
+		// Generic owns that evaluator, side pots, and low-hand descriptions.
+		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
+		if (string.Equals(gameTypeCode, PokerGameMetadataRegistry.RazzCode, StringComparison.OrdinalIgnoreCase))
+			return await DelegateRazzShowdownAsync(command.GameId, cancellationToken);
 
 		// Filter pots to current hand (in case there are old unawarded pots from edge cases)
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
@@ -150,7 +160,6 @@ public class PerformShowdownCommandHandler(
 					cancellationToken);
 			}
 
-			var winnerCards = playerCardGroups.GetValueOrDefault(winner.Id, []);
 			usersByEmail.TryGetValue(winner.Player.Email ?? string.Empty, out var winnerUser);
 
 			return new PerformShowdownSuccessful
@@ -165,11 +174,7 @@ public class PerformShowdownCommandHandler(
 					{
 						PlayerName = winner.Player.Name,
 						PlayerFirstName = winnerUser?.FirstName,
-						Cards = winnerCards.Select(c => new ShowdownCard
-						{
-							Suit = c.Suit,
-							Symbol = c.Symbol
-						}).ToList(),
+						Cards = WinByFoldResponseBuilder.HiddenCards<ShowdownCard>(),
 						HandType = null,
 						HandStrength = null,
 						IsWinner = true,
@@ -346,6 +351,50 @@ public class PerformShowdownCommandHandler(
 			Payouts = payouts,
 			PlayerHands = playerHandsList
 		};
+	}
+
+	/// <summary>
+	///     Awards a Razz pot with <see cref="RazzHand" /> lowball rules by delegating to the generic showdown handler.
+	/// </summary>
+	private async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> DelegateRazzShowdownAsync(
+		Guid gameId,
+		CancellationToken cancellationToken)
+	{
+		var genericResult = await mediator.Send(
+			new GenericShowdown.PerformShowdownCommand(gameId),
+			cancellationToken);
+
+		return genericResult.Match<OneOf<PerformShowdownSuccessful, PerformShowdownError>>(
+			success => new PerformShowdownSuccessful
+			{
+				GameId = success.GameId,
+				WonByFold = success.WonByFold,
+				CurrentPhase = success.CurrentPhase,
+				Payouts = success.Payouts,
+				PlayerHands = success.PlayerHands.Select(hand => new ShowdownPlayerHand
+				{
+					PlayerName = hand.PlayerName,
+					PlayerFirstName = hand.PlayerFirstName,
+					Cards = hand.Cards.Select(card => new ShowdownCard
+					{
+						Suit = card.Suit,
+						Symbol = card.Symbol
+					}).ToList(),
+					HandType = hand.HandType,
+					HandDescription = hand.HandDescription,
+					HandStrength = hand.HandStrength,
+					IsWinner = hand.IsWinner,
+					AmountWon = hand.AmountWon,
+					BestCardIndexes = hand.BestCardIndexes?.ToList()
+				}).ToList()
+			},
+			error => new PerformShowdownError
+			{
+				Message = error.Message,
+				Code = error.Code == GenericShowdown.PerformShowdownErrorCode.GameNotFound
+					? PerformShowdownErrorCode.GameNotFound
+					: PerformShowdownErrorCode.InvalidGameState
+			});
 	}
 
 	/// <summary>

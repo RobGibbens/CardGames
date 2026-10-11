@@ -5,9 +5,10 @@ using Refit;
 namespace CardGames.Poker.Web.Services.GameApi;
 
 /// <summary>
-///     Razz reuses the Seven Card Stud endpoint family while server-side game code controls rules.
+///     Razz reuses the Seven Card Stud endpoint family for streets and betting.
+///     Showdown uses the generic handler so the pot is awarded to the best ace-to-five low.
 /// </summary>
-public sealed class RazzApiClientWrapper(ISevenCardStudApi client) : IGameApiClient
+public sealed class RazzApiClientWrapper(ISevenCardStudApi client, IGamesApi gamesApi) : IGameApiClient
 {
 	public string GameTypeCode => "RAZZ";
 
@@ -40,7 +41,7 @@ public sealed class RazzApiClientWrapper(ISevenCardStudApi client) : IGameApiCli
 
 	public Task<IApiResponse<PerformShowdownSuccessful>> PerformShowdownAsync(Guid gameId)
 	{
-		return client.SevenCardStudPerformShowdownAsync(gameId);
+		return gamesApi.GenericPerformShowdownAsync(gameId);
 	}
 
 	public Task<bool> DropOrStayAsync(Guid gameId, Guid playerId, string decision)

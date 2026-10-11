@@ -1,4 +1,6 @@
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
@@ -8,10 +10,13 @@ public static class DrawCardsEndpoint
 	public static RouteGroupBuilder MapDrawCards(this RouteGroupBuilder group)
 	{
 		group.MapPost("/{gameId:guid}/draw",
-				async (Guid gameId, DrawCardsRequest request, IMediator mediator,
+				async (Guid gameId, DrawCardsRequest request, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					var command = new DrawCardsCommand(gameId, request.PlayerId, request.DiscardIndices);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new DrawCardsCommand(gameId, seated.PlayerId, request.DiscardIndices);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(

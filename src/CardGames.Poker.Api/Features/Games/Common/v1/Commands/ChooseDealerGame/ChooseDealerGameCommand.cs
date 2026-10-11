@@ -18,4 +18,4 @@ public record ChooseDealerGameCommand(
 	int MinBet,
 	int? SmallBlind = null,
 	int? BigBlind = null)
-	: IRequest<OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

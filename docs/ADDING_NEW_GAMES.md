@@ -1,429 +1,335 @@
-# Adding a New Game Type: Developer Guide
+# Adding a New Game
 
-This guide walks you through adding a new poker variant to the system using the game-agnostic architecture.
+Canonical playbook for a new poker variant. Discovery is automatic for **metadata** and **flow handlers**. **Behavior** is still wired explicitly through MediatR feature folders, duplicated or generic command handlers, `TableStateBuilder`, and `TablePlay` switches. `GameRules` drive some UI (phases, action lists) and do not drive every table action.
 
-## Overview
+The architecture split is in [ARCHITECTURE.md](ARCHITECTURE.md#architecture-truth-table).
 
-Adding a new game type involves:
-1. Implementing the game logic in the domain layer
-2. Defining the game rules metadata
-3. Registering the game in the API layer
+## 1. Quick orientation
 
-For straightforward variants, that can be enough. In the current repo, variants with bespoke turn actions, private-state needs, or custom showdown payloads still require focused API/contracts/web updates. Treat the rules metadata as the starting point, not a guarantee that no other layer changes are needed.
+The codebase mixes two patterns:
 
-## Step-by-Step Example: Adding "Kings and Lows"
+- Metadata-driven discovery for game registration (domain game class + `[PokerGameMetadata]` + `GetGameRules()`).
+- Explicit wiring in API and web orchestration for behavior (betting, draw, street progression, start/deal/showdown routing).
 
-Let's walk through adding the "Kings and Lows" game as an example.
+A metadata-only change is enough for the lobby list and `GET /api/v1/games/rules/{gameTypeCode}`. A playable table also needs a flow handler and, when the hand sequence differs from an existing family, a `TablePlay.razor` branch.
 
-### Step 1: Implement the Game Logic
+## 2. Minimal path
 
-Create the game implementation in `CardGames.Poker/Games/YourGameName/`:
+Use this when the variant is a tweak of an existing flow family (Hold'em-derivative, draw-derivative, stud-derivative).
+
+1. **Domain game and rules**
+   - Add `src/CardGames.Poker/Games/<NewGame>/<NewGame>Game.cs` implementing `IPokerGame` with `[PokerGameMetadata(...)]`.
+   - Add a parameterless constructor (or a public constructor the scanner can call with defaults) so `PokerGameRulesRegistry` can instantiate it.
+   - Add `GetGameRules()` returning `<NewGame>Rules.CreateGameRules()`.
+   - Add `src/CardGames.Poker/Games/<NewGame>/<NewGame>Rules.cs` with phases, dealing, betting, drawing, and showdown config.
+   - The `code` argument and `GameRules.GameTypeCode` must match exactly (all-caps convention).
+   - Phase IDs must be the strings handlers and the database store (`ThirdStreet`, `PreFlop`, `DrawPhase`, and so on). Copy them from a sibling `*Rules.cs` in the same family.
+
+2. **Optional code constant**
+   - `PokerGameMetadataRegistry` discovers the attribute by reflection. You do not edit a rules dictionary.
+   - Add a `public const string` on `PokerGameMetadataRegistry` only when API or web conditionals need a shared name (the existing `PhilsMomCode` pattern).
+
+3. **Flow handler**
+   - Add `src/CardGames.Poker.Api/GameFlow/<NewGame>FlowHandler.cs` implementing `IGameFlowHandler`, usually by subclassing `BaseGameFlowHandler`.
+   - Set `GameTypeCode` and override only what differs (blinds, initial phase, draw timeout).
+   - `GameFlowHandlerFactory` scans the API assembly and registers the handler. There is no factory dictionary to edit.
+   - The handler needs a constructor `Activator.CreateInstance` can call.
+
+4. **Reuse command handlers when the request shape already exists**
+   - Prefer an existing endpoint family and branch on game-type code.
+   - Phil's Mom reuses Hold'em betting and Irish discard endpoints, with variant checks in `ProcessBettingActionCommandHandler`, `ProcessDiscardCommandHandler`, `PerformShowdownCommandHandler`, and `TableStateBuilder`.
+
+5. **Web router and conditionals**
+   - Add the code to `src/CardGames.Poker.Web/Services/IGameApiRouter.cs` for every action the variant uses.
+   - Add an `Is<NewGame>` helper and a `StartGameAsync` branch in `TablePlay.razor`. An unknown code throws `NotSupportedException` (`No StartNewHand routing configured`).
+   - Update draw constraints, Hold'em-style display toggles, and blind lists in create/edit/dealer-choice/table canvas when those apply.
+
+6. **Image**
+   - Add `src/CardGames.Poker.Web/wwwroot/images/games/<image>.png` and pass that file name as the attribute's `imageName`.
+
+7. **One lifecycle test**
+   - Add an integration test next to the family you reused.
+
+If the new code is missing from a `switch` that defaults to Five Card Draw, the table will run the wrong command. If the switch throws, the hand will not start. Search for sibling game codes and add the new code beside them.
+
+## 3. Full production path
+
+1. Domain and metadata
+   - [ ] `<NewGame>Game.cs` with the full `[PokerGameMetadata]` constructor.
+   - [ ] `<NewGame>Rules.cs` with ordered phases and descriptors.
+   - [ ] `GetGameRules()` returns that factory, and a unit test calls `PokerGameRulesRegistry.TryGet`.
+2. Flow and streets
+   - [ ] `<NewGame>FlowHandler.cs` for first phase and dealing.
+   - [ ] Timer betting overrides `SendBettingActionAsync` when the game does not use the Five Card Draw betting command (see below).
+   - [ ] Phase transitions in the reused handler match the new street list.
+3. Command validation
+   - [ ] Discard, betting normalization, and showdown inclusion are variant-aware.
+   - [ ] New mutation endpoints call `RequireAuthorization()` the same way existing command groups do (`Features/Games/Common/v1/V1.cs` puts mutations on an authorized group). See `docs/Auditing/03-fix-trusted-identity-authz.md` before trusting a client-supplied player id.
+4. State projection
+   - [ ] `TableStateBuilder` evaluates transitional hole-card counts.
+5. Web
+   - [ ] `TablePlay` start, showdown, and action branches.
+   - [ ] Create, edit, dealer-choice, and table canvas lists.
+6. Router
+   - [ ] `IGameApiRouter` betting and draw maps. Add a dedicated endpoint only when existing contracts cannot represent the action.
+   - [ ] If contracts change, regenerate Refit clients with `dotnet build src/CardGames.Poker.Refitter`.
+7. Tests
+   - [ ] Lifecycle integration test, one invalid-action test, and a state-builder regression if the hand shape is nonstandard.
+
+## 4. Registration
+
+Registration is reflection. Do not add an entry to a rules dictionary.
+
+| What | How it is found |
+|------|-----------------|
+| Lobby metadata | `[PokerGameMetadata]` on a concrete `IPokerGame` in `CardGames.Poker` (`PokerGameMetadataRegistry`) |
+| Rules JSON | Same type, then `instance.GetGameRules()` (`PokerGameRulesRegistry`) |
+| Hand setup and timer actions | `IGameFlowHandler` in the API assembly (`GameFlowHandlerFactory`) |
+
+`GetGameRules()` on the instance is the wire. `*Rules.CreateGameRules()` is the usual implementation.
+
+Confirm discovery with the pattern in `src/Tests/CardGames.Poker.Tests/Api/PokerGameRulesRegistryTests.cs`:
 
 ```csharp
-// KingsAndLowsGame.cs
-namespace CardGames.Poker.Games.KingsAndLows;
+var success = PokerGameRulesRegistry.TryGet("NEWCODE", out var rules);
+success.Should().BeTrue();
+rules!.GameTypeCode.Should().Be("NEWCODE");
+```
 
+Rules are served by `GetGameRulesEndpoint.MapGetGameRules` on the games group:
+
+```http
+GET /api/v1/games/rules/KINGSANDLOWS
+GET /api/v1/games/{gameId}/rules
+```
+
+Mapped from `Features/Games/Common/v1/V1.cs` (`/api/v{version:apiVersion}/games`) plus `MapGet("rules/{gameTypeCode}")`. That query is not on the mutation group that calls `RequireAuthorization()`.
+
+## 5. Metadata attribute
+
+`PokerGameMetadataAttribute` requires every argument below. This block matches `SevenCardStudGame`:
+
+```csharp
 [PokerGameMetadata(
-    "Kings and Lows",
-    "A five-card draw variant where kings and the lowest card are wild.",
-    2,
-    5,
-    "kingsandlows.png")]
-public class KingsAndLowsGame : IPokerGame
+    "SEVENCARDSTUD",
+    "Seven Card Stud",
+    "A classic poker variant where players receive seven cards individually, with betting rounds after the third, fourth, fifth, and sixth cards.",
+    2,                          // minimumNumberOfPlayers
+    7,                          // maximumNumberOfPlayers
+    2,                          // initialHoleCards
+    1,                          // initialBoardCards
+    0,                          // maxCommunityCards
+    7,                          // maxPlayerCards
+    false,                      // hasDrawPhase
+    0,                          // maxDiscards
+    WildCardRule.None,
+    BettingStructure.AnteBringIn,
+    "sevencardstud.png")]       // optional imageName
+public class SevenCardStudGame : IPokerGame
 {
-    public string Name { get; } = "Kings and Lows";
-    public string Description { get; } = "...";
-    public int MinimumNumberOfPlayers { get; } = 2;
-    public int MaximumNumberOfPlayers { get; } = 5;
+    public SevenCardStudGame() { /* parameterless ctor so the registry can construct it */ }
 
-    // Implement game logic methods
-    public void StartHand() { /* ... */ }
-    public void DealHands() { /* ... */ }
-    // ... other game methods
-
-    // NEW: Implement GetGameRules()
-    public GameRules GetGameRules()
-    {
-        return KingsAndLowsRules.CreateGameRules();
-    }
+    public GameRules GetGameRules() => SevenCardStudRules.CreateGameRules();
 }
 ```
 
-### Step 2: Define Game Phases
+`BettingStructure` and `WildCardRule` live in `CardGames.Poker.Betting`.
 
-Create an enum for your game's phases:
+## 6. Game rules
 
-```csharp
-// Phases.cs
-public enum KingsAndLowsPhase
-{
-    WaitingToStart,
-    CollectingAntes,
-    Dealing,
-    DropOrStay,
-    DrawPhase,
-    PlayerVsDeck,
-    Showdown,
-    PotMatching,
-    Complete
-}
-```
+Phase `PhaseId` values are persisted and compared as strings. Use the ids already defined for that family:
 
-### Step 3: Create the Game Rules
+- Seven Card Stud and stud-family variants: `WaitingToStart`, `CollectingAntes`, `ThirdStreet`, `FourthStreet`, `FifthStreet`, `SixthStreet`, `SeventhStreet`, `Showdown`, `Complete`.
+- Hold'em (`HoldEmRules.cs`): `WaitingToStart`, `CollectingBlinds`, `Dealing`, `PreFlop`, `Flop`, `Turn`, `River`, `Showdown`, `Complete`.
+- Five Card Draw (`FiveCardDrawRules.cs`): `WaitingToStart`, `CollectingAntes`, `Dealing`, `FirstBettingRound`, `DrawPhase`, `DrawComplete`, `SecondBettingRound`, `Showdown`, `Complete`.
 
-Create a rules factory class:
+`GamePhaseDescriptor` requires `PhaseId`, `Name`, `Description`, `Category`, and `RequiresPlayerAction`.
 
-```csharp
-// KingsAndLowsRules.cs
-using CardGames.Poker.Games.GameFlow;
+Guidelines:
 
-namespace CardGames.Poker.Games.KingsAndLows;
+- List phases in play order. Categories in use include `Setup`, `Dealing`, `Betting`, `Drawing`, `Decision`, `Resolution`, and `Special`.
+- Set `RequiresPlayerAction` on decision phases and list `AvailableActions`.
+- Mark the last phase `IsTerminal`.
+- `CardDealing`, `Betting`, `Drawing`, and `Showdown` follow the sibling rules class. `SpecialRules` is the extension dictionary for flags such as `HasBringIn` or `WildCards`.
 
-public static class KingsAndLowsRules
-{
-    public static GameRules CreateGameRules()
-    {
-        return new GameRules
-        {
-            GameTypeCode = "KINGSANDLOWS",
-            GameTypeName = "Kings and Lows",
-            Description = "A five-card draw poker variant where kings and the lowest card are wild. Players ante, decide to drop or stay, draw cards, and losers match the pot.",
-            MinPlayers = 2,
-            MaxPlayers = 5,
-            
-            // Define phases in order
-            Phases = new List<GamePhaseDescriptor>
-            {
-                new() 
-                { 
-                    PhaseId = "WaitingToStart", 
-                    Name = "Waiting to Start", 
-                    Description = "Waiting for players to join and ready up",
-                    Category = "Setup",
-                    RequiresPlayerAction = false
-                },
-                new() 
-                { 
-                    PhaseId = "CollectingAntes", 
-                    Name = "Collecting Antes", 
-                    Description = "Collecting ante bets from all players",
-                    Category = "Setup",
-                    RequiresPlayerAction = false
-                },
-                new() 
-                { 
-                    PhaseId = "Dealing", 
-                    Name = "Dealing", 
-                    Description = "Dealing 5 cards to each player",
-                    Category = "Dealing",
-                    RequiresPlayerAction = false
-                },
-                new() 
-                { 
-                    PhaseId = "DropOrStay", 
-                    Name = "Drop or Stay", 
-                    Description = "Players decide whether to drop out or stay in the hand",
-                    Category = "Decision",
-                    RequiresPlayerAction = true,
-                    AvailableActions = new[] { "Drop", "Stay" }
-                },
-                new() 
-                { 
-                    PhaseId = "DrawPhase", 
-                    Name = "Draw Phase", 
-                    Description = "Players discard and draw replacement cards",
-                    Category = "Drawing",
-                    RequiresPlayerAction = true,
-                    AvailableActions = new[] { "Draw" }
-                },
-                new() 
-                { 
-                    PhaseId = "Showdown", 
-                    Name = "Showdown", 
-                    Description = "Players reveal hands and winner is determined",
-                    Category = "Resolution",
-                    RequiresPlayerAction = false
-                },
-                new() 
-                { 
-                    PhaseId = "Complete", 
-                    Name = "Complete", 
-                    Description = "Hand is complete",
-                    Category = "Resolution",
-                    RequiresPlayerAction = false,
-                    IsTerminal = true
-                }
-            },
-            
-            // Configure card dealing
-            CardDealing = new CardDealingConfig
-            {
-                InitialCards = 5,
-                InitialVisibility = CardVisibility.FaceDown,
-                HasCommunityCards = false
-            },
-            
-            // Configure betting
-            Betting = new BettingConfig
-            {
-                HasAntes = true,
-                HasBlinds = false,
-                BettingRounds = 0,  // No traditional betting
-                Structure = "No Betting"
-            },
-            
-            // Configure drawing
-            Drawing = new DrawingConfig
-            {
-                AllowsDrawing = true,
-                MaxDiscards = 5,
-                SpecialRules = "Players can discard all 5 cards",
-                DrawingRounds = 1
-            },
-            
-            // Configure showdown
-            Showdown = new ShowdownConfig
-            {
-                HandRanking = "Standard Poker (High) with Wild Cards",
-                IsHighLow = false,
-                HasSpecialSplitRules = true,
-                SpecialSplitDescription = "Losers match the pot; pot carries over until someone wins it all"
-            },
-            
-            // Special rules (game-specific features)
-            SpecialRules = new Dictionary<string, object>
-            {
-                ["WildCards"] = "All Kings and each player's lowest card",
-                ["DropOrStay"] = true,
-                ["PotCarryOver"] = true,
-                ["LosersMatchPot"] = true
-            }
-        };
-    }
-}
-```
+Stud `BringIn`, `SmallBet`, and `BigBet` on `Game` are not set by `CreateGameCommand` today. Rules metadata alone does not post a bring-in. See `docs/Auditing/10-fix-bring-in-never-posted.md`.
 
-### Step 4: Register in the API
+## 7. Flow handler and the action timer
 
-Add your game to the registry in `PokerGameRulesRegistry.cs`:
+`BaseGameFlowHandler.SendBettingActionAsync` sends the Five Card Draw `ProcessBettingAction` command. The action timer calls that method, not the HTTP route the player uses.
+
+Override `SendBettingActionAsync` on any game whose betting command is not Five Card Draw. Stud-family games (`SEVENCARDSTUD`, `RAZZ`, `FOLLOWTHEQUEEN`, `PAIRPRESSURE`, `BASEBALL`, `GOODBADUGLY`, `TOLLBOOTH`) each send their own command type. Leaving the base method in place makes the timer send Five Card Draw's command, which rejects street phases and stalls the table. See `docs/Auditing/09-fix-stud-timer-auto-fold-stall.md`.
+
+`GameFlowHandlerFactory` falls back to Five Card Draw when no handler matches the code. A missing handler is a silent wrong-game default, not a startup error.
+
+## 8. Generic and dedicated MediatR handlers
+
+`Features/Games/Generic/v1` maps `MapStartHand()` to the shared `StartHandCommandHandler`. Several variants also map their own `MapStartHand()` to a different handler type in the same assembly. `TablePlay` calls one or the other by branch. Both can exist during migration. Do not assume every game starts through Generic.
+
+Showdown is the same shape: some codes call a variant `PerformShowdown`, and some call Generic. Red River must be included in the Hold'em showdown branch or the table stays in `Showdown`. See `docs/Auditing/04-fix-red-river-showdown-stall.md`.
+
+## 9. When metadata is not enough
+
+Use Bob Barker when the variant needs any of the following:
+
+- A dedicated player action that does not fit an existing command, such as showcase selection before pre-flop betting.
+- Variant-specific private or public state.
+- Custom showdown settlement or display payloads.
+
+Plan changes in:
+
+- `src/CardGames.Poker.Api/Features/Games/{Variant}` and endpoint registration.
+- Contracts under `src/CardGames.Contracts/`.
+- `TableStateBuilder` and showdown shaping.
+- `IGameApiRouter`.
+- Localized UI (overlay or table section), not a broad UI rewrite.
+- A `SendBettingActionAsync` override when the timer must not use the Five Card Draw command.
+
+Tollbooth is the reference for a special phase between streets (a per-player card choice, display-only community cards, and its own endpoint family). Mapping notes are in [Tollbooth](#tollbooth-tollbooth) below.
+
+## 10. What rules do and do not drive
+
+| Driven by `GameRules` | Still hard-coded |
+|-----------------------|------------------|
+| Lobby name, player limits, image (via the attribute) | `TablePlay.StartGameAsync` API sequence |
+| `GET` rules JSON | Betting command type |
+| Phase label and `RequiresPlayerAction` on the table snapshot | Showdown endpoint |
+| Some available-action lists | Timer `SendBettingActionAsync` target |
+| | Create-game stake fields, including stud bring-in |
+
+## 11. Orchestration matrix
+
+Verified against `TablePlay.StartGameAsync`. Update this table when that method changes.
+
+Dealer's Choice tables call `GenericStartHandAsync` and stop. The API moves to `WaitingForDealerChoice` instead of dealing.
+
+| Game code | StartHand API (`TablePlay`) | Post-start path |
+|-----------|-----------------------------|-----------------|
+| `TWOSJACKSMANWITHTHEAXE` | `TwosJacksManWithTheAxeStartHandAsync` | Same API: `CollectAntes`, then `DealHands` |
+| `PAIRPRESSURE` | `PairPressureStartHandAsync` | Same API: `CollectAntes`, then `DealHands` |
+| `SEVENCARDSTUD` | `SevenCardStudStartHandAsync` | Stud API: `CollectAntes`, then `DealHands` |
+| `RAZZ` | `SevenCardStudStartHandAsync` | Stud API: `CollectAntes`, then `DealHands` |
+| `GOODBADUGLY` | `SevenCardStudStartHandAsync` | Stud `CollectAntes`, then `GoodBadUglyDealHandsAsync` |
+| `BASEBALL` | `BaseballStartHandAsync` | Baseball `CollectAntes`, then `DealHands` |
+| `FOLLOWTHEQUEEN` | `FollowTheQueenStartHandAsync` | Same API: `CollectAntes`, then `DealHands` |
+| `TOLLBOOTH` | `TollboothStartHandAsync` | Same API: `CollectAntes`, then `DealHands` |
+| `HOLDEM`, `REDRIVER`, `KLONDIKE` | `HoldEmStartHandAsync`, or `GenericStartHandAsync` when `IsLeagueTournament` | No separate collect/deal call from the page; blinds and dealing run inside the start handler and flow handler |
+| `HOLDTHEBASEBALL` | `HoldTheBaseballStartHandAsync` | Start only |
+| `OMAHA`, `NEBRASKA`, `SOUTHDAKOTA`, `BOBBARKER` | `GenericStartHandAsync` | Flow handler inside the generic start handler |
+| `IRISHHOLDEM`, `PHILSMOM`, `CRAZYPINEAPPLE` | `GenericStartHandAsync` | Flow handler inside the generic start handler |
+| `KINGSANDLOWS` | `KingsAndLowsStartHandAsync` | Start handler collects the ante and deals |
+| `SCREWYOURNEIGHBOR` | `GenericStartHandAsync` | Generic start deals one card and moves to `KeepOrTrade` |
+| `INBETWEEN` | `GenericStartHandAsync` | Generic start collects antes and moves to `InBetweenTurn` |
+| `FIVECARDDRAW` | `FiveCardDrawStartHandAsync` | Same API: `CollectAntes`, then `DealHands` |
+| Any other code | Throws `NotSupportedException` | Add an explicit branch |
+
+## 12. Variant addenda
+
+These notes record how existing variants were wired. Follow the same family when the new game is a small delta.
+
+### Phil's Mom (`PHILSMOM`)
+
+Irish Hold'em shape: 4 hole cards, one discard before the flop, one discard after the flop, then turn, river, and showdown. Reuses Hold'em betting and the Irish discard endpoint. Flow handler: `PhilsMomFlowHandler`. Lifecycle test: `PhilsMomHandLifecycleTests`.
+
+### Crazy Pineapple (`CRAZYPINEAPPLE`)
+
+Same endpoint reuse as Phil's Mom. Hold'em betting handler branches pre-flop to flop to a mandatory one-card discard. `IGameApiRouter` maps betting to Hold'em and discard to Irish.
+
+### Red River (`REDRIVER`)
+
+Hold'em betting. If the river card is hearts or diamonds, deal one extra community card and go to showdown with no extra betting round. `TablePlay` starts it on the Hold'em branch. `TryLoadShowdownAsync` must call the Hold'em showdown endpoint. `RedRiverApiClientWrapper` implements `PerformShowdownAsync` with `HoldEmPerformShowdownAsync`.
+
+### South Dakota (`SOUTHDAKOTA`)
+
+Nebraska hand shape (best 3 hole + 2 community) with a shorter board: 5 hole cards, pre-flop, flop of 2, turn of 1, no river. Include it anywhere Omaha/Nebraska is special-cased, and register evaluation with `NebraskaHandEvaluator`.
+
+### Razz (`RAZZ`)
+
+Reuses Seven Card Stud dealing and betting. Showdown must not build a `StudHand` inside the stud `PerformShowdown`. That endpoint delegates `RAZZ` (including a Dealer's Choice hand whose current type is `RAZZ`) to the generic showdown handler, which evaluates `RazzHand` as ace-to-five low.
+
+### Pair Pressure (`PAIRPRESSURE`)
+
+Stud street list with wild ranks taken from duplicate face-up ranks. Keep the stud flow-handler shape, add the wild-rank helper and `PairPressureHand`, and pass ordered face-up cards into showdown and `TableStateBuilder`.
+
+### Tollbooth (`TOLLBOOTH`)
+
+Stud streets with a `TollboothOffer` phase before 4th through 7th street. Each player chooses Furthest (free, lowest deal-order display card), Nearest (1× ante, highest deal-order display card), or Deck (2× ante). Two display community cards are visible and excluded from evaluation. Touchpoints: `TollboothFlowHandler`, `TollboothVariantState`, the Tollbooth `ChooseCard` endpoint, a stud betting-handler redirect into `TollboothOffer`, `TollboothOfferPrivateDto`, and `TollboothOfferOverlay.razor`.
+
+## 13. Testing
 
 ```csharp
-private static readonly FrozenDictionary<string, Func<GameRules>> RulesByGameTypeCode =
-    new Dictionary<string, Func<GameRules>>(StringComparer.OrdinalIgnoreCase)
-    {
-        [PokerGameMetadataRegistry.FiveCardDrawCode] = FiveCardDrawRules.CreateGameRules,
-        [PokerGameMetadataRegistry.KingsAndLowsCode] = KingsAndLowsRules.CreateGameRules,  // NEW
-        // ... other games
-    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
-```
-
-### Step 5: Test the Game Rules
-
-You can now retrieve your game rules via the API:
-
-```bash
-curl http://localhost:5000/api/v1/games/rules/KINGSANDLOWS
-```
-
-Or programmatically:
-
-```csharp
-if (PokerGameRulesRegistry.TryGet("KINGSANDLOWS", out var rules))
-{
-    Console.WriteLine($"Game: {rules.GameTypeName}");
-    Console.WriteLine($"Players: {rules.MinPlayers}-{rules.MaxPlayers}");
-    Console.WriteLine($"Phases: {rules.Phases.Count}");
-    
-    foreach (var phase in rules.Phases)
-    {
-        Console.WriteLine($"  - {phase.Name} ({phase.Category})");
-    }
-}
-```
-
-## Guidelines for Defining Game Rules
-
-## When Metadata Is Not Enough
-
-The current architecture handles many phase and rendering concerns from `GameRules`, but some features still need localized variant work.
-
-Use Bob Barker as the reference pattern when a game needs any of the following:
-
-- A dedicated player action that does not fit an existing generic command, such as Bob Barker's showcase selection before pre-flop betting.
-- Variant-specific private or public state, such as marking a selected showcase card privately while revealing the dealer target card only at showdown.
-- Custom showdown settlement or display payloads, such as Bob Barker's split main-hand/showcase results.
-
-For variants in that category, plan for changes in these seams:
-
-- API feature folder and endpoint registration under `src/CardGames.Poker.Api/Features/Games/{Variant}`.
-- Contracts for Refit or SignalR DTO extensions under `src/CardGames.Contracts/`.
-- `TableStateBuilder` and showdown settlement shaping in the API.
-- Web router mappings in `src/CardGames.Poker.Web/Services/IGameApiRouter.cs`.
-- Localized UI updates in table-play or overlay components rather than broad UI rewrites.
-
-### Phases
-
-- **Order matters**: List phases in the order they occur during gameplay
-- **Use consistent categories**: "Setup", "Dealing", "Betting", "Drawing", "Decision", "Resolution", "Special"
-- **Mark action phases**: Set `RequiresPlayerAction = true` for phases where players make decisions
-- **List available actions**: Specify all actions players can take (e.g., "Check", "Bet", "Fold", "Draw")
-- **Terminal phases**: Mark the final phase with `IsTerminal = true`
-
-### Card Dealing
-
-- **InitialCards**: Number of cards each player receives at the start
-- **InitialVisibility**: "FaceDown" for hole cards, "FaceUp" for exposed cards
-- **HasCommunityCards**: `true` for Hold'em/Omaha-style games
-- **DealingRounds**: For stud games, specify each dealing round (count, visibility, target)
-
-### Betting
-
-- **HasAntes**: Whether all players post antes before the hand
-- **HasBlinds**: Whether the game uses blinds (typical in Hold'em/Omaha)
-- **BettingRounds**: Number of betting rounds (0 for games without betting)
-- **Structure**: "Fixed Limit", "Pot Limit", "No Limit", or "No Betting"
-
-### Drawing
-
-- **AllowsDrawing**: `true` for draw poker variants
-- **MaxDiscards**: Maximum cards a player can exchange (null for unlimited)
-- **SpecialRules**: Describe any special discard rules (e.g., "4 cards if holding an Ace")
-- **DrawingRounds**: Number of draw rounds (usually 1)
-
-### Showdown
-
-- **HandRanking**: Describe the ranking system (e.g., "Standard Poker (High)", "Razz (Low)", "with Wild Cards")
-- **IsHighLow**: `true` for high-low split games
-- **HasSpecialSplitRules**: `true` if the pot is split in unusual ways
-- **SpecialSplitDescription**: Explain the split rules if applicable
-
-### Special Rules
-
-Use the `SpecialRules` dictionary for game-unique features:
-
-```csharp
-SpecialRules = new Dictionary<string, object>
-{
-    ["WildCards"] = "All 2s, all Jacks, and King of Diamonds",
-    ["BuyCards"] = true,
-    ["MinimumHandQualifier"] = "Pair of Jacks",
-    ["DealerRotation"] = "Clockwise after each hand"
-}
-```
-
-The UI can query these rules to enable special features.
-
-## Common Patterns
-
-### Standard Draw Poker
-```csharp
-Phases = [WaitingToStart, CollectingAntes, Dealing, FirstBetting, Draw, SecondBetting, Showdown, Complete]
-CardDealing = { InitialCards = 5, Visibility = FaceDown }
-Betting = { HasAntes = true, BettingRounds = 2 }
-Drawing = { AllowsDrawing = true, MaxDiscards = 3 }
-```
-
-### Hold'em/Omaha Pattern
-```csharp
-Phases = [WaitingToStart, PostingBlinds, Dealing, Preflop, Flop, Turn, River, Showdown, Complete]
-CardDealing = { InitialCards = 2 (Hold'em) or 4 (Omaha), HasCommunityCards = true }
-Betting = { HasBlinds = true, BettingRounds = 4 }
-Drawing = null  // No drawing in community card games
-```
-
-### Seven Card Stud Pattern
-```csharp
-Phases = [WaitingToStart, CollectingAntes, DealFirstStreet, ThirdStreet, FourthStreet, FifthStreet, SixthStreet, SeventhStreet, Showdown, Complete]
-CardDealing = { 
-    DealingRounds = [
-        { Count = 2, Visibility = FaceDown, Target = Players },
-        { Count = 1, Visibility = FaceUp, Target = Players },
-        { Count = 1, Visibility = FaceUp, Target = Players },
-        { Count = 1, Visibility = FaceUp, Target = Players },
-        { Count = 1, Visibility = FaceUp, Target = Players },
-        { Count = 1, Visibility = FaceDown, Target = Players }
-    ]
-}
-Betting = { HasAntes = true, BettingRounds = 5 }
-Drawing = null  // No drawing in stud
-```
-
-## Testing Your Game Rules
-
-Create unit tests to verify your rules:
-
-```csharp
-[Fact]
-public void KingsAndLows_Rules_Should_Have_Correct_Structure()
-{
-    // Arrange & Act
-    var rules = KingsAndLowsRules.CreateGameRules();
-    
-    // Assert
-    Assert.Equal("KINGSANDLOWS", rules.GameTypeCode);
-    Assert.Equal(2, rules.MinPlayers);
-    Assert.Equal(5, rules.MaxPlayers);
-    Assert.Equal(7, rules.Phases.Count);
-    Assert.True(rules.Betting.HasAntes);
-    Assert.False(rules.Betting.HasBlinds);
-    Assert.True(rules.Drawing.AllowsDrawing);
-}
-
 [Fact]
 public void KingsAndLows_Rules_Should_Be_Retrievable_From_Registry()
 {
-    // Act
     var success = PokerGameRulesRegistry.TryGet("KINGSANDLOWS", out var rules);
-    
-    // Assert
+
     Assert.True(success);
     Assert.NotNull(rules);
     Assert.Equal("Kings and Lows", rules.GameTypeName);
 }
 ```
 
-## Troubleshooting
+Registry suites already in the repo:
 
-### Game rules not appearing in API
+```bash
+dotnet test src/Tests/CardGames.Poker.Tests/CardGames.Poker.Tests.csproj --filter "FullyQualifiedName~PokerGameRulesRegistry"
+dotnet test src/Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj --filter "FullyQualifiedName~PokerGameRegistry"
+```
 
-1. Check that you added the game to `PokerGameRulesRegistry`
-2. Verify the game type code matches the registry key
-3. Ensure `CreateGameRules()` doesn't throw exceptions
+Before a pull request:
 
-### UI not adapting to new game
+```bash
+dotnet build src/CardGames.sln
+```
 
-1. Confirm the game rules API endpoint returns data
-2. Check that phase IDs in the rules match the phase enum values
-3. Verify available actions are spelled correctly
+```bash
+dotnet run --project src/CardGames.Poker.Api
+dotnet run --project src/CardGames.Poker.Web
+```
+
+Check that the game appears in create/edit with the right stake fields, that a hand walks every phase, that discard limits match the API, and that showdown completes for the winner and the other seats.
+
+`scripts/verify-doc-consistency.sh` fails if this guide, `ARCHITECTURE.md`, or `README.md` grow a manual registry-edit instruction again.
+
+## 14. Troubleshooting
+
+### Rules missing from `GET /api/v1/games/rules/{code}`
+
+1. The class implements `IPokerGame`, is not abstract, and has `[PokerGameMetadata]` whose `code` matches `GameRules.GameTypeCode`.
+2. `GetGameRules()` does not throw when the registry constructs the type.
+3. The constructor is parameterless, or its parameters are value types and reference defaults the scanner can pass.
+
+### Table does not start or uses the wrong deal sequence
+
+1. `TablePlay.StartGameAsync` has a branch for the code (see the matrix above).
+2. `GameFlowHandlerFactory` resolves your handler, not the Five Card Draw fallback.
+3. Phase ids in `*Rules.cs` match the strings the command handler writes.
+
+### Timer folds the wrong way or the street stalls
+
+Override `SendBettingActionAsync` so the timer sends this variant's betting command.
 
 ### Build errors
 
-1. Add `using CardGames.Poker.Games.GameFlow;` to your rules file
-2. Add `using System.Collections.Generic;` if creating lists/dictionaries
-3. Ensure all required properties are initialized in GameRules
+Add `using CardGames.Poker.Games.GameFlow;` in the rules file and initialize every `required` member on `GameRules` and `GamePhaseDescriptor`.
 
-## Next Steps
+## 15. Pre-PR checklist
 
-After implementing your game rules:
-
-1. **Test in isolation**: Use unit tests to verify the rules structure
-2. **Test via API**: Call the `/api/v1/games/rules/{code}` endpoint
-3. **Create a game**: Use the existing CreateGame API to instantiate your game
-4. **Play through**: Join the game and verify the phases progress correctly
-5. **Validate UI**: Ensure the UI adapts to your game's phases and actions
-
-The UI will automatically:
-- Display your game's phases in the status bar
-- Show action buttons based on `AvailableActions`
-- Adapt the card display based on `CardDealing` config
-- Apply special rules when present in the metadata
+- [ ] `[PokerGameMetadata]` uses the full constructor and `GetGameRules()` is discoverable.
+- [ ] Flow handler exists and timer betting does not use the Five Card Draw default unless that is correct.
+- [ ] `TablePlay` start and showdown branches exist.
+- [ ] Router maps include the code.
+- [ ] New endpoints require authorization.
+- [ ] Image and create-table stake fields match the variant.
+- [ ] Targeted tests pass.
 
 ## Resources
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Overview of the game-agnostic architecture
-- [GameRules.cs](src/CardGames.Poker/Games/GameFlow/GameRules.cs) - Domain model reference
-- [GameRulesDto.cs](src/CardGames.Contracts/GameRules/GameRulesDto.cs) - API contract reference
-- Example implementations:
-  - [FiveCardDrawRules.cs](src/CardGames.Poker/Games/FiveCardDraw/FiveCardDrawRules.cs)
-  - [KingsAndLowsRules.cs](src/CardGames.Poker/Games/KingsAndLows/KingsAndLowsRules.cs)
-  - [TwosJacksManWithTheAxeRules.cs](src/CardGames.Poker/Games/TwosJacksManWithTheAxe/TwosJacksManWithTheAxeRules.cs)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [PokerGameMetadataAttribute.cs](../src/CardGames.Poker/Games/PokerGameMetadataAttribute.cs)
+- [PokerGameRulesRegistry.cs](../src/CardGames.Poker.Api/Games/PokerGameRulesRegistry.cs)
+- [GameFlowHandlerFactory.cs](../src/CardGames.Poker.Api/GameFlow/GameFlowHandlerFactory.cs)
+- [SevenCardStudGame.cs](../src/CardGames.Poker/Games/SevenCardStud/SevenCardStudGame.cs)
+- [SevenCardStudRules.cs](../src/CardGames.Poker/Games/SevenCardStud/SevenCardStudRules.cs)
+- [FiveCardDrawRules.cs](../src/CardGames.Poker/Games/FiveCardDraw/FiveCardDrawRules.cs)
+- [KingsAndLowsRules.cs](../src/CardGames.Poker/Games/KingsAndLows/KingsAndLowsRules.cs)

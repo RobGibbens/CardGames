@@ -362,6 +362,7 @@ dotnet test Tests/CardGames.Poker.Tests/CardGames.Poker.Tests.csproj --filter "F
 | `fix-big-blind-option.md` | Hold’em only; listed for “who can act” edge cases |
 | `fix-stud-timer-auto-fold-stall.md` | Third Street action timer; unrelated to bring-in amount |
 | `fix-razz-showdown-lowball.md` | Razz showdown; separate from bring-in posting |
+| `11-fix-doc-vs-code.md` | Orchestration path: see §5.2 and the matrix in `docs/ADDING_NEW_GAMES.md` before assuming a Generic-only flow. Create-game stakes and `DealHands` are different steps |
 
 ---
 

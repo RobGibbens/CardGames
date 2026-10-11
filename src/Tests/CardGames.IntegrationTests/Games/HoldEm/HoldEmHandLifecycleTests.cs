@@ -1,4 +1,6 @@
+using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
+using CardGames.Poker.Api.Services;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 
 namespace CardGames.IntegrationTests.Games.HoldEm;
@@ -104,6 +106,61 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 
 		freshPlayers.Count(p => p.HasFolded).Should().Be(2);
 		freshPlayers.Count(p => !p.HasFolded).Should().Be(1, "exactly one player should remain");
+	}
+
+	[Fact]
+	public async Task FoldWin_HidesWinnerHoleCardsInPublicState_AndOmitsThemFromShowdown()
+	{
+		var setup = await CreateDealtHoldEmGameAsync(3, 0);
+		var game = setup.Game;
+
+		// Blinds are already posted, so the first actor faces a bet and may fold.
+		var firstFold = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+		firstFold.IsT0.Should().BeTrue(firstFold.IsT1 ? firstFold.AsT1.Message : "first fold should succeed");
+		var secondFold = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold));
+		secondFold.IsT0.Should().BeTrue(secondFold.IsT1 ? secondFold.AsT1.Message : "second fold should succeed");
+
+		var tableStateBuilder = Scope.ServiceProvider.GetRequiredService<ITableStateBuilder>();
+		var winner = await GetFreshDbContext().GamePlayers
+			.Include(gp => gp.Player)
+			.SingleAsync(gp => gp.GameId == game.Id && !gp.HasFolded);
+
+		await AssertFoldWinCardsStayHiddenAsync(tableStateBuilder, game.Id, winner.Player.Email!);
+
+		var showdown = await Mediator.Send(new PerformShowdownCommand(game.Id));
+		showdown.IsT0.Should().BeTrue();
+		showdown.AsT0.WonByFold.Should().BeTrue();
+		showdown.AsT0.PlayerHands.Should().ContainSingle();
+		showdown.AsT0.PlayerHands[0].Cards.Should().BeEmpty();
+
+		await AssertFoldWinCardsStayHiddenAsync(tableStateBuilder, game.Id, winner.Player.Email!);
+	}
+
+	private static async Task AssertFoldWinCardsStayHiddenAsync(
+		ITableStateBuilder tableStateBuilder,
+		Guid gameId,
+		string winnerEmail)
+	{
+		var publicState = await tableStateBuilder.BuildPublicStateAsync(gameId);
+		publicState.Should().NotBeNull();
+		publicState!.Showdown.Should().NotBeNull();
+		publicState.Showdown!.WonByFold.Should().BeTrue();
+
+		var winnerSeat = publicState.Seats.Single(s => !s.IsFolded && s.IsOccupied);
+		winnerSeat.Cards.Should().NotBeEmpty();
+		winnerSeat.Cards.Should().OnlyContain(c => !c.IsFaceUp && c.Rank == null && c.Suit == null);
+
+		publicState.Showdown.PlayerResults.Should().ContainSingle();
+		publicState.Showdown.PlayerResults[0].HandRanking.Should().BeNull();
+		publicState.Showdown.PlayerResults[0].HandDescription.Should().BeNull();
+		publicState.Showdown.PlayerResults[0].Cards.Should()
+			.OnlyContain(c => !c.IsFaceUp && c.Rank == null && c.Suit == null);
+
+		var privateState = await tableStateBuilder.BuildPrivateStateAsync(gameId, winnerEmail);
+		privateState.Should().NotBeNull();
+		privateState!.Hand.Should().NotBeEmpty();
+		privateState.Hand.Should().OnlyContain(c =>
+			!string.IsNullOrWhiteSpace(c.Rank) && !string.IsNullOrWhiteSpace(c.Suit));
 	}
 
 	#endregion

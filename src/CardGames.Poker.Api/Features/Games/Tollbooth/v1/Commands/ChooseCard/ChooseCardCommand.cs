@@ -7,7 +7,7 @@ namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
 public record ChooseCardCommand(
 	Guid GameId,
 	TollboothChoice Choice,
-	int? PlayerSeatIndex = null) : IRequest<OneOf<ChooseCardSuccessful, ChooseCardError>>, IGameStateChangingCommand;
+	int? PlayerSeatIndex = null) : IRequest<OneOf<ChooseCardSuccessful, ChooseCardError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;
 
 public record ChooseCardRequest
 {
@@ -15,11 +15,6 @@ public record ChooseCardRequest
 	///     The Tollbooth choice: Furthest (free), Nearest (1× ante), or Deck (2× ante).
 	/// </summary>
 	public TollboothChoice Choice { get; init; }
-
-	/// <summary>
-	///     Optional: explicit seat index override (for testing / admin).
-	/// </summary>
-	public int? PlayerSeatIndex { get; init; }
 }
 
 /// <summary>

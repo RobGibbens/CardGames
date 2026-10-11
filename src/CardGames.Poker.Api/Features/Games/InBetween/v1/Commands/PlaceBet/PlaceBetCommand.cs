@@ -13,4 +13,4 @@ namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 public record PlaceBetCommand(
 	Guid GameId,
 	Guid PlayerId,
-	int Amount) : IRequest<OneOf<PlaceBetSuccessful, PlaceBetError>>, IGameStateChangingCommand;
+	int Amount) : IRequest<OneOf<PlaceBetSuccessful, PlaceBetError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

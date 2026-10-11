@@ -155,6 +155,27 @@ public class BettingRoundTests
 		round.IsComplete.Should().BeFalse();
 	}
 
+	[Fact]
+	public void ProcessAction_RaiseAboveStack_Fails()
+	{
+		var players = new List<PokerPlayer>
+		{
+			new("Alice", 100),
+			new("Bob", 500)
+		};
+		var potManager = new PotManager();
+		var round = new BettingRound(players, potManager, 0, 2);
+
+		round.ProcessAction(BettingActionType.Bet, 2);
+		var result = round.ProcessAction(BettingActionType.Raise, 1000);
+
+		result.Success.Should().BeFalse();
+		result.ErrorMessage.Should().Contain("stack");
+		players[0].ChipStack.Should().Be(100);
+		round.CurrentBet.Should().Be(2);
+		potManager.TotalPotAmount.Should().Be(2);
+	}
+
 	private static List<PokerPlayer> CreateTwoPlayers(int chipStack = 5000)
 	{
 		return

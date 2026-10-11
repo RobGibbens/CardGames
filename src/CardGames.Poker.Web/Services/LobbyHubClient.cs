@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using System.Web;
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Web.Infrastructure;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -90,14 +90,14 @@ public sealed class LobbyHubClient : IAsyncDisposable
 
 		// Get user info for authentication
 		var userInfo = await GetUserInfoAsync();
-		var hubUrl = GetHubUrl(userInfo);
+		var hubUrl = HubConnectionIdentity.HubUrl(_configuration, "/hubs/lobby");
 		_logger.LogInformation("Connecting to lobby hub at {HubUrl}", hubUrl);
 
 		_hubConnection = new HubConnectionBuilder()
 			.WithUrl(hubUrl, options =>
 			{
-				// Add user identity headers for authentication
-				if (userInfo is not null)
+				HubConnectionIdentity.Apply(options, _configuration, _authStateProvider);
+				if (userInfo is not null && HubConnectionIdentity.AllowUnsafeHeaders(_configuration))
 				{
 					options.Headers["X-User-Authenticated"] = "true";
 					if (!string.IsNullOrEmpty(userInfo.Value.UserId))
@@ -216,31 +216,6 @@ public sealed class LobbyHubClient : IAsyncDisposable
 		OnConnectionStateChanged?.Invoke(HubConnectionState.Disconnected);
 	}
 
-	private string GetHubUrl((string? UserId, string? UserName)? userInfo)
-	{
-		// Use service discovery URL pattern matching the API client configuration
-		var baseUrl = _configuration["Services:Api:Https:0"]
-		              ?? _configuration["Services:Api:Http:0"]
-		              ?? "https://localhost:7001";
-
-		var url = $"{baseUrl}/hubs/lobby";
-
-		// Add user identity as query parameters for WebSocket upgrade request
-		// (headers are not reliably sent during WebSocket handshake)
-		if (userInfo is not null)
-		{
-			var queryParams = new List<string> { "authenticated=true" };
-			if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
-
-			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
-
-			url = $"{url}?{string.Join("&", queryParams)}";
-		}
-
-		return url;
-	}
 
 	private async Task<(string? UserId, string? UserName)?> GetUserInfoAsync()
 	{

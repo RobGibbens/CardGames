@@ -1,3 +1,4 @@
+using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.StartHand;
 using OneOf;
@@ -212,6 +213,113 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		bonusCard!.Suit.Should().Be(CardSuit.Clubs);
 		bonusCard.Symbol.Should().Be(CardSymbol.King);
 		bonusCard.DealOrder.Should().Be(6);
+	}
+
+	[Fact]
+	public async Task Showdown_WhenRiverIsBlack_AwardsPotAndCompletesHand()
+	{
+		const int playerCount = 3;
+		const int startingChips = 1000;
+		var setup = await CreateDealtRedRiverGameAsync(playerCount, 0);
+
+		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "River");
+		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Spades);
+		await CompleteCurrentBettingRoundWithChecksAsync(setup.Game.Id);
+
+		var before = GetFreshDbContext();
+		var gameBefore = await before.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+		gameBefore.CurrentPhase.Should().Be("Showdown");
+
+		var communityCount = await before.GameCards.CountAsync(gc =>
+			gc.GameId == setup.Game.Id
+			&& gc.HandNumber == gameBefore.CurrentHandNumber
+			&& gc.Location == CardLocation.Community
+			&& !gc.IsDiscarded);
+		communityCount.Should().Be(5);
+
+		var potTotal = await before.Pots
+			.Where(p => p.GameId == setup.Game.Id && p.HandNumber == gameBefore.CurrentHandNumber)
+			.SumAsync(p => p.Amount);
+		potTotal.Should().BeGreaterThan(0);
+
+		var showdown = await Mediator.Send(new PerformShowdownCommand(setup.Game.Id));
+
+		showdown.IsT0.Should().BeTrue(showdown.IsT1 ? showdown.AsT1.Message : "showdown should succeed");
+		showdown.AsT0.Payouts.Values.Sum().Should().Be(potTotal);
+		showdown.AsT0.PlayerHands.Should().Contain(hand => hand.IsWinner);
+
+		var after = GetFreshDbContext();
+		var game = await after.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+		game.CurrentPhase.Should().Be("Complete");
+		game.HandCompletedAt.Should().NotBeNull();
+		game.NextHandStartsAt.Should().NotBeNull();
+
+		var pots = await after.Pots
+			.Where(p => p.GameId == setup.Game.Id && p.HandNumber == game.CurrentHandNumber)
+			.ToListAsync();
+		pots.Should().NotBeEmpty();
+		pots.Should().OnlyContain(p => p.IsAwarded);
+
+		var stacks = await after.GamePlayers
+			.Where(gp => gp.GameId == setup.Game.Id)
+			.SumAsync(gp => gp.ChipStack);
+		stacks.Should().Be(playerCount * startingChips);
+	}
+
+	[Fact]
+	public async Task Showdown_WithSixCardBonusBoard_AwardsPotWithoutEvaluationError()
+	{
+		var setup = await CreateDealtRedRiverGameAsync(2, 0);
+
+		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "River");
+		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Hearts);
+		await ConfigureNextDeckCardAsync(setup.Game.Id, CardSuit.Clubs, CardSymbol.King);
+
+		var firstAllIn = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn));
+		firstAllIn.IsT0.Should().BeTrue("first all-in at River should succeed");
+
+		var stateAfterFirstAllIn = await GetFreshDbContext().Games
+			.AsNoTracking()
+			.FirstAsync(g => g.Id == setup.Game.Id);
+
+		if (string.Equals(stateAfterFirstAllIn.CurrentPhase, "River", StringComparison.OrdinalIgnoreCase))
+		{
+			var secondAllIn =
+				await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn));
+			secondAllIn.IsT0.Should().BeTrue("second all-in at River should complete the runout");
+		}
+
+		var before = GetFreshDbContext();
+		var gameBefore = await before.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+		gameBefore.CurrentPhase.Should().Be("Showdown");
+
+		var communityCards = await before.GameCards
+			.Where(gc => gc.GameId == setup.Game.Id
+			             && gc.HandNumber == gameBefore.CurrentHandNumber
+			             && gc.Location == CardLocation.Community
+			             && !gc.IsDiscarded)
+			.ToListAsync();
+		communityCards.Should().HaveCount(6);
+		communityCards.Should().Contain(c => c.DealtAtPhase == "RedRiverBonus");
+
+		var showdown = await Mediator.Send(new PerformShowdownCommand(setup.Game.Id));
+
+		showdown.IsT0.Should().BeTrue(showdown.IsT1 ? showdown.AsT1.Message : "six-card board showdown should succeed");
+		showdown.AsT0.WonByFold.Should().BeFalse();
+		showdown.AsT0.PlayerHands.Should().NotBeEmpty();
+		showdown.AsT0.PlayerHands.Should().Contain(hand => hand.IsWinner);
+		showdown.AsT0.Payouts.Should().NotBeEmpty();
+
+		var after = GetFreshDbContext();
+		var game = await after.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+		game.CurrentPhase.Should().Be("Complete");
+
+		var pots = await after.Pots
+			.Where(p => p.GameId == setup.Game.Id && p.HandNumber == game.CurrentHandNumber)
+			.ToListAsync();
+		pots.Should().NotBeEmpty();
+		pots.Should().OnlyContain(p => p.IsAwarded);
+		pots.Sum(p => p.Amount).Should().Be(showdown.AsT0.Payouts.Values.Sum());
 	}
 
 	private async Task<GameSetup> CreateRedRiverGameSetupAsync(

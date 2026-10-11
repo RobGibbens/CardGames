@@ -17,7 +17,7 @@ public record DeckDrawCommand(
 	Guid GameId,
 	Guid PlayerId,
 	IReadOnlyCollection<int> DiscardIndices
-) : IRequest<OneOf<DeckDrawSuccessful, DeckDrawError>>, IGameStateChangingCommand;
+) : IRequest<OneOf<DeckDrawSuccessful, DeckDrawError>>, IGameStateChangingCommand, IRequiresCurrentActor;
 
 /// <summary>
 ///     Request model for the deck draw endpoint.
@@ -25,12 +25,8 @@ public record DeckDrawCommand(
 public record DeckDrawRequest
 {
 	/// <summary>
-	///     The player making the decision for the deck.
-	/// </summary>
-	public required Guid PlayerId { get; init; }
-
-	/// <summary>
 	///     Zero-based indices (0-4) of the cards to discard from the deck's hand.
+	///     The acting player is the authenticated seat; a client-supplied player id is ignored.
 	/// </summary>
 	public IReadOnlyCollection<int> DiscardIndices { get; init; } = [];
 }

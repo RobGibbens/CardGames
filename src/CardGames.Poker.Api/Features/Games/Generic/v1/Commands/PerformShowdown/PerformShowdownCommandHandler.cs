@@ -7,6 +7,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Features.Games.Common.Showdown;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
@@ -228,9 +229,11 @@ public sealed class PerformShowdownCommandHandler(
 					var canonicalPlayerName = gamePlayer.Player.Name;
 					var firstName = ResolvePlayerFirstName(user, canonicalPlayerName);
 
-					var cards = inlineCardsByPlayer.TryGetValue(gamePlayer.Id, out var playerCards)
-						? playerCards.Select(c => new ShowdownCard { Suit = c.Suit, Symbol = c.Symbol }).ToList()
-						: new List<ShowdownCard>();
+					var cards = showdownResult.WonByFold
+						? WinByFoldResponseBuilder.HiddenCards<ShowdownCard>()
+						: inlineCardsByPlayer.TryGetValue(gamePlayer.Id, out var playerCards)
+							? playerCards.Select(c => new ShowdownCard { Suit = c.Suit, Symbol = c.Symbol }).ToList()
+							: new List<ShowdownCard>();
 
 					return new ShowdownPlayerHand
 					{
@@ -383,6 +386,7 @@ public sealed class PerformShowdownCommandHandler(
 				)).ToList(),
 				allWinners.ToList(),
 				overallWinReason,
+				playerHandEvaluations,
 				cancellationToken);
 		}
 
@@ -458,10 +462,10 @@ public sealed class PerformShowdownCommandHandler(
 				[(winner.PlayerId, winner.Player.Name, totalPot)],
 				[winner.Player.Name],
 				null,
+				null,
 				cancellationToken);
 		}
 
-		var winnerCards = playerCardGroups.GetValueOrDefault(winner.Id, []);
 		usersByEmail.TryGetValue(winner.Player.Email ?? string.Empty, out var winnerUser);
 
 		return new PerformShowdownSuccessful
@@ -476,11 +480,7 @@ public sealed class PerformShowdownCommandHandler(
 				{
 					PlayerName = winner.Player.Name,
 					PlayerFirstName = ResolvePlayerFirstName(winnerUser, winner.Player.Name),
-					Cards = winnerCards.Select(c => new ShowdownCard
-					{
-						Suit = c.Suit,
-						Symbol = c.Symbol
-					}).ToList(),
+					Cards = WinByFoldResponseBuilder.HiddenCards<ShowdownCard>(),
 					HandType = null,
 					HandStrength = null,
 					IsWinner = true,
@@ -892,6 +892,8 @@ public sealed class PerformShowdownCommandHandler(
 				}).ToList();
 
 			List<int>? bestCardIndexes = null;
+			if (kvp.Value.Hand is RazzHand razzHandForBest)
+				bestCardIndexes = IndexOfBestLowCards(displayCards, razzHandForBest.GetBestLowHand());
 
 			if (includeSharedCommunityCards && sharedCommunityCards.Count > 0)
 			{
@@ -944,6 +946,18 @@ public sealed class PerformShowdownCommandHandler(
 			return RazzHand.GetLowHandDescription(razzHand.GetBestLowHand());
 
 		return hand.Type.ToString();
+	}
+
+	/// <summary>
+	///     Indexes of the Razz best low five inside the ordered display cards.
+	/// </summary>
+	private static List<int> IndexOfBestLowCards(List<ShowdownCard> displayCards, IReadOnlyList<Card> bestLow)
+	{
+		var allCoreCards = displayCards
+			.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+			.ToList();
+
+		return GetCardIndexes(allCoreCards, bestLow);
 	}
 
 	/// <summary>
@@ -1079,6 +1093,7 @@ public sealed class PerformShowdownCommandHandler(
 		List<(Guid PlayerId, string PlayerName, int AmountWon)> winners,
 		List<string> winnerNames,
 		string? winningHandDescription,
+		Dictionary<string, PlayerHandEvaluation>? playerHandEvaluations,
 		CancellationToken cancellationToken)
 	{
 		var winnerNameSet = winnerNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -1093,11 +1108,22 @@ public sealed class PerformShowdownCommandHandler(
 
 			List<string>? showdownCards = null;
 			var reachedShowdown = !gp.HasFolded && !wonByFold;
-			if (reachedShowdown && playerCardGroups.TryGetValue(gp.Id, out var cards) && cards.Count != 0)
+			if (reachedShowdown
+			    && playerHandEvaluations is not null
+			    && playerHandEvaluations.TryGetValue(gp.Player.Name, out var evaluation)
+			    && evaluation.Hand is RazzHand razzHand)
+			{
+				showdownCards = razzHand.GetBestLowHand()
+					.Select(FormatLowHistoryCard)
+					.ToList();
+			}
+			else if (reachedShowdown && playerCardGroups.TryGetValue(gp.Id, out var cards) && cards.Count != 0)
+			{
 				showdownCards = cards
 					.OrderBy(c => c.DealOrder)
 					.Select(c => FormatCard(c.Symbol, c.Suit))
 					.ToList();
+			}
 
 			return new PlayerResultInfo
 			{
@@ -1354,6 +1380,41 @@ public sealed class PerformShowdownCommandHandler(
 	}
 
 	/// <summary>
+	///     Formats a Razz best-low card for hand history (for example "2h", "Qs").
+	/// </summary>
+	private static string FormatLowHistoryCard(Card card)
+	{
+		var symbolStr = (CardSymbol)card.Symbol switch
+		{
+			CardSymbol.Deuce => "2",
+			CardSymbol.Three => "3",
+			CardSymbol.Four => "4",
+			CardSymbol.Five => "5",
+			CardSymbol.Six => "6",
+			CardSymbol.Seven => "7",
+			CardSymbol.Eight => "8",
+			CardSymbol.Nine => "9",
+			CardSymbol.Ten => "T",
+			CardSymbol.Jack => "J",
+			CardSymbol.Queen => "Q",
+			CardSymbol.King => "K",
+			CardSymbol.Ace => "A",
+			_ => "?"
+		};
+
+		var suitStr = (CardSuit)card.Suit switch
+		{
+			CardSuit.Hearts => "h",
+			CardSuit.Diamonds => "d",
+			CardSuit.Spades => "s",
+			CardSuit.Clubs => "c",
+			_ => "?"
+		};
+
+		return $"{symbolStr}{suitStr}";
+	}
+
+	/// <summary>
 	///     Formats a card for display in hand history.
 	/// </summary>
 	private static string FormatCard(CardSymbol symbol, CardSuit suit)
@@ -1437,6 +1498,10 @@ public sealed class PerformShowdownCommandHandler(
 			.Where(gp => gamePlayerIdsWithCards.Contains(gp.Id))
 			.ToList();
 
+		var wonByFold = currentHandPots.Any(p => p.IsAwarded
+		                                        && string.Equals(p.WinReason, "All others folded",
+			                                        StringComparison.OrdinalIgnoreCase));
+
 		var playerHands = participants
 			.Select(gp =>
 			{
@@ -1445,9 +1510,11 @@ public sealed class PerformShowdownCommandHandler(
 				var canonicalName = gp.Player.Name;
 				var firstName = ResolvePlayerFirstName(user, canonicalName);
 
-				var cards = cardsByGamePlayerId.TryGetValue(gp.Id, out var playerCards)
-					? playerCards.Select(c => new ShowdownCard { Suit = c.Suit, Symbol = c.Symbol }).ToList()
-					: new List<ShowdownCard>();
+				var cards = wonByFold
+					? WinByFoldResponseBuilder.HiddenCards<ShowdownCard>()
+					: cardsByGamePlayerId.TryGetValue(gp.Id, out var playerCards)
+						? playerCards.Select(c => new ShowdownCard { Suit = c.Suit, Symbol = c.Symbol }).ToList()
+						: new List<ShowdownCard>();
 
 				return new ShowdownPlayerHand
 				{
@@ -1466,7 +1533,7 @@ public sealed class PerformShowdownCommandHandler(
 		return new PerformShowdownSuccessful
 		{
 			GameId = game.Id,
-			WonByFold = false,
+			WonByFold = wonByFold,
 			CurrentPhase = game.CurrentPhase,
 			Payouts = payoutsByName,
 			PlayerHands = playerHands,

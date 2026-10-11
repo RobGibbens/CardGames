@@ -1,10 +1,13 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common;
+using CardGames.Poker.Api.Features.Games.PairPressure.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.PairPressure;
 using Microsoft.EntityFrameworkCore;
+using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.GameFlow;
@@ -80,6 +83,26 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 			nameof(Phases.Showdown) => nameof(Phases.Complete),
 			_ => base.GetNextPhase(game, currentPhase)
 		};
+	}
+
+	/// <summary>
+	///     Sends the Pair Pressure betting command (the API wrapper, not Seven Card Stud directly).
+	/// </summary>
+	protected override async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action,
+		int amount = 0)
+	{
+		var command = new ProcessBettingActionCommand(context.GameId, action, amount);
+
+		try
+		{
+			await context.Mediator.Send(command, context.CancellationToken);
+		}
+		catch (Exception ex)
+		{
+			context.Logger.LogError(ex,
+				"Error performing auto-betting action for Pair Pressure game {GameId}",
+				context.GameId);
+		}
 	}
 
 	public override async Task DealCardsAsync(
@@ -168,23 +191,12 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 		var bringInPlayer = FindBringInPlayer(playerUpCards);
 		var bringInSeatPosition = bringInPlayer?.SeatPosition ?? playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
 
+		await StudGameStakesNormalizer.EnsureLegacyBringInAsync(context, game, cancellationToken);
 		var bringIn = game.BringIn ?? 0;
 		var currentBet = 0;
 		if (bringIn > 0 && bringInPlayer is not null)
-		{
-			var actualBringIn = Math.Min(bringIn, bringInPlayer.ChipStack);
-			bringInPlayer.CurrentBet = actualBringIn;
-			bringInPlayer.ChipStack -= actualBringIn;
-			bringInPlayer.TotalContributedThisHand += actualBringIn;
-			currentBet = actualBringIn;
-
-			var pot = await context.Pots
-				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-				                          p.HandNumber == game.CurrentHandNumber &&
-				                          p.PotType == PotType.Main,
-					cancellationToken);
-			if (pot is not null) pot.Amount += actualBringIn;
-		}
+			currentBet = await StudBringInPosting.PostBringInForThirdStreetAsync(
+				context, game, bringInPlayer, bringIn, now, cancellationToken);
 
 		game.CurrentPhase = nameof(Phases.ThirdStreet);
 		game.CurrentPlayerIndex = bringInSeatPosition;
@@ -203,7 +215,7 @@ public sealed class PairPressureFlowHandler : BaseGameFlowHandler
 			PlayersInHand = eligiblePlayers.Count,
 			PlayersActed = 0,
 			CurrentActorIndex = bringInSeatPosition,
-			LastAggressorIndex = bringIn > 0 ? bringInSeatPosition : -1,
+			LastAggressorIndex = currentBet > 0 ? bringInSeatPosition : -1,
 			IsComplete = false,
 			StartedAt = now
 		};

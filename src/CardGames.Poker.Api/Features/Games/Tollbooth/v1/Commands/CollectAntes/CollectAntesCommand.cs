@@ -5,4 +5,4 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.CollectAntes;
 
 public record CollectAntesCommand(Guid GameId)
-	: IRequest<OneOf<CollectAntesSuccessful, CollectAntesError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<CollectAntesSuccessful, CollectAntesError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

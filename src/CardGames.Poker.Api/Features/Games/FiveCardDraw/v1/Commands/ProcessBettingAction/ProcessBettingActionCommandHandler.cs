@@ -1,3 +1,4 @@
+using CardGames.Poker.Api.Betting;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
@@ -197,9 +198,12 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context, GameEven
 				"Cannot call - no bet to match",
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
-			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount
-			                             && amount < player.ChipStack + player.CurrentBet =>
-				$"Raise must be to at least {bettingRound.CurrentBet + bettingRound.LastRaiseAmount}",
+			BettingActionType.Raise => BettingActionMath.ValidateRaise(
+				amount,
+				bettingRound.CurrentBet,
+				bettingRound.LastRaiseAmount,
+				player.CurrentBet,
+				player.ChipStack),
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
 				"Cannot fold when you can check",
 			BettingActionType.AllIn when player.ChipStack == 0 =>
@@ -247,11 +251,14 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context, GameEven
 				break;
 
 			case BettingActionType.Raise:
-				var raiseTotal = amount;
-				var raiseChips = raiseTotal - player.CurrentBet;
+				var streetBet = bettingRound.CurrentBet;
+				var (raiseTotal, raiseChips, raiseIncrement) = BettingActionMath.ComputeRaise(
+					amount,
+					streetBet,
+					player.CurrentBet,
+					player.ChipStack);
 				actualAmount = raiseTotal;
 				chipsMoved = raiseChips;
-				var raiseIncrement = raiseTotal - bettingRound.CurrentBet;
 				player.ChipStack -= raiseChips;
 				player.CurrentBet = raiseTotal;
 				player.TotalContributedThisHand += raiseChips;

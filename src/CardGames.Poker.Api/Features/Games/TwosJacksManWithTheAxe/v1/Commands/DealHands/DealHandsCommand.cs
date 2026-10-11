@@ -9,4 +9,4 @@ namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game to deal cards in.</param>
 public record DealHandsCommand(Guid GameId)
-	: IRequest<OneOf<DealHandsSuccessful, DealHandsError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<DealHandsSuccessful, DealHandsError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

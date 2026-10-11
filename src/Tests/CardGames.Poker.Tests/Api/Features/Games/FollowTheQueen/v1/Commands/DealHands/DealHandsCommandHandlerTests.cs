@@ -7,6 +7,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 using CardGames.Poker.Betting;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -122,6 +123,81 @@ public class DealHandsCommandHandlerTests
 			.Select(gameCard => gameCard.DealOrder)
 			.Should()
 			.Equal(1, 2, 3);
+	}
+
+	[Fact]
+	public async Task Handle_ThirdStreet_PostsBringInIntoPotAndContribution()
+	{
+		await using var context = CreateContext();
+		var game = await SeedGameAsync(context);
+		var pot = new Pot
+		{
+			Id = Guid.NewGuid(),
+			GameId = game.Id,
+			HandNumber = game.CurrentHandNumber,
+			PotType = PotType.Main,
+			Amount = 10,
+			CreatedAt = DateTimeOffset.UtcNow
+		};
+		var alice = await context.GamePlayers.SingleAsync(player => player.SeatPosition == 0);
+		context.PotContributions.Add(new PotContribution
+		{
+			Id = Guid.NewGuid(),
+			PotId = pot.Id,
+			GamePlayerId = alice.Id,
+			Amount = 5,
+			IsEligibleToWin = true,
+			ContributedAt = DateTimeOffset.UtcNow
+		});
+		alice.TotalContributedThisHand = 5;
+		context.Pots.Add(pot);
+		await context.SaveChangesAsync();
+
+		var sut = CreateSut(context);
+		var result = await sut.Handle(new DealHandsCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		var bringInPlayer = await context.GamePlayers.SingleAsync(player => player.CurrentBet == 5);
+		bringInPlayer.ChipStack.Should().Be(195);
+		bringInPlayer.TotalContributedThisHand.Should().Be(10);
+		bringInPlayer.IsAllIn.Should().BeFalse();
+
+		var updatedPot = await context.Pots.SingleAsync();
+		updatedPot.Amount.Should().Be(15);
+
+		var contribution = await context.PotContributions.SingleAsync();
+		contribution.Amount.Should().Be(10);
+		contribution.GamePlayerId.Should().Be(bringInPlayer.Id);
+
+		var bettingRound = await context.BettingRounds.SingleAsync();
+		bettingRound.CurrentBet.Should().Be(5);
+		bettingRound.CurrentActorIndex.Should().Be(bringInPlayer.SeatPosition);
+	}
+
+	[Fact]
+	public async Task Handle_ThirdStreet_ShortStackBringInPostsRemainderAndMarksAllIn()
+	{
+		await using var context = CreateContext();
+		var game = await SeedGameAsync(context);
+		var players = await context.GamePlayers.ToListAsync();
+		foreach (var player in players)
+			player.ChipStack = 3;
+		await context.SaveChangesAsync();
+
+		var sut = CreateSut(context);
+		var result = await sut.Handle(new DealHandsCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		var bringInPlayer = await context.GamePlayers.SingleAsync(player => player.CurrentBet > 0);
+		bringInPlayer.CurrentBet.Should().Be(3);
+		bringInPlayer.ChipStack.Should().Be(0);
+		bringInPlayer.IsAllIn.Should().BeTrue();
+		bringInPlayer.TotalContributedThisHand.Should().Be(3);
+
+		var otherPlayer = await context.GamePlayers.SingleAsync(player => player.Id != bringInPlayer.Id);
+		otherPlayer.CurrentBet.Should().Be(0);
+		otherPlayer.ChipStack.Should().Be(3);
+		otherPlayer.IsAllIn.Should().BeFalse();
 	}
 
 	private static DealHandsCommandHandler CreateSut(CardsDbContext context)

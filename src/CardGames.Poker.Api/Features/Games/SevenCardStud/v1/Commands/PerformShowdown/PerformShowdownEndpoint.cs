@@ -36,7 +36,7 @@ public static class PerformShowdownEndpoint
 				"After the showdown completes, the game transitions to the Complete phase and the dealer button moves to the next position.\n\n" +
 				"**Showdown Scenarios:**\n" +
 				"- **Win by fold:** If only one player remains (all others folded), they win the entire pot without showing cards\n" +
-				"- **Single winner:** The player with the highest-ranking hand wins the entire pot\n" +
+				"- **Single winner:** The player with the highest-ranking hand wins the entire pot. Razz tables are delegated to the generic showdown handler and awarded to the best ace-to-five low\n" +
 				"- **Split pot:** If multiple players tie with the same hand strength, the pot is divided equally among winners\n" +
 				"- **Side pots:** When players are all-in for different amounts, side pots are calculated and awarded separately\n\n" +
 				"**Response includes:**\n" +

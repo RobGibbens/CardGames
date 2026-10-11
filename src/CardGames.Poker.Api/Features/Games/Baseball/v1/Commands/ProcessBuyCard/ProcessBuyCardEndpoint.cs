@@ -1,4 +1,6 @@
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBuyCard;
@@ -8,13 +10,13 @@ public static class ProcessBuyCardEndpoint
 	public static RouteGroupBuilder MapProcessBuyCard(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/buy-card",
-				async (Guid gameId, ProcessBuyCardRequest request, IMediator mediator,
+				async (Guid gameId, ProcessBuyCardRequest request, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					if (request.PlayerId == Guid.Empty)
-						return Results.BadRequest(new { Message = "PlayerId is required." });
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
 
-					var command = new ProcessBuyCardCommand(gameId, request.PlayerId, request.Accept);
+					var command = new ProcessBuyCardCommand(gameId, seated.PlayerId, request.Accept);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
@@ -45,6 +47,5 @@ public static class ProcessBuyCardEndpoint
 
 public record ProcessBuyCardRequest
 {
-	public Guid PlayerId { get; init; }
 	public bool Accept { get; init; }
 }

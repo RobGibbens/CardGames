@@ -9,4 +9,4 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.CollectAn
 /// </summary>
 /// <param name="GameId">The unique identifier of the game to collect antes from.</param>
 public record CollectAntesCommand(Guid GameId)
-	: IRequest<OneOf<CollectAntesSuccessful, CollectAntesError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<CollectAntesSuccessful, CollectAntesError>>, IGameStateChangingCommand, IRequiresHostOrSeatedPlayer;

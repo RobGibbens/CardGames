@@ -13,4 +13,4 @@ namespace CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepO
 public record KeepOrTradeCommand(
 	Guid GameId,
 	Guid PlayerId,
-	string Decision) : IRequest<OneOf<KeepOrTradeSuccessful, KeepOrTradeError>>, IGameStateChangingCommand;
+	string Decision) : IRequest<OneOf<KeepOrTradeSuccessful, KeepOrTradeError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;

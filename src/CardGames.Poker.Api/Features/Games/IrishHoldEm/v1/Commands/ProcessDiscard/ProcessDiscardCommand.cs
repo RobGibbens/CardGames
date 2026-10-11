@@ -17,7 +17,7 @@ public record ProcessDiscardCommand(
 	Guid GameId,
 	IReadOnlyCollection<int> DiscardIndices,
 	int? PlayerSeatIndex = null
-) : IRequest<OneOf<ProcessDiscardSuccessful, ProcessDiscardError>>, IGameStateChangingCommand;
+) : IRequest<OneOf<ProcessDiscardSuccessful, ProcessDiscardError>>, IGameStateChangingCommand, IRequiresCurrentActor;
 
 /// <summary>
 ///     Request model for the discard action endpoint.
@@ -28,9 +28,4 @@ public record ProcessDiscardRequest
 	///     Zero-based indices (0-3) of exactly 2 cards to discard from the player's hand.
 	/// </summary>
 	public IReadOnlyCollection<int> DiscardIndices { get; init; } = [];
-
-	/// <summary>
-	///     The seat index of the player performing the discard.
-	/// </summary>
-	public int? PlayerSeatIndex { get; init; }
 }

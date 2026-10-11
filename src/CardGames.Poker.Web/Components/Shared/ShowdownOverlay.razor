@@ -43,7 +43,9 @@
 			var sharedCommunityCards = SharedCommunityCards is { Count: > 0 }
 				? SharedCommunityCards
 				: GetSharedCommunityCards(winnerHand);
-			var winnerCards = winnerHand is not null ? GetDisplayCardsForShowdown(winnerHand, sharedCommunityCards, isRazz) : [];
+			var winnerCards = ShowdownResult.WonByFold == true || winnerHand is null
+				? []
+				: GetDisplayCardsForShowdown(winnerHand, sharedCommunityCards, isRazz);
 			var winnerName = GetWinnerDisplayName(ShowdownResult, winnerHand);
 			var winnerDescription = GetWinnerDescription(ShowdownResult, winnerHand, isRazz);
 			var winnerAmount = GetWinnerAmount(ShowdownResult, winnerHand);
@@ -298,7 +300,9 @@
 
 							@foreach (var hand in otherHands)
 							{
-								var handCards = GetDisplayCardsForShowdown(hand, sharedCommunityCards, isRazz);
+								var handCards = ShowdownResult.WonByFold == true
+									? []
+									: GetDisplayCardsForShowdown(hand, sharedCommunityCards, isRazz);
 								<div class="other-hand-row">
 									<div class="other-hand-info">
 										<span class="other-hand-name">@DisplayFirstName(hand)</span>

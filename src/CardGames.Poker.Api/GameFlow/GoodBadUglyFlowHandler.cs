@@ -1,9 +1,11 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.GoodBadUgly;
 using Microsoft.EntityFrameworkCore;
+using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.GameFlow;
@@ -125,6 +127,26 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 	public static bool IsStreetPhase(string phase)
 	{
 		return Streets.Contains(phase);
+	}
+
+	/// <summary>
+	///     Sends the Good Bad Ugly betting command. Seven Card Stud rejects this game type.
+	/// </summary>
+	protected override async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action,
+		int amount = 0)
+	{
+		var command = new ProcessBettingActionCommand(context.GameId, action, amount);
+
+		try
+		{
+			await context.Mediator.Send(command, context.CancellationToken);
+		}
+		catch (Exception ex)
+		{
+			context.Logger.LogError(ex,
+				"Error performing auto-betting action for Good Bad Ugly game {GameId}",
+				context.GameId);
+		}
 	}
 
 	/// <inheritdoc />

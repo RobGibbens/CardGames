@@ -1,4 +1,6 @@
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
@@ -8,10 +10,13 @@ public static class PlaceBetEndpoint
 	public static RouteGroupBuilder MapPlaceBet(this RouteGroupBuilder group)
 	{
 		group.MapPost("/{gameId:guid}/place-bet",
-				async (Guid gameId, PlaceBetRequest request, IMediator mediator,
+				async (Guid gameId, PlaceBetRequest request, IMediator mediator, IGamePlayerResolver players,
 					CancellationToken cancellationToken) =>
 				{
-					var command = new PlaceBetCommand(gameId, request.PlayerId, request.Amount);
+					var seated = await players.ResolveSeatedPlayerAsync(gameId, cancellationToken);
+					if (seated is null) return SeatedActor.NotSeated();
+
+					var command = new PlaceBetCommand(gameId, seated.PlayerId, request.Amount);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
@@ -38,4 +43,4 @@ public static class PlaceBetEndpoint
 /// <summary>
 ///     Request body for placing a bet in In-Between.
 /// </summary>
-public record PlaceBetRequest(Guid PlayerId, int Amount);
+public record PlaceBetRequest(int Amount);

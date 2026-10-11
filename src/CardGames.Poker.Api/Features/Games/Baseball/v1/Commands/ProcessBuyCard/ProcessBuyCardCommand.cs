@@ -11,7 +11,7 @@ public record ProcessBuyCardCommand(
 	Guid GameId,
 	Guid PlayerId,
 	bool Accept)
-	: IRequest<OneOf<ProcessBuyCardSuccessful, ProcessBuyCardError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<ProcessBuyCardSuccessful, ProcessBuyCardError>>, IGameStateChangingCommand, IRequiresSeatedPlayer;
 
 public record ProcessBuyCardSuccessful
 {

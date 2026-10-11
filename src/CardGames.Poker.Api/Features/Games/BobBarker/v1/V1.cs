@@ -11,7 +11,8 @@ public static class V1
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/bob-barker")
 			.HasApiVersion(1.0)
 			.WithTags("Bob Barker")
-			.AddFluentValidationAutoValidation();
+			.AddFluentValidationAutoValidation()
+			.RequireAuthorization();
 
 		mapGroup.MapSelectShowcase();
 	}
