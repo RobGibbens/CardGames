@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="Blazor-ApexCharts" Version="7.0.0" />
-    <PackageReference Include="BlazorBlueprint.Components" Version="4.0.1" />
+    <PackageReference Include="BlazorBlueprint.Components" Version="4.1.0" />
     <PackageReference Include="FindRazorSourceFile" Version="1.1.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -33,9 +33,9 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Refit" Version="16.1.0" />
-    <PackageReference Include="Refit.HttpClientFactory" Version="16.1.0" />
-    <PackageReference Include="Refit.Reflection" Version="16.1.0" />
+    <PackageReference Include="Refit" Version="16.3.0" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="16.3.0" />
+    <PackageReference Include="Refit.Reflection" Version="16.3.0" />
   </ItemGroup>
 
   <ItemGroup>
