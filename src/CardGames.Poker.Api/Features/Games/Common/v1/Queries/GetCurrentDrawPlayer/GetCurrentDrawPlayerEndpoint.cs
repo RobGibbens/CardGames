@@ -23,6 +23,7 @@ public static class GetCurrentDrawPlayerEndpoint
 			.WithDescription(
 				"Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.")
 			.MapToApiVersion(1.0)
+			.RequireAuthorization()
 			.Produces<GetCurrentDrawPlayerResponse>()
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status400BadRequest);

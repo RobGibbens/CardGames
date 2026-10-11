@@ -35,4 +35,36 @@ public class HandVisibilityHelperTests
 
 		HandVisibilityHelper.IsWinByFoldHand(game, players, pots).Should().Be(expected);
 	}
+
+	[Theory]
+	[InlineData(1, true, "Showdown", null, true, false)]
+	[InlineData(1, true, "Complete", "Lost to deck's pair of Jacks - pot carries forward", true, false)]
+	[InlineData(1, true, "Complete", "Beat the deck with a pair of Sevens", true, false)]
+	[InlineData(1, true, "Complete", "All others dropped", false, true)]
+	[InlineData(1, true, "Showdown", null, false, true)]
+	[InlineData(2, true, "Showdown", null, true, false)]
+	public void IsWinByFoldHand_KingsAndLowsDeckHandIsNotAFoldWin(
+		int playersInHand,
+		bool someoneFolded,
+		string phase,
+		string? winReason,
+		bool hasKingsAndLowsDeckHand,
+		bool expected)
+	{
+		var game = new Game { CurrentPhase = phase };
+		var players = new List<GamePlayer>();
+
+		for (var i = 0; i < playersInHand; i++)
+			players.Add(new GamePlayer { Status = GamePlayerStatus.Active, HasFolded = false });
+
+		if (someoneFolded)
+			players.Add(new GamePlayer { Status = GamePlayerStatus.Active, HasFolded = true });
+
+		var pots = string.IsNullOrWhiteSpace(winReason)
+			? new List<Pot>()
+			: new List<Pot> { new() { IsAwarded = true, WinReason = winReason } };
+
+		HandVisibilityHelper.IsWinByFoldHand(game, players, pots, hasKingsAndLowsDeckHand)
+			.Should().Be(expected);
+	}
 }

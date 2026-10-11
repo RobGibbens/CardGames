@@ -147,7 +147,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			cardFromDeck.Location = CardLocation.Hand;
 			cardFromDeck.DealOrder = playerCards.Count + i + 1;
 			cardFromDeck.DealtAtPhase = "DrawPhase";
-			cardFromDeck.IsVisible = true;
+			cardFromDeck.IsVisible = false;
 			cardFromDeck.IsDrawnCard = true;
 			cardFromDeck.DrawnAtRound = 1; // First draw round
 			cardFromDeck.DealtAt = now;

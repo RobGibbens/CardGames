@@ -4,12 +4,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using System.Security.Claims;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Queries.GetCurrentPlayerTurn;
+using CardGames.Poker.Api.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Caching.Hybrid;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CardGames.Poker.Tests.Api.Features.Games.Baseball.v1.Queries.GetCurrentPlayerTurn;
@@ -120,15 +120,13 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 			await seedContext.SaveChangesAsync();
 		}
 
-		await using var serviceProvider = CreateServiceProvider();
 		var query = new GetCurrentPlayerTurnQuery(gameId);
 
 		var results = await Task.WhenAll(Enumerable.Range(0, 20)
 			.Select(async _ =>
 			{
 				await using var context = CreateContext(databaseName, databaseRoot);
-				var sut = new GetCurrentPlayerTurnQueryHandler(context,
-					serviceProvider.GetRequiredService<HybridCache>());
+				var sut = new GetCurrentPlayerTurnQueryHandler(context, new FakeGamePlayerResolver(null));
 				return await sut.Handle(query, CancellationToken.None);
 			}));
 
@@ -136,7 +134,8 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		results.Should().AllSatisfy(result => result.Should().BeEquivalentTo(results[0]));
 		results[0]!.Player.PlayerName.Should().Be("Lynne");
 		results[0]!.AvailableActions!.CanCheck.Should().BeTrue();
-		results[0]!.HandOdds.Should().NotBeNull();
+		results[0]!.Player.Hand.Select(card => card.Symbol).Should().Equal(CardSymbol.Ace);
+		results[0]!.HandOdds.Should().BeNull();
 	}
 
 	private static CardsDbContext CreateContext(string databaseName, InMemoryDatabaseRoot databaseRoot)
@@ -148,12 +147,16 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		return new CardsDbContext(options);
 	}
 
-	private static ServiceProvider CreateServiceProvider()
+	private sealed class FakeGamePlayerResolver(GamePlayer? seated) : IGamePlayerResolver
 	{
-		var services = new ServiceCollection();
-#pragma warning disable EXTEXP0018
-		services.AddHybridCache();
-#pragma warning restore EXTEXP0018
-		return services.BuildServiceProvider();
+		public Task<GamePlayer?> ResolveSeatedPlayerAsync(Guid gameId, CancellationToken cancellationToken)
+			=> Task.FromResult(seated);
+
+		public Task<GamePlayer?> ResolveSeatedPlayerAsync(Guid gameId, ClaimsPrincipal user,
+			CancellationToken cancellationToken)
+			=> Task.FromResult(seated);
+
+		public Task<bool> IsTableHostAsync(Guid gameId, CancellationToken cancellationToken)
+			=> Task.FromResult(false);
 	}
 }

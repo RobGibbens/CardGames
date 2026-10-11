@@ -1,5 +1,7 @@
+using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
+using CardGames.Poker.Api.Services;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -9,6 +11,8 @@ namespace CardGames.IntegrationTests.Features.Commands;
 /// </summary>
 public class KingsAndLowsCommandTests : IntegrationTestBase
 {
+	private ITableStateBuilder TableStateBuilder => Scope.ServiceProvider.GetRequiredService<ITableStateBuilder>();
+
 	private async Task<(GameSetup Setup, Game Game)> CreateKingsAndLowsGameInDropOrStayPhaseAsync()
 	{
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
@@ -201,5 +205,81 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
 			.ToListAsync();
 
 		players.Should().AllSatisfy(gp => gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided));
+	}
+
+	[Fact]
+	public async Task StartHand_DealsHoleCardsFaceDown()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
+		var player = setup.Players[0];
+
+		await Mediator.Send(new StartHandCommand(setup.Game.Id));
+
+		var cards = await GetFreshDbContext().GameCards
+			.Where(c => c.GameId == setup.Game.Id)
+			.ToListAsync();
+
+		var handCards = cards.Where(c => c.Location == CardLocation.Hand).ToList();
+		handCards.Should().HaveCount(setup.GamePlayers.Count * 5);
+		handCards.GroupBy(c => c.GamePlayerId).Should().HaveCount(setup.GamePlayers.Count);
+		handCards.Should().OnlyContain(c => c.GamePlayerId != null && !c.IsVisible);
+		handCards.GroupBy(c => c.GamePlayerId).Should().AllSatisfy(group => group.Should().HaveCount(5));
+
+		cards.Where(c => c.Location == CardLocation.Deck).Should().OnlyContain(c => !c.IsVisible);
+
+		var privateState = await TableStateBuilder.BuildPrivateStateAsync(setup.Game.Id, player.Email!);
+		privateState.Should().NotBeNull();
+		privateState!.Hand.Should().HaveCount(5);
+		privateState.Hand.Should().OnlyContain(c => !string.IsNullOrWhiteSpace(c.Rank) && !c.IsPubliclyVisible);
+
+		var publicState = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+		publicState.Should().NotBeNull();
+		publicState!.Seats.SelectMany(seat => seat.Cards).Should().OnlyContain(c => c.Rank == null && c.Suit == null);
+	}
+
+	[Fact]
+	public async Task DrawCards_ReplacementCardStaysFaceDown()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
+		await Mediator.Send(new StartHandCommand(setup.Game.Id));
+
+		var seat0 = setup.GamePlayers.Single(gp => gp.SeatPosition == 0);
+		var player = setup.Players.Single(p => p.Id == seat0.PlayerId);
+
+		var game = await DbContext.Games
+			.Include(g => g.GamePlayers)
+			.FirstAsync(g => g.Id == setup.Game.Id);
+		game.CurrentPhase = nameof(Phases.DrawPhase);
+		game.CurrentDrawPlayerIndex = seat0.SeatPosition;
+		game.GamePlayers.Single(gp => gp.Id == seat0.Id).HasDrawnThisRound = false;
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new DrawCardsCommand(game.Id, seat0.PlayerId, [0]));
+		result.IsT0.Should().BeTrue();
+
+		var cards = await GetFreshDbContext().GameCards
+			.Where(c => c.GameId == game.Id && c.GamePlayerId == seat0.Id)
+			.ToListAsync();
+
+		var discarded = cards.Single(c => c.IsDiscarded);
+		discarded.Location.Should().Be(CardLocation.Discarded);
+
+		var drawn = cards.Single(c => c.IsDrawnCard);
+		drawn.DealtAtPhase.Should().Be("DrawPhase");
+		drawn.Location.Should().Be(CardLocation.Hand);
+		drawn.IsVisible.Should().BeFalse();
+
+		cards.Where(c => c.Location == CardLocation.Hand && !c.IsDrawnCard)
+			.Should().HaveCount(4)
+			.And.OnlyContain(c => !c.IsVisible);
+
+		var privateState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, player.Email!);
+		privateState.Should().NotBeNull();
+		privateState!.Hand.Should().HaveCount(5);
+		privateState.Hand.Should().OnlyContain(c => !string.IsNullOrWhiteSpace(c.Rank) && !c.IsPubliclyVisible);
+
+		var publicState = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+		publicState.Should().NotBeNull();
+		publicState!.Seats.SelectMany(seat => seat.Cards).Should().OnlyContain(c => c.Rank == null && c.Suit == null);
 	}
 }

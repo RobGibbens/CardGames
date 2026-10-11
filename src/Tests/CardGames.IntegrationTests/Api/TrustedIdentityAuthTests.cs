@@ -71,6 +71,46 @@ public class TrustedIdentityAuthTests : IClassFixture<StrictIdentityApiFactory>,
 	}
 
 	[Fact]
+	public async Task GetGamePlayers_WithoutAuth_Returns401()
+	{
+		var response = await _client.GetAsync($"api/v1/games/{Guid.NewGuid()}/players");
+
+		response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+	}
+
+	[Fact]
+	public async Task GetCurrentDrawPlayer_WithoutAuth_Returns401()
+	{
+		var response = await _client.GetAsync($"api/v1/games/{Guid.NewGuid()}/draw-player");
+
+		response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+	}
+
+	[Fact]
+	public async Task GetGamePlayers_WithForgedEmailHeader_Returns401()
+	{
+		var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/games/{Guid.NewGuid()}/players");
+		request.Headers.TryAddWithoutValidation("X-User-Email", "victim@example.com");
+		request.Headers.TryAddWithoutValidation("X-User-Authenticated", "true");
+
+		var response = await _client.SendAsync(request);
+
+		response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+	}
+
+	[Fact]
+	public async Task GetCurrentDrawPlayer_WithForgedEmailHeader_Returns401()
+	{
+		var request = new HttpRequestMessage(HttpMethod.Get, $"api/v1/games/{Guid.NewGuid()}/draw-player");
+		request.Headers.TryAddWithoutValidation("X-User-Email", "victim@example.com");
+		request.Headers.TryAddWithoutValidation("X-User-Authenticated", "true");
+
+		var response = await _client.SendAsync(request);
+
+		response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+	}
+
+	[Fact]
 	public async Task PostBettingAction_WithValidInternalToken_IsNotRejectedAsAnonymous()
 	{
 		var token = InternalUserToken.Issue(

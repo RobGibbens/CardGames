@@ -44,7 +44,7 @@ public static partial class GetGamePlayersMapper
 		return
 		[
 			.. cards
-				.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
+				.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber && c.IsVisible)
 				.OrderBy(c => c.DealOrder)
 				.Select(c => new DealtCard
 				{

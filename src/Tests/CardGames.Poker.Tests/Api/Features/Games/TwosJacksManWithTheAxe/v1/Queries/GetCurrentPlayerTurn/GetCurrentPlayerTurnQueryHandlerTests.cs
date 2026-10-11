@@ -4,12 +4,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using System.Security.Claims;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetCurrentPlayerTurn;
+using CardGames.Poker.Api.Services;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Caching.Hybrid;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Phases = CardGames.Poker.Betting.Phases;
 
@@ -21,10 +21,7 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 	public async Task Handle_WhenGameIsMissing_ReturnsNull()
 	{
 		await using var context = CreateContext(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot());
-		await using var serviceProvider = CreateServiceProvider();
-		var sut = new GetCurrentPlayerTurnQueryHandler(
-			context,
-			serviceProvider.GetRequiredService<HybridCache>());
+		var sut = new GetCurrentPlayerTurnQueryHandler(context, new FakeGamePlayerResolver(null));
 
 		var response = await sut.Handle(new GetCurrentPlayerTurnQuery(Guid.NewGuid()), CancellationToken.None);
 
@@ -37,12 +34,9 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		var databaseName = Guid.NewGuid().ToString();
 		var databaseRoot = new InMemoryDatabaseRoot();
 		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot, -1);
-		await using var serviceProvider = CreateServiceProvider();
 
 		await using var context = CreateContext(databaseName, databaseRoot);
-		var sut = new GetCurrentPlayerTurnQueryHandler(
-			context,
-			serviceProvider.GetRequiredService<HybridCache>());
+		var sut = new GetCurrentPlayerTurnQueryHandler(context, new FakeGamePlayerResolver(null));
 
 		var response = await sut.Handle(new GetCurrentPlayerTurnQuery(gameId), CancellationToken.None);
 
@@ -55,12 +49,9 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		var databaseName = Guid.NewGuid().ToString();
 		var databaseRoot = new InMemoryDatabaseRoot();
 		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot, 4);
-		await using var serviceProvider = CreateServiceProvider();
 
 		await using var context = CreateContext(databaseName, databaseRoot);
-		var sut = new GetCurrentPlayerTurnQueryHandler(
-			context,
-			serviceProvider.GetRequiredService<HybridCache>());
+		var sut = new GetCurrentPlayerTurnQueryHandler(context, new FakeGamePlayerResolver(null));
 
 		var response = await sut.Handle(new GetCurrentPlayerTurnQuery(gameId), CancellationToken.None);
 
@@ -73,16 +64,13 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		var databaseName = Guid.NewGuid().ToString();
 		var databaseRoot = new InMemoryDatabaseRoot();
 		var gameId = await SeedQueryGameAsync(databaseName, databaseRoot);
-		await using var serviceProvider = CreateServiceProvider();
 		var query = new GetCurrentPlayerTurnQuery(gameId);
 
 		var results = await Task.WhenAll(Enumerable.Range(0, 20)
 			.Select(async _ =>
 			{
 				await using var context = CreateContext(databaseName, databaseRoot);
-				var sut = new GetCurrentPlayerTurnQueryHandler(
-					context,
-					serviceProvider.GetRequiredService<HybridCache>());
+				var sut = new GetCurrentPlayerTurnQueryHandler(context, new FakeGamePlayerResolver(null));
 				return await sut.Handle(query, CancellationToken.None);
 			}));
 
@@ -91,7 +79,8 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		results[0]!.Player.PlayerName.Should().Be("Alice");
 		results[0]!.AvailableActions.Should().NotBeNull();
 		results[0]!.AvailableActions!.CanCheck.Should().BeTrue();
-		results[0]!.HandOdds.Should().NotBeNull();
+		results[0]!.Player.Hand.Should().BeEmpty();
+		results[0]!.HandOdds.Should().BeNull();
 	}
 
 	private static CardsDbContext CreateContext(string databaseName, InMemoryDatabaseRoot databaseRoot)
@@ -101,15 +90,6 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 			.Options;
 
 		return new CardsDbContext(options);
-	}
-
-	private static ServiceProvider CreateServiceProvider()
-	{
-		var services = new ServiceCollection();
-#pragma warning disable EXTEXP0018
-		services.AddHybridCache();
-#pragma warning restore EXTEXP0018
-		return services.BuildServiceProvider();
 	}
 
 	private static async Task<Guid> SeedQueryGameAsync(
@@ -235,5 +215,18 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 			DealtAt = now,
 			DealtAtPhase = nameof(Phases.Dealing)
 		};
+	}
+
+	private sealed class FakeGamePlayerResolver(GamePlayer? seated) : IGamePlayerResolver
+	{
+		public Task<GamePlayer?> ResolveSeatedPlayerAsync(Guid gameId, CancellationToken cancellationToken)
+			=> Task.FromResult(seated);
+
+		public Task<GamePlayer?> ResolveSeatedPlayerAsync(Guid gameId, ClaimsPrincipal user,
+			CancellationToken cancellationToken)
+			=> Task.FromResult(seated);
+
+		public Task<bool> IsTableHostAsync(Guid gameId, CancellationToken cancellationToken)
+			=> Task.FromResult(false);
 	}
 }

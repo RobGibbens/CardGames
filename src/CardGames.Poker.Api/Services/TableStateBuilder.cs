@@ -108,47 +108,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
-		// DEBUG: Log card data before ordering for Seven Card Stud
-		var isSevenCardStudGame = IsStudGame(game.GameType?.Code);
-		if (isSevenCardStudGame)
-			foreach (var gp in gamePlayers)
-			{
-				var cardsForHand = gp.Cards
-					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-					.ToList();
-
-				if (cardsForHand.Count > 0)
-				{
-					_logger.LogInformation(
-						"[CARD-ORDER-DEBUG] Player {PlayerName} (Seat {Seat}), Phase {Phase}, Hand #{HandNumber}: " +
-						"RAW cards before ordering: [{RawCards}]",
-						gp.Player.Name,
-						gp.SeatPosition,
-						game.CurrentPhase,
-						game.CurrentHandNumber,
-						string.Join(", ", cardsForHand.Select(c =>
-							$"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}(DO={c.DealOrder},Loc={c.Location},Phase={c.DealtAtPhase},Vis={c.IsVisible})")));
-
-					// Also log the computed order keys
-					var orderKeys = cardsForHand.Select(c => new
-					{
-						Card = $"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}",
-						OrderKey = StudOrderHelper.GetPlayerCardOrderKey(c.DealtAtPhase,
-							c.Location == CardLocation.Hole, c.DealOrder),
-						c.DealOrder,
-						c.Location,
-						c.DealtAtPhase,
-						c.IsVisible
-					}).OrderBy(x => x.OrderKey).ToList();
-
-					_logger.LogInformation(
-						"[CARD-ORDER-DEBUG] Player {PlayerName}: Computed order keys: [{OrderKeys}]",
-						gp.Player.Name,
-						string.Join(", ", orderKeys.Select(x =>
-							$"{x.Card}(Key={x.OrderKey},DO={x.DealOrder},Loc={x.Location},Phase={x.DealtAtPhase})")));
-				}
-			}
-
 		// Calculate total pot from current betting round contributions
 		var totalPot = await CalculateTotalPotAsync(game, game.CurrentHandNumber, cancellationToken);
 
@@ -167,7 +126,23 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var currentHandPots = game.Pots
 			.Where(p => p.HandNumber == game.CurrentHandNumber)
 			.ToList();
-		var isWinByFold = HandVisibilityHelper.IsWinByFoldHand(game, gamePlayers, currentHandPots);
+		var handTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
+		var hasKingsAndLowsDeckHand = false;
+		if (IsKingsAndLowsGame(handTypeCode))
+		{
+			var deckHandCount = await _context.GameCards
+				.AsNoTracking()
+				.CountAsync(c => c.GameId == game.Id
+				                 && c.HandNumber == game.CurrentHandNumber
+				                 && !c.IsDiscarded
+				                 && c.GamePlayerId == null
+				                 && c.Location == CardLocation.Board,
+					cancellationToken);
+			hasKingsAndLowsDeckHand = deckHandCount >= 5;
+		}
+
+		var isWinByFold = HandVisibilityHelper.IsWinByFoldHand(
+			game, gamePlayers, currentHandPots, hasKingsAndLowsDeckHand);
 
 		var seats = gamePlayers
 			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code,
@@ -767,12 +742,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var orderedCards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
 
 		_logger.LogDebug(
-			"BuildPrivateHand for player {PlayerName}: {FilteredCount} cards for hand #{HandNumber}, ordered: [{OrderedCards}]",
+			"BuildPrivateHand for player {PlayerName}: {FilteredCount} cards for hand #{HandNumber}",
 			gamePlayer.Player.Name,
 			orderedCards.Count,
-			currentHandNumber,
-			string.Join(", ",
-				orderedCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder},Phase={c.DealtAtPhase})")));
+			currentHandNumber);
 
 		var selectedShowcaseDealOrder = IsBobBarkerGame(gameTypeCode)
 			? BobBarkerVariantState.GetSelectedShowcaseDealOrder(gamePlayer)
@@ -1637,7 +1610,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var selectedShowcaseDealOrder = isBobBarker
 					? BobBarkerVariantState.GetSelectedShowcaseDealOrder(gp)
 					: null;
-				var showcaseCard = isBobBarker && selectedShowcaseDealOrder.HasValue
+				var showcaseCard = isBobBarker && !isWinByFoldHand && selectedShowcaseDealOrder.HasValue
 					? gp.Cards.FirstOrDefault(c =>
 						!c.IsDiscarded && c.HandNumber == game.CurrentHandNumber &&
 						c.DealOrder == selectedShowcaseDealOrder.Value)

@@ -20,6 +20,7 @@ public static class GetGamePlayersEndpoint
 			.WithSummary(nameof(MapGetGamePlayers).TrimPrefix("Map"))
 			.WithDescription("Retrieve all players in a specific game.")
 			.MapToApiVersion(1.0)
+			.RequireAuthorization()
 			.Produces<List<GetGamePlayersResponse>>()
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 

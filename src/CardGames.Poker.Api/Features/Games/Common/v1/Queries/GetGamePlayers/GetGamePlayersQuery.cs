@@ -7,5 +7,6 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGamePlayers;
 /// </summary>
 public record GetGamePlayersQuery(Guid GameId) : IRequest<List<GetGamePlayersResponse>>
 {
-	public string CacheKey => $"{Feature.Name}:{Feature.Version}:{nameof(GetGamePlayersQuery)}:{GameId}";
+	public string CacheKey =>
+		$"{Feature.Name}:{Feature.Version}:{nameof(GetGamePlayersQuery)}:{GameId}:visible-cards-only";
 }

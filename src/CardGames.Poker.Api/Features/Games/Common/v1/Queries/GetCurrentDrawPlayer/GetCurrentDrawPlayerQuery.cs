@@ -7,5 +7,6 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentDrawPla
 /// </summary>
 public record GetCurrentDrawPlayerQuery(Guid GameId) : IRequest<GetCurrentDrawPlayerResponse?>
 {
-	public string CacheKey => $"{Feature.Name}:{Feature.Version}:{nameof(GetCurrentDrawPlayerQuery)}:{GameId}";
+	public string CacheKey =>
+		$"{Feature.Name}:{Feature.Version}:{nameof(GetCurrentDrawPlayerQuery)}:{GameId}:no-cards";
 }

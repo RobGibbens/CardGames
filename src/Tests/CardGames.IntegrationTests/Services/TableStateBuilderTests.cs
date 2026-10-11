@@ -1,9 +1,13 @@
+using System.Text.Json;
+using CardGames.Contracts.SignalR;
+using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
 using CardGames.Poker.Api.Services;
+using PotEntity = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.IntegrationTests.Services;
 
@@ -592,6 +596,111 @@ public class TableStateBuilderTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task BuildPublicAndPrivateState_Baseball_HidesBoughtHoleCard()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BASEBALL", 2, ante: 0);
+		var game = setup.Game;
+		var seat0 = setup.GamePlayers[0];
+		var seat1 = setup.GamePlayers[1];
+		var now = DateTimeOffset.UtcNow;
+
+		game.CurrentHandNumber = 1;
+		game.CurrentHandGameTypeCode = "BASEBALL";
+		game.CurrentPhase = nameof(Phases.FourthStreet);
+		game.Status = GameStatus.InProgress;
+
+		DbContext.GameCards.AddRange(
+			new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = seat0.Id,
+				HandNumber = 1,
+				Location = CardLocation.Hole,
+				Suit = CardSuit.Hearts,
+				Symbol = CardSymbol.King,
+				DealOrder = 1,
+				IsVisible = false,
+				DealtAt = now,
+				DealtAtPhase = nameof(Phases.ThirdStreet)
+			},
+			new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = seat0.Id,
+				HandNumber = 1,
+				Location = CardLocation.Hole,
+				Suit = CardSuit.Diamonds,
+				Symbol = CardSymbol.Queen,
+				DealOrder = 2,
+				IsVisible = false,
+				DealtAt = now,
+				DealtAtPhase = nameof(Phases.ThirdStreet)
+			},
+			new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = seat0.Id,
+				HandNumber = 1,
+				Location = CardLocation.Board,
+				Suit = CardSuit.Clubs,
+				Symbol = CardSymbol.Four,
+				DealOrder = 3,
+				IsVisible = true,
+				DealtAt = now,
+				DealtAtPhase = nameof(Phases.FourthStreet)
+			},
+			new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = seat0.Id,
+				HandNumber = 1,
+				Location = CardLocation.Hole,
+				Suit = CardSuit.Spades,
+				Symbol = CardSymbol.Ace,
+				DealOrder = 4,
+				IsVisible = false,
+				IsBuyCard = true,
+				DealtAt = now,
+				DealtAtPhase = nameof(Phases.FourthStreet)
+			},
+			new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = seat1.Id,
+				HandNumber = 1,
+				Location = CardLocation.Hole,
+				Suit = CardSuit.Hearts,
+				Symbol = CardSymbol.Jack,
+				DealOrder = 1,
+				IsVisible = false,
+				DealtAt = now,
+				DealtAtPhase = nameof(Phases.ThirdStreet)
+			});
+
+		await DbContext.SaveChangesAsync();
+
+		var publicState = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+		publicState.Should().NotBeNull();
+		var publicSeat0 = publicState!.Seats.Single(seat => seat.SeatIndex == 0);
+		publicSeat0.Cards.Should().Contain(card => card.IsFaceUp && card.Rank == "4");
+		publicSeat0.Cards.Should().NotContain(card => card.Rank == "A");
+		publicState.Seats.SelectMany(seat => seat.Cards).Should().NotContain(card =>
+			card.Rank == "A" || card.Suit == "Spades");
+
+		var publicSeat1 = publicState.Seats.Single(seat => seat.SeatIndex == 1);
+		publicSeat1.Cards.Should().NotContain(card => card.IsFaceUp);
+
+		var privateState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, setup.Players[0].Email!);
+
+		privateState.Should().NotBeNull();
+		privateState!.Hand.Should().Contain(card =>
+			card.Rank == "A" && card.Suit == "Spades" && !card.IsPubliclyVisible);
+		privateState.Hand.Should().Contain(card =>
+			card.Rank == "4" && card.IsPubliclyVisible);
+	}
+
+	[Fact]
 	public async Task BuildPublicStateAsync_SevenCardStud_ShowsBoardCards()
 	{
 		// Arrange
@@ -639,6 +748,89 @@ public class TableStateBuilderTests : IntegrationTestBase
 		// Assert
 		result.Should().NotBeNull();
 		result!.CurrentPhase.Should().Be(nameof(Phases.DropOrStay));
+	}
+
+	[Fact]
+	public async Task BuildPublicStateAsync_KingsAndLows_DeckWinAtComplete_PublishesShowdownNotFoldWin()
+	{
+		var setup = await SeedKingsAndLowsPlayerVsDeckAsync(
+			nameof(Phases.Complete),
+			potAwarded: true,
+			winReason: "Lost to deck's pair of Jacks - pot carries forward",
+			includeDeckHand: true);
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+		result.Should().NotBeNull();
+		result!.Showdown.Should().NotBeNull();
+		result.Showdown!.WonByFold.Should().BeFalse();
+
+		var staying = result.Showdown.PlayerResults.Should()
+			.ContainSingle(r => r.PlayerName == setup.Players[0].Name).Which;
+		staying.HandDescription.Should().NotBeNull();
+		staying.HandRanking.Should().NotBeNull();
+		staying.Cards.Should().HaveCount(5);
+		staying.Cards.Should().OnlyContain(c => c.IsFaceUp);
+		staying.Cards.Should().Contain(c => c.Rank == "7" && c.Suit == "Hearts");
+
+		var deck = result.Showdown.PlayerResults.Should()
+			.ContainSingle(r => r.PlayerName == "The Deck").Which;
+		deck.IsWinner.Should().BeTrue();
+		deck.Cards.Should().HaveCount(5);
+		deck.Cards.Should().OnlyContain(c => c.IsFaceUp);
+		deck.Cards.Should().Contain(c => c.Rank == "J" && c.Suit == "Hearts");
+
+		var seat0 = result.Seats.Single(s => s.SeatIndex == 0);
+		seat0.Cards.Should().HaveCount(5);
+		seat0.Cards.Should().OnlyContain(c => c.IsFaceUp);
+		seat0.Cards.Should().Contain(c => c.Rank == "7" && c.Suit == "Hearts");
+		seat0.Cards.Should().Contain(c => c.Rank == "7" && c.Suit == "Diamonds");
+
+		result.Seats.Where(s => s.SeatIndex is 1 or 2).Should().AllSatisfy(seat =>
+			seat.Cards.Should().NotContain(c => c.Rank == "7" || c.Rank == "2" || c.Rank == "3" || c.Rank == "4"));
+	}
+
+	[Fact]
+	public async Task BuildPublicStateAsync_KingsAndLows_PlayerVsDeckAtShowdownBeforeAward_IsNotWinByFold()
+	{
+		var setup = await SeedKingsAndLowsPlayerVsDeckAsync(
+			nameof(Phases.Showdown),
+			potAwarded: false,
+			winReason: null,
+			includeDeckHand: true);
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+		result.Should().NotBeNull();
+		result!.Showdown.Should().NotBeNull();
+		result.Showdown!.WonByFold.Should().BeFalse();
+
+		var staying = result.Showdown.PlayerResults.Should()
+			.ContainSingle(r => r.PlayerName == setup.Players[0].Name).Which;
+		staying.Cards.Should().Contain(c => c.IsFaceUp && c.Rank == "7" && c.Suit == "Hearts");
+		result.Showdown.PlayerResults.Should().Contain(r => r.PlayerName == "The Deck");
+	}
+
+	[Fact]
+	public async Task BuildPublicStateAsync_KingsAndLows_AllOthersDropped_StaysWinByFold()
+	{
+		var setup = await SeedKingsAndLowsPlayerVsDeckAsync(
+			nameof(Phases.Complete),
+			potAwarded: true,
+			winReason: "All others dropped",
+			includeDeckHand: false);
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+		result.Should().NotBeNull();
+		result!.Showdown.Should().NotBeNull();
+		result.Showdown!.WonByFold.Should().BeTrue();
+
+		var staying = result.Showdown.PlayerResults.Should()
+			.ContainSingle(r => r.PlayerName == setup.Players[0].Name).Which;
+		staying.HandDescription.Should().BeNull();
+		staying.Cards.Where(c => c.Rank == null && c.Suit == null).Should().HaveCount(3);
+		result.Showdown.PlayerResults.Should().NotContain(r => r.PlayerName == "The Deck");
 	}
 
 	[Fact]
@@ -1369,5 +1561,340 @@ public class TableStateBuilderTests : IntegrationTestBase
 
 		result.Should().NotBeNull();
 		result!.SoundEffects.Should().BeNullOrEmpty();
+	}
+
+	[Fact]
+	public async Task BuildPublicStateAsync_BobBarker_FoldWinAtShowdown_HidesShowcaseCard()
+	{
+		var game = await SeedBobBarkerFoldWinAsync(nameof(Phases.Showdown), potAwarded: false);
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+		AssertBobBarkerFoldWinHidesPlayerCards(result);
+	}
+
+	[Fact]
+	public async Task BuildPublicStateAsync_BobBarker_FoldWinAtComplete_HidesShowcaseCard()
+	{
+		var game = await SeedBobBarkerFoldWinAsync(nameof(Phases.Complete), potAwarded: true);
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+		AssertBobBarkerFoldWinHidesPlayerCards(result);
+	}
+
+	[Fact]
+	public async Task BuildPublicStateAsync_BobBarker_ContestedShowdown_PublishesShowcaseCards()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", 2, ante: 0);
+		var game = setup.Game;
+		var now = DateTimeOffset.UtcNow;
+
+		game.CurrentHandNumber = 1;
+		game.CurrentHandGameTypeCode = "BOBBARKER";
+		game.CurrentPhase = nameof(Phases.Showdown);
+		game.Status = GameStatus.InProgress;
+
+		var player0 = setup.GamePlayers[0];
+		var player1 = setup.GamePlayers[1];
+		BobBarkerVariantState.SetSelectedShowcaseDealOrder(player0, 5);
+		BobBarkerVariantState.SetSelectedShowcaseDealOrder(player1, 5);
+
+		AddBobBarkerHand(game.Id, player0.Id, now,
+		[
+			(1, CardSymbol.Ace, CardSuit.Hearts),
+			(2, CardSymbol.King, CardSuit.Diamonds),
+			(3, CardSymbol.Queen, CardSuit.Clubs),
+			(4, CardSymbol.Jack, CardSuit.Spades),
+			(5, CardSymbol.Deuce, CardSuit.Clubs)
+		]);
+		AddBobBarkerHand(game.Id, player1.Id, now,
+		[
+			(1, CardSymbol.Ace, CardSuit.Diamonds),
+			(2, CardSymbol.King, CardSuit.Clubs),
+			(3, CardSymbol.Queen, CardSuit.Hearts),
+			(4, CardSymbol.Jack, CardSuit.Diamonds),
+			(5, CardSymbol.Ten, CardSuit.Hearts)
+		]);
+		AddBobBarkerDealerCard(game.Id, now, CardSymbol.Jack, CardSuit.Spades);
+
+		DbContext.Pots.Add(new PotEntity
+		{
+			GameId = game.Id,
+			HandNumber = 1,
+			PotType = PotType.Main,
+			Amount = 100,
+			IsAwarded = false,
+			WinReason = null,
+			CreatedAt = now
+		});
+		await DbContext.SaveChangesAsync();
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+		result.Should().NotBeNull();
+		result!.Showdown.Should().NotBeNull();
+		result.Showdown!.WonByFold.Should().BeFalse();
+
+		var seat0 = result.Showdown.PlayerResults.Single(p => p.SeatPosition == 0);
+		var seat1 = result.Showdown.PlayerResults.Single(p => p.SeatPosition == 1);
+
+		seat0.ShowcaseCard.Should().NotBeNull();
+		seat0.ShowcaseCard!.IsFaceUp.Should().BeTrue();
+		seat0.ShowcaseCard.Rank.Should().Be("2");
+		seat0.ShowcaseCard.Suit.Should().Be("Clubs");
+		seat0.ShowcaseCardValue.Should().NotBeNull();
+		seat0.Cards.Should().NotContain(c => c.DealOrder == seat0.ShowcaseCard.DealOrder);
+
+		seat1.ShowcaseCard.Should().NotBeNull();
+		seat1.ShowcaseCard!.IsFaceUp.Should().BeTrue();
+		seat1.ShowcaseCard.Rank.Should().Be("10");
+		seat1.ShowcaseCard.Suit.Should().Be("Hearts");
+		seat1.ShowcaseCardValue.Should().NotBeNull();
+		seat1.Cards.Should().NotContain(c => c.DealOrder == seat1.ShowcaseCard.DealOrder);
+	}
+
+	[Fact]
+	public async Task BuildPrivateStateAsync_BobBarker_FoldWin_OwnerSeesOwnShowcaseCard()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", 3, ante: 0);
+		await SeedBobBarkerFoldWinOnSetupAsync(setup, nameof(Phases.Complete), potAwarded: true);
+
+		var ownerState = await TableStateBuilder.BuildPrivateStateAsync(setup.Game.Id, setup.Players[0].Email!);
+		var foldedState = await TableStateBuilder.BuildPrivateStateAsync(setup.Game.Id, setup.Players[1].Email!);
+
+		ownerState.Should().NotBeNull();
+		ownerState!.Hand.Should().HaveCount(5);
+		ownerState.Hand.Should().ContainSingle(c =>
+			c.IsShowcaseCard && c.Rank == "K" && c.Suit == CardSuit.Spades.ToString());
+
+		foldedState.Should().NotBeNull();
+		foldedState!.Hand.Should().NotContain(c => c.Rank == "K" && c.Suit == CardSuit.Spades.ToString());
+	}
+
+	private async Task<Game> SeedBobBarkerFoldWinAsync(string phase, bool potAwarded)
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", 3, ante: 0);
+		await SeedBobBarkerFoldWinOnSetupAsync(setup, phase, potAwarded);
+		return setup.Game;
+	}
+
+	private async Task SeedBobBarkerFoldWinOnSetupAsync(GameSetup setup, string phase, bool potAwarded)
+	{
+		var game = setup.Game;
+		var now = DateTimeOffset.UtcNow;
+
+		game.CurrentHandNumber = 1;
+		game.CurrentHandGameTypeCode = "BOBBARKER";
+		game.CurrentPhase = phase;
+		game.Status = GameStatus.InProgress;
+
+		setup.GamePlayers[0].HasFolded = false;
+		setup.GamePlayers[1].HasFolded = true;
+		setup.GamePlayers[2].HasFolded = true;
+		foreach (var gamePlayer in setup.GamePlayers)
+		{
+			gamePlayer.Status = GamePlayerStatus.Active;
+			BobBarkerVariantState.SetSelectedShowcaseDealOrder(gamePlayer, 1);
+		}
+
+		AddBobBarkerHand(game.Id, setup.GamePlayers[0].Id, now,
+		[
+			(1, CardSymbol.King, CardSuit.Spades),
+			(2, CardSymbol.Seven, CardSuit.Diamonds),
+			(3, CardSymbol.Seven, CardSuit.Clubs),
+			(4, CardSymbol.Deuce, CardSuit.Hearts),
+			(5, CardSymbol.Nine, CardSuit.Spades)
+		]);
+		AddBobBarkerHand(game.Id, setup.GamePlayers[1].Id, now,
+		[
+			(1, CardSymbol.Ace, CardSuit.Hearts),
+			(2, CardSymbol.Queen, CardSuit.Diamonds),
+			(3, CardSymbol.Jack, CardSuit.Clubs),
+			(4, CardSymbol.Five, CardSuit.Hearts),
+			(5, CardSymbol.Four, CardSuit.Diamonds)
+		]);
+		AddBobBarkerHand(game.Id, setup.GamePlayers[2].Id, now,
+		[
+			(1, CardSymbol.Ace, CardSuit.Clubs),
+			(2, CardSymbol.Queen, CardSuit.Hearts),
+			(3, CardSymbol.Jack, CardSuit.Diamonds),
+			(4, CardSymbol.Six, CardSuit.Clubs),
+			(5, CardSymbol.Three, CardSuit.Diamonds)
+		]);
+		AddBobBarkerDealerCard(game.Id, now, CardSymbol.Eight, CardSuit.Hearts);
+
+		DbContext.Pots.Add(new PotEntity
+		{
+			GameId = game.Id,
+			HandNumber = 1,
+			PotType = PotType.Main,
+			Amount = 100,
+			IsAwarded = potAwarded,
+			WinReason = potAwarded ? "All others folded" : null,
+			CreatedAt = now
+		});
+		await DbContext.SaveChangesAsync();
+	}
+
+	private void AddBobBarkerHand(
+		Guid gameId,
+		Guid gamePlayerId,
+		DateTimeOffset dealtAt,
+		(int DealOrder, CardSymbol Symbol, CardSuit Suit)[] cards)
+	{
+		foreach (var card in cards)
+			DbContext.GameCards.Add(new GameCard
+			{
+				GameId = gameId,
+				GamePlayerId = gamePlayerId,
+				HandNumber = 1,
+				Location = CardLocation.Hand,
+				Suit = card.Suit,
+				Symbol = card.Symbol,
+				DealOrder = card.DealOrder,
+				IsVisible = false,
+				IsDiscarded = false,
+				DealtAt = dealtAt,
+				DealtAtPhase = nameof(Phases.Dealing)
+			});
+	}
+
+	private void AddBobBarkerDealerCard(Guid gameId, DateTimeOffset dealtAt, CardSymbol symbol, CardSuit suit)
+	{
+		DbContext.GameCards.Add(new GameCard
+		{
+			GameId = gameId,
+			GamePlayerId = null,
+			HandNumber = 1,
+			Location = CardLocation.Community,
+			Suit = suit,
+			Symbol = symbol,
+			DealOrder = 0,
+			IsVisible = false,
+			IsDiscarded = false,
+			DealtAt = dealtAt,
+			DealtAtPhase = nameof(Phases.Dealing)
+		});
+	}
+
+	private static void AssertBobBarkerFoldWinHidesPlayerCards(TableStatePublicDto? result)
+	{
+		result.Should().NotBeNull();
+		result!.Showdown.Should().NotBeNull();
+		result.Showdown!.WonByFold.Should().BeTrue();
+		result.Showdown.PlayerResults.Should().NotBeEmpty();
+		result.Showdown.PlayerResults.Should().OnlyContain(p =>
+			p.ShowcaseCard == null && p.ShowcaseCardValue == null);
+		result.Showdown.PlayerResults
+			.SelectMany(p => p.Cards)
+			.Should().OnlyContain(c => c.Rank == null && c.Suit == null);
+
+		result.Seats.SelectMany(s => s.Cards).Should().OnlyContain(c => c.Rank == null && c.Suit == null);
+		var seat0 = result.Seats.Single(s => s.SeatIndex == 0);
+		seat0.Cards.Should().HaveCount(5);
+		seat0.Cards.Should().OnlyContain(c => c.IsFaceUp == false);
+
+		var json = JsonSerializer.Serialize(result);
+		json.Should().NotContain("King");
+		json.Should().NotContain("Spades");
+		json.Should().Contain("Hearts");
+
+		result.Showdown.BobBarker.Should().NotBeNull();
+		result.Showdown.BobBarker!.DealerCard.Should().NotBeNull();
+		result.Showdown.BobBarker.DealerCard!.IsFaceUp.Should().BeTrue();
+		result.Showdown.BobBarker.DealerCard.Rank.Should().Be("8");
+		result.Showdown.BobBarker.DealerCard.Suit.Should().Be("Hearts");
+
+		result.CommunityCards.Should().ContainSingle(c =>
+			c.IsFaceUp && c.Rank == "8" && c.Suit == "Hearts");
+	}
+
+	private async Task<GameSetup> SeedKingsAndLowsPlayerVsDeckAsync(
+		string phase,
+		bool potAwarded,
+		string? winReason,
+		bool includeDeckHand)
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 3, ante: 0);
+		var game = setup.Game;
+		var now = DateTimeOffset.UtcNow;
+
+		game.CurrentHandNumber = 1;
+		game.CurrentHandGameTypeCode = "KINGSANDLOWS";
+		game.CurrentPhase = phase;
+		game.Status = GameStatus.InProgress;
+
+		setup.GamePlayers[0].HasFolded = false;
+		setup.GamePlayers[1].HasFolded = true;
+		setup.GamePlayers[2].HasFolded = true;
+		foreach (var gamePlayer in setup.GamePlayers)
+			gamePlayer.Status = GamePlayerStatus.Active;
+
+		(int DealOrder, CardSymbol Symbol, CardSuit Suit, bool IsVisible)[] playerCards =
+		[
+			(1, CardSymbol.Seven, CardSuit.Hearts, false),
+			(2, CardSymbol.Seven, CardSuit.Diamonds, false),
+			(3, CardSymbol.Deuce, CardSuit.Clubs, false),
+			(4, CardSymbol.Three, CardSuit.Spades, true),
+			(5, CardSymbol.Four, CardSuit.Hearts, true)
+		];
+
+		foreach (var card in playerCards)
+			DbContext.GameCards.Add(new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = setup.GamePlayers[0].Id,
+				HandNumber = 1,
+				Location = CardLocation.Hand,
+				Suit = card.Suit,
+				Symbol = card.Symbol,
+				DealOrder = card.DealOrder,
+				IsVisible = card.IsVisible,
+				IsDiscarded = false,
+				DealtAt = now
+			});
+
+		if (includeDeckHand)
+		{
+			(int DealOrder, CardSymbol Symbol, CardSuit Suit)[] deckCards =
+			[
+				(1, CardSymbol.Jack, CardSuit.Hearts),
+				(2, CardSymbol.Jack, CardSuit.Diamonds),
+				(3, CardSymbol.Nine, CardSuit.Clubs),
+				(4, CardSymbol.Eight, CardSuit.Spades),
+				(5, CardSymbol.Five, CardSuit.Diamonds)
+			];
+
+			foreach (var card in deckCards)
+				DbContext.GameCards.Add(new GameCard
+				{
+					GameId = game.Id,
+					GamePlayerId = null,
+					HandNumber = 1,
+					Location = CardLocation.Board,
+					Suit = card.Suit,
+					Symbol = card.Symbol,
+					DealOrder = card.DealOrder,
+					IsVisible = true,
+					IsDiscarded = false,
+					DealtAt = now,
+					DealtAtPhase = "PlayerVsDeck"
+				});
+		}
+
+		DbContext.Pots.Add(new PotEntity
+		{
+			GameId = game.Id,
+			HandNumber = 1,
+			PotType = PotType.Main,
+			Amount = 100,
+			IsAwarded = potAwarded,
+			WinReason = winReason,
+			CreatedAt = now
+		});
+
+		await DbContext.SaveChangesAsync();
+		return setup;
 	}
 }

@@ -207,8 +207,8 @@ public class ProcessBuyCardCommandHandlerTests
 		updatedState.PendingOffers[0].PlayerId.Should().Be(otherPlayer.Id);
 		persistedGame.CurrentPlayerIndex.Should().Be(otherGamePlayer.SeatPosition);
 		boughtCard.DealOrder.Should().Be(4);
-		boughtCard.Location.Should().Be(CardLocation.Board);
-		boughtCard.IsVisible.Should().BeTrue();
+		boughtCard.Location.Should().Be(CardLocation.Hole);
+		boughtCard.IsVisible.Should().BeFalse();
 		persistedPlayer.ChipStack.Should().Be(90);
 		persistedPot.Amount.Should().Be(10);
 	}
@@ -304,6 +304,8 @@ public class ProcessBuyCardCommandHandlerTests
 		persistedGame.CurrentPhase.Should().Be("ResumeBuyCardsComplete");
 		players.Select(gamePlayer => gamePlayer.ChipStack).Should().Equal(95, 95);
 		buyCards.Should().HaveCount(2);
+		buyCards.Should().OnlyContain(gameCard =>
+			gameCard.Location == CardLocation.Hole && !gameCard.IsVisible && gameCard.IsBuyCard);
 		buyCards.Select(gameCard => gameCard.GamePlayerId).Should().OnlyHaveUniqueItems();
 		persistedPot.Amount.Should().Be(10);
 		persistedPot.Contributions.Should().HaveCount(2);

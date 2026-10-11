@@ -115,16 +115,13 @@ public class DealHandsCommandHandler(
 		{
 			var dealtCards = new List<DealtCard>();
 
-			// Query existing cards for this player to determine starting DealOrder
-			var existingCards = await context.GameCards
-				.Where(gc => gc.GamePlayerId == gamePlayer.Id &&
-				             gc.HandNumber == game.CurrentHandNumber &&
-				             gc.Location != CardLocation.Deck &&
-				             !gc.IsDiscarded)
-				.Select(gc => new { gc.Symbol, gc.Suit, gc.DealOrder, gc.Location })
-				.ToListAsync(cancellationToken);
-
-			var existingCardCount = existingCards.Count;
+			// Count existing cards for this player to determine starting DealOrder
+			var existingCardCount = await context.GameCards
+				.CountAsync(gc => gc.GamePlayerId == gamePlayer.Id &&
+				                   gc.HandNumber == game.CurrentHandNumber &&
+				                   gc.Location != CardLocation.Deck &&
+				                   !gc.IsDiscarded,
+					cancellationToken);
 
 			// DEFENSIVE FIX: ThirdStreet is the first deal of a hand.
 			// There should be NO existing cards. If any exist, they're stale from a previous
@@ -134,11 +131,10 @@ public class DealHandsCommandHandler(
 				logger.LogWarning(
 					"DealHands: Found {Count} STALE cards for player {PlayerName} ({GamePlayerId}) on ThirdStreet. " +
 					"This should not happen - cards should be deleted when hand starts. " +
-					"Stale cards: [{Cards}]. Deleting them now and resetting DealOrder to 1.",
+					"Deleting them now and resetting DealOrder to 1.",
 					existingCardCount,
 					gamePlayer.Player.Name,
-					gamePlayer.Id,
-					string.Join(", ", existingCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder})")));
+					gamePlayer.Id);
 
 				// Delete the stale cards
 				var staleCards = await context.GameCards
@@ -158,15 +154,13 @@ public class DealHandsCommandHandler(
 
 			logger.LogInformation(
 				"DealHands: Player {PlayerName} (GamePlayerId={GamePlayerId}, Seat {SeatPosition}) - " +
-				"ExistingCardCount={ExistingCount}, StartingDealOrder={DealOrder}, Phase={Phase}, " +
-				"ExistingCards=[{ExistingCards}]",
+				"ExistingCardCount={ExistingCount}, StartingDealOrder={DealOrder}, Phase={Phase}",
 				gamePlayer.Player.Name,
 				gamePlayer.Id,
 				gamePlayer.SeatPosition,
 				existingCardCount,
 				playerDealOrder,
-				game.CurrentPhase,
-				string.Join(", ", existingCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder})")));
+				game.CurrentPhase);
 
 			if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 			{
@@ -241,9 +235,10 @@ public class DealHandsCommandHandler(
 			});
 
 			logger.LogInformation(
-				"DealHands: Player {PlayerName} dealt {CardCount} cards: [{Cards}]",
-				gamePlayer.Player.Name, dealtCards.Count,
-				string.Join(", ", dealtCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder})")));
+				"DealHands: Player {PlayerName} dealt {CardCount} cards on {Phase}",
+				gamePlayer.Player.Name,
+				dealtCards.Count,
+				game.CurrentPhase);
 		}
 
 		// 6. Reset current bets for all players before betting round

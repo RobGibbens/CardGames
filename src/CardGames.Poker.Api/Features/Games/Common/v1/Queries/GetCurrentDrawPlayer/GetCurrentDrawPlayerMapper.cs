@@ -31,15 +31,6 @@ public static partial class GetCurrentDrawPlayerMapper
 
 	private static IReadOnlyList<DealtCard> MapCards(ICollection<GameCard> cards)
 	{
-		return cards
-			.Where(c => !c.IsDiscarded)
-			.OrderBy(c => c.DealOrder)
-			.Select(c => new DealtCard
-			{
-				Suit = c.Suit,
-				Symbol = c.Symbol,
-				DealOrder = c.DealOrder
-			})
-			.ToList();
+		return [];
 	}
 }

@@ -157,9 +157,9 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 				}
 
 				deckCard.GamePlayerId = player.Id;
-				// Deal face up (Board) instead of face down (Hole)
-				deckCard.Location = CardLocation.Board;
-				deckCard.IsVisible = true;
+				// Extra hole card, same as BaseballGame.ProcessBuyCardDecision.
+				deckCard.Location = CardLocation.Hole;
+				deckCard.IsVisible = false;
 				deckCard.DealtAtPhase = currentOffer.Street;
 				deckCard.DealtAt = now;
 				deckCard.IsBuyCard = true;

@@ -1851,10 +1851,9 @@
 			else if (state.Hand is { Count: > 0 })
 			{
 				Logger.LogInformation(
-					"Updating seat {SeatIndex} cards from private state: {CardCount} cards, first card: {FirstCard}",
+					"Updating seat {SeatIndex} cards from private state: {CardCount} cards",
 					targetSeatIndex,
-					state.Hand.Count,
-					$"{state.Hand[0].Rank} of {state.Hand[0].Suit}");
+					state.Hand.Count);
 
 				_seats[targetSeatIndex].Cards = state.Hand.Select(c => new CardInfo
 				{

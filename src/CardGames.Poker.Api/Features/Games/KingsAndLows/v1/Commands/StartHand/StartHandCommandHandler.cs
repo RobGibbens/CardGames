@@ -350,7 +350,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 					var card = deck[cardIndex++];
 					card.Location = CardLocation.Hand;
 					card.GamePlayerId = player.Id;
-					card.IsVisible = true; // Cards visible to the player in their hand
+					card.IsVisible = false;
 					card.DealtAtPhase = nameof(Phases.Dealing);
 				}
 
