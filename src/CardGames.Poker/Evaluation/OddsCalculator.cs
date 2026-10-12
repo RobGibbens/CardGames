@@ -58,7 +58,7 @@ public static class OddsCalculator
 	/// <summary>
 	///     Calculates odds for a Klondike Hold'em hand.
 	///     Before reveal: the Klondike Card is unknown — one phantom wild card is included.
-	///     After reveal: the Klondike Card and all cards of the same rank are wild.
+	///     After reveal: the revealed Klondike Card is wild and may be any rank and suit.
 	/// </summary>
 	/// <param name="heroHoleCards">The player's 2 hole cards.</param>
 	/// <param name="communityCards">Visible community cards (excluding unrevealed Klondike card).</param>
@@ -93,7 +93,7 @@ public static class OddsCalculator
 			KlondikeHand heroHand;
 			if (klondikeCard is not null)
 			{
-				// Post-reveal: Klondike Card + all same-rank cards are wild.
+				// Post-reveal: only the revealed Klondike card is wild.
 				// The Klondike card must be included in community cards (as first element)
 				// so the hand evaluator can detect it as wild.
 				var communityWithKlondike = new List<Card> { klondikeCard };

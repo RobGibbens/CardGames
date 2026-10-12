@@ -285,8 +285,7 @@ public class OddsCalculatorTests
 	[Fact]
 	public void CalculateKlondikeOdds_PostReveal_NeverReturnsHighCard()
 	{
-		// After reveal the Klondike card and all same-rank cards are wild,
-		// guaranteeing at least a pair.
+		// After reveal the Klondike card is wild, guaranteeing at least a pair.
 		var heroCards = "8c Kh".ToCards();
 		var communityCards = "Jd 5s 2h".ToCards();
 		var klondikeCard = "9d".ToCards().First();

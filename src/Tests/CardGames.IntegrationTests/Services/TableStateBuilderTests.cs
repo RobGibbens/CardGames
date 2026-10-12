@@ -587,12 +587,11 @@ public class TableStateBuilderTests : IntegrationTestBase
 		game.CurrentPhase = "KlondikeReveal";
 		await DbContext.SaveChangesAsync();
 
-		// Act: After reveal, 7d is the Klondike Card → all 7s are wild.
-		// Hero holds 7c (wild) and community has 7d (wild): 2 wilds + As → Three of a Kind Aces.
+		// Act: After reveal, only 7d is wild. The hole 7c stays a seven, so the best hand is a pair of aces.
 		var afterRevealState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, heroEmail);
 
 		afterRevealState.Should().NotBeNull();
-		afterRevealState!.HandEvaluationDescription.Should().Be("Three of a kind, Aces");
+		afterRevealState!.HandEvaluationDescription.Should().Be("Pair of Aces");
 	}
 
 	[Fact]
@@ -1652,6 +1651,13 @@ public class TableStateBuilderTests : IntegrationTestBase
 		seat1.ShowcaseCard.Suit.Should().Be("Hearts");
 		seat1.ShowcaseCardValue.Should().NotBeNull();
 		seat1.Cards.Should().NotContain(c => c.DealOrder == seat1.ShowcaseCard.DealOrder);
+
+		(result.CommunityCards ?? []).Should().NotContain(c => c.Rank == "J" && c.Suit == "Spades");
+		result.Showdown.BobBarker.Should().NotBeNull();
+		result.Showdown.BobBarker!.DealerCard.Should().NotBeNull();
+		result.Showdown.BobBarker.DealerCard!.IsFaceUp.Should().BeTrue();
+		result.Showdown.BobBarker.DealerCard.Rank.Should().Be("J");
+		result.Showdown.BobBarker.DealerCard.Suit.Should().Be("Spades");
 	}
 
 	[Fact]
@@ -1806,8 +1812,7 @@ public class TableStateBuilderTests : IntegrationTestBase
 		result.Showdown.BobBarker.DealerCard.Rank.Should().Be("8");
 		result.Showdown.BobBarker.DealerCard.Suit.Should().Be("Hearts");
 
-		result.CommunityCards.Should().ContainSingle(c =>
-			c.IsFaceUp && c.Rank == "8" && c.Suit == "Hearts");
+		result.CommunityCards.Should().BeNullOrEmpty();
 	}
 
 	private async Task<GameSetup> SeedKingsAndLowsPlayerVsDeckAsync(

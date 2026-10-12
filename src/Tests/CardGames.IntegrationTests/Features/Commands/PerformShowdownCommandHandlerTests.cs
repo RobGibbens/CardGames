@@ -640,6 +640,259 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 			"dealer Ace should make an Ace showcase worth 14, beating a king showcase worth 13");
 	}
 
+	[Fact]
+	public async Task Handle_BobBarker_HiddenDealerCard_IsNotUsedInOmahaHand()
+	{
+		var (game, players) = await CreateBobBarkerShowdownGameAsync(2, 200);
+		var ann = players[0];
+		var ben = players[1];
+		var now = DateTimeOffset.UtcNow;
+
+		ann.TotalContributedThisHand = 100;
+		ann.ChipStack = 900;
+		ann.IsAllIn = false;
+		ben.TotalContributedThisHand = 100;
+		ben.ChipStack = 900;
+		ben.IsAllIn = false;
+
+		AddBobBarkerPlayerCard(game.Id, ann.Id, 1, CardSuit.Hearts, CardSymbol.Queen, now);
+		AddBobBarkerPlayerCard(game.Id, ann.Id, 2, CardSuit.Diamonds, CardSymbol.Queen, now);
+		AddBobBarkerPlayerCard(game.Id, ann.Id, 3, CardSuit.Clubs, CardSymbol.Six, now);
+		AddBobBarkerPlayerCard(game.Id, ann.Id, 4, CardSuit.Spades, CardSymbol.Five, now);
+		AddBobBarkerPlayerCard(game.Id, ann.Id, 5, CardSuit.Hearts, CardSymbol.Deuce, now);
+
+		AddBobBarkerPlayerCard(game.Id, ben.Id, 1, CardSuit.Clubs, CardSymbol.Ace, now);
+		AddBobBarkerPlayerCard(game.Id, ben.Id, 2, CardSuit.Diamonds, CardSymbol.King, now);
+		AddBobBarkerPlayerCard(game.Id, ben.Id, 3, CardSuit.Hearts, CardSymbol.Six, now);
+		AddBobBarkerPlayerCard(game.Id, ben.Id, 4, CardSuit.Diamonds, CardSymbol.Seven, now);
+		AddBobBarkerPlayerCard(game.Id, ben.Id, 5, CardSuit.Diamonds, CardSymbol.Deuce, now);
+
+		BobBarkerVariantState.SetSelectedShowcaseDealOrder(ann, 5);
+		BobBarkerVariantState.SetSelectedShowcaseDealOrder(ben, 5);
+
+		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Hearts, CardSymbol.Five, false,
+			nameof(Phases.Dealing), now);
+		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Clubs, CardSymbol.Deuce, true, nameof(Phases.Flop),
+			now);
+		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Diamonds, CardSymbol.Three, true, nameof(Phases.Flop),
+			now);
+		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Spades, CardSymbol.Four, true, nameof(Phases.Flop),
+			now);
+		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Hearts, CardSymbol.Eight, true, nameof(Phases.Turn),
+			now);
+		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Clubs, CardSymbol.Nine, true, nameof(Phases.River),
+			now);
+
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new PerformShowdownCommand(game.Id));
+
+		result.IsT0.Should().BeTrue();
+
+		var awardedPot = await GetFreshDbContext().Pots.FirstAsync(p => p.GameId == game.Id && p.HandNumber == 1);
+		var payouts = ParseWinnerPayouts(awardedPot.WinnerPayouts!);
+
+		payouts[ann.Player.Name].High.Should().Be(100);
+		payouts[ann.Player.Name].Showcase.Should().Be(50);
+		payouts[ann.Player.Name].Amount.Should().Be(150);
+		payouts[ben.Player.Name].High.Should().Be(0);
+		payouts[ben.Player.Name].Showcase.Should().Be(50);
+		payouts[ben.Player.Name].Amount.Should().Be(50);
+
+		var freshPlayers = await GetFreshDbContext().GamePlayers
+			.Where(gp => gp.GameId == game.Id)
+			.ToListAsync();
+		freshPlayers.Single(gp => gp.Id == ann.Id).ChipStack.Should().Be(1050);
+		freshPlayers.Single(gp => gp.Id == ben.Id).ChipStack.Should().Be(950);
+
+		var annHand = result.AsT0.PlayerHands.Single(h => h.PlayerName == ann.Player.Name);
+		var benHand = result.AsT0.PlayerHands.Single(h => h.PlayerName == ben.Player.Name);
+		annHand.HandDescription.Should().Be("Straight to the Six");
+		annHand.HandDescription.Should().NotContain("Two pair");
+		benHand.HandDescription.Should().NotContain("Straight");
+		benHand.HandDescription.Should().Be("Ace high");
+
+		var dealerCard = await GetFreshDbContext().GameCards.SingleAsync(c =>
+			c.GameId == game.Id && c.Location == CardLocation.Community && c.DealOrder == 0);
+		dealerCard.IsVisible.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task Handle_BobBarker_ThreeWayChop_OddChipsFollowSeatAfterButton()
+	{
+		var (game, players) = await CreateBobBarkerShowdownGameAsync(3, 99);
+		game.DealerPosition = 0;
+		var seatZero = players[0];
+		var seatOne = players[1];
+		var seatTwo = players[2];
+		var now = DateTimeOffset.UtcNow;
+
+		foreach (var player in players)
+		{
+			player.TotalContributedThisHand = 33;
+			player.ChipStack = 967;
+			player.IsAllIn = false;
+		}
+
+		AddBobBarkerPlayerCard(game.Id, seatZero.Id, 1, CardSuit.Spades, CardSymbol.Jack, now);
+		AddBobBarkerPlayerCard(game.Id, seatZero.Id, 2, CardSuit.Clubs, CardSymbol.Ten, now);
+		AddBobBarkerPlayerCard(game.Id, seatZero.Id, 3, CardSuit.Diamonds, CardSymbol.Deuce, now);
+		AddBobBarkerPlayerCard(game.Id, seatZero.Id, 4, CardSuit.Hearts, CardSymbol.Three, now);
+		AddBobBarkerPlayerCard(game.Id, seatZero.Id, 5, CardSuit.Clubs, CardSymbol.Seven, now);
+
+		AddBobBarkerPlayerCard(game.Id, seatOne.Id, 1, CardSuit.Hearts, CardSymbol.Jack, now);
+		AddBobBarkerPlayerCard(game.Id, seatOne.Id, 2, CardSuit.Diamonds, CardSymbol.Ten, now);
+		AddBobBarkerPlayerCard(game.Id, seatOne.Id, 3, CardSuit.Clubs, CardSymbol.Four, now);
+		AddBobBarkerPlayerCard(game.Id, seatOne.Id, 4, CardSuit.Spades, CardSymbol.Five, now);
+		AddBobBarkerPlayerCard(game.Id, seatOne.Id, 5, CardSuit.Diamonds, CardSymbol.Seven, now);
+
+		AddBobBarkerPlayerCard(game.Id, seatTwo.Id, 1, CardSuit.Clubs, CardSymbol.Jack, now);
+		AddBobBarkerPlayerCard(game.Id, seatTwo.Id, 2, CardSuit.Hearts, CardSymbol.Ten, now);
+		AddBobBarkerPlayerCard(game.Id, seatTwo.Id, 3, CardSuit.Diamonds, CardSymbol.Four, now);
+		AddBobBarkerPlayerCard(game.Id, seatTwo.Id, 4, CardSuit.Hearts, CardSymbol.Five, now);
+		AddBobBarkerPlayerCard(game.Id, seatTwo.Id, 5, CardSuit.Hearts, CardSymbol.Seven, now);
+
+		BobBarkerVariantState.SetSelectedShowcaseDealOrder(seatZero, 5);
+		BobBarkerVariantState.SetSelectedShowcaseDealOrder(seatOne, 5);
+		BobBarkerVariantState.SetSelectedShowcaseDealOrder(seatTwo, 5);
+
+		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Spades, CardSymbol.Six, false,
+			nameof(Phases.Dealing), now);
+		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Diamonds, CardSymbol.Ace, true, nameof(Phases.Flop),
+			now);
+		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Clubs, CardSymbol.King, true, nameof(Phases.Flop),
+			now);
+		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Hearts, CardSymbol.Queen, true, nameof(Phases.Flop),
+			now);
+		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Spades, CardSymbol.Nine, true, nameof(Phases.Turn),
+			now);
+		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Clubs, CardSymbol.Eight, true, nameof(Phases.River),
+			now);
+
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new PerformShowdownCommand(game.Id));
+
+		result.IsT0.Should().BeTrue();
+
+		var awardedPot = await GetFreshDbContext().Pots.FirstAsync(p => p.GameId == game.Id && p.HandNumber == 1);
+		var payouts = ParseWinnerPayouts(awardedPot.WinnerPayouts!);
+
+		payouts[seatOne.Player.Name].High.Should().Be(17);
+		payouts[seatOne.Player.Name].Showcase.Should().Be(17);
+		payouts[seatOne.Player.Name].Amount.Should().Be(34);
+		payouts[seatTwo.Player.Name].High.Should().Be(17);
+		payouts[seatTwo.Player.Name].Showcase.Should().Be(16);
+		payouts[seatTwo.Player.Name].Amount.Should().Be(33);
+		payouts[seatZero.Player.Name].High.Should().Be(16);
+		payouts[seatZero.Player.Name].Showcase.Should().Be(16);
+		payouts[seatZero.Player.Name].Amount.Should().Be(32);
+		payouts.Values.Sum(payout => payout.Amount).Should().Be(99);
+
+		var freshPlayers = await GetFreshDbContext().GamePlayers
+			.Where(gp => gp.GameId == game.Id)
+			.ToListAsync();
+		freshPlayers.Single(gp => gp.Id == seatOne.Id).ChipStack.Should().Be(1001);
+		freshPlayers.Single(gp => gp.Id == seatTwo.Id).ChipStack.Should().Be(1000);
+		freshPlayers.Single(gp => gp.Id == seatZero.Id).ChipStack.Should().Be(999);
+	}
+
+	[Fact]
+	public async Task Handle_Klondike_SecondDeuceIsNotWild_PaysTwoPair()
+	{
+		var (game, players) = await CreateKlondikeShowdownGameAsync(2, 200);
+		var ann = players[0];
+		var ben = players[1];
+		var now = DateTimeOffset.UtcNow;
+
+		ann.TotalContributedThisHand = 100;
+		ann.ChipStack = 900;
+		ann.IsAllIn = false;
+		ben.TotalContributedThisHand = 100;
+		ben.ChipStack = 900;
+		ben.IsAllIn = false;
+
+		AddBobBarkerPlayerCard(game.Id, ann.Id, 1, CardSuit.Hearts, CardSymbol.Deuce, now);
+		AddBobBarkerPlayerCard(game.Id, ann.Id, 2, CardSuit.Clubs, CardSymbol.Four, now);
+		AddBobBarkerPlayerCard(game.Id, ben.Id, 1, CardSuit.Hearts, CardSymbol.Ace, now);
+		AddBobBarkerPlayerCard(game.Id, ben.Id, 2, CardSuit.Diamonds, CardSymbol.Nine, now);
+
+		AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Clubs, CardSymbol.Deuce, true, "KlondikeCard", now);
+		AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Spades, CardSymbol.King, true, nameof(Phases.Flop), now);
+		AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Diamonds, CardSymbol.Seven, true, nameof(Phases.Flop), now);
+		AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Clubs, CardSymbol.Eight, true, nameof(Phases.Flop), now);
+		AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Hearts, CardSymbol.Three, true, nameof(Phases.Turn), now);
+		AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Clubs, CardSymbol.Nine, true, nameof(Phases.River), now);
+
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new PerformShowdownCommand(game.Id));
+
+		result.IsT0.Should().BeTrue();
+
+		var annHand = result.AsT0.PlayerHands.Single(h => h.PlayerName == ann.Player.Name);
+		var benHand = result.AsT0.PlayerHands.Single(h => h.PlayerName == ben.Player.Name);
+		annHand.AmountWon.Should().Be(0);
+		benHand.AmountWon.Should().Be(200);
+		annHand.HandDescription.Should().Be("Pair of Kings");
+		benHand.HandDescription.Should().Be("Three of a kind, Nines");
+		benHand.BestCardIndexes.Should().Contain(2);
+		benHand.Cards[2].Suit.Should().Be(CardSuit.Clubs);
+		benHand.Cards[2].Symbol.Should().Be(CardSymbol.Deuce);
+
+		var freshPlayers = await GetFreshDbContext().GamePlayers
+			.Where(gp => gp.GameId == game.Id)
+			.ToListAsync();
+		freshPlayers.Single(gp => gp.Id == ann.Id).ChipStack.Should().Be(900);
+		freshPlayers.Single(gp => gp.Id == ben.Id).ChipStack.Should().Be(1100);
+	}
+
+	private async Task<(Game Game, List<GamePlayer> Players)> CreateKlondikeShowdownGameAsync(int playerCount,
+		int potAmount)
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KLONDIKE", playerCount,
+			1000, 0);
+		var game = await DbContext.Games
+			.Include(g => g.GamePlayers)
+			.ThenInclude(gp => gp.Player)
+			.Include(g => g.GameType)
+			.FirstAsync(g => g.Id == setup.Game.Id);
+
+		game.CurrentHandNumber = 1;
+		game.CurrentPhase = nameof(Phases.Showdown);
+		game.Status = GameStatus.InProgress;
+		game.CurrentHandGameTypeCode = "KLONDIKE";
+
+		DbContext.Pots.Add(new Pot
+		{
+			GameId = game.Id,
+			HandNumber = game.CurrentHandNumber,
+			PotType = PotType.Main,
+			PotOrder = 0,
+			Amount = potAmount,
+			IsAwarded = false,
+			CreatedAt = DateTimeOffset.UtcNow
+		});
+
+		var contesting = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+		var share = potAmount / contesting.Count;
+		var remainder = potAmount - share * contesting.Count;
+		foreach (var player in contesting)
+			player.TotalContributedThisHand = share;
+
+		if (remainder > 0)
+		{
+			var foldedIdentity = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Folded");
+			var folded = await DatabaseSeeder.AddPlayerToGameAsync(
+				DbContext, game, foldedIdentity, contesting.Count);
+			folded.HasFolded = true;
+			folded.TotalContributedThisHand = remainder;
+		}
+
+		await DbContext.SaveChangesAsync();
+		return (game, contesting);
+	}
+
 	private async Task<(Game Game, List<GamePlayer> Players)> CreateBobBarkerShowdownGameAsync(int playerCount,
 		int potAmount)
 	{
@@ -667,8 +920,23 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 			CreatedAt = DateTimeOffset.UtcNow
 		});
 
+		var contesting = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+		var share = potAmount / contesting.Count;
+		var remainder = potAmount - share * contesting.Count;
+		foreach (var player in contesting)
+			player.TotalContributedThisHand = share;
+
+		if (remainder > 0)
+		{
+			var foldedIdentity = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Folded");
+			var folded = await DatabaseSeeder.AddPlayerToGameAsync(
+				DbContext, game, foldedIdentity, contesting.Count);
+			folded.HasFolded = true;
+			folded.TotalContributedThisHand = remainder;
+		}
+
 		await DbContext.SaveChangesAsync();
-		return (game, game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList());
+		return (game, contesting);
 	}
 
 	private void AddBobBarkerPlayerCard(

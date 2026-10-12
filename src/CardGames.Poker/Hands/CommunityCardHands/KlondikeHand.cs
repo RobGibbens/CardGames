@@ -8,12 +8,11 @@ using CardGames.Poker.Hands.WildCards;
 namespace CardGames.Poker.Hands.CommunityCardHands;
 
 /// <summary>
-///     Klondike Hold'em hand: a Hold'em-style hand where one community card
-///     (the Klondike Card) determines wild cards.
+///     Klondike Hold'em hand: a Hold'em-style hand with one wild community card
+///     (the Klondike Card).
 ///     <b>Before reveal</b>: the Klondike Card is unknown — one phantom wild card
 ///     is injected so the evaluation treats it as the best possible card.
-///     <b>After reveal</b>: the Klondike Card is known — the Klondike Card itself
-///     AND every other card of the same rank are all wild.
+///     <b>After reveal</b>: that one card is wild and may be any rank and suit.
 /// </summary>
 public sealed class KlondikeHand : CommunityCardsHand
 {
@@ -26,8 +25,8 @@ public sealed class KlondikeHand : CommunityCardsHand
 	private HandType _evaluatedType;
 
 	/// <summary>
-	///     Post-reveal constructor: the Klondike Card is known. The card itself and all
-	///     cards sharing its rank are treated as wild.
+	///     Post-reveal constructor: the Klondike Card is known. That one card is wild
+	///     and may be any rank and suit.
 	/// </summary>
 	public KlondikeHand(
 		IReadOnlyCollection<Card> holeCards,
@@ -99,9 +98,8 @@ public sealed class KlondikeHand : CommunityCardsHand
 
 		if (_isRevealed && _klondikeCard is not null)
 		{
-			// After reveal: Klondike Card + all cards of the same rank are wild
-			var wildRank = _klondikeCard.Symbol;
-			wildCards = allCards.Where(c => c.Symbol == wildRank).ToList();
+			// After reveal: only the Klondike card itself is wild.
+			wildCards = allCards.Where(c => c.Suit == _klondikeCard.Suit && c.Symbol == _klondikeCard.Symbol).ToList();
 		}
 		else
 		{

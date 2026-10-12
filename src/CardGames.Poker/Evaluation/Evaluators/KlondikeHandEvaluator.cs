@@ -10,7 +10,7 @@ namespace CardGames.Poker.Evaluation.Evaluators;
 ///     Hand evaluator for Klondike Hold'em.
 ///     Evaluates the best 5-card hand from 2 hole cards, up to 5 regular community cards,
 ///     and 1 Klondike Card (wild). The Klondike Card is the first community card passed in
-///     (dealt before the flop, lowest DealOrder) and is always treated as a wild card.
+///     (dealt before the flop, lowest DealOrder). Only that card is wild.
 /// </summary>
 [HandEvaluator("KLONDIKE")]
 public sealed class KlondikeHandEvaluator : IHandEvaluator
@@ -50,16 +50,9 @@ public sealed class KlondikeHandEvaluator : IHandEvaluator
 	public IReadOnlyCollection<int> GetWildCardIndexes(IReadOnlyCollection<Card> cards)
 	{
 		// The Klondike Card is the first community card (index 2 after 2 hole cards).
-		// All cards sharing the Klondike Card's rank are also wild.
+		// Only that card is wild.
 		if (cards.Count < 3) return [];
-		var cardList = cards.ToList();
-		var klondikeCard = cardList[2];
-		var wildIndexes = new List<int>();
-		for (var i = 0; i < cardList.Count; i++)
-			if (cardList[i].Symbol == klondikeCard.Symbol)
-				wildIndexes.Add(i);
-
-		return wildIndexes;
+		return [2];
 	}
 
 	/// <inheritdoc />

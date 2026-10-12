@@ -1,5 +1,6 @@
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Contracts;
+using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetRabbitHunt;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Infrastructure;
@@ -317,6 +318,72 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task GetRabbitHunt_BobBarkerAfterFlop_ExcludesHiddenDealerCardFromBoardAndHand()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", 2);
+		ConfigureCurrentUser(setup.Players[0]);
+
+		var game = setup.Game;
+		var hero = setup.GamePlayers[0];
+		var now = DateTimeOffset.UtcNow;
+
+		game.CurrentHandNumber = 1;
+		game.CurrentHandGameTypeCode = "BOBBARKER";
+		game.CurrentPhase = nameof(Phases.Complete);
+		game.Status = GameStatus.InProgress;
+		BobBarkerVariantState.SetSelectedShowcaseDealOrder(hero, 5);
+
+		AddRabbitHuntCard(game.Id, hero.Id, CardLocation.Hand, 1, CardSuit.Clubs, CardSymbol.Ace, false,
+			nameof(Phases.Dealing), now);
+		AddRabbitHuntCard(game.Id, hero.Id, CardLocation.Hand, 2, CardSuit.Diamonds, CardSymbol.King, false,
+			nameof(Phases.Dealing), now);
+		AddRabbitHuntCard(game.Id, hero.Id, CardLocation.Hand, 3, CardSuit.Hearts, CardSymbol.Six, false,
+			nameof(Phases.Dealing), now);
+		AddRabbitHuntCard(game.Id, hero.Id, CardLocation.Hand, 4, CardSuit.Diamonds, CardSymbol.Seven, false,
+			nameof(Phases.Dealing), now);
+		AddRabbitHuntCard(game.Id, hero.Id, CardLocation.Hand, 5, CardSuit.Diamonds, CardSymbol.Deuce, false,
+			nameof(Phases.Dealing), now);
+
+		AddRabbitHuntCard(game.Id, null, CardLocation.Community, 0, CardSuit.Hearts, CardSymbol.Five, false,
+			nameof(Phases.Dealing), now);
+		AddRabbitHuntCard(game.Id, null, CardLocation.Community, 1, CardSuit.Clubs, CardSymbol.Deuce, true,
+			nameof(Phases.Flop), now);
+		AddRabbitHuntCard(game.Id, null, CardLocation.Community, 2, CardSuit.Diamonds, CardSymbol.Three, true,
+			nameof(Phases.Flop), now);
+		AddRabbitHuntCard(game.Id, null, CardLocation.Community, 3, CardSuit.Spades, CardSymbol.Four, true,
+			nameof(Phases.Flop), now);
+		AddRabbitHuntCard(game.Id, null, CardLocation.Deck, 10, CardSuit.Hearts, CardSymbol.Eight, false,
+			nameof(Phases.Dealing), now);
+		AddRabbitHuntCard(game.Id, null, CardLocation.Deck, 11, CardSuit.Clubs, CardSymbol.Nine, false,
+			nameof(Phases.Dealing), now);
+
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new GetRabbitHuntQuery(game.Id));
+
+		result.IsT0.Should().BeTrue();
+		var rabbitHunt = result.AsT0;
+		var expectedDescription = HandDescriptionFormatter.GetHandDescription(new BobBarkerHand(
+			[
+				new CoreCard(CoreSuit.Clubs, CoreSymbol.Ace),
+				new CoreCard(CoreSuit.Diamonds, CoreSymbol.King),
+				new CoreCard(CoreSuit.Hearts, CoreSymbol.Six),
+				new CoreCard(CoreSuit.Diamonds, CoreSymbol.Seven)
+			],
+			[
+				new CoreCard(CoreSuit.Clubs, CoreSymbol.Deuce),
+				new CoreCard(CoreSuit.Diamonds, CoreSymbol.Three),
+				new CoreCard(CoreSuit.Spades, CoreSymbol.Four)
+			]));
+
+		rabbitHunt.CommunityCards.Should().NotContain(card =>
+			card.Card.Suit == ContractCardSuit.Hearts && card.Card.Symbol == ContractCardSymbol.Five);
+		rabbitHunt.NewlyRevealedCards.Should().NotContain(card =>
+			card.Card.Suit == ContractCardSuit.Hearts && card.Card.Symbol == ContractCardSymbol.Five);
+		rabbitHunt.ProjectedHandEvaluationDescription.Should().Be(expectedDescription);
+	}
+
+	[Fact]
 	public async Task GetRabbitHunt_BeforeHandIsOver_ReturnsNotAvailable()
 	{
 		var setup = await CreateDealtCommunityGameAsync("HOLDEM", 3);
@@ -326,6 +393,33 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(GetRabbitHuntErrorCode.RabbitHuntNotAvailable);
+	}
+
+	private void AddRabbitHuntCard(
+		Guid gameId,
+		Guid? gamePlayerId,
+		CardLocation location,
+		int dealOrder,
+		CardSuit suit,
+		CardSymbol symbol,
+		bool isVisible,
+		string dealtAtPhase,
+		DateTimeOffset dealtAt)
+	{
+		DbContext.GameCards.Add(new GameCard
+		{
+			GameId = gameId,
+			GamePlayerId = gamePlayerId,
+			HandNumber = 1,
+			Location = location,
+			Suit = suit,
+			Symbol = symbol,
+			IsVisible = isVisible,
+			IsDiscarded = false,
+			DealOrder = dealOrder,
+			DealtAt = dealtAt,
+			DealtAtPhase = dealtAtPhase
+		});
 	}
 
 	private void ConfigureCurrentUser(Player player)

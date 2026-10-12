@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.GameFlow;
+using HoldEmShowdown = CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Features.Games.Common.Showdown;
 using CardGames.Poker.Api.Services;
@@ -336,9 +337,47 @@ public sealed class PerformShowdownCommandHandler(
 			gameTypeCode,
 			pairPressureFaceUpCards);
 
-		// 10. Award each pot to the best hand among ELIGIBLE players
+		// 10. Games that bet into one pot row still split uncalled chips and side pots here.
+		var potsToAward = currentHandPots;
+		var handHistoryPot = totalPot;
+		if (!isAlreadyAwarded && UsesContributionLayers(gameTypeCode))
+		{
+			var contributionSum = game.GamePlayers.Sum(gamePlayer => gamePlayer.TotalContributedThisHand);
+			if (totalPot != contributionSum)
+				return new PerformShowdownError
+				{
+					Message = $"Pot total {totalPot} does not equal contributed chips {contributionSum}.",
+					Code = PerformShowdownErrorCode.InvalidGameState
+				};
+
+			var playersInHandIds = playersInHand.Select(gamePlayer => gamePlayer.Id).ToHashSet();
+			var stakes = game.GamePlayers.Select(gamePlayer => new HoldEmShowdown.HoldEmPotLayers.Stake(
+				gamePlayer.Id,
+				gamePlayer.Player.Name,
+				gamePlayer.TotalContributedThisHand,
+				playersInHandIds.Contains(gamePlayer.Id),
+				gamePlayer.IsAllIn || gamePlayer.ChipStack == 0)).ToList();
+
+			var layers = HoldEmShowdown.HoldEmPotLayers.Build(stakes);
+			var layerError = ValidateLayers(layers, stakes.Sum(stake => stake.Contributed));
+			if (layerError is not null)
+				return layerError;
+
+			if (layers.Uncalled > 0 && layers.UncalledPlayerId is Guid refundedId)
+			{
+				var refunded = game.GamePlayers.First(gamePlayer => gamePlayer.Id == refundedId);
+				refunded.ChipStack += layers.Uncalled;
+				refunded.TotalContributedThisHand -= layers.Uncalled;
+			}
+
+			potsToAward = await ReplaceCurrentHandPotsAsync(
+				game, currentHandPots, layers.Layers, now, cancellationToken);
+			handHistoryPot = potsToAward.Sum(pot => pot.Amount);
+		}
+
+		// 11. Award each pot to the best hand among ELIGIBLE players
 		var (payouts, allWinners, overallWinReason) = await AwardPotsAsync(
-			game, currentHandPots, playerHandEvaluations, isAlreadyAwarded, now, cancellationToken);
+			game, potsToAward, playerHandEvaluations, isAlreadyAwarded, now, cancellationToken);
 
 		if (!isAlreadyAwarded)
 		{
@@ -377,7 +416,7 @@ public sealed class PerformShowdownCommandHandler(
 				game.GamePlayers.ToList(),
 				playerCardGroups,
 				now,
-				totalPot,
+				handHistoryPot,
 				false,
 				allWinners.Select(w => (
 					playerHandEvaluations[w].GamePlayer.PlayerId,
@@ -609,9 +648,15 @@ public sealed class PerformShowdownCommandHandler(
 					.ToList();
 
 				if (includeSharedCommunityCards && sharedCommunityCards.Count != 0)
-					boardCards.AddRange(sharedCommunityCards
+				{
+					var communityCardsForBoard = string.Equals(gameTypeCode,
+						PokerGameMetadataRegistry.BobBarkerCode, StringComparison.OrdinalIgnoreCase)
+						? sharedCommunityCards.Where(c => !BobBarkerDealerCard.IsDealerCard(c))
+						: sharedCommunityCards;
+					boardCards.AddRange(communityCardsForBoard
 						.OrderBy(c => c.DealOrder)
 						.Select(MapToCard));
+				}
 
 				if (holeCards.Count + boardCards.Count < 5) continue;
 
@@ -669,6 +714,117 @@ public sealed class PerformShowdownCommandHandler(
 		{
 			telemetry?.RecordGameEnded(gameType, tableKind, "completed");
 		}
+	}
+
+	private static PerformShowdownError? ValidateLayers(
+		HoldEmShowdown.HoldEmPotLayers.BuildResult layers,
+		int contributedSum)
+	{
+		var layered = layers.Uncalled + layers.Layers.Sum(layer => layer.Amount);
+		if (layered != contributedSum)
+			return new PerformShowdownError
+			{
+				Message =
+					$"Uncalled chips plus pot layers ({layered}) do not equal contributed chips ({contributedSum}).",
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
+
+		foreach (var layer in layers.Layers)
+		{
+			var sliceSum = layer.Slices.Sum(slice => slice.Amount);
+			if (sliceSum != layer.Amount)
+				return new PerformShowdownError
+				{
+					Message = $"Layer {layer.PotOrder} slices total {sliceSum} but the layer amount is {layer.Amount}.",
+					Code = PerformShowdownErrorCode.InvalidGameState
+				};
+
+			if (layer.Amount <= 0 || !layer.Slices.Any(slice => slice.Eligible))
+				return new PerformShowdownError
+				{
+					Message = $"Layer {layer.PotOrder} amount {layer.Amount} has no eligible winner.",
+					Code = PerformShowdownErrorCode.InvalidGameState
+				};
+		}
+
+		return null;
+	}
+
+	private async Task<List<Pot>> ReplaceCurrentHandPotsAsync(
+		Game game,
+		List<Pot> currentHandPots,
+		IReadOnlyList<HoldEmShowdown.HoldEmPotLayers.Layer> layers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var potIds = currentHandPots.Select(pot => pot.Id).ToList();
+		var existingContributions = await context.PotContributions
+			.Where(contribution => potIds.Contains(contribution.PotId))
+			.ToListAsync(cancellationToken);
+		context.PotContributions.RemoveRange(existingContributions);
+
+		foreach (var pot in currentHandPots)
+		{
+			context.Pots.Remove(pot);
+			game.Pots.Remove(pot);
+		}
+
+		var newPots = new List<Pot>();
+		foreach (var layer in layers)
+		{
+			var pot = new Pot
+			{
+				GameId = game.Id,
+				Game = game,
+				HandNumber = game.CurrentHandNumber,
+				PotOrder = layer.PotOrder,
+				PotType = layer.PotOrder == 0 ? PotType.Main : PotType.Side,
+				Amount = layer.Amount,
+				MaxContributionPerPlayer = layer.MaxContributionPerPlayer,
+				CreatedAt = now,
+				IsAwarded = false
+			};
+
+			foreach (var slice in layer.Slices.Where(slice => slice.Amount > 0 || slice.Eligible))
+			{
+				var gamePlayer = game.GamePlayers.First(player => player.Id == slice.GamePlayerId);
+				pot.Contributions.Add(new PotContribution
+				{
+					Pot = pot,
+					GamePlayerId = slice.GamePlayerId,
+					GamePlayer = gamePlayer,
+					Amount = slice.Amount,
+					IsEligibleToWin = slice.Eligible,
+					ContributedAt = now
+				});
+			}
+
+			context.Pots.Add(pot);
+			newPots.Add(pot);
+		}
+
+		return newPots;
+	}
+
+	private static bool UsesContributionLayers(string gameTypeCode)
+	{
+		return string.Equals(gameTypeCode, PokerGameMetadataRegistry.OmahaCode, StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(gameTypeCode, PokerGameMetadataRegistry.NebraskaCode,
+			       StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(gameTypeCode, PokerGameMetadataRegistry.SouthDakotaCode,
+			       StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode,
+			       StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(gameTypeCode, PokerGameMetadataRegistry.KlondikeCode,
+			       StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode,
+			       StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode,
+			       StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode,
+			       StringComparison.OrdinalIgnoreCase)
+		       || string.Equals(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode,
+			       StringComparison.OrdinalIgnoreCase);
 	}
 
 	/// <summary>
@@ -747,8 +903,12 @@ public sealed class PerformShowdownCommandHandler(
 
 					var payoutPerWinner = amount / winners.Count;
 					var payoutRemainder = amount % winners.Count;
+					var orderedWinners = winners
+						.OrderBy(name => eligibleHands[name].GamePlayer.SeatPosition > game.DealerPosition ? 0 : 1)
+						.ThenBy(name => eligibleHands[name].GamePlayer.SeatPosition)
+						.ToList();
 
-					foreach (var winner in winners)
+					foreach (var winner in orderedWinners)
 					{
 						var payout = payoutPerWinner;
 						if (payoutRemainder > 0)
@@ -973,6 +1133,9 @@ public sealed class PerformShowdownCommandHandler(
 		var allCoreCards = displayCards
 			.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
 			.ToList();
+
+		if (hand is KlondikeHand klondikeHand)
+			return GetCardIndexes(allCoreCards, klondikeHand.BestHandSourceCards);
 
 		// Determine hole/community split based on hand type
 		if (hand is CommunityCardsHand communityHand)

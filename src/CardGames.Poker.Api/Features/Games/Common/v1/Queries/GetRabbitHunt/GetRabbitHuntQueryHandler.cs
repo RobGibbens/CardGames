@@ -79,6 +79,12 @@ public sealed class GetRabbitHuntQueryHandler(
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
+		if (string.Equals(game.CurrentHandGameTypeCode ?? gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode,
+			    StringComparison.OrdinalIgnoreCase))
+			currentCommunityCards = currentCommunityCards
+				.Where(card => !BobBarkerDealerCard.IsDealerCard(card))
+				.ToList();
+
 		var remainingDeckCards = await context.GameCards
 			.Where(card => card.GameId == request.GameId
 			               && card.HandNumber == game.CurrentHandNumber

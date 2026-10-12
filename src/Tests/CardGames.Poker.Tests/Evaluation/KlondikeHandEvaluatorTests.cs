@@ -1,5 +1,6 @@
 using System.Linq;
 using CardGames.Core.French.Cards.Extensions;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Evaluation.Evaluators;
 using CardGames.Poker.Hands.CommunityCardHands;
 using CardGames.Poker.Hands.HandTypes;
@@ -54,6 +55,31 @@ public class KlondikeHandEvaluatorTests
 		var indexes = _evaluator.GetWildCardIndexes(cards);
 
 		indexes.Should().ContainSingle().Which.Should().Be(2); // first community card index (after 2 hole cards)
+	}
+
+	[Fact]
+	public void GetWildCardIndexes_HoleDeuceMatchingKlondikeRank_ReturnsOnlyKlondikeIndex()
+	{
+		var cards = "2h 4c 2c Ks 7d 8c 3h 9c".ToCards();
+
+		var indexes = _evaluator.GetWildCardIndexes(cards);
+
+		indexes.Should().ContainSingle().Which.Should().Be(2);
+	}
+
+	[Fact]
+	public void KlondikeHand_SecondDeuceIsNotWild_TwoPairBeatsPair()
+	{
+		var communityCards = "2c Ks 7d 8c 3h 9c".ToCards();
+		var klondikeCard = communityCards.First();
+		var ann = new KlondikeHand("2h 4c".ToCards(), communityCards, klondikeCard);
+		var ben = new KlondikeHand("Ah 9d".ToCards(), communityCards, klondikeCard);
+
+		ann.Type.Should().Be(HandType.OnePair);
+		HandDescriptionFormatter.GetHandDescription(ann).Should().Be("Pair of Kings");
+		ben.Type.Should().Be(HandType.Trips);
+		HandDescriptionFormatter.GetHandDescription(ben).Should().Be("Three of a kind, Nines");
+		ben.Strength.Should().BeGreaterThan(ann.Strength);
 	}
 
 	[Fact]

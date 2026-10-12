@@ -189,14 +189,23 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		                                    || string.Equals(game.CurrentPhase, "Complete",
 			                                    StringComparison.OrdinalIgnoreCase));
 
-		// Build community cards for variants that use table cards (e.g., Good Bad Ugly)
-		var communityCards = await _context.GameCards
+		// Build community cards for variants that use table cards (e.g., Good Bad Ugly).
+		// Bob Barker's hidden dealer card is a community row, but it is not a board card.
+		var communityCardRows = await _context.GameCards
 			.Where(c => c.GameId == gameId
 			            && !c.IsDiscarded
 			            && c.HandNumber == game.CurrentHandNumber
 			            && c.Location == CardLocation.Community)
 			.OrderBy(c => c.DealOrder)
 			.AsNoTracking()
+			.ToListAsync(cancellationToken);
+
+		if (IsBobBarkerGame(handTypeCode))
+			communityCardRows = communityCardRows
+				.Where(c => !BobBarkerDealerCard.IsDealerCard(c))
+				.ToList();
+
+		var communityCards = communityCardRows
 			.Select(c => new CardPublicDto
 			{
 				IsFaceUp = c.IsVisible || isBobBarkerShowdownReveal,
@@ -205,7 +214,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				DealOrder = c.DealOrder,
 				IsKlondikeCard = c.DealtAtPhase == "KlondikeCard"
 			})
-			.ToListAsync(cancellationToken);
+			.ToList();
 
 		// Get action timer state
 		var actionTimerState = _actionTimerService.GetTimerState(gameId);
@@ -2194,26 +2203,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	///     Computes the current wild card rank for Klondike.
-	///     When the Klondike Card is revealed, all cards of that rank are wild.
-	///     Returns empty if the card has not been revealed yet.
+	///     Klondike wildness is one revealed card, so no rank is published.
 	/// </summary>
-	private async Task<IReadOnlyList<string>> ComputeKlondikeWildRanksAsync(
+	private static Task<IReadOnlyList<string>> ComputeKlondikeWildRanksAsync(
 		Game game,
 		CancellationToken cancellationToken)
 	{
-		var klondikeCard = await _context.GameCards
-			.Where(c => c.GameId == game.Id
-			            && c.HandNumber == game.CurrentHandNumber
-			            && c.DealtAtPhase == "KlondikeCard"
-			            && c.IsVisible)
-			.AsNoTracking()
-			.FirstOrDefaultAsync(cancellationToken);
-
-		if (klondikeCard is null) return [];
-
-		var rank = MapSymbolToRank(klondikeCard.Symbol);
-		return rank is not null ? [rank] : [];
+		_ = game;
+		_ = cancellationToken;
+		return Task.FromResult<IReadOnlyList<string>>([]);
 	}
 
 	/// <summary>
@@ -2316,7 +2314,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode,
 			         StringComparison.OrdinalIgnoreCase))
 		{
-			if (dynamicWildRanks is { Count: > 0 }) wildRanks.AddRange(dynamicWildRanks);
+			// One specific card is wild. Do not publish its rank.
 		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode,
 			         StringComparison.OrdinalIgnoreCase))
