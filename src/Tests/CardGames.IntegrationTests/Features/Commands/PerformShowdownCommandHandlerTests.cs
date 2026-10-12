@@ -246,6 +246,8 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 
 		var playerOne = game.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
 		var playerTwo = game.GamePlayers.OrderBy(gp => gp.SeatPosition).Skip(1).First();
+		playerOne.TotalContributedThisHand = 50;
+		playerTwo.TotalContributedThisHand = 50;
 
 		DbContext.Pots.Add(new Pot
 		{
@@ -307,6 +309,8 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 
 		var playerOne = game.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
 		var playerTwo = game.GamePlayers.OrderBy(gp => gp.SeatPosition).Skip(1).First();
+		playerOne.TotalContributedThisHand = 50;
+		playerTwo.TotalContributedThisHand = 50;
 
 		DbContext.Pots.Add(new Pot
 		{
@@ -372,6 +376,8 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
 
 		var playerOne = game.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
 		var playerTwo = game.GamePlayers.OrderBy(gp => gp.SeatPosition).Skip(1).First();
+		playerOne.TotalContributedThisHand = 50;
+		playerTwo.TotalContributedThisHand = 50;
 
 		DbContext.Pots.Add(new Pot
 		{

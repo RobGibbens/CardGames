@@ -70,4 +70,48 @@ internal static class StudBringInPosting
 		game.BringInPlayerIndex = bringInPlayer.SeatPosition;
 		return actualBringIn;
 	}
+
+	/// <summary>
+	///     Chooses the first voluntary actor after a third-street bring-in.
+	///     A posted bring-in has already acted. The next live seat to the left acts,
+	///     and the poster acts later only if someone raises.
+	/// </summary>
+	public static BringInFirstActor FirstActorAfterBringIn(
+		IEnumerable<GamePlayer> players,
+		int bringInSeat,
+		int amountPosted)
+	{
+		if (amountPosted <= 0)
+			return new BringInFirstActor(bringInSeat, -1, 0, false);
+
+		var seated = players as IReadOnlyList<GamePlayer> ?? players.ToList();
+		var bringInPlayer = seated.FirstOrDefault(player => player.SeatPosition == bringInSeat);
+		var playersActed = bringInPlayer is not null && !bringInPlayer.IsAllIn ? 1 : 0;
+
+		if (seated.Count == 0)
+			return new BringInFirstActor(-1, bringInSeat, playersActed, true);
+
+		var totalSeats = seated.Max(player => player.SeatPosition) + 1;
+		var seat = (bringInSeat + 1) % totalSeats;
+
+		for (var step = 0; step < totalSeats; step++)
+		{
+			var candidate = seated.FirstOrDefault(player => player.SeatPosition == seat);
+			if (candidate is not null &&
+			    !candidate.HasFolded &&
+			    !candidate.IsAllIn &&
+			    candidate.SeatPosition != bringInSeat)
+				return new BringInFirstActor(seat, bringInSeat, playersActed, false);
+
+			seat = (seat + 1) % totalSeats;
+		}
+
+		return new BringInFirstActor(-1, bringInSeat, playersActed, true);
+	}
+
+	internal readonly record struct BringInFirstActor(
+		int ActorSeat,
+		int LastAggressorIndex,
+		int PlayersActed,
+		bool RoundComplete);
 }

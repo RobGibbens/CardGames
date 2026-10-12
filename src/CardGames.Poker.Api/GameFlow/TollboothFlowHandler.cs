@@ -240,6 +240,11 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 			currentBet = await StudBringInPosting.PostBringInForThirdStreetAsync(
 				context, game, bringInPlayer, bringIn, now, cancellationToken);
 
+		var firstActor = StudBringInPosting.FirstActorAfterBringIn(
+			game.GamePlayers.Where(player => player.Status == GamePlayerStatus.Active),
+			bringInSeatPosition,
+			currentBet);
+
 		var minBet = game.SmallBet ?? game.MinBet ?? 0;
 		var bettingRound = new BettingRound
 		{
@@ -253,17 +258,18 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 			MaxRaises = 0,
 			LastRaiseAmount = 0,
 			PlayersInHand = eligiblePlayers.Count,
-			PlayersActed = 0,
-			CurrentActorIndex = bringInSeatPosition,
-			LastAggressorIndex = -1,
-			IsComplete = false,
+			PlayersActed = firstActor.PlayersActed,
+			CurrentActorIndex = firstActor.ActorSeat,
+			LastAggressorIndex = firstActor.LastAggressorIndex,
+			IsComplete = firstActor.RoundComplete,
+			CompletedAt = firstActor.RoundComplete ? now : null,
 			StartedAt = now
 		};
 
 		context.Set<BettingRound>().Add(bettingRound);
 
 		game.CurrentPhase = nameof(Phases.ThirdStreet);
-		game.CurrentPlayerIndex = bringInSeatPosition;
+		game.CurrentPlayerIndex = firstActor.ActorSeat;
 		game.BringInPlayerIndex = bringInSeatPosition;
 		game.UpdatedAt = now;
 

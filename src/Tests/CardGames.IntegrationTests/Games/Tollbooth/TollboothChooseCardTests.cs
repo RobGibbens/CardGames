@@ -530,6 +530,24 @@ public class TollboothChooseCardTests : IntegrationTestBase
 		firstResult.IsT0.Should().BeTrue();
 		firstResult.AsT0.OfferRoundComplete.Should().BeFalse();
 
+		var displayBeforeRunout = await DbContext.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Community &&
+			             gc.GamePlayerId == null &&
+			             !gc.IsDiscarded)
+			.OrderBy(gc => gc.DealOrder)
+			.ToListAsync();
+		var furthestDisplayId = displayBeforeRunout[^1].Id;
+		var lowestDeckId = await DbContext.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Deck &&
+			             !gc.IsDiscarded)
+			.OrderBy(gc => gc.DealOrder)
+			.Select(gc => gc.Id)
+			.FirstAsync();
+
 		var secondResult = await Mediator.Send(new ChooseCardCommand(
 			game.Id, TollboothChoice.Deck, players[1].SeatPosition));
 		secondResult.IsT0.Should().BeTrue();
@@ -553,6 +571,27 @@ public class TollboothChooseCardTests : IntegrationTestBase
 			cardCount.Should().Be(7,
 				$"player at seat {player.SeatPosition} should have all 7 cards after all-in runout");
 		}
+
+		// Dealer is seat 0, so the first runout recipient is seat 1. Fifth street is the first street
+		// the runout deals, and it takes the furthest display card rather than the top of the deck.
+		var firstRecipient = players.Single(player => player.SeatPosition == 1);
+		var fifthStreetCard = await freshDb.GameCards
+			.SingleAsync(gc => gc.GamePlayerId == firstRecipient.Id &&
+			                   gc.HandNumber == game.CurrentHandNumber &&
+			                   gc.DealtAtPhase == nameof(Phases.FifthStreet));
+		fifthStreetCard.Id.Should().Be(furthestDisplayId);
+		fifthStreetCard.Id.Should().NotBe(lowestDeckId);
+		fifthStreetCard.Location.Should().Be(CardLocation.Board);
+		fifthStreetCard.IsVisible.Should().BeTrue();
+
+		var earlierRunoutCards = await freshDb.GameCards
+			.Where(gc => gc.HandNumber == game.CurrentHandNumber &&
+			             (gc.DealtAtPhase == nameof(Phases.FifthStreet) ||
+			              gc.DealtAtPhase == nameof(Phases.SixthStreet)) &&
+			             players.Select(player => player.Id).Contains(gc.GamePlayerId!.Value))
+			.ToListAsync();
+		earlierRunoutCards.Should().OnlyContain(card =>
+			card.Location == CardLocation.Board && card.IsVisible);
 
 		// 7th street card should be a hole card
 		foreach (var player in players)

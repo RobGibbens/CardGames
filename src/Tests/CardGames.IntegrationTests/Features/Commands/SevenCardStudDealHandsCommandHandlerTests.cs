@@ -41,8 +41,8 @@ public class SevenCardStudDealHandsCommandHandlerTests : IntegrationTestBase
 
 		result.IsT0.Should().BeTrue();
 		var success = result.AsT0;
-		success.CurrentPlayerIndex.Should().Be(lynne.SeatPosition);
-		success.CurrentPlayerName.Should().Be("Lynne");
+		success.CurrentPlayerIndex.Should().Be(rob.SeatPosition);
+		success.CurrentPlayerName.Should().Be("Rob");
 
 		var game = await DbContext.Games.FirstAsync(g => g.Id == setup.Game.Id);
 		game.BringInPlayerIndex.Should().Be(lynne.SeatPosition);

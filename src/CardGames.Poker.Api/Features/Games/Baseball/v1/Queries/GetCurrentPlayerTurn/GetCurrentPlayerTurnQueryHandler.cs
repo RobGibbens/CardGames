@@ -1,3 +1,4 @@
+using CardGames.Poker.Api.Betting;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.DealHands;
@@ -96,7 +97,7 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, IGamePlaye
 		var amountToCall = currentBet - player.CurrentBet;
 		var canAffordCall = player.ChipStack >= amountToCall;
 
-		return new AvailableActionsResponse(
+		var actions = new AvailableActionsResponse(
 			currentBet == player.CurrentBet,
 			currentBet == 0 && player.ChipStack >= minBet,
 			currentBet > player.CurrentBet && canAffordCall && amountToCall < player.ChipStack,
@@ -108,5 +109,18 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, IGamePlaye
 			Math.Min(amountToCall, player.ChipStack),
 			currentBet + lastRaiseAmount
 		);
+
+		if (FixedLimitStudBetting.Offer(currentBet, player.CurrentBet, player.ChipStack, minBet) is not { } offer)
+			return actions;
+
+		return actions with
+		{
+			CanBet = offer.CanBet,
+			CanRaise = offer.CanRaise,
+			CanAllIn = offer.CanAllIn,
+			MinBet = offer.MinBet,
+			MaxBet = offer.MaxBet,
+			MinRaise = offer.MinRaise
+		};
 	}
 }

@@ -243,23 +243,36 @@ public class DealHandsCommandHandler(
 		// 7. Determine first player to act based on street
 		int firstActorSeatPosition;
 		var currentBet = 0;
+		var playersActed = 0;
+		var lastAggressorIndex = -1;
+		var roundComplete = false;
+		var bringInSeatPosition = -1;
 
 		if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 		{
 			await StudGameStakesNormalizer.EnsureLegacyBringInAsync(context, game, cancellationToken);
 
 			// Third Street: bring-in player is lowest up card
-			firstActorSeatPosition = FindBringInPlayer(activePlayers, playerHands);
+			bringInSeatPosition = FindBringInPlayer(activePlayers, playerHands);
 
 			// Post the bring-in bet if configured
 			var bringIn = game.BringIn ?? 0;
-			if (bringIn > 0 && firstActorSeatPosition >= 0)
+			if (bringIn > 0 && bringInSeatPosition >= 0)
 			{
-				var bringInPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == firstActorSeatPosition);
+				var bringInPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == bringInSeatPosition);
 				if (bringInPlayer is not null)
 					currentBet = await StudBringInPosting.PostBringInForThirdStreetAsync(
 						context, game, bringInPlayer, bringIn, now, cancellationToken);
 			}
+
+			var firstActor = StudBringInPosting.FirstActorAfterBringIn(
+				game.GamePlayers.Where(player => player.Status == GamePlayerStatus.Active),
+				bringInSeatPosition,
+				currentBet);
+			firstActorSeatPosition = firstActor.ActorSeat;
+			playersActed = firstActor.PlayersActed;
+			lastAggressorIndex = firstActor.LastAggressorIndex;
+			roundComplete = firstActor.RoundComplete;
 		}
 		else
 		{
@@ -268,7 +281,7 @@ public class DealHandsCommandHandler(
 				game.DealerPosition, context);
 		}
 
-		if (firstActorSeatPosition < 0)
+		if (!roundComplete && firstActorSeatPosition < 0)
 			firstActorSeatPosition = GetPlayerLeftOfDealerSeatPosition(activePlayers, game.DealerPosition);
 
 		// 8. Determine min bet based on street (small bet for 3rd/4th, big bet for 5th/6th/7th)
@@ -300,10 +313,11 @@ public class DealHandsCommandHandler(
 			MaxRaises = 0, // Unlimited raises
 			LastRaiseAmount = 0,
 			PlayersInHand = activePlayers.Count,
-			PlayersActed = 0,
+			PlayersActed = playersActed,
 			CurrentActorIndex = firstActorSeatPosition,
-			LastAggressorIndex = -1,
-			IsComplete = false,
+			LastAggressorIndex = lastAggressorIndex,
+			IsComplete = roundComplete,
+			CompletedAt = roundComplete ? now : null,
 			StartedAt = now
 		};
 
@@ -316,7 +330,7 @@ public class DealHandsCommandHandler(
 
 		// 10. Update game state - remain in street phase for betting
 		game.CurrentPlayerIndex = firstActorSeatPosition;
-		game.BringInPlayerIndex = game.CurrentPhase == nameof(Phases.ThirdStreet) ? firstActorSeatPosition : -1;
+		game.BringInPlayerIndex = game.CurrentPhase == nameof(Phases.ThirdStreet) ? bringInSeatPosition : -1;
 		game.Status = GameStatus.InProgress;
 		game.UpdatedAt = now;
 

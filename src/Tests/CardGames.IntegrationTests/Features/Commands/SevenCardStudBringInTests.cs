@@ -45,7 +45,9 @@ public class SevenCardStudBringInTests : IntegrationTestBase
 		var bettingRound = await DbContext.BettingRounds
 			.SingleAsync(br => br.GameId == setup.Game.Id && br.Street == nameof(Phases.ThirdStreet));
 		bettingRound.CurrentBet.Should().Be(5);
-		bettingRound.CurrentActorIndex.Should().Be(bringInPlayer.SeatPosition);
+		bettingRound.CurrentActorIndex.Should().Be(players.Single(p => p.Id != bringInPlayer.Id).SeatPosition);
+		bettingRound.LastAggressorIndex.Should().Be(bringInPlayer.SeatPosition);
+		bettingRound.PlayersActed.Should().Be(1);
 	}
 
 	[Fact]
@@ -102,5 +104,10 @@ public class SevenCardStudBringInTests : IntegrationTestBase
 			.Where(p => p.GameId == setup.Game.Id && p.PotType == PotType.Main)
 			.SumAsync(p => p.Amount);
 		potTotal.Should().Be(13);
+
+		var bettingRound = await DbContext.BettingRounds
+			.SingleAsync(br => br.GameId == setup.Game.Id && br.Street == nameof(Phases.ThirdStreet));
+		bettingRound.CurrentActorIndex.Should().Be(updated.Single(p => p.Id != bringInPlayer.Id).SeatPosition);
+		bettingRound.PlayersActed.Should().Be(0);
 	}
 }

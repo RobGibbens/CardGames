@@ -428,24 +428,24 @@ public class ProcessBettingActionCommandHandler(
 				"Cannot check - there is a bet to match",
 			BettingActionType.Bet when bettingRound.CurrentBet > 0 =>
 				"Cannot bet - there is already a bet. Use raise instead.",
-			BettingActionType.Bet when amount < bettingRound.MinBet =>
-				$"Bet must be at least {bettingRound.MinBet}",
-			BettingActionType.Bet when amount > player.ChipStack =>
-				$"Cannot bet more than your stack ({player.ChipStack})",
+			BettingActionType.Bet => FixedLimitStudBetting.OpeningBetError(
+				amount, player.CurrentBet, player.ChipStack, bettingRound.MinBet),
 			BettingActionType.Call when bettingRound.CurrentBet <= player.CurrentBet =>
 				"Cannot call - no bet to match",
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
-			BettingActionType.Raise => BettingActionMath.ValidateRaise(
+			BettingActionType.Raise => FixedLimitStudBetting.RaiseError(
 				amount,
 				bettingRound.CurrentBet,
-				bettingRound.LastRaiseAmount,
 				player.CurrentBet,
-				player.ChipStack),
+				player.ChipStack,
+				bettingRound.MinBet),
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
 				"Cannot fold when you can check",
 			BettingActionType.AllIn when player.ChipStack == 0 =>
 				"Cannot go all-in - no chips remaining",
+			BettingActionType.AllIn => FixedLimitStudBetting.RaisingAllInError(
+				bettingRound.CurrentBet, player.CurrentBet, player.ChipStack, bettingRound.MinBet),
 			_ => null
 		};
 	}
@@ -471,10 +471,7 @@ public class ProcessBettingActionCommandHandler(
 				player.ChipStack -= amount;
 				player.CurrentBet += amount;
 				player.TotalContributedThisHand += amount;
-				bettingRound.CurrentBet = amount;
-				bettingRound.LastRaiseAmount = amount;
-				bettingRound.LastAggressorIndex = player.SeatPosition;
-				bettingRound.RaiseCount++;
+				RecordFixedLimitAggression(player, bettingRound, amount);
 				if (player.ChipStack == 0) player.IsAllIn = true;
 				break;
 
@@ -490,7 +487,7 @@ public class ProcessBettingActionCommandHandler(
 
 			case BettingActionType.Raise:
 				var streetBet = bettingRound.CurrentBet;
-				var (raiseTotal, raiseChips, raiseIncrement) = BettingActionMath.ComputeRaise(
+				var (raiseTotal, raiseChips, _) = BettingActionMath.ComputeRaise(
 					amount,
 					streetBet,
 					player.CurrentBet,
@@ -500,10 +497,7 @@ public class ProcessBettingActionCommandHandler(
 				player.ChipStack -= raiseChips;
 				player.CurrentBet = raiseTotal;
 				player.TotalContributedThisHand += raiseChips;
-				bettingRound.LastRaiseAmount = raiseIncrement;
-				bettingRound.CurrentBet = raiseTotal;
-				bettingRound.LastAggressorIndex = player.SeatPosition;
-				bettingRound.RaiseCount++;
+				RecordFixedLimitAggression(player, bettingRound, raiseTotal);
 				if (player.ChipStack == 0) player.IsAllIn = true;
 				break;
 
@@ -518,18 +512,7 @@ public class ProcessBettingActionCommandHandler(
 
 				// If this is a raise (putting in more than current bet)
 				if (player.CurrentBet + allInAmount > bettingRound.CurrentBet)
-				{
-					var newTotal = player.CurrentBet + allInAmount;
-					var raiseBy = newTotal - bettingRound.CurrentBet;
-					if (raiseBy >= bettingRound.LastRaiseAmount)
-					{
-						bettingRound.LastRaiseAmount = raiseBy;
-						bettingRound.LastAggressorIndex = player.SeatPosition;
-						bettingRound.RaiseCount++;
-					}
-
-					bettingRound.CurrentBet = newTotal;
-				}
+					RecordFixedLimitAggression(player, bettingRound, player.CurrentBet + allInAmount);
 
 				player.CurrentBet += allInAmount;
 				player.TotalContributedThisHand += allInAmount;
@@ -539,6 +522,17 @@ public class ProcessBettingActionCommandHandler(
 		}
 
 		return (actualAmount, chipsMoved);
+	}
+
+	private static void RecordFixedLimitAggression(GamePlayer player, BettingRound bettingRound, int newStreetBet)
+	{
+		bettingRound.CurrentBet = newStreetBet;
+		if (!FixedLimitStudBetting.IsFullLevel(newStreetBet, bettingRound.MinBet))
+			return;
+
+		bettingRound.LastRaiseAmount = bettingRound.MinBet;
+		bettingRound.LastAggressorIndex = player.SeatPosition;
+		bettingRound.RaiseCount++;
 	}
 
 	private static int FindNextActivePlayer(List<GamePlayer> activePlayers, int currentIndex)
@@ -727,13 +721,23 @@ public class ProcessBettingActionCommandHandler(
 		// Get players who haven't folded (they may be all-in)
 		var playersToReceiveCards = activePlayers.Where(p => !p.HasFolded).OrderBy(p => p.SeatPosition).ToList();
 
-		// Load remaining deck cards
-		var deckCards = await context.GameCards
-			.Where(gc => gc.GameId == game.Id &&
-			             gc.HandNumber == game.CurrentHandNumber &&
-			             gc.Location == CardLocation.Deck)
-			.OrderBy(gc => gc.DealOrder)
-			.ToListAsync(cancellationToken);
+		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
+		var isTollbooth = string.Equals(gameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase);
+
+		// Tollbooth reads the live display and deck on each card. Other games keep a deck list.
+		List<GameCard> deckCards = [];
+		List<GameCard> tollboothHandCards = [];
+		if (isTollbooth)
+			tollboothHandCards = await context.GameCards
+				.Where(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber)
+				.ToListAsync(cancellationToken);
+		else
+			deckCards = await context.GameCards
+				.Where(gc => gc.GameId == game.Id &&
+				             gc.HandNumber == game.CurrentHandNumber &&
+				             gc.Location == CardLocation.Deck)
+				.OrderBy(gc => gc.DealOrder)
+				.ToListAsync(cancellationToken);
 
 		var deckIndex = 0;
 		var dealtStreets = new List<string>();
@@ -744,35 +748,42 @@ public class ProcessBettingActionCommandHandler(
 			var street = streetOrder[streetIdx];
 			dealtStreets.Add(street);
 
-			foreach (var player in playersToReceiveCards)
+			if (isTollbooth)
 			{
-				if (deckIndex >= deckCards.Count)
+				TollboothRunout.DealStreet(game, playersToReceiveCards, tollboothHandCards, street, now, logger);
+			}
+			else
+			{
+				foreach (var player in playersToReceiveCards)
 				{
-					logger.LogWarning(
-						"Not enough cards in deck to deal remaining streets for game {GameId}",
-						game.Id);
-					break;
+					if (deckIndex >= deckCards.Count)
+					{
+						logger.LogWarning(
+							"Not enough cards in deck to deal remaining streets for game {GameId}",
+							game.Id);
+						break;
+					}
+
+					var existingCardCount = await context.GameCards
+						.CountAsync(gc => gc.GamePlayerId == player.Id &&
+						                  gc.HandNumber == game.CurrentHandNumber &&
+						                  gc.Location != CardLocation.Deck &&
+						                  !gc.IsDiscarded, cancellationToken);
+
+					var playerDealOrder = existingCardCount + 1;
+					var gameCard = deckCards[deckIndex++];
+
+					// 7th street is a hole card, all others are board cards
+					var location = street == nameof(Phases.SeventhStreet) ? CardLocation.Hole : CardLocation.Board;
+					var isVisible = street != nameof(Phases.SeventhStreet);
+
+					gameCard.GamePlayerId = player.Id;
+					gameCard.Location = location;
+					gameCard.DealOrder = playerDealOrder;
+					gameCard.IsVisible = isVisible;
+					gameCard.DealtAt = now;
+					gameCard.DealtAtPhase = street;
 				}
-
-				var existingCardCount = await context.GameCards
-					.CountAsync(gc => gc.GamePlayerId == player.Id &&
-					                  gc.HandNumber == game.CurrentHandNumber &&
-					                  gc.Location != CardLocation.Deck &&
-					                  !gc.IsDiscarded, cancellationToken);
-
-				var playerDealOrder = existingCardCount + 1;
-				var gameCard = deckCards[deckIndex++];
-
-				// 7th street is a hole card, all others are board cards
-				var location = street == nameof(Phases.SeventhStreet) ? CardLocation.Hole : CardLocation.Board;
-				var isVisible = street != nameof(Phases.SeventhStreet);
-
-				gameCard.GamePlayerId = player.Id;
-				gameCard.Location = location;
-				gameCard.DealOrder = playerDealOrder;
-				gameCard.IsVisible = isVisible;
-				gameCard.DealtAt = now;
-				gameCard.DealtAtPhase = street;
 			}
 
 			logger.LogInformation(

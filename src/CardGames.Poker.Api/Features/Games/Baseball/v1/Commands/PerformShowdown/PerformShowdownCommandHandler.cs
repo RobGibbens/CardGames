@@ -88,6 +88,16 @@ public class PerformShowdownCommandHandler(
 
 			if (!isAlreadyAwarded)
 			{
+				var mismatch = ContributionLayerAwarder.ContributionMismatch(
+					totalPot,
+					game.GamePlayers.Sum(gamePlayer => gamePlayer.TotalContributedThisHand));
+				if (mismatch is not null)
+					return new PerformShowdownError
+					{
+						Message = mismatch,
+						Code = PerformShowdownErrorCode.InvalidGameState
+					};
+
 				winner.ChipStack += totalPot;
 
 				foreach (var pot in currentHandPots)
@@ -187,47 +197,31 @@ public class PerformShowdownCommandHandler(
 			playerHandEvaluations[gamePlayer.Player.Name] = (baseballHand, cards, gamePlayer, wildIndexes);
 		}
 
-		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-		var winners = playerHandEvaluations
-			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-			.Select(kvp => kvp.Key)
-			.ToList();
+		var awarded = await new ContributionLayerAwarder(context).AwardAsync(
+			game,
+			currentHandPots,
+			now,
+			isAlreadyAwarded,
+			playerHandEvaluations.ToDictionary(
+				kvp => kvp.Value.gamePlayer.Id,
+				kvp => kvp.Value.hand.Strength),
+			_ => true,
+			gamePlayerId => playerHandEvaluations.Values
+				.First(evaluation => evaluation.gamePlayer.Id == gamePlayerId).hand.Type.ToString(),
+			cancellationToken);
+		if (awarded.IsT1)
+			return new PerformShowdownError
+			{
+				Message = awarded.AsT1,
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
 
-		var payoutPerWinner = totalPot / winners.Count;
-		var remainder = totalPot % winners.Count;
-		var payouts = new Dictionary<string, int>();
-
-		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
-
-		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
+		var payouts = awarded.AsT0.Payouts;
+		var winners = awarded.AsT0.WinnerNames.ToList();
+		var winReason = awarded.AsT0.WinReason;
 
 		if (!isAlreadyAwarded)
 		{
-			foreach (var payout in payouts)
-			{
-				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
-				gamePlayer.ChipStack += payout.Value;
-			}
-
-			var winReason = winners.Count > 1
-				? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
-				: playerHandEvaluations[winners[0]].hand.Type.ToString();
-
-			var winnerPayoutsList = payouts.Select(p =>
-			{
-				var gp = playerHandEvaluations[p.Key].gamePlayer;
-				return new { playerId = gp.PlayerId.ToString(), playerName = p.Key, amount = p.Value };
-			}).ToList();
-			var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
-
-			foreach (var pot in currentHandPots)
-			{
-				pot.IsAwarded = true;
-				pot.AwardedAt = now;
-				pot.WinReason = winReason;
-				pot.WinnerPayouts = winnerPayoutsJson;
-			}
-
 			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
@@ -250,7 +244,7 @@ public class PerformShowdownCommandHandler(
 				game,
 				game.GamePlayers.ToList(),
 				now,
-				totalPot,
+				awarded.AsT0.HandHistoryPot,
 				false,
 				winnerInfos,
 				winners,
@@ -447,7 +441,7 @@ public class PerformShowdownCommandHandler(
 			if (reachedShowdown && playerHandEvaluations != null &&
 			    playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
 			{
-				var bestHand = handEvaluation.GetBestHand();
+				var bestHand = ((BaseballHand)handEvaluation).BestHandSourceCards;
 				showdownCards = bestHand
 					.Select(c => FormatCard((CardSymbol)c.Symbol, (CardSuit)c.Suit))
 					.ToList();

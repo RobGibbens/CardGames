@@ -2,6 +2,7 @@ using System.Text.Json;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Features.Games.Common.Showdown;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
@@ -99,6 +100,16 @@ public class PerformShowdownCommandHandler(
 
 			if (!isAlreadyAwarded)
 			{
+				var mismatch = ContributionLayerAwarder.ContributionMismatch(
+					totalPot,
+					game.GamePlayers.Sum(gamePlayer => gamePlayer.TotalContributedThisHand));
+				if (mismatch is not null)
+					return new PerformShowdownError
+					{
+						Message = mismatch,
+						Code = PerformShowdownErrorCode.InvalidGameState
+					};
+
 				winner.ChipStack += totalPot;
 
 				// Mark pots as awarded
@@ -168,17 +179,13 @@ public class PerformShowdownCommandHandler(
 			};
 		}
 
-		// 7. Load face-up cards in deal order for wild card determination
-		var faceUpCardsInOrder = await context.GameCards
-			.Where(c => c.GameId == command.GameId &&
-			            c.HandNumber == game.CurrentHandNumber &&
-			            c.IsVisible &&
-			            !c.IsDiscarded)
-			.Include(c => c.GamePlayer)
-			.OrderBy(c => c.DealOrder)
-			.ThenBy(c => c.GamePlayer!.SeatPosition)
-			.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
-			.ToListAsync(cancellationToken);
+		// 7. Face-up cards in the order they were dealt, matching the table's wild-rank walk
+		var faceUpCardsInOrder = await StudFaceUpSequence.LoadAsync(
+			context,
+			command.GameId,
+			game.CurrentHandNumber,
+			game.DealerPosition,
+			cancellationToken);
 
 		var wildCardRules = new FollowTheQueenWildCardRules();
 		var wildRanks = wildCardRules.DetermineWildRanks(faceUpCardsInOrder);
@@ -230,53 +237,31 @@ public class PerformShowdownCommandHandler(
 			playerHandEvaluations[gamePlayer.Player.Name] = (ftqHand, cards, gamePlayer, wildIndexes);
 		}
 
-		// 9. Determine winners (highest strength)
-		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-		var winners = playerHandEvaluations
-			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-			.Select(kvp => kvp.Key)
-			.ToList();
+		var awarded = await new ContributionLayerAwarder(context).AwardAsync(
+			game,
+			currentHandPots,
+			now,
+			isAlreadyAwarded,
+			playerHandEvaluations.ToDictionary(
+				kvp => kvp.Value.gamePlayer.Id,
+				kvp => kvp.Value.hand.Strength),
+			_ => true,
+			gamePlayerId => playerHandEvaluations.Values
+				.First(evaluation => evaluation.gamePlayer.Id == gamePlayerId).hand.Type.ToString(),
+			cancellationToken);
+		if (awarded.IsT1)
+			return new PerformShowdownError
+			{
+				Message = awarded.AsT1,
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
 
-		// 10. Calculate payouts (split pot if multiple winners)
-		var payoutPerWinner = totalPot / winners.Count;
-		var remainder = totalPot % winners.Count;
-		var payouts = new Dictionary<string, int>();
+		var payouts = awarded.AsT0.Payouts;
+		var winners = awarded.AsT0.WinnerNames.ToList();
+		var winReason = awarded.AsT0.WinReason;
 
-		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
-
-		// Add remainder to first winner (closest to dealer's left)
-		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
-
-		// 11. Update player chip stacks
 		if (!isAlreadyAwarded)
 		{
-			foreach (var payout in payouts)
-			{
-				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
-				gamePlayer.ChipStack += payout.Value;
-			}
-
-			// 12. Mark pots as awarded
-			var winReason = winners.Count > 1
-				? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
-				: playerHandEvaluations[winners[0]].hand.Type.ToString();
-
-			var winnerPayoutsList = payouts.Select(p =>
-			{
-				var gp = playerHandEvaluations[p.Key].gamePlayer;
-				return new { playerId = gp.PlayerId.ToString(), playerName = p.Key, amount = p.Value };
-			}).ToList();
-			var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
-
-			foreach (var pot in currentHandPots)
-			{
-				pot.IsAwarded = true;
-				pot.AwardedAt = now;
-				pot.WinReason = winReason;
-				pot.WinnerPayouts = winnerPayoutsJson;
-			}
-
-			// 13. Update game state
 			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
@@ -299,7 +284,7 @@ public class PerformShowdownCommandHandler(
 				game,
 				game.GamePlayers.ToList(),
 				now,
-				totalPot,
+				awarded.AsT0.HandHistoryPot,
 				false,
 				winnerInfos,
 				winners,
@@ -315,7 +300,7 @@ public class PerformShowdownCommandHandler(
 			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
 
 			// Get the best 5-card hand and find their indexes in the original card list
-			var bestHand = kvp.Value.hand.GetBestHand();
+			var bestHand = kvp.Value.hand.BestHandSourceCards;
 			var cardsList = kvp.Value.cards.ToList();
 			var bestCardIndexes = new List<int>();
 			var usedIndexes = new HashSet<int>();
@@ -460,7 +445,7 @@ public class PerformShowdownCommandHandler(
 			    playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
 			{
 				// Get the best 5-card hand from the 7 cards
-				var bestHand = handEvaluation.hand.GetBestHand();
+				var bestHand = handEvaluation.hand.BestHandSourceCards;
 				showdownCards = bestHand
 					.Select(c => FormatCard((CardSymbol)c.Symbol, (CardSuit)c.Suit))
 					.ToList();

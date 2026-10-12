@@ -221,9 +221,14 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
 			currentBet = await StudBringInPosting.PostBringInForThirdStreetAsync(
 				context, game, bringInPlayer, bringIn, now, cancellationToken);
 
+		var firstActor = StudBringInPosting.FirstActorAfterBringIn(
+			game.GamePlayers.Where(player => player.Status == GamePlayerStatus.Active),
+			bringInSeatPosition,
+			currentBet);
+
 		// Set current phase to ThirdStreet (betting round)
 		game.CurrentPhase = nameof(Phases.ThirdStreet);
-		game.CurrentPlayerIndex = bringInSeatPosition;
+		game.CurrentPlayerIndex = firstActor.ActorSeat;
 
 		// Create the initial betting round for Third Street
 		var bettingRound = new BettingRound
@@ -237,42 +242,57 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
 			MaxRaises = 4, // Fixed limit typically caps raises
 			LastRaiseAmount = 0,
 			PlayersInHand = eligiblePlayers.Count,
-			PlayersActed = 0,
-			CurrentActorIndex = bringInSeatPosition,
-			IsComplete = false,
+			PlayersActed = firstActor.PlayersActed,
+			CurrentActorIndex = firstActor.ActorSeat,
+			LastAggressorIndex = firstActor.LastAggressorIndex,
+			IsComplete = firstActor.RoundComplete,
+			CompletedAt = firstActor.RoundComplete ? now : null,
 			StartedAt = now
 		};
-
-		if (currentBet > 0 && bringInPlayer is not null) bettingRound.LastAggressorIndex = bringInPlayer.SeatPosition;
 
 		context.Set<BettingRound>().Add(bettingRound);
 	}
 
 	/// <summary>
-	///     Finds the player with the lowest up card for bring-in.
+	///     Finds the player with the lowest up card for bring-in determination.
+	///     Lower card value loses. For ties, use suit order: clubs (lowest) &lt; diamonds &lt; hearts &lt; spades (highest).
 	/// </summary>
 	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
 	{
 		if (playerUpCards.Count == 0) return null;
 
-		// Find lowest card by rank (Ace is low for bring-in)
-		// Then by suit if tied (Clubs < Diamonds < Hearts < Spades)
-		var lowestCard = playerUpCards
-			.OrderBy(p => GetRankValue(p.UpCard.Symbol))
-			.ThenBy(p => p.UpCard.Suit)
-			.First();
+		GamePlayer? lowestPlayer = null;
+		GameCard? lowestCard = null;
 
-		return lowestCard.Player;
+		foreach (var (player, upCard) in playerUpCards)
+			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
+			{
+				lowestCard = upCard;
+				lowestPlayer = player;
+			}
+
+		return lowestPlayer;
 	}
 
 	/// <summary>
-	///     Gets the rank value for bring-in determination (Ace = 1, King = 13).
+	///     Compares two cards for bring-in determination.
+	///     Lower value is "worse" (brings in). For ties, lower suit brings in.
+	///     Suit order: Clubs (0) &lt; Diamonds (1) &lt; Hearts (2) &lt; Spades (3)
 	/// </summary>
-	private static int GetRankValue(CardSymbol symbol)
+	private static int CompareCardsForBringIn(GameCard a, GameCard b)
+	{
+		var aValue = GetCardValue(a.Symbol);
+		var bValue = GetCardValue(b.Symbol);
+
+		if (aValue != bValue) return aValue.CompareTo(bValue);
+
+		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
+	}
+
+	private static int GetCardValue(CardSymbol symbol)
 	{
 		return symbol switch
 		{
-			CardSymbol.Ace => 1,
 			CardSymbol.Deuce => 2,
 			CardSymbol.Three => 3,
 			CardSymbol.Four => 4,
@@ -285,6 +305,19 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
 			CardSymbol.Jack => 11,
 			CardSymbol.Queen => 12,
 			CardSymbol.King => 13,
+			CardSymbol.Ace => 14,
+			_ => 0
+		};
+	}
+
+	private static int GetSuitRank(CardSuit suit)
+	{
+		return suit switch
+		{
+			CardSuit.Clubs => 0,
+			CardSuit.Diamonds => 1,
+			CardSuit.Hearts => 2,
+			CardSuit.Spades => 3,
 			_ => 0
 		};
 	}

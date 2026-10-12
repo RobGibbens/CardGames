@@ -101,6 +101,16 @@ public class PerformShowdownCommandHandler(
 
 			if (!isAlreadyAwarded)
 			{
+				var mismatch = ContributionLayerAwarder.ContributionMismatch(
+					totalPot,
+					game.GamePlayers.Sum(gamePlayer => gamePlayer.TotalContributedThisHand));
+				if (mismatch is not null)
+					return new PerformShowdownError
+					{
+						Message = mismatch,
+						Code = PerformShowdownErrorCode.InvalidGameState
+					};
+
 				winner.ChipStack += totalPot;
 
 				// Mark pots as awarded
@@ -245,91 +255,42 @@ public class PerformShowdownCommandHandler(
 			playerHandEvaluations[gamePlayer.Player.Name] = (studHand, cards, gamePlayer);
 		}
 
-		// 8. Determine winners (highest strength), applying GoodBadUgly Ugly elimination rules
-		List<string> winners;
-		if (isGoodBadUgly)
-		{
-			var eligibleEvaluations = playerHandEvaluations
-				.Where(kvp => !string.Equals(kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED",
-					StringComparison.OrdinalIgnoreCase))
-				.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-			if (eligibleEvaluations.Count > 0)
-			{
-				var maxEligibleStrength = eligibleEvaluations.Values.Max(h => h.hand.Strength);
-				winners = eligibleEvaluations
-					.Where(kvp => kvp.Value.hand.Strength == maxEligibleStrength)
-					.Select(kvp => kvp.Key)
-					.ToList();
-			}
-			else
-			{
-				// All remaining players were eliminated by The Ugly: split between all players still in hand.
-				winners = playerHandEvaluations.Keys.ToList();
-			}
-		}
-		else
-		{
-			var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-			winners = playerHandEvaluations
-				.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-				.Select(kvp => kvp.Key)
-				.ToList();
-		}
-
-		if (winners.Count == 0)
+		if (playerHandEvaluations.Count == 0)
 			return new PerformShowdownError
 			{
 				Message = "No eligible winning hand could be determined at showdown.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 
-		// 9. Calculate payouts (split pot if multiple winners)
-		var payoutPerWinner = totalPot / winners.Count;
-		var remainder = totalPot % winners.Count;
-		var payouts = new Dictionary<string, int>();
+		var strengthByGamePlayerId = playerHandEvaluations.ToDictionary(
+			kvp => kvp.Value.gamePlayer.Id,
+			kvp => kvp.Value.hand.Strength);
+		var anyLivePlayer = isGoodBadUgly && playerHandEvaluations.Values.Any(evaluation =>
+			!string.Equals(evaluation.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase));
+		var awarded = await new ContributionLayerAwarder(context).AwardAsync(
+			game,
+			currentHandPots,
+			now,
+			isAlreadyAwarded,
+			strengthByGamePlayerId,
+			gamePlayer => !anyLivePlayer || !string.Equals(
+				gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase),
+			gamePlayerId => playerHandEvaluations.Values
+				.First(evaluation => evaluation.gamePlayer.Id == gamePlayerId).hand.Type.ToString(),
+			cancellationToken);
+		if (awarded.IsT1)
+			return new PerformShowdownError
+			{
+				Message = awarded.AsT1,
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
 
-		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
+		var payouts = awarded.AsT0.Payouts;
+		var winners = awarded.AsT0.WinnerNames.ToList();
+		var winReason = awarded.AsT0.WinReason;
 
-		// Add remainder to first winner (closest to dealer's left)
-		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
-
-		// 10. Update player chip stacks
 		if (!isAlreadyAwarded)
 		{
-			foreach (var payout in payouts)
-			{
-				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
-				gamePlayer.ChipStack += payout.Value;
-			}
-
-			// 11. Mark pots as awarded
-			var allWinnersUglyEliminated = isGoodBadUgly && winners.All(w =>
-				string.Equals(playerHandEvaluations[w].gamePlayer.VariantState, "UGLY_ELIMINATED",
-					StringComparison.OrdinalIgnoreCase));
-
-			var winReason = allWinnersUglyEliminated
-				? "Split pot - all remaining players were eliminated by The Ugly"
-				: winners.Count > 1
-					? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
-					: playerHandEvaluations[winners[0]].hand.Type.ToString();
-
-			var winnerPayoutsList = payouts.Select(p =>
-			{
-				var gp = playerHandEvaluations[p.Key].gamePlayer;
-				return new { playerId = gp.PlayerId.ToString(), playerName = p.Key, amount = p.Value };
-			}).ToList();
-			var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
-
-			foreach (var pot in currentHandPots)
-			{
-				pot.IsAwarded = true;
-				pot.AwardedAt = now;
-				pot.WinReason = winReason;
-				pot.WinnerPayouts = winnerPayoutsJson;
-			}
-
-			// 12. Update game state
 			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
@@ -352,7 +313,7 @@ public class PerformShowdownCommandHandler(
 				game,
 				game.GamePlayers.ToList(),
 				now,
-				totalPot,
+				awarded.AsT0.HandHistoryPot,
 				false,
 				winnerInfos,
 				winners,
@@ -368,7 +329,9 @@ public class PerformShowdownCommandHandler(
 			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
 
 			// Get the best 5-card hand and find their indexes in the original card list
-			var bestHand = kvp.Value.hand.GetBestHand();
+			var bestHand = kvp.Value.hand is GoodBadUglyHand goodBadUglyHand
+				? goodBadUglyHand.BestHandSourceCards
+				: kvp.Value.hand.GetBestHand();
 			var cardsList = kvp.Value.cards.ToList();
 			var bestCardIndexes = new List<int>();
 			var usedIndexes = new HashSet<int>();
@@ -513,7 +476,9 @@ public class PerformShowdownCommandHandler(
 			    playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
 			{
 				// Get the best 5-card hand from the 7 cards
-				var bestHand = handEvaluation.hand.GetBestHand();
+				var bestHand = handEvaluation.hand is GoodBadUglyHand goodBadUglyHand
+					? goodBadUglyHand.BestHandSourceCards
+					: handEvaluation.hand.GetBestHand();
 				showdownCards = bestHand
 					.Select(c => FormatCard((CardSymbol)c.Symbol, (CardSuit)c.Suit))
 					.ToList();

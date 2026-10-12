@@ -171,7 +171,8 @@ public class DealHandsCommandHandlerTests
 
 		var bettingRound = await context.BettingRounds.SingleAsync();
 		bettingRound.CurrentBet.Should().Be(5);
-		bettingRound.CurrentActorIndex.Should().Be(bringInPlayer.SeatPosition);
+		var nextSeat = await context.GamePlayers.SingleAsync(player => player.Id != bringInPlayer.Id);
+		bettingRound.CurrentActorIndex.Should().Be(nextSeat.SeatPosition);
 	}
 
 	[Fact]

@@ -10,7 +10,9 @@ using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
 
-public sealed class ChooseCardCommandHandler(CardsDbContext context)
+public sealed class ChooseCardCommandHandler(
+	CardsDbContext context,
+	ILogger<ChooseCardCommandHandler>? logger = null)
 	: IRequestHandler<ChooseCardCommand, OneOf<ChooseCardSuccessful, ChooseCardError>>
 {
 	public async Task<OneOf<ChooseCardSuccessful, ChooseCardError>> Handle(
@@ -277,37 +279,14 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 					// nextStreet was already dealt via this offer round — deal streets AFTER it
 					var startIndex = Array.IndexOf(streetOrder, nextStreet) + 1;
 
-					var remainingDeckCards = gameCards
-						.Where(gc => gc.Location == CardLocation.Deck)
-						.OrderBy(gc => gc.DealOrder)
-						.ToList();
-
-					var deckIdx = 0;
 					var dealtStreets = new List<string>();
 
 					for (var streetIdx = startIndex; streetIdx < streetOrder.Length; streetIdx++)
 					{
 						var street = streetOrder[streetIdx];
 						dealtStreets.Add(street);
-
-						foreach (var player in playersStillInHand.OrderBy(p => p.SeatPosition))
-						{
-							if (deckIdx >= remainingDeckCards.Count)
-								break;
-
-							var existingCards = gameCards.Count(gc =>
-								gc.GamePlayerId == player.Id && gc.Location != CardLocation.Deck);
-
-							var card = remainingDeckCards[deckIdx++];
-							card.GamePlayerId = player.Id;
-							card.Location = street == nameof(Phases.SeventhStreet)
-								? CardLocation.Hole
-								: CardLocation.Board;
-							card.DealOrder = existingCards + 1;
-							card.IsVisible = street != nameof(Phases.SeventhStreet);
-							card.DealtAt = now;
-							card.DealtAtPhase = street;
-						}
+						TollboothRunout.DealStreet(
+							game, playersStillInHand, gameCards, street, now, logger);
 					}
 
 					// Store runout information for client-side animation

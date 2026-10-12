@@ -105,6 +105,55 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 		response.HandOdds.Should().BeNull();
 	}
 
+	[Fact]
+	public async Task Handle_FourthStreetWithNoBet_OffersOnlyTheStreetLimit()
+	{
+		var databaseName = Guid.NewGuid().ToString();
+		var databaseRoot = new InMemoryDatabaseRoot();
+		var gameId = await SeedQueryGameAsync(
+			databaseName,
+			databaseRoot,
+			chipStack: 1000,
+			currentBet: 0,
+			minBet: 10,
+			lastRaiseAmount: 0,
+			phase: nameof(Phases.FourthStreet));
+
+		await using var context = CreateContext(databaseName, databaseRoot);
+		var sut = new GetCurrentPlayerTurnQueryHandler(context, new FakeGamePlayerResolver(null));
+
+		var response = await sut.Handle(new GetCurrentPlayerTurnQuery(gameId), CancellationToken.None);
+
+		response!.AvailableActions.Should().NotBeNull();
+		response.AvailableActions!.CanBet.Should().BeTrue();
+		response.AvailableActions.CanAllIn.Should().BeFalse();
+		response.AvailableActions.MinBet.Should().Be(10);
+		response.AvailableActions.MaxBet.Should().Be(10);
+	}
+
+	[Fact]
+	public async Task Handle_ThirdStreetBringIn_OffersOnlyTheComplete()
+	{
+		var databaseName = Guid.NewGuid().ToString();
+		var databaseRoot = new InMemoryDatabaseRoot();
+		var gameId = await SeedQueryGameAsync(
+			databaseName,
+			databaseRoot,
+			chipStack: 1000,
+			currentBet: 5,
+			minBet: 10,
+			lastRaiseAmount: 0);
+
+		await using var context = CreateContext(databaseName, databaseRoot);
+		var sut = new GetCurrentPlayerTurnQueryHandler(context, new FakeGamePlayerResolver(null));
+
+		var response = await sut.Handle(new GetCurrentPlayerTurnQuery(gameId), CancellationToken.None);
+
+		response!.AvailableActions.Should().NotBeNull();
+		response.AvailableActions!.MinRaise.Should().Be(10);
+		response.AvailableActions.MaxBet.Should().Be(10);
+	}
+
 	private static CardsDbContext CreateContext(string databaseName, InMemoryDatabaseRoot databaseRoot)
 	{
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
@@ -117,7 +166,12 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 	private static async Task<Guid> SeedQueryGameAsync(
 		string databaseName,
 		InMemoryDatabaseRoot databaseRoot,
-		int currentPlayerIndex = 0)
+		int currentPlayerIndex = 0,
+		int chipStack = 150,
+		int currentBet = 0,
+		int minBet = 10,
+		int lastRaiseAmount = 10,
+		string phase = nameof(Phases.ThirdStreet))
 	{
 		var now = DateTimeOffset.UtcNow;
 		var gameId = Guid.NewGuid();
@@ -149,7 +203,7 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 			Id = gameId,
 			GameTypeId = gameType.Id,
 			GameType = gameType,
-			CurrentPhase = nameof(Phases.ThirdStreet),
+			CurrentPhase = phase,
 			CurrentHandNumber = 1,
 			CurrentPlayerIndex = currentPlayerIndex,
 			CreatedAt = now,
@@ -172,8 +226,8 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 			PlayerId = playerId,
 			Player = player,
 			SeatPosition = 0,
-			ChipStack = 150,
-			StartingChips = 200,
+			ChipStack = chipStack,
+			StartingChips = chipStack,
 			CurrentBet = 0,
 			TotalContributedThisHand = 0,
 			JoinedAt = now,
@@ -214,10 +268,10 @@ public class GetCurrentPlayerTurnQueryHandlerTests
 			Game = game,
 			HandNumber = 1,
 			RoundNumber = 1,
-			Street = nameof(Phases.ThirdStreet),
-			CurrentBet = 0,
-			MinBet = 10,
-			LastRaiseAmount = 10,
+			Street = phase,
+			CurrentBet = currentBet,
+			MinBet = minBet,
+			LastRaiseAmount = lastRaiseAmount,
 			CurrentActorIndex = 0,
 			PlayersInHand = 2,
 			StartedAt = now

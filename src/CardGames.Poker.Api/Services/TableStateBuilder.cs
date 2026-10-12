@@ -3,12 +3,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Api.Betting;
 using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Features.Games.Baseball;
+using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.Features.Profile;
 using CardGames.Poker.Api.GameFlow;
@@ -56,6 +58,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.RazzCode,
 			PokerGameMetadataRegistry.BaseballCode,
 			PokerGameMetadataRegistry.FollowTheQueenCode,
+			PokerGameMetadataRegistry.PairPressureCode,
+			PokerGameMetadataRegistry.TollboothCode
+		};
+
+	private static readonly HashSet<string> FixedLimitStudCodes =
+		new(GameCodeComparer)
+		{
+			PokerGameMetadataRegistry.SevenCardStudCode,
+			PokerGameMetadataRegistry.RazzCode,
+			PokerGameMetadataRegistry.BaseballCode,
+			PokerGameMetadataRegistry.FollowTheQueenCode,
+			PokerGameMetadataRegistry.GoodBadUglyCode,
 			PokerGameMetadataRegistry.PairPressureCode,
 			PokerGameMetadataRegistry.TollboothCode
 		};
@@ -813,7 +827,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var amountToCall = currentBet - gamePlayer.CurrentBet;
 		var canAffordCall = gamePlayer.ChipStack >= amountToCall;
 
-		return new AvailableActionsDto
+		var actions = new AvailableActionsDto
 		{
 			CanCheck = currentBet == gamePlayer.CurrentBet,
 			CanBet = currentBet == 0 && gamePlayer.ChipStack >= minBet,
@@ -826,6 +840,33 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			CallAmount = Math.Min(amountToCall, gamePlayer.ChipStack),
 			MinRaise = currentBet + lastRaiseAmount
 		};
+
+		if (!UsesFixedLimitStudBetting(game)) return actions;
+
+		if (FixedLimitStudBetting.Offer(currentBet, gamePlayer.CurrentBet, gamePlayer.ChipStack, minBet) is not { } offer)
+			return actions;
+
+		return new AvailableActionsDto
+		{
+			CanCheck = actions.CanCheck,
+			CanBet = offer.CanBet,
+			CanCall = actions.CanCall,
+			CanRaise = offer.CanRaise,
+			CanFold = actions.CanFold,
+			CanAllIn = offer.CanAllIn,
+			MinBet = offer.MinBet,
+			MaxBet = offer.MaxBet,
+			CallAmount = actions.CallAmount,
+			MinRaise = offer.MinRaise
+		};
+	}
+
+	private static bool UsesFixedLimitStudBetting(Game game)
+	{
+		var code = string.IsNullOrWhiteSpace(game.CurrentHandGameTypeCode)
+			? game.GameType?.Code
+			: game.CurrentHandGameTypeCode;
+		return !string.IsNullOrWhiteSpace(code) && FixedLimitStudCodes.Contains(code);
 	}
 
 	private static DrawPrivateDto? BuildDrawPrivateDto(
@@ -2840,48 +2881,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	///     Retrieves face-up cards ordered correctly for Follow The Queen wild card determination.
 	///     Accounts for dealing order relative to the Dealer button (Student dealing rotation).
 	/// </summary>
-	private async Task<List<Card>> GetOrderedFaceUpCardsAsync(
+	private Task<List<Card>> GetOrderedFaceUpCardsAsync(
 		Game game,
 		CancellationToken cancellationToken)
 	{
-		var rawFaceUpCards = await _context.GameCards
-			.Where(c => c.GameId == game.Id &&
-			            c.HandNumber == game.CurrentHandNumber &&
-			            c.IsVisible &&
-			            !c.IsDiscarded)
-			.Include(c => c.GamePlayer)
-			.Select(c => new
-			{
-				c.Symbol,
-				c.Suit,
-				c.DealtAtPhase,
-				c.DealOrder,
-				c.Location,
-				SeatPosition = c.GamePlayer != null ? c.GamePlayer.SeatPosition : -1
-			})
-			.ToListAsync(cancellationToken);
-
-		var seats = rawFaceUpCards
-			.GroupBy(card => card.SeatPosition)
-			.Select(group => new
-			{
-				SeatPosition = group.Key,
-				Cards = StudOrderHelper.OrderPlayerCards(
-					group,
-					card => card.DealtAtPhase,
-					card => card.Location == CardLocation.Hole,
-					card => card.DealOrder)
-			})
-			.ToList();
-
-		return StudOrderHelper.OrderFaceUpCardsInGlobalDealOrder(
-				seats,
-				game.DealerPosition,
-				seat => seat.SeatPosition,
-				seat => seat.Cards,
-				_ => true)
-			.Select(card => new Card((Suit)card.Suit, (Symbol)card.Symbol))
-			.ToList();
+		return StudFaceUpSequence.LoadAsync(
+			_context,
+			game.Id,
+			game.CurrentHandNumber,
+			game.DealerPosition,
+			cancellationToken);
 	}
 
 	/// <summary>

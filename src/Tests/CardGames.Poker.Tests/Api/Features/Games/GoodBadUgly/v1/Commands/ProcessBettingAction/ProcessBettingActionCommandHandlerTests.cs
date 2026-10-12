@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Poker.Api.Data;
@@ -90,7 +91,34 @@ public class ProcessBettingActionCommandHandlerTests
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidAction);
-		result.AsT1.Message.Should().Contain("at least 10");
+		result.AsT1.Message.Should().Be("Bet must be 10");
+	}
+
+	[Fact]
+	public async Task Handle_OpeningBetAboveTheStreetLimit_ReturnsInvalidAction()
+	{
+		await using var context = CreateContext();
+		var game = await SeedGameAsync(context, currentBet: 0, minBet: 10);
+		var round = await context.BettingRounds.SingleAsync(bettingRound => bettingRound.GameId == game.Id);
+		round.LastRaiseAmount = 0;
+		await context.SaveChangesAsync();
+		var sut = CreateSut(context);
+
+		var result = await sut.Handle(
+			new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 200) { BoundSeat = 0 },
+			CancellationToken.None);
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(ProcessBettingActionErrorCode.InvalidAction);
+		result.AsT1.Message.Should().Be("Bet must be 10");
+		var player = await context.GamePlayers.SingleAsync(gamePlayer => gamePlayer.GameId == game.Id && gamePlayer.SeatPosition == 0);
+		player.ChipStack.Should().Be(200);
+		player.CurrentBet.Should().Be(0);
+		round = await context.BettingRounds.SingleAsync(bettingRound => bettingRound.GameId == game.Id);
+		round.CurrentBet.Should().Be(0);
+		round.LastRaiseAmount.Should().Be(0);
+		var pot = await context.Pots.SingleAsync(p => p.GameId == game.Id);
+		pot.Amount.Should().Be(0);
 	}
 
 	private static ProcessBettingActionCommandHandler CreateSut(CardsDbContext context)

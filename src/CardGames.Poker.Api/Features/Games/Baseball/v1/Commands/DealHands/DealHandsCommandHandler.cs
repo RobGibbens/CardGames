@@ -252,29 +252,42 @@ public class DealHandsCommandHandler(
 
 		int firstActorSeatPosition;
 		var currentBet = 0;
+		var playersActed = 0;
+		var lastAggressorIndex = -1;
+		var roundComplete = false;
+		var bringInSeatPosition = -1;
 
 		if (streetPhase == nameof(Phases.ThirdStreet))
 		{
 			await StudGameStakesNormalizer.EnsureLegacyBringInAsync(context, game, cancellationToken);
 
-			firstActorSeatPosition =
+			bringInSeatPosition =
 				FindBringInPlayerFromPersistedCards(activePlayers, game.Id, game.CurrentHandNumber, context);
 
 			var bringIn = game.BringIn ?? 0;
-			if (bringIn > 0 && firstActorSeatPosition >= 0)
+			if (bringIn > 0 && bringInSeatPosition >= 0)
 			{
-				var bringInPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == firstActorSeatPosition);
+				var bringInPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == bringInSeatPosition);
 				if (bringInPlayer is not null)
 					currentBet = await StudBringInPosting.PostBringInForThirdStreetAsync(
 						context, game, bringInPlayer, bringIn, now, cancellationToken);
 			}
+
+			var firstActor = StudBringInPosting.FirstActorAfterBringIn(
+				game.GamePlayers.Where(player => player.Status == GamePlayerStatus.Active),
+				bringInSeatPosition,
+				currentBet);
+			firstActorSeatPosition = firstActor.ActorSeat;
+			playersActed = firstActor.PlayersActed;
+			lastAggressorIndex = firstActor.LastAggressorIndex;
+			roundComplete = firstActor.RoundComplete;
 		}
 		else
 		{
 			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
 		}
 
-		if (firstActorSeatPosition < 0)
+		if (!roundComplete && firstActorSeatPosition < 0)
 			firstActorSeatPosition = GetPlayerLeftOfDealerSeatPosition(activePlayers, game.DealerPosition);
 
 		var isSmallBetStreet = streetPhase == nameof(Phases.ThirdStreet) ||
@@ -304,10 +317,11 @@ public class DealHandsCommandHandler(
 			MaxRaises = 0,
 			LastRaiseAmount = 0,
 			PlayersInHand = activePlayers.Count,
-			PlayersActed = 0,
+			PlayersActed = playersActed,
 			CurrentActorIndex = firstActorSeatPosition,
-			LastAggressorIndex = -1,
-			IsComplete = false,
+			LastAggressorIndex = lastAggressorIndex,
+			IsComplete = roundComplete,
+			CompletedAt = roundComplete ? now : null,
 			StartedAt = now
 		};
 
@@ -324,7 +338,7 @@ public class DealHandsCommandHandler(
 		game.CurrentPhase = streetPhase;
 		game.CurrentPlayerIndex = firstActorSeatPosition;
 
-		game.BringInPlayerIndex = streetPhase == nameof(Phases.ThirdStreet) ? firstActorSeatPosition : -1;
+		game.BringInPlayerIndex = streetPhase == nameof(Phases.ThirdStreet) ? bringInSeatPosition : -1;
 		game.Status = GameStatus.InProgress;
 		game.UpdatedAt = now;
 

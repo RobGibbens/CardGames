@@ -46,6 +46,8 @@ public class RazzGameFlowTests : IntegrationTestBase
 
 		var playerOne = setup.GamePlayers.Single(gp => gp.SeatPosition == 0);
 		var playerTwo = setup.GamePlayers.Single(gp => gp.SeatPosition == 1);
+		playerOne.TotalContributedThisHand = 40;
+		playerTwo.TotalContributedThisHand = 40;
 		var dealtAt = DateTimeOffset.UtcNow;
 		AddStudHand(game.Id, playerOne.Id, "Ks Js 6s 5h Qs 2h 6d", dealtAt);
 		AddStudHand(game.Id, playerTwo.Id, "Qc Kh 9d 7h 9h 7d 5s", dealtAt);

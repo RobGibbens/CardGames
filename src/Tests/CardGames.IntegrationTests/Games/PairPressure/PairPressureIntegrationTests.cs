@@ -97,6 +97,8 @@ public class PairPressureIntegrationTests : IntegrationTestBase
 
 		var hero = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
 		var villain = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).Last();
+		hero.TotalContributedThisHand = 50;
+		villain.TotalContributedThisHand = 50;
 		var now = DateTimeOffset.UtcNow;
 
 		AddStudCard(game.Id, hero.Id, 1, CardLocation.Hole, CardSuit.Hearts, CardSymbol.Five, false,
@@ -138,6 +140,69 @@ public class PairPressureIntegrationTests : IntegrationTestBase
 		result.AsT0.Payouts.Should().ContainKey(hero.Player.Name);
 		result.AsT0.Payouts.Should().NotContainKey(villain.Player.Name);
 		result.AsT0.PlayerHands.Should().ContainSingle(hand => hand.PlayerName == hero.Player.Name && hand.IsWinner);
+	}
+
+	[Fact]
+	public async Task PerformShowdown_Highlights_The_Wild_Deuce_Used_In_The_Straight_Flush()
+	{
+		await EnsurePairPressureGameTypeAsync();
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, PairPressureCode, 2, ante: 10);
+
+		var game = setup.Game;
+		game.CurrentHandNumber = 1;
+		game.CurrentPhase = nameof(Phases.Showdown);
+		game.Status = GameStatus.InProgress;
+		game.DealerPosition = 1;
+
+		await DatabaseSeeder.CreatePotAsync(DbContext, game, 100);
+
+		var hero = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
+		var villain = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).Last();
+		hero.TotalContributedThisHand = 50;
+		villain.TotalContributedThisHand = 50;
+		var now = DateTimeOffset.UtcNow;
+
+		AddStudCard(game.Id, hero.Id, 1, CardLocation.Hole, CardSuit.Hearts, CardSymbol.Ace, false,
+			nameof(Phases.ThirdStreet), 1, now);
+		AddStudCard(game.Id, hero.Id, 1, CardLocation.Hole, CardSuit.Diamonds, CardSymbol.Ace, false,
+			nameof(Phases.ThirdStreet), 2, now);
+		AddStudCard(game.Id, hero.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.King, false,
+			nameof(Phases.FourthStreet), 3, now);
+		AddStudCard(game.Id, hero.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.Queen, false,
+			nameof(Phases.FifthStreet), 4, now);
+		AddStudCard(game.Id, hero.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.Jack, false,
+			nameof(Phases.SixthStreet), 5, now);
+		AddStudCard(game.Id, hero.Id, 1, CardLocation.Board, CardSuit.Clubs, CardSymbol.Three, false,
+			nameof(Phases.SixthStreet), 6, now);
+		AddStudCard(game.Id, hero.Id, 1, CardLocation.Hole, CardSuit.Hearts, CardSymbol.Deuce, false,
+			nameof(Phases.SeventhStreet), 7, now);
+
+		AddStudCard(game.Id, villain.Id, 1, CardLocation.Hole, CardSuit.Spades, CardSymbol.Seven, false,
+			nameof(Phases.ThirdStreet), 1, now);
+		AddStudCard(game.Id, villain.Id, 1, CardLocation.Hole, CardSuit.Clubs, CardSymbol.Eight, false,
+			nameof(Phases.ThirdStreet), 2, now);
+		AddStudCard(game.Id, villain.Id, 1, CardLocation.Board, CardSuit.Clubs, CardSymbol.Deuce, true,
+			nameof(Phases.ThirdStreet), 3, now);
+		AddStudCard(game.Id, villain.Id, 1, CardLocation.Board, CardSuit.Diamonds, CardSymbol.Deuce, true,
+			nameof(Phases.FourthStreet), 4, now);
+		AddStudCard(game.Id, villain.Id, 1, CardLocation.Board, CardSuit.Spades, CardSymbol.Four, false,
+			nameof(Phases.FifthStreet), 5, now);
+		AddStudCard(game.Id, villain.Id, 1, CardLocation.Board, CardSuit.Diamonds, CardSymbol.Six, false,
+			nameof(Phases.SixthStreet), 6, now);
+		AddStudCard(game.Id, villain.Id, 1, CardLocation.Hole, CardSuit.Clubs, CardSymbol.Nine, false,
+			nameof(Phases.SeventhStreet), 7, now);
+
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new PerformShowdownCommand(game.Id));
+
+		result.IsT0.Should().BeTrue();
+		var heroHand = result.AsT0.PlayerHands.Single(hand => hand.PlayerName == hero.Player.Name);
+		heroHand.HandType.Should().Be("StraightFlush");
+		heroHand.BestCardIndexes.Should().NotBeNull();
+		var highlighted = heroHand.BestCardIndexes!.Select(index => heroHand.Cards[index]).ToList();
+		highlighted.Should().Contain(card => card.Suit == CardSuit.Hearts && card.Symbol == CardSymbol.Deuce);
+		highlighted.Should().NotContain(card => card.Suit == CardSuit.Clubs && card.Symbol == CardSymbol.Three);
 	}
 
 	private async Task EnsurePairPressureGameTypeAsync()

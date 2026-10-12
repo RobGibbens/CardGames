@@ -115,6 +115,16 @@ public class PerformShowdownCommandHandler(
 
 			if (!isAlreadyAwarded)
 			{
+				var mismatch = ContributionLayerAwarder.ContributionMismatch(
+					totalPot,
+					game.GamePlayers.Sum(gamePlayer => gamePlayer.TotalContributedThisHand));
+				if (mismatch is not null)
+					return new PerformShowdownError
+					{
+						Message = mismatch,
+						Code = PerformShowdownErrorCode.InvalidGameState
+					};
+
 				winner.ChipStack += totalPot;
 
 				// Mark pots as awarded
@@ -218,60 +228,31 @@ public class PerformShowdownCommandHandler(
 			playerHandEvaluations[gamePlayer.Player.Name] = (studHand, cards, gamePlayer);
 		}
 
-		// 8. Determine winners (highest strength)
-		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-		var winners = playerHandEvaluations
-			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-			.Select(kvp => kvp.Key)
-			.ToList();
-
-		if (winners.Count == 0)
+		var awarded = await new ContributionLayerAwarder(context).AwardAsync(
+			game,
+			currentHandPots,
+			now,
+			isAlreadyAwarded,
+			playerHandEvaluations.ToDictionary(
+				kvp => kvp.Value.gamePlayer.Id,
+				kvp => kvp.Value.hand.Strength),
+			_ => true,
+			gamePlayerId => playerHandEvaluations.Values
+				.First(evaluation => evaluation.gamePlayer.Id == gamePlayerId).hand.Type.ToString(),
+			cancellationToken);
+		if (awarded.IsT1)
 			return new PerformShowdownError
 			{
-				Message = "No eligible winning hand could be determined at showdown.",
+				Message = awarded.AsT1,
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 
-		// 9. Calculate payouts (split pot if multiple winners)
-		var payoutPerWinner = totalPot / winners.Count;
-		var remainder = totalPot % winners.Count;
-		var payouts = new Dictionary<string, int>();
+		var payouts = awarded.AsT0.Payouts;
+		var winners = awarded.AsT0.WinnerNames.ToList();
+		var winReason = awarded.AsT0.WinReason;
 
-		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
-
-		// Add remainder to first winner (closest to dealer's left)
-		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
-
-		// 10. Update player chip stacks
 		if (!isAlreadyAwarded)
 		{
-			foreach (var payout in payouts)
-			{
-				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
-				gamePlayer.ChipStack += payout.Value;
-			}
-
-			// 11. Mark pots as awarded
-			var winReason = winners.Count > 1
-				? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
-				: playerHandEvaluations[winners[0]].hand.Type.ToString();
-
-			var winnerPayoutsList = payouts.Select(p =>
-			{
-				var gp = playerHandEvaluations[p.Key].gamePlayer;
-				return new { playerId = gp.PlayerId.ToString(), playerName = p.Key, amount = p.Value };
-			}).ToList();
-			var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
-
-			foreach (var pot in currentHandPots)
-			{
-				pot.IsAwarded = true;
-				pot.AwardedAt = now;
-				pot.WinReason = winReason;
-				pot.WinnerPayouts = winnerPayoutsJson;
-			}
-
-			// 12. Update game state
 			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
@@ -294,7 +275,7 @@ public class PerformShowdownCommandHandler(
 				game,
 				game.GamePlayers.ToList(),
 				now,
-				totalPot,
+				awarded.AsT0.HandHistoryPot,
 				false,
 				winnerInfos,
 				winners,

@@ -111,6 +111,307 @@ public class PerformShowdownCommandHandlerTests
 		winner.HandType.Should().NotContain("low");
 	}
 
+	[Fact]
+	public async Task Handle_WhenTheShortAllInHasTheBestHand_PaysTheMainPotAndTheSidePotSeparately()
+	{
+		await using var provider = BuildProvider();
+		await using var scope = provider.CreateAsyncScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var game = await SeedContributionsAsync(context, "SEVENCARDSTUD", null,
+		[
+			new Seat("Alice", 600, 400, false, false, "Ks Kd Kc Qs Qd 8h 7h"),
+			new Seat("Bob", 0, 50, true, false, "Ah Ad As Ac Kh Qh Jh"),
+			new Seat("Carol", 600, 400, false, false, "2c 4c 5d 6d 7c 8d Tc")
+		], 850);
+		var handler = StudHandler(scope);
+
+		var result = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.Payouts.Should().BeEquivalentTo(new Dictionary<string, int> { ["Bob"] = 150, ["Alice"] = 700 });
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Bob").AmountWon.Should().Be(150);
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Alice").AmountWon.Should().Be(700);
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Carol").AmountWon.Should().Be(0);
+		await AssertStacksAsync(context, ("Alice", 1300), ("Bob", 150), ("Carol", 600));
+
+		var pots = await context.Pots.Include(pot => pot.Contributions).ThenInclude(contribution => contribution.GamePlayer)
+			.ThenInclude(gamePlayer => gamePlayer.Player).ToListAsync();
+		pots.Should().HaveCount(2);
+		pots.Single(pot => pot.PotType == PotType.Main).Amount.Should().Be(150);
+		var side = pots.Single(pot => pot.PotType == PotType.Side);
+		side.Amount.Should().Be(700);
+		side.WinnerPayouts.Should().Contain("Alice").And.NotContain("Bob");
+		side.Contributions.Should().NotContain(contribution =>
+			contribution.GamePlayer.Player.Name == "Bob" && contribution.IsEligibleToWin);
+
+		var again = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		again.IsT0.Should().BeTrue();
+		again.AsT0.Payouts.Should().BeEquivalentTo(new Dictionary<string, int> { ["Bob"] = 150, ["Alice"] = 700 });
+		await AssertStacksAsync(context, ("Alice", 1300), ("Bob", 150), ("Carol", 600));
+		(await context.Pots.ToListAsync()).Should().OnlyContain(pot => pot.IsAwarded);
+	}
+
+	[Fact]
+	public async Task Handle_WhenRazzShortAllInHasTheBestLow_PaysTheSidePotToTheSecondBestLow()
+	{
+		await using var provider = BuildProvider();
+		await using var scope = provider.CreateAsyncScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var game = await SeedContributionsAsync(context, "RAZZ", null,
+		[
+			new Seat("Alice", 600, 400, false, false, "8s 9d Th Jc 5d 6h 7h"),
+			new Seat("Bob", 0, 50, true, false, "As 2d 3c 4h 5s 6d 7c"),
+			new Seat("Carol", 600, 400, false, false, "Ks Kd Kc Qs Qd 9h 8h")
+		], 850);
+		var handler = StudHandler(scope);
+
+		var result = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.Payouts.Should().BeEquivalentTo(new Dictionary<string, int> { ["Bob"] = 150, ["Alice"] = 700 });
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Bob").AmountWon.Should().Be(150);
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Carol").AmountWon.Should().Be(0);
+		await AssertStacksAsync(context, ("Alice", 1300), ("Bob", 150), ("Carol", 600));
+	}
+
+	[Fact]
+	public async Task Handle_WhenAliceIsLoadedBeforeBob_PaysTheOddChipToTheSeatAfterTheDealer()
+	{
+		await using var provider = BuildProvider();
+		await using var scope = provider.CreateAsyncScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var game = await SeedContributionsAsync(context, "SEVENCARDSTUD", null,
+		[
+			new Seat("Alice", 100, 50, false, false, "Ah Ad 2c 3d 4h 5s 6c", 3),
+			new Seat("Bob", 100, 50, false, false, "Ac As 2d 3h 4c 5d 6h", 1),
+			new Seat("Carol", 100, 1, false, true, "", 2)
+		], 101);
+		var handler = StudHandler(scope);
+
+		var result = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue(result.IsT1 ? result.AsT1.Message : string.Empty);
+		result.AsT0.Payouts.Should().BeEquivalentTo(new Dictionary<string, int> { ["Bob"] = 51, ["Alice"] = 50 });
+		await AssertStacksAsync(context, ("Bob", 151), ("Alice", 150), ("Carol", 100));
+	}
+
+	[Fact]
+	public async Task Handle_WhenTheDealerIsSeatTwo_PaysTheOddChipToAlice()
+	{
+		await using var provider = BuildProvider();
+		await using var scope = provider.CreateAsyncScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var game = await SeedContributionsAsync(context, "SEVENCARDSTUD", null,
+		[
+			new Seat("Alice", 100, 50, false, false, "Ah Ad 2c 3d 4h 5s 6c", 3),
+			new Seat("Bob", 100, 50, false, false, "Ac As 2d 3h 4c 5d 6h", 1),
+			new Seat("Carol", 100, 1, false, true, "", 2)
+		], 101);
+		game.DealerPosition = 2;
+		await context.SaveChangesAsync();
+		var handler = StudHandler(scope);
+
+		var result = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue(result.IsT1 ? result.AsT1.Message : string.Empty);
+		result.AsT0.Payouts.Should().BeEquivalentTo(new Dictionary<string, int> { ["Alice"] = 51, ["Bob"] = 50 });
+		await AssertStacksAsync(context, ("Alice", 151), ("Bob", 150));
+	}
+
+	[Fact]
+	public async Task Handle_WhenHeadsUpShoveIsUncalled_RefundsTheExcessAndAwardsOnlyTheMatchedPot()
+	{
+		await using var provider = BuildProvider();
+		await using var scope = provider.CreateAsyncScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var game = await SeedContributionsAsync(context, "SEVENCARDSTUD", null,
+		[
+			new Seat("Alice", 600, 400, false, false, "Ah Ad As Ac Kh Qh Jh"),
+			new Seat("Bob", 0, 100, true, false, "Ks Kd Kc Qs Qd 8h 7h")
+		], 500);
+		var handler = StudHandler(scope);
+
+		var result = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.Payouts.Should().BeEquivalentTo(new Dictionary<string, int> { ["Alice"] = 200 });
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Alice").AmountWon.Should().Be(200);
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Bob").AmountWon.Should().Be(0);
+		var seats = await context.GamePlayers.Include(gamePlayer => gamePlayer.Player).ToListAsync();
+		seats.Single(seat => seat.Player.Name == "Alice").ChipStack.Should().Be(1100);
+		seats.Single(seat => seat.Player.Name == "Alice").TotalContributedThisHand.Should().Be(100);
+		seats.Single(seat => seat.Player.Name == "Bob").ChipStack.Should().Be(0);
+	}
+
+	[Fact]
+	public async Task Handle_WhenTheAllInPlayerHasTheBestHand_StillRefundsTheUncalledChips()
+	{
+		await using var provider = BuildProvider();
+		await using var scope = provider.CreateAsyncScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var game = await SeedContributionsAsync(context, "SEVENCARDSTUD", null,
+		[
+			new Seat("Alice", 600, 400, false, false, "Ks Kd Kc Qs Qd 8h 7h"),
+			new Seat("Bob", 0, 100, true, false, "Ah Ad As Ac Kh Qh Jh")
+		], 500);
+		var handler = StudHandler(scope);
+
+		var result = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Alice").AmountWon.Should().Be(0);
+		result.AsT0.PlayerHands.Single(hand => hand.PlayerName == "Bob").AmountWon.Should().Be(200);
+		var seats = await context.GamePlayers.Include(gamePlayer => gamePlayer.Player).ToListAsync();
+		seats.Single(seat => seat.Player.Name == "Alice").ChipStack.Should().Be(900);
+		seats.Single(seat => seat.Player.Name == "Bob").ChipStack.Should().Be(200);
+	}
+
+	[Fact]
+	public async Task Handle_WhenEveryoneElseFolded_PaysThePotOnce()
+	{
+		await using var provider = BuildProvider();
+		await using var scope = provider.CreateAsyncScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var game = await SeedContributionsAsync(context, "SEVENCARDSTUD", null,
+		[
+			new Seat("Alice", 600, 400, false, false, "Ah Ad As Ac Kh Qh Jh"),
+			new Seat("Bob", 400, 100, false, true, "Ks Kd Kc Qs Qd 8h 7h")
+		], 500);
+		var handler = StudHandler(scope);
+
+		var result = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.WonByFold.Should().BeTrue();
+		result.AsT0.Payouts.Should().BeEquivalentTo(new Dictionary<string, int> { ["Alice"] = 500 });
+		await AssertStacksAsync(context, ("Alice", 1100), ("Bob", 400));
+
+		await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		await AssertStacksAsync(context, ("Alice", 1100), ("Bob", 400));
+	}
+
+	[Fact]
+	public async Task Handle_WhenThePotDoesNotMatchContributions_WritesNothing()
+	{
+		await using var provider = BuildProvider();
+		await using var scope = provider.CreateAsyncScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var game = await SeedContributionsAsync(context, "SEVENCARDSTUD", null,
+		[
+			new Seat("Alice", 600, 250, false, false, "Ah Ad As Ac Kh Qh Jh"),
+			new Seat("Bob", 600, 240, false, false, "Ks Kd Kc Qs Qd 8h 7h")
+		], 500);
+		var handler = StudHandler(scope);
+
+		var result = await handler.Handle(new StudShowdown.PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(StudShowdown.PerformShowdownErrorCode.InvalidGameState);
+		result.AsT1.Message.Should().Be("Pot total 500 does not equal contributed chips 490.");
+		var saved = await context.Games.Include(savedGame => savedGame.Pots).SingleAsync();
+		saved.CurrentPhase.Should().Be(nameof(Phases.Showdown));
+		saved.Pots.Should().ContainSingle().Which.Amount.Should().Be(500);
+		saved.Pots.Should().OnlyContain(pot => !pot.IsAwarded);
+		await AssertStacksAsync(context, ("Alice", 600), ("Bob", 600));
+	}
+
+	private static IRequestHandler<StudShowdown.PerformShowdownCommand,
+		OneOf.OneOf<StudShowdown.PerformShowdownSuccessful, StudShowdown.PerformShowdownError>> StudHandler(
+		AsyncServiceScope scope)
+	{
+		return scope.ServiceProvider
+			.GetRequiredService<IRequestHandler<StudShowdown.PerformShowdownCommand,
+				OneOf.OneOf<StudShowdown.PerformShowdownSuccessful, StudShowdown.PerformShowdownError>>>();
+	}
+
+	private sealed record Seat(
+		string Name,
+		int Stack,
+		int Contributed,
+		bool AllIn,
+		bool Folded,
+		string Cards,
+		int? SeatNumber = null);
+
+	private static async Task<Game> SeedContributionsAsync(
+		CardsDbContext context,
+		string gameTypeCode,
+		string? currentHandGameTypeCode,
+		IReadOnlyList<Seat> seats,
+		int potAmount)
+	{
+		var now = DateTimeOffset.UtcNow;
+		var gameType = new GameType
+		{
+			Id = Guid.NewGuid(),
+			Code = gameTypeCode,
+			Name = gameTypeCode,
+			BettingStructure = BettingStructure.Ante,
+			MinPlayers = 2,
+			MaxPlayers = 8,
+			InitialHoleCards = 2,
+			InitialBoardCards = 1,
+			MaxCommunityCards = 0,
+			MaxPlayerCards = 7,
+			HasDrawPhase = false,
+			MaxDiscards = 0,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+		var game = new Game
+		{
+			Id = Guid.NewGuid(),
+			GameTypeId = gameType.Id,
+			GameType = gameType,
+			CurrentPhase = nameof(Phases.Showdown),
+			CurrentHandNumber = 1,
+			CurrentHandGameTypeCode = currentHandGameTypeCode,
+			DealerPosition = 0,
+			Status = GameStatus.InProgress,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+		context.Add(gameType);
+		context.Add(game);
+		for (var index = 0; index < seats.Count; index++)
+		{
+			var spec = seats[index];
+			var player = CreatePlayer(spec.Name, now);
+			var gamePlayer = CreateGamePlayer(game, player, spec.SeatNumber ?? index, now);
+			gamePlayer.ChipStack = spec.Stack;
+			gamePlayer.TotalContributedThisHand = spec.Contributed;
+			gamePlayer.IsAllIn = spec.AllIn;
+			gamePlayer.HasFolded = spec.Folded;
+			context.Add(player);
+			context.Add(gamePlayer);
+			if (!spec.Folded)
+				AddStudHand(context, game, gamePlayer, spec.Cards, now);
+		}
+
+		context.Pots.Add(new PotEntity
+		{
+			Id = Guid.NewGuid(),
+			GameId = game.Id,
+			Game = game,
+			HandNumber = game.CurrentHandNumber,
+			PotType = PotType.Main,
+			PotOrder = 0,
+			Amount = potAmount,
+			CreatedAt = now
+		});
+		await context.SaveChangesAsync();
+		return game;
+	}
+
+	private static async Task AssertStacksAsync(CardsDbContext context, params (string Name, int Stack)[] expected)
+	{
+		var seats = await context.GamePlayers.Include(gamePlayer => gamePlayer.Player).ToListAsync();
+		foreach (var (name, stack) in expected)
+			seats.Single(seat => seat.Player.Name == name).ChipStack.Should().Be(stack);
+	}
+
 	private static ServiceProvider BuildProvider()
 	{
 		var services = new ServiceCollection();
@@ -227,13 +528,18 @@ public class PerformShowdownCommandHandlerTests
 		return symbol switch
 		{
 			"2" => CardSymbol.Deuce,
+			"3" => CardSymbol.Three,
+			"4" => CardSymbol.Four,
 			"5" => CardSymbol.Five,
 			"6" => CardSymbol.Six,
 			"7" => CardSymbol.Seven,
+			"8" => CardSymbol.Eight,
 			"9" => CardSymbol.Nine,
+			"T" => CardSymbol.Ten,
 			"J" => CardSymbol.Jack,
 			"Q" => CardSymbol.Queen,
 			"K" => CardSymbol.King,
+			"A" => CardSymbol.Ace,
 			_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
 		};
 	}
@@ -261,6 +567,7 @@ public class PerformShowdownCommandHandlerTests
 			SeatPosition = seat,
 			ChipStack = 200,
 			StartingChips = 200,
+			TotalContributedThisHand = 50,
 			Status = GamePlayerStatus.Active,
 			JoinedAt = now
 		};
