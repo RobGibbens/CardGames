@@ -1,4 +1,5 @@
 using Aspire.Hosting;
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.Playwright;
@@ -30,6 +31,8 @@ public sealed class PlaywrightAppFixture : IAsyncLifetime
 	private bool _started;
 
 	public string WebBaseUrl { get; private set; } = "";
+
+	public string ApiBaseUrl { get; private set; } = "";
 
 	public string ConnectionString { get; private set; } = "";
 
@@ -87,6 +90,8 @@ public sealed class PlaywrightAppFixture : IAsyncLifetime
 	{
 		var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.CardGames_AppHost>();
 		builder.Configuration["Parameters:internalIdentitySigningKey"] = SigningKey;
+		builder.CreateResourceBuilder<ProjectResource>("api")
+			.WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
 
 		DistributedApplication? app = null;
 		try
@@ -100,7 +105,8 @@ public sealed class PlaywrightAppFixture : IAsyncLifetime
 				await app.ResourceNotifications.WaitForResourceHealthyAsync(resource, startup.Token);
 			}
 
-			var endpoint = ResolveWebEndpoint(app);
+			var endpoint = ResolveEndpoint(app, "web");
+			var apiEndpoint = ResolveEndpoint(app, "api");
 			var connectionString = await app.GetConnectionStringAsync("cardsdb", startup.Token);
 			if (string.IsNullOrWhiteSpace(connectionString))
 				throw new InvalidOperationException("Aspire did not publish a cardsdb connection string.");
@@ -130,6 +136,7 @@ public sealed class PlaywrightAppFixture : IAsyncLifetime
 			Browser = browser;
 			ConnectionString = connectionString;
 			WebBaseUrl = endpoint.ToString().TrimEnd('/');
+			ApiBaseUrl = apiEndpoint.ToString().TrimEnd('/');
 			Directory.CreateDirectory(TraceDirectory);
 			Console.WriteLine($"Playwright E2E web: {WebBaseUrl}");
 			app = null;
@@ -141,15 +148,15 @@ public sealed class PlaywrightAppFixture : IAsyncLifetime
 		}
 	}
 
-	private static Uri ResolveWebEndpoint(DistributedApplication app)
+	private static Uri ResolveEndpoint(DistributedApplication app, string resourceName)
 	{
 		try
 		{
-			return app.GetEndpoint("web", "https");
+			return app.GetEndpoint(resourceName, "https");
 		}
 		catch (Exception)
 		{
-			return app.GetEndpoint("web", "http");
+			return app.GetEndpoint(resourceName, "http");
 		}
 	}
 }

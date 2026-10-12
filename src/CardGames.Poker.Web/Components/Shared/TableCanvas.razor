@@ -135,7 +135,13 @@
 									var label = GetCommunityCardLabel(cardIndex);
 									var statusClass = card.IsFaceUp ? "revealed" : "hidden";
 									var isWildCommunityCard = IsCommunityCardWildForDisplay(card);
-									<div class="community-card-slot @statusClass">
+									var communityTestId = card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank)
+										? "community-card"
+										: null;
+									<div class="community-card-slot @statusClass"
+									     data-testid="@communityTestId"
+									     data-rank="@card.Rank"
+									     data-suit="@card.Suit">
 										@if (card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank))
 										{
 											<playing-card rank="@GetPlayingCardRank(card.Rank)" suit="@card.Suit"
@@ -163,7 +169,7 @@
 						<span class="pot-icon">
 							<i class="fa-regular fa-coins"></i>
 						</span>
-						<span class="pot-amount">@Pot.ToString("N0")</span>
+						<span class="pot-amount" data-testid="pot-amount">@Pot.ToString("N0")</span>
 					</div>
 				</div>
 			</div>

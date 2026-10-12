@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Testing.v1.Commands.ScriptDeck;
 using CardGames.Poker.Api.Features.Testing.v1.Commands.SeedUsers;
 
 namespace CardGames.Poker.Api.Features.Testing.v1;
@@ -12,5 +13,6 @@ public static class V1
 			.WithTags(Feature.Name);
 
 		mapGroup.MapSeedDevelopmentUsers();
+		mapGroup.MapScriptDeck();
 	}
 }

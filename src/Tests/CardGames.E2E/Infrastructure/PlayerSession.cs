@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Microsoft.Playwright;
 
@@ -84,6 +85,147 @@ public sealed class PlayerSession : IAsyncDisposable
 		return Assertions.Expect(Page.Locator("[data-testid='seat-player-name']")
 				.Filter(new LocatorFilterOptions { HasText = displayName }))
 			.ToBeVisibleAsync(new LocatorAssertionsToBeVisibleOptions { Timeout = timeoutMs });
+	}
+
+	public async Task StartGameAsync()
+	{
+		var button = Page.Locator("[data-testid='start-game']");
+		await Assertions.Expect(button).ToBeEnabledAsync(new LocatorAssertionsToBeEnabledOptions
+		{
+			Timeout = 30_000
+		});
+		await button.ClickAsync();
+	}
+
+	public async Task<ILocator> WaitForActionPanelAsync()
+	{
+		var panel = Page.Locator("[data-testid='action-panel']");
+		try
+		{
+			await panel.WaitForAsync(new LocatorWaitForOptions
+			{
+				State = WaitForSelectorState.Visible,
+				Timeout = 60_000
+			});
+		}
+		catch (TimeoutException)
+		{
+			var activeSeat = await Page.Locator(".seat-active-turn").GetAttributeAsync("data-seat-index");
+			var phase = await Page.Locator(".phase-label, .table-phase, [data-testid='phase']").AllInnerTextsAsync();
+			var toasts = await Page.Locator(".toast, .toast-message").AllInnerTextsAsync();
+			var pot = await Page.Locator("[data-testid='pot-amount']").AllInnerTextsAsync();
+			var bets = await Page.Locator("[data-testid='seat-bet']").AllInnerTextsAsync();
+			var showdown = await Page.Locator("[aria-label='Showdown results']").CountAsync();
+			throw new TimeoutException(
+				$"Action panel not visible for {Player.Email}. " +
+				$"activeSeat={activeSeat ?? "(none)"} pot=[{string.Join("|", pot)}] " +
+				$"bets=[{string.Join("|", bets)}] showdown={showdown} " +
+				$"phase=[{string.Join("|", phase)}] toasts=[{string.Join("|", toasts)}]");
+		}
+
+		return panel;
+	}
+
+	public async Task FoldAsync()
+	{
+		var panel = await WaitForActionPanelAsync();
+		await ClickUntilDismissedAsync(panel.Locator("[data-testid='action-fold']"));
+	}
+
+	public async Task CheckAsync()
+	{
+		var panel = await WaitForActionPanelAsync();
+		await ClickUntilDismissedAsync(panel.Locator("[data-testid='action-check']"));
+	}
+
+	public async Task CallAsync(int? amount = null)
+	{
+		var panel = await WaitForActionPanelAsync();
+		var button = panel.Locator("[data-testid='action-call']");
+		if (amount is int expected)
+		{
+			await Assertions.Expect(button.Locator(".action-label")).ToHaveTextAsync(
+				$"Call {expected.ToString(CultureInfo.InvariantCulture)}",
+				new LocatorAssertionsToHaveTextOptions { Timeout = 15_000 });
+		}
+
+		await ClickUntilDismissedAsync(button);
+	}
+
+	public async Task BetAsync(int amount)
+	{
+		var panel = await WaitForActionPanelAsync();
+		await SetBetAmountAsync(panel, amount);
+		var button = panel.Locator("[data-testid='action-bet']");
+		await Assertions.Expect(button.Locator(".action-label")).ToHaveTextAsync(
+			$"Bet {amount.ToString(CultureInfo.InvariantCulture)}",
+			new LocatorAssertionsToHaveTextOptions { Timeout = 15_000 });
+		await ClickUntilDismissedAsync(button);
+	}
+
+	public async Task RaiseToAsync(int amount)
+	{
+		var panel = await WaitForActionPanelAsync();
+		await SetBetAmountAsync(panel, amount);
+		var button = panel.Locator("[data-testid='action-raise']");
+		await Assertions.Expect(button.Locator(".action-label")).ToHaveTextAsync(
+			$"Raise {amount.ToString(CultureInfo.InvariantCulture)}",
+			new LocatorAssertionsToHaveTextOptions { Timeout = 15_000 });
+		await ClickUntilDismissedAsync(button);
+	}
+
+	public async Task AllInAsync()
+	{
+		var panel = await WaitForActionPanelAsync();
+		await ClickUntilDismissedAsync(panel.Locator("[data-testid='action-all-in']"));
+	}
+
+	/// <summary>
+	///     The action panel is scaled and fades in, so a mouse click on that box often never
+	///     reaches the Blazor handler. Dispatch one click and wait until the action is accepted.
+	///     The button leaves when the turn moves. It stays when this player closes the street
+	///     and is first to act on the next one, so a new community card counts as acceptance too.
+	///     A second click is rejected once the first action has already moved the turn.
+	/// </summary>
+	private async Task ClickUntilDismissedAsync(ILocator button)
+	{
+		var testId = await button.GetAttributeAsync("data-testid") ?? "action";
+		var community = Page.Locator("[data-testid='community-card']");
+		var communityBefore = await community.CountAsync();
+		await button.EvaluateAsync("element => element.click()");
+
+		var deadline = DateTime.UtcNow.AddSeconds(20);
+		while (DateTime.UtcNow < deadline)
+		{
+			if (!await button.IsVisibleAsync())
+				return;
+
+			if (await community.CountAsync() > communityBefore)
+				return;
+
+			await Task.Delay(100);
+		}
+
+		var toasts = await Page.Locator(".toast-message").AllInnerTextsAsync();
+		throw new TimeoutException(
+			$"'{testId}' was still available for {Player.Email} after the click. " +
+			$"toasts=[{string.Join("|", toasts)}]");
+	}
+
+	public async Task CloseShowdownAsync()
+	{
+		var close = Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Close showdown" });
+		if (await close.CountAsync() == 0 || !await close.IsVisibleAsync())
+			return;
+
+		await close.ClickAsync();
+	}
+
+	private static async Task SetBetAmountAsync(ILocator panel, int amount)
+	{
+		var input = panel.Locator("[data-testid='bet-amount']");
+		await input.FillAsync(amount.ToString(CultureInfo.InvariantCulture));
+		await input.EvaluateAsync("el => el.dispatchEvent(new Event('change', { bubbles: true }))");
 	}
 
 	public async Task SaveTraceAsync(string testName, string traceDirectory)

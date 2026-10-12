@@ -145,7 +145,7 @@ public sealed class TollboothFlowHandler : BaseGameFlowHandler
 
 		if (deckCards.Count == 0)
 		{
-			var deck = CreateShuffledDeck();
+			var deck = CreateShuffledDeck(game.Id);
 			var generatedDeckCards = new List<GameCard>();
 			var deckOrder = 0;
 

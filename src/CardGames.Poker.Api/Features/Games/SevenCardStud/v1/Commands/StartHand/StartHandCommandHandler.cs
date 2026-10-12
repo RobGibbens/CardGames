@@ -1,5 +1,5 @@
-using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
@@ -115,15 +115,11 @@ public class StartHandCommandHandler(
 		}
 
 		// 7. Create and persist shuffled deck for this hand
-		var dealer = FrenchDeckDealer.WithFullDeck();
-		dealer.Shuffle();
+		var shuffledCards = InitialDeck.CreateCards(game.Id);
 
 		var newHandNumber = game.CurrentHandNumber + 1;
 		var deckCards = new List<GameCard>();
 		var dealOrder = 1;
-
-		// Deal all 52 cards from the shuffled deck to persist their order
-		var shuffledCards = dealer.DealCards(52);
 		foreach (var card in shuffledCards)
 		{
 			var gameCard = new GameCard

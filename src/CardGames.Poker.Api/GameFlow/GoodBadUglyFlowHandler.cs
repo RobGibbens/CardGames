@@ -174,7 +174,7 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 		// Create and persist shuffled deck if none exists
 		if (deckCards.Count == 0)
 		{
-			var deck = CreateShuffledDeck();
+			var deck = CreateShuffledDeck(game.Id);
 			var generatedDeckCards = new List<GameCard>();
 			var deckOrder = 0;
 

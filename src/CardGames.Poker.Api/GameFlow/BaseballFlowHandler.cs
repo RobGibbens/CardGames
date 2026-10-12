@@ -120,7 +120,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		// If no persisted deck exists for this hand, create and persist one.
 		if (deckCards.Count == 0)
 		{
-			var deck = CreateShuffledDeck();
+			var deck = CreateShuffledDeck(game.Id);
 			var generatedDeckCards = new List<GameCard>();
 			var deckOrder = 0;
 

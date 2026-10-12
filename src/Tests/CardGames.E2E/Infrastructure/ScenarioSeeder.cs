@@ -117,13 +117,51 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 		return game.Id;
 	}
 
+	/// <summary>
+	///     Seats every player at a blind-based Hold'em table. Seat 0 is the host and the starting dealer.
+	/// </summary>
+	public async Task<Guid> CreateSeatedHoldEmGameAsync(
+		string name,
+		IReadOnlyList<SeededPlayer> players,
+		int smallBlind,
+		int bigBlind,
+		IReadOnlyList<int>? stacks = null)
+	{
+		if (players.Count < 2)
+			throw new ArgumentException("Hold'em needs at least two players.", nameof(players));
+
+		stacks ??= Enumerable.Repeat(SeatedStack, players.Count).ToArray();
+		if (stacks.Count != players.Count)
+			throw new ArgumentException("Provide one stack per seated player.", nameof(stacks));
+
+		var game = await CreateHoldEmGameAsync(name, smallBlind, bigBlind, players[0]);
+		var now = DateTimeOffset.UtcNow;
+		for (var seat = 0; seat < players.Count; seat++)
+			_context.GamePlayers.Add(CreateSeat(game.Id, players[seat].PlayerId, seat, now, stacks[seat]));
+
+		await _context.SaveChangesAsync();
+		return game.Id;
+	}
+
+	public async Task<int> GetCashierBalanceAsync(Guid playerId)
+	{
+		var account = await _context.PlayerChipAccounts
+			.AsNoTracking()
+			.SingleAsync(account => account.PlayerId == playerId);
+		return account.Balance;
+	}
+
 	public async ValueTask DisposeAsync()
 	{
 		_scope.Dispose();
 		await _services.DisposeAsync();
 	}
 
-	private async Task<Game> CreateHoldEmGameAsync(string name)
+	private async Task<Game> CreateHoldEmGameAsync(
+		string name,
+		int? smallBlind = null,
+		int? bigBlind = null,
+		SeededPlayer? host = null)
 	{
 		await EnsureGameTypesAsync();
 		var gameType = await _context.GameTypes.SingleAsync(type => type.Code == "HOLDEM");
@@ -136,8 +174,12 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 			CurrentPhase = nameof(Phases.WaitingToStart),
 			CurrentHandNumber = 0,
 			DealerPosition = 0,
-			Ante = 10,
-			MinBet = 10,
+			Ante = smallBlind is null ? 10 : 0,
+			MinBet = bigBlind ?? 10,
+			SmallBlind = smallBlind,
+			BigBlind = bigBlind,
+			CreatedById = host?.UserId,
+			CreatedByName = host?.Email,
 			Status = GameStatus.WaitingForPlayers,
 			RequiresJoinApproval = false,
 			CurrentPlayerIndex = -1,
@@ -150,16 +192,18 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 		return game;
 	}
 
-	private static GamePlayer CreateSeat(Guid gameId, Guid playerId, int seatIndex, DateTimeOffset joinedAt)
+	private static GamePlayer CreateSeat(
+		Guid gameId, Guid playerId, int seatIndex, DateTimeOffset joinedAt, int? chipStack = null)
 	{
+		var stack = chipStack ?? SeatedStack;
 		return new GamePlayer
 		{
 			Id = Guid.CreateVersion7(),
 			GameId = gameId,
 			PlayerId = playerId,
 			SeatPosition = seatIndex,
-			ChipStack = SeatedStack,
-			StartingChips = SeatedStack,
+			ChipStack = stack,
+			StartingChips = stack,
 			Status = GamePlayerStatus.Active,
 			IsConnected = true,
 			JoinedAt = joinedAt

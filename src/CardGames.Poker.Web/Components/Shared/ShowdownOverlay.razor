@@ -77,8 +77,8 @@
 											<i class="fa-solid fa-crown"></i>
 										</span>
 									}
-									<h3 class="winner-first">@winnerName</h3>
-									<span class="winner-rest">@winnerVerb</span>
+									<h3 class="winner-first" data-testid="showdown-winner">@winnerName</h3>
+									<span class="winner-rest" data-testid="showdown-verb">@winnerVerb</span>
 								</div>
 
 								@if (!string.IsNullOrWhiteSpace(winnerDescription))
@@ -95,7 +95,7 @@
 										}
 										@if (winnerAmount > 0)
 										{
-											<span class="sd-pill sd-pill-gold">+@winnerAmount chips</span>
+											<span class="sd-pill sd-pill-gold" data-testid="showdown-amount">+@winnerAmount chips</span>
 										}
 									</div>
 								}

@@ -37,7 +37,7 @@
 						{
 							if (card.IsPubliclyVisible)
 							{
-								<div class="card-shell face-up @showcaseCardClass" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
+								<div class="card-shell face-up @showcaseCardClass" data-testid="hole-card" data-rank="@card.Rank" data-suit="@card.Suit" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
 									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up"
 									              suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
 									              courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity">
@@ -52,7 +52,7 @@
 							}
 							else
 							{
-								<div class="card-shell face-down @showcaseCardClass" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
+								<div class="card-shell face-down @showcaseCardClass" data-testid="hole-card" data-rank="@card.Rank" data-suit="@card.Suit" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
 									<playing-card rank="@rank" suit="@card.Suit" class="poker-card"
 									              suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
 									              courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity">
@@ -168,23 +168,23 @@
 						}
 						else
 						{
-							<span class="chip-count">@Seat.Chips.ToString("N0")</span>
+							<span class="chip-count" data-testid="seat-chips">@Seat.Chips.ToString("N0")</span>
 						}
 					</div>
 				</div>
 
 				@if (IsDealer)
 				{
-					<div class="seat-dealer-button" title="Dealer">D</div>
+					<div class="seat-dealer-button" data-testid="dealer-button" title="Dealer">D</div>
 				}
 				@if (IsSmallBlind)
 				{
-					<div class="seat-blind-button seat-sb-button" title="Small Blind">SB</div>
+					<div class="seat-blind-button seat-sb-button" data-testid="small-blind" title="Small Blind">SB</div>
 				}
 
 				@if (IsBigBlind)
 				{
-					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
+					<div class="seat-blind-button seat-bb-button" data-testid="big-blind" title="Big Blind">BB</div>
 				}
 
 				@if (Seat.CurrentBet > 0 || ShouldShowHandEvaluationTooltip())
@@ -192,7 +192,7 @@
 					<div class="seat-meta-row">
 						@if (Seat.CurrentBet > 0)
 						{
-							<div class="seat-bet-bubble">
+							<div class="seat-bet-bubble" data-testid="seat-bet">
 								<i class="fa-solid fa-coins"></i> @Seat.CurrentBet.ToString("N0")
 							</div>
 						}

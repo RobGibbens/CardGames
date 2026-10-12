@@ -1,5 +1,5 @@
-using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
@@ -314,10 +314,8 @@ public class StartHandCommandHandler(
 		// 12. Automatically deal hands - move to Dealing phase then DropOrStay
 		game.CurrentPhase = collectAntes ? nameof(Phases.CollectingAntes) : nameof(Phases.Dealing);
 
-		// Create a standard deck of 52 cards with shuffled order using FrenchDeckDealer
-		var frenchDealer = FrenchDeckDealer.WithFullDeck();
-		frenchDealer.Shuffle();
-		var shuffledCards = frenchDealer.DealCards(52);
+		// Create a standard deck of 52 cards. A script for this game replaces the shuffle once.
+		var shuffledCards = InitialDeck.CreateCards(game.Id);
 
 		var deck = new List<GameCard>();
 		var deckOrder = 0;

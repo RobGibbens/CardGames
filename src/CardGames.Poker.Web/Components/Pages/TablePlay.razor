@@ -218,7 +218,7 @@
 							<i class="fa-regular fa-pen-to-square"></i>
 							Edit Table
 						</a>
-						<button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!_canStartGame || IsDealersChoiceWaitingForSelectedGameStart)">
+						<button class="btn btn-primary btn-sm" data-testid="start-game" @onclick="StartGameAsync" disabled="@(!_canStartGame || IsDealersChoiceWaitingForSelectedGameStart)">
 							<i class="fa-regular fa-play"></i>
 							@(IsDealersChoiceWaitingForSelectedGameStart
 								? "Starting..."
@@ -809,6 +809,7 @@
 	private bool _dealAnimationPausedForBuyCardOffer;
 	private int _dealPausedBuyCardOfferSeatIndex = -1;
 	private Timer? _dealTimer;
+	private int _dealStepGate;
 	private TableStatePublicDto? _dealTargetState;
 	private PrivateStateDto? _dealPendingPrivateState;
 	private PrivateStateDto? _privateStateWaitingForHand;
@@ -4248,7 +4249,7 @@
 			{
 				_dealAnimationPausedForBuyCardOffer = false;
 				_dealPausedBuyCardOfferSeatIndex = -1;
-				_dealTimer?.Change(100, DealAnimationDelayMs);
+				_dealTimer?.Change(100, Timeout.Infinite);
 			}
 		}
 
@@ -4382,14 +4383,63 @@
 				.ToList();
 		}
 
-		// Start timer with game-specific delay between cards
-		_dealTimer = new Timer(DealNextCard, null, 100, DealAnimationDelayMs);
+		// One-shot timer. DealNextCard awaits the fly animation, so a periodic
+		// timer would start the next card before this step finished and could
+		// leave a flying card on screen after the animation was abandoned.
+		_dealTimer = new Timer(DealNextCard, null, 100, Timeout.Infinite);
 	}
 
 	private async void DealNextCard(object? state)
 	{
 		var generation = _dealAnimationGeneration;
 		if (!IsCurrentDealAnimation(generation)) return;
+
+		if (Interlocked.CompareExchange(ref _dealStepGate, 1, 0) != 0)
+		{
+			// The in-flight step owns the next schedule. If this tick belongs to a
+			// newer animation, retry once that step releases the gate.
+			if (IsCurrentDealAnimation(generation))
+				_dealTimer?.Change(50, Timeout.Infinite);
+			return;
+		}
+
+		var scheduleNext = false;
+		try
+		{
+			scheduleNext = await DealOneCardAsync(generation);
+		}
+		catch (Exception exception)
+		{
+			Logger.LogWarning(exception, "Card deal animation step failed for game {GameId}", GameId);
+			if (IsCurrentDealAnimation(generation))
+			{
+				_flyingCard = null;
+				await InvokeAsync(() =>
+				{
+					if (!IsCurrentDealAnimation(generation))
+						return;
+
+					CompleteCardDealAnimation();
+					StateHasChanged();
+				});
+			}
+		}
+		finally
+		{
+			Interlocked.Exchange(ref _dealStepGate, 0);
+		}
+
+		if (scheduleNext && IsCurrentDealAnimation(generation) && !_dealAnimationPausedForBuyCardOffer)
+		{
+			var nextDueMs = Math.Max(50, DealAnimationDelayMs - 550);
+			_dealTimer?.Change(nextDueMs, Timeout.Infinite);
+		}
+	}
+
+	private async Task<bool> DealOneCardAsync(int generation)
+	{
+		if (DealAnimationSuperseded(generation))
+			return false;
 
 		// Clear any previous flying card
 		_flyingCard = null;
@@ -4414,7 +4464,7 @@
 				CompleteCardDealAnimation();
 				StateHasChanged();
 			});
-			return;
+			return false;
 		}
 
 		// Deal card to current seat
@@ -4451,13 +4501,13 @@
 			);
 
 			await InvokeStateHasChangedAsync();
-			if (!IsCurrentDealAnimation(generation))
-				return;
+			if (DealAnimationSuperseded(generation))
+				return false;
 
 			// Wait for the flying animation to complete (600ms matches CSS animation duration)
 			await Task.Delay(550);
-			if (!IsCurrentDealAnimation(generation))
-				return;
+			if (DealAnimationSuperseded(generation))
+				return false;
 
 			// Clear the flying card and add card to the seat
 			_flyingCard = null;
@@ -4488,24 +4538,24 @@
 				newHand.Add(newCard);
 			}
 
-			if (!IsCurrentDealAnimation(generation))
-				return;
+			if (DealAnimationSuperseded(generation))
+				return false;
 
 			_seats[seatListIndex] = seat with { Cards = newHand };
 
 			if (seatIndex == _currentPlayerSeatIndex)
 			{
 				await PlayDealCardSoundAsync(1);
-				if (!IsCurrentDealAnimation(generation))
-					return;
+				if (DealAnimationSuperseded(generation))
+					return false;
 			}
 
 			Logger.LogDebug("Deal Animation: CardIdx {CardIdx}, Seat {SeatIndex}, FaceUp={FaceUp}",
 				_dealCurrentCardIndex, seatIndex, isFaceUp);
 		}
 
-		if (!IsCurrentDealAnimation(generation))
-			return;
+		if (DealAnimationSuperseded(generation))
+			return false;
 
 		_dealCurrentSeatIdx++;
 
@@ -4514,9 +4564,21 @@
 			_dealAnimationPausedForBuyCardOffer = true;
 			_dealPausedBuyCardOfferSeatIndex = seatIndex;
 			_dealTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+			await InvokeStateHasChangedAsync();
+			return false;
 		}
 
 		await InvokeStateHasChangedAsync();
+		return IsCurrentDealAnimation(generation);
+	}
+
+	private bool DealAnimationSuperseded(int generation)
+	{
+		if (IsCurrentDealAnimation(generation))
+			return false;
+
+		_flyingCard = null;
+		return true;
 	}
 
 	private bool IsCurrentDealAnimation(int generation) =>

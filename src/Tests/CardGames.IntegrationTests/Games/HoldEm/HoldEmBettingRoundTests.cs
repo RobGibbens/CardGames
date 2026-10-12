@@ -67,6 +67,50 @@ public class HoldEmBettingRoundTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task ShortAllIn_ButtonFold_LeavesSmallBlindToAct()
+	{
+		var game = await CreateDealtHoldEmGameAsync(
+			6,
+			dealerPosition: 0,
+			stacks: [1_000, 1_000, 200, 80, 1_000, 1_000]);
+
+		var opening = await FreshRound(game.Id);
+		opening.CurrentActorIndex.Should().Be(3);
+		opening.CurrentBet.Should().Be(10);
+
+		var underTheGun = await Act(game.Id, BettingActionType.AllIn);
+		underTheGun.RoundComplete.Should().BeFalse();
+		underTheGun.NextPlayerIndex.Should().Be(4);
+		underTheGun.PotTotal.Should().Be(95);
+
+		var middle = await Act(game.Id, BettingActionType.Call);
+		middle.RoundComplete.Should().BeFalse();
+		middle.NextPlayerIndex.Should().Be(5);
+		middle.PotTotal.Should().Be(175);
+
+		var cutoff = await Act(game.Id, BettingActionType.Fold);
+		cutoff.RoundComplete.Should().BeFalse();
+		cutoff.NextPlayerIndex.Should().Be(0);
+
+		var button = await Act(game.Id, BettingActionType.Fold);
+		button.RoundComplete.Should().BeFalse();
+		button.NextPlayerIndex.Should().Be(1);
+		button.CurrentPhase.Should().Be("PreFlop");
+
+		var afterButton = await FreshGame(game.Id);
+		afterButton.CurrentPhase.Should().Be("PreFlop");
+		afterButton.CurrentPlayerIndex.Should().Be(1);
+
+		var smallBlind = await Act(game.Id, BettingActionType.Fold);
+		smallBlind.RoundComplete.Should().BeFalse();
+		smallBlind.NextPlayerIndex.Should().Be(2);
+		smallBlind.CurrentPhase.Should().Be("PreFlop");
+
+		var afterSmallBlind = await FreshGame(game.Id);
+		afterSmallBlind.CurrentPlayerIndex.Should().Be(2);
+	}
+
+	[Fact]
 	public async Task FlopCheckAround_CompletesOnlyAfterEveryPlayerChecks()
 	{
 		var game = await CreateDealtHoldEmGameAsync(4, dealerPosition: 0);
@@ -115,7 +159,10 @@ public class HoldEmBettingRoundTests : IntegrationTestBase
 			.FirstAsync(round => round.GameId == gameId && !round.IsComplete);
 	}
 
-	private async Task<Game> CreateDealtHoldEmGameAsync(int playerCount, int dealerPosition)
+	private async Task<Game> CreateDealtHoldEmGameAsync(
+		int playerCount,
+		int dealerPosition,
+		int[]? stacks = null)
 	{
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
 			DbContext, "HOLDEM", playerCount, startingChips: 1000);
@@ -125,6 +172,15 @@ public class HoldEmBettingRoundTests : IntegrationTestBase
 		game.DealerPosition = dealerPosition;
 		game.CurrentHandNumber = 1;
 		game.Status = GameStatus.InProgress;
+		if (stacks is not null)
+		{
+			foreach (var player in setup.GamePlayers)
+			{
+				player.ChipStack = stacks[player.SeatPosition];
+				player.StartingChips = stacks[player.SeatPosition];
+			}
+		}
+
 		await DbContext.SaveChangesAsync();
 		await DatabaseSeeder.CreatePotAsync(DbContext, game, 0);
 

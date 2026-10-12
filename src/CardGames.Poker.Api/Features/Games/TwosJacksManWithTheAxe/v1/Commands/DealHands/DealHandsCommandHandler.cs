@@ -1,6 +1,6 @@
 using CardGames.Core.French.Cards;
-using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
@@ -68,14 +68,15 @@ public class DealHandsCommandHandler(CardsDbContext context, GameEventsTelemetry
 			};
 
 		// 5. Create shuffled deck and deal cards
-		var dealer = FrenchDeckDealer.WithFullDeck();
-		dealer.Shuffle();
+		var shuffledCards = InitialDeck.CreateCards(game.Id);
+		var deckIndex = 0;
 
 		var playerHands = new List<PlayerDealtCards>();
 
 		foreach (var gamePlayer in activePlayers)
 		{
-			var cards = dealer.DealCards(CardsPerPlayer);
+			var cards = shuffledCards.Skip(deckIndex).Take(CardsPerPlayer).ToList();
+			deckIndex += CardsPerPlayer;
 			var dealtCards = new List<DealtCard>();
 
 			// Sort cards by value (descending) then by suit for consistent display order

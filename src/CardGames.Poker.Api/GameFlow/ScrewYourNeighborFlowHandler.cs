@@ -193,9 +193,10 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 
 		if (deckCards.Count < requiredCardsForHand)
 		{
+			var isInitialDeck = deckCards.Count == 0;
 			if (deckCards.Count > 0) context.GameCards.RemoveRange(deckCards);
 
-			deckCards = await CreateFreshDeckAsync(context, game, now, cancellationToken);
+			deckCards = await CreateFreshDeckAsync(context, game, now, cancellationToken, isInitialDeck);
 		}
 
 		var dealerPosition = game.DealerPosition;
@@ -232,9 +233,10 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		CardsDbContext context,
 		Game game,
 		DateTimeOffset now,
-		CancellationToken cancellationToken)
+		CancellationToken cancellationToken,
+		bool scripted)
 	{
-		var shuffledDeck = CreateShuffledDeck();
+		var shuffledDeck = scripted ? CreateShuffledDeck(game.Id) : CreateRandomDeck();
 		var deckCards = new List<GameCard>(shuffledDeck.Count);
 
 		for (var deckOrder = 0; deckOrder < shuffledDeck.Count; deckOrder++)

@@ -143,6 +143,7 @@ public class Program
 
 		// Add game flow handler factory for generic command handler architecture
 		builder.Services.AddSingleton<IGameFlowHandlerFactory, GameFlowHandlerFactory>();
+		builder.Services.AddSingleton<IScriptedDeckStore>(ScriptedDeckStore.Instance);
 
 		// Add background service for continuous play (auto-start next hands)
 		builder.Services.AddHostedService<ContinuousPlayBackgroundService>();

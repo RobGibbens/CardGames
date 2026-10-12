@@ -1,4 +1,3 @@
-using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
@@ -348,8 +347,8 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 		var config = GetDealingConfiguration();
 		var cardsPerPlayer = config.InitialCardsPerPlayer > 0 ? config.InitialCardsPerPlayer : 5;
 
-		// Create a shuffled deck
-		var deck = CreateShuffledDeck();
+		// Create a shuffled deck, or the script registered for this game.
+		var deck = CreateShuffledDeck(game.Id);
 
 		// Persist all 52 cards with their shuffled order
 		var deckCards = new List<GameCard>();
@@ -457,17 +456,21 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 	}
 
 	/// <summary>
-	///     Creates a shuffled 52-card deck using <see cref="FrenchDeckDealer" />.
+	///     Creates the 52-card order for an initial deal.
+	///     A script registered for <paramref name="gameId" /> is used once; otherwise the deck is shuffled.
 	/// </summary>
-	/// <returns>A list of (suit, symbol) tuples representing the shuffled deck.</returns>
-	protected static List<(CardSuit Suit, CardSymbol Symbol)> CreateShuffledDeck()
+	protected static List<(CardSuit Suit, CardSymbol Symbol)> CreateShuffledDeck(Guid gameId)
 	{
-		var dealer = FrenchDeckDealer.WithFullDeck();
-		dealer.Shuffle();
+		return InitialDeck.Create(gameId);
+	}
 
-		return dealer.DealCards(52)
-			.Select(card => ((CardSuit)(int)card.Suit, (CardSymbol)(int)card.Symbol))
-			.ToList();
+	/// <summary>
+	///     Creates a shuffled 52-card deck without consuming a script.
+	///     Used when a hand replaces a spent deck, so a script waiting for the next hand stays put.
+	/// </summary>
+	protected static List<(CardSuit Suit, CardSymbol Symbol)> CreateRandomDeck()
+	{
+		return InitialDeck.CreateRandom();
 	}
 
 	/// <summary>

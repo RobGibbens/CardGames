@@ -1,5 +1,5 @@
-using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
@@ -87,14 +87,13 @@ public class StartHandCommandHandler(
 			context.GameCards.RemoveRange(existingCards);
 		}
 
-		var dealer = FrenchDeckDealer.WithFullDeck();
-		dealer.Shuffle();
+		var shuffledCards = InitialDeck.CreateCards(game.Id);
 
 		var newHandNumber = game.CurrentHandNumber + 1;
 		var deckCards = new List<GameCard>();
 		var dealOrder = 1;
 
-		foreach (var card in dealer.DealCards(52))
+		foreach (var card in shuffledCards)
 			deckCards.Add(new GameCard
 			{
 				GameId = game.Id,

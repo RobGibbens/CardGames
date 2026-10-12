@@ -10,8 +10,11 @@ public sealed class E2EFactAttribute : FactAttribute
 {
 	public const string EnvironmentVariableName = "CARDGAMES_E2E";
 
-	public E2EFactAttribute()
+	public E2EFactAttribute(int timeout = 0)
 	{
+		if (timeout > 0)
+			Timeout = timeout;
+
 		if (!IsEnabled)
 		{
 			Skip =

@@ -608,8 +608,8 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		if (cardsToRemove.Count > 0)
 			context.GameCards.RemoveRange(cardsToRemove);
 
-		// Create fresh shuffled deck
-		var shuffledDeck = CreateShuffledDeck();
+		// Replace a spent deck without consuming a script meant for the next hand.
+		var shuffledDeck = CreateRandomDeck();
 		var activeCardSymbols = activeCards
 			.Select(c => (c.Suit, c.Symbol))
 			.ToHashSet();
@@ -645,7 +645,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
-		var shuffledDeck = CreateShuffledDeck();
+		var shuffledDeck = CreateShuffledDeck(game.Id);
 		var deckCards = new List<GameCard>(shuffledDeck.Count);
 
 		for (var deckOrder = 0; deckOrder < shuffledDeck.Count; deckOrder++)

@@ -13,14 +13,14 @@ namespace CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
 public sealed class LeagueGameCompletionSyncBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
 	where TRequest : IRequest<TResponse>
 {
-	private readonly LeagueGameCompletionSyncService _leagueCompletionSync;
 	private readonly ILogger<LeagueGameCompletionSyncBehavior<TRequest, TResponse>> _logger;
+	private readonly IServiceScopeFactory _scopeFactory;
 
 	public LeagueGameCompletionSyncBehavior(
-		LeagueGameCompletionSyncService leagueCompletionSync,
+		IServiceScopeFactory scopeFactory,
 		ILogger<LeagueGameCompletionSyncBehavior<TRequest, TResponse>> logger)
 	{
-		_leagueCompletionSync = leagueCompletionSync;
+		_scopeFactory = scopeFactory;
 		_logger = logger;
 	}
 
@@ -35,23 +35,29 @@ public sealed class LeagueGameCompletionSyncBehavior<TRequest, TResponse> : IPip
 		// Only process for game state-changing commands
 		if (request is not IGameStateChangingCommand gameCommand) return response;
 
-		// Don't block the response on league sync - fire and forget with error logging
+		var gameId = gameCommand.GameId;
+
+		// The request scope owns the DbContext that just saved this command and is about to
+		// broadcast that save. League sync has to use its own scope so the two do not query
+		// that context at the same time.
 		_ = Task.Run(
 			async () =>
 			{
 				try
 				{
-					await _leagueCompletionSync.SyncLeagueEventCompletionAsync(
-						gameCommand.GameId, cancellationToken);
+					await using var scope = _scopeFactory.CreateAsyncScope();
+					var leagueCompletionSync =
+						scope.ServiceProvider.GetRequiredService<LeagueGameCompletionSyncService>();
+					await leagueCompletionSync.SyncLeagueEventCompletionAsync(gameId, CancellationToken.None);
 				}
 				catch (Exception ex)
 				{
 					_logger.LogError(ex,
 						"Error in league completion sync for game {GameId} after {CommandType}",
-						gameCommand.GameId, typeof(TRequest).Name);
+						gameId, typeof(TRequest).Name);
 				}
 			},
-			cancellationToken);
+			CancellationToken.None);
 
 		return response;
 	}
