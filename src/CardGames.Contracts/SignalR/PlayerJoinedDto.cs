@@ -12,6 +12,11 @@ public sealed record PlayerJoinedDto
 	public required Guid GameId { get; init; }
 
 	/// <summary>
+	///     The seated player's id. Used so a viewer can ignore their own join toast.
+	/// </summary>
+	public required Guid PlayerId { get; init; }
+
+	/// <summary>
 	///     The name of the player who joined.
 	/// </summary>
 	public required string PlayerName { get; init; }

@@ -61,8 +61,10 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
 				"Broadcasting game state for game {GameId} after {CommandType}",
 				gameCommand.GameId, typeof(TRequest).Name);
 
+			var publicState = await _broadcaster.BroadcastGameStateAsync(gameCommand.GameId, CancellationToken.None);
+
 			var actionResult = ExtractPlayerActionResult(response);
-			if (actionResult is not null)
+			if (actionResult is not null && publicState is not null)
 			{
 				_logger.LogDebug(
 					"Broadcasting player action for game {GameId}, seat {SeatIndex}: {Action}",
@@ -73,10 +75,10 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
 					actionResult.PlayerSeatIndex,
 					actionResult.PlayerName,
 					actionResult.ActionDescription,
-					cancellationToken);
+					publicState.CurrentHandNumber,
+					publicState.StateVersion,
+					CancellationToken.None);
 			}
-
-			await _broadcaster.BroadcastGameStateAsync(gameCommand.GameId, cancellationToken);
 
 			_logger.LogInformation(
 				"Successfully broadcast game state for game {GameId} after {CommandType}",

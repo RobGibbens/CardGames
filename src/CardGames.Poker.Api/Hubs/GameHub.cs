@@ -24,18 +24,20 @@ public sealed class GameHub : Hub
 	private readonly GameEventsTelemetry _telemetry;
 	private readonly ITableStateBuilder _tableStateBuilder;
 	private readonly IGamePlayerResolver _gamePlayerResolver;
+	private readonly IGameConnectionRegistry _connectionRegistry;
 	private readonly CardsDbContext _context;
 
 	/// <summary>
 	///     Initializes a new instance of the <see cref="GameHub" /> class.
 	/// </summary>
 	public GameHub(ITableStateBuilder tableStateBuilder, CardsDbContext context, GameEventsTelemetry telemetry,
-		IGamePlayerResolver gamePlayerResolver, ILogger<GameHub> logger)
+		IGamePlayerResolver gamePlayerResolver, IGameConnectionRegistry connectionRegistry, ILogger<GameHub> logger)
 	{
 		_tableStateBuilder = tableStateBuilder;
 		_context = context;
 		_telemetry = telemetry;
 		_gamePlayerResolver = gamePlayerResolver;
+		_connectionRegistry = connectionRegistry;
 		_logger = logger;
 	}
 
@@ -61,9 +63,13 @@ public sealed class GameHub : Hub
 			throw new HubException("Not seated at this table");
 		}
 
-		var privateStateUserId = seated.Player.Email ?? seated.Player.Name ?? seated.Player.ExternalId;
-		if (string.IsNullOrWhiteSpace(privateStateUserId))
-			throw new HubException("Not seated at this table");
+		var routingKey = Context.UserIdentifier ?? SignalRUserId.ForConnection(Context.User);
+		if (!string.IsNullOrWhiteSpace(routingKey) &&
+		    !string.Equals(routingKey, seated.Player.SignalRUserId, StringComparison.Ordinal))
+		{
+			seated.Player.SignalRUserId = routingKey;
+			await _context.SaveChangesAsync(Context.ConnectionAborted);
+		}
 
 		var groupName = GetGroupName(gameId);
 		var game = await _context.Games
@@ -73,6 +79,7 @@ public sealed class GameHub : Hub
 
 		// Add the caller to the game group
 		await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+		_connectionRegistry.Add(gameId, seated.Player.Id, Context.ConnectionId);
 		if (game is not null)
 		{
 			_telemetry.RecordPlayerEvent(GameEventsTelemetry.ResolveGameType(game),
@@ -83,8 +90,8 @@ public sealed class GameHub : Hub
 			"User {UserId} (connection {ConnectionId}) joined game group {GroupName}",
 			userId, Context.ConnectionId, groupName);
 
-		// Send initial state snapshot to the caller. Private cards use the seated player's identity.
-		await SendStateSnapshotToCallerAsync(gameId, privateStateUserId);
+		// Send initial state snapshot to the caller. Private cards are this seated player's row.
+		await SendStateSnapshotToCallerAsync(gameId, seated.PlayerId);
 	}
 
 	/// <summary>
@@ -98,6 +105,7 @@ public sealed class GameHub : Hub
 		var groupName = GetGroupName(gameId);
 
 		await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+		_connectionRegistry.Remove(Context.ConnectionId);
 
 		_logger.LogInformation(
 			"User {UserId} (connection {ConnectionId}) left game group {GroupName}",
@@ -120,6 +128,7 @@ public sealed class GameHub : Hub
 	{
 		var userId = Context.UserIdentifier ?? GetUserIdentifier();
 		using var scope = CreateScope(userId);
+		_connectionRegistry.Remove(Context.ConnectionId);
 
 		if (exception is not null)
 			_logger.LogWarning(exception,
@@ -137,43 +146,35 @@ public sealed class GameHub : Hub
 	/// <summary>
 	///     Sends the current state snapshot to the calling client.
 	/// </summary>
-	private async Task SendStateSnapshotToCallerAsync(Guid gameId, string userId)
+	private async Task SendStateSnapshotToCallerAsync(Guid gameId, Guid playerId)
 	{
 		try
 		{
 			_logger.LogDebug(
-				"Sending state snapshot for game {GameId} to caller user {UserId} (connection {ConnectionId})",
-				gameId, userId, Context.ConnectionId);
+				"Sending state snapshot for game {GameId} to caller player {PlayerId} (connection {ConnectionId})",
+				gameId, playerId, Context.ConnectionId);
 
 			// Build and send public state
 			var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId);
 			if (publicState is not null) await Clients.Caller.SendAsync("TableStateUpdated", publicState);
 
-			// Build and send private state for this user.
-			// Prefer SignalR's stable user id, but fall back to email/name matching for legacy connections.
-			var privateStateUserId = Context.UserIdentifier ?? userId;
-			var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, privateStateUserId);
+			var privateState = await _tableStateBuilder.BuildPrivateStateForPlayerAsync(gameId, playerId);
 			if (privateState is not null) await Clients.Caller.SendAsync("PrivateStateUpdated", privateState);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error sending state snapshot for game {GameId} to user {UserId}",
-				gameId, userId);
+			_logger.LogError(ex, "Error sending state snapshot for game {GameId} to player {PlayerId}",
+				gameId, playerId);
 			throw new HubException("Failed to retrieve game state");
 		}
 	}
 
 	/// <summary>
 	///     Gets the stable user identifier from the connection context.
-	///     Uses email claim to match existing identity usage in the application.
 	/// </summary>
 	private string? GetUserIdentifier()
 	{
-		// Match the claim order used by CurrentUserService.UserName
-		return Context.User?.FindFirst(ClaimTypes.Email)?.Value
-		       ?? Context.User?.FindFirst("email")?.Value
-		       ?? Context.User?.FindFirst("preferred_username")?.Value
-		       ?? Context.User?.Identity?.Name;
+		return SignalRUserId.ForConnection(Context.User);
 	}
 
 	private IDisposable? CreateScope(string? userId, Guid? gameId = null)

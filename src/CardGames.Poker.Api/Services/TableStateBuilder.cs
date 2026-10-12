@@ -8,6 +8,7 @@ using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Features.Games.Baseball;
 using CardGames.Poker.Api.Features.Games.Common;
@@ -239,7 +240,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				DurationSeconds = actionTimerState.DurationSeconds,
 				StartedAtUtc = actionTimerState.StartedAtUtc,
 				PlayerSeatIndex = actionTimerState.PlayerSeatIndex,
-				IsActive = !actionTimerState.IsExpired
+				IsActive = !actionTimerState.IsExpired,
+				HandNumber = actionTimerState.TimerType == ActionTimerType.ChipCheckPause
+					? 0
+					: actionTimerState.HandNumber == 0
+						? game.CurrentHandNumber
+						: actionTimerState.HandNumber,
+				StateVersion = actionTimerState.StateVersion
 			}
 			: null;
 
@@ -262,6 +269,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			CurrentActorSeatIndex = game.CurrentPlayerIndex,
 			IsPaused = game.Status == GameStatus.BetweenHands,
 			CurrentHandNumber = game.CurrentHandNumber,
+			StateVersion = GameStateVersion.FromRowVersion(game.RowVersion),
 			CreatedByName = game.CreatedByName,
 			Seats = seats,
 			Showdown = showdown,
@@ -305,17 +313,22 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			return null;
 		}
 
-		// Find the player by matching the authenticated user id.
-		// SignalR `Clients.User(userId)` now routes by email claim, so prefer email/name matching.
-		var gamePlayer = await _context.GamePlayers
+		// Match in claim order. A single OR can return another player's seat when that
+		// player's name equals this user's email.
+		var seatedPlayers = await _context.GamePlayers
 			.Where(gp => gp.GameId == gameId && gp.Status != GamePlayerStatus.Left)
 			.Include(gp => gp.Player)
 			.Include(gp => gp.Cards)
 			.AsNoTracking()
-			.FirstOrDefaultAsync(gp =>
-				gp.Player.Email == userId ||
-				gp.Player.Name == userId ||
-				gp.Player.ExternalId == userId, cancellationToken);
+			.ToListAsync(cancellationToken);
+
+		var gamePlayer = SignalRUserId.SelectPlayer(
+			seatedPlayers,
+			userId,
+			gp => gp.Player.SignalRUserId,
+			gp => gp.Player.Email,
+			gp => gp.Player.ExternalId,
+			gp => gp.Player.Name);
 
 		if (gamePlayer is null)
 		{
@@ -329,13 +342,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.Where(gp => gp.GameId == gameId)
 				.Include(gp => gp.Player)
 				.AsNoTracking()
-				.Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
+				.Select(gp => new
+				{
+					gp.Player.Email, gp.Player.Name, gp.Player.ExternalId, gp.Player.SignalRUserId
+				})
 				.ToListAsync(cancellationToken);
 
 			foreach (var p in allPlayers)
 				_logger.LogWarning(
-					"  Player in game: Email={Email}, Name={Name}, ExternalId={ExternalId}",
-					p.Email ?? "(null)", p.Name ?? "(null)", p.ExternalId ?? "(null)");
+					"  Player in game: Email={Email}, Name={Name}, ExternalId={ExternalId}, SignalRUserId={SignalRUserId}",
+					p.Email ?? "(null)", p.Name ?? "(null)", p.ExternalId ?? "(null)", p.SignalRUserId ?? "(null)");
 
 			return null;
 		}
@@ -346,6 +362,41 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			gamePlayer.Cards.Count(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
 			game.CurrentHandNumber);
 
+		return await BuildPrivateStateFromSeatAsync(game, gamePlayer, cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async Task<PrivateStateDto?> BuildPrivateStateForPlayerAsync(Guid gameId, Guid playerId,
+		CancellationToken cancellationToken = default)
+	{
+		var gamePlayer = await _context.GamePlayers
+			.Where(gp => gp.GameId == gameId && gp.PlayerId == playerId && gp.Status != GamePlayerStatus.Left)
+			.Include(gp => gp.Player)
+			.Include(gp => gp.Cards)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(cancellationToken);
+
+		if (gamePlayer is null)
+			return null;
+
+		var game = await _context.Games
+			.Include(g => g.GameType)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
+
+		if (game is null)
+		{
+			_logger.LogWarning("BuildPrivateStateForPlayerAsync: Game {GameId} not found", gameId);
+			return null;
+		}
+
+		return await BuildPrivateStateFromSeatAsync(game, gamePlayer, cancellationToken);
+	}
+
+	private async Task<PrivateStateDto> BuildPrivateStateFromSeatAsync(
+		Game game, GamePlayer gamePlayer, CancellationToken cancellationToken)
+	{
+		var gameId = game.Id;
 		var hand = BuildPrivateHand(gamePlayer, game.CurrentHandNumber, game.GameType?.Code);
 
 		string? handEvaluationDescription = null;
@@ -495,8 +546,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new PrivateStateDto
 		{
 			GameId = gameId,
+			StateVersion = GameStateVersion.FromRowVersion(game.RowVersion),
 			PlayerName = gamePlayer.Player.Name,
 			SeatPosition = gamePlayer.SeatPosition,
+			HandNumber = game.CurrentHandNumber,
 			Hand = hand,
 			HandEvaluationDescription = handEvaluationDescription,
 			AvailableActions = availableActions,
@@ -518,29 +571,35 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Where(gp => gp.GameId == gameId)
 			.Include(gp => gp.Player)
 			.AsNoTracking()
-			.Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
+			.Select(gp => new
+			{
+				gp.Player.Id,
+				gp.Player.SignalRUserId,
+				gp.Player.Email,
+				gp.Player.Name,
+				gp.Player.ExternalId
+			})
 			.ToListAsync(cancellationToken);
 
-		// Prefer Name over Email when Email appears malformed (e.g., contains multiple @ symbols).
-		// This handles legacy data where Email may have been incorrectly stored with @localhost appended.
-		var userIds = players
-			.Select(p =>
+		var userIds = new List<string>();
+		var seenKeys = new Dictionary<string, Guid>(StringComparer.Ordinal);
+		foreach (var player in players)
+		{
+			var key = SignalRUserId.RoutingKey(player.SignalRUserId, player.Email, player.ExternalId, player.Name);
+			if (string.IsNullOrWhiteSpace(key))
+				continue;
+
+			if (seenKeys.TryGetValue(key, out var firstPlayerId))
 			{
-				// If Email looks like a valid single @ email, use it
-				// Otherwise prefer Name (which is typically the clean email)
-				var email = p.Email;
-				var name = p.Name;
+				_logger.LogError(
+					"Duplicate SignalR routing key {RoutingKey} for players {FirstPlayerId} and {SecondPlayerId} in game {GameId}",
+					key, firstPlayerId, player.Id, gameId);
+				continue;
+			}
 
-				// Check if email is malformed (has more than one @ symbol)
-				var isMalformedEmail = !string.IsNullOrWhiteSpace(email) && email.Count(c => c == '@') > 1;
-
-				if (isMalformedEmail && !string.IsNullOrWhiteSpace(name)) return name;
-
-				return email ?? name ?? p.ExternalId;
-			})
-			.Where(id => !string.IsNullOrWhiteSpace(id))
-			.Cast<string>()
-			.ToList();
+			seenKeys.Add(key, player.Id);
+			userIds.Add(key);
+		}
 
 		_logger.LogInformation(
 			"GetPlayerUserIdsAsync for game {GameId}: {PlayerCount} players, UserIds: [{UserIds}], " +
@@ -550,7 +609,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			string.Join(", ", userIds),
 			string.Join(", ",
 				players.Select(p =>
-					$"Email={p.Email ?? "(null)"}, Name={p.Name ?? "(null)"}, ExternalId={p.ExternalId ?? "(null)"}")));
+					$"Email={p.Email ?? "(null)"}, Name={p.Name ?? "(null)"}, ExternalId={p.ExternalId ?? "(null)"}, SignalRUserId={p.SignalRUserId ?? "(null)"}")));
 
 		return userIds;
 	}

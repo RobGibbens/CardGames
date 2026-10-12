@@ -28,6 +28,16 @@ public interface ITableStateBuilder
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
+	///     Builds the private state for one seated player, selected by player id.
+	/// </summary>
+	/// <param name="gameId">The unique identifier of the game.</param>
+	/// <param name="playerId">The seated player's id.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>The private state for the player, or null if that seat is missing.</returns>
+	Task<PrivateStateDto?> BuildPrivateStateForPlayerAsync(Guid gameId, Guid playerId,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
 	///     Gets the list of connected user identifiers for a game.
 	///     Used by the broadcaster to send private state updates.
 	/// </summary>

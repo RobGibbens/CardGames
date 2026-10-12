@@ -105,8 +105,6 @@
 @code {
 	private const int DefaultTimerDurationSeconds = 60;
 	private const string PanelStorageKey = "cardGames.panelPosition.dropOrStayOverlay";
-	private string? _autoActionTimerKey;
-	private bool _isAutoActionInFlight;
 
 	private ElementReference _panelRef;
 	private ElementReference _handleRef;
@@ -189,11 +187,6 @@
 	[Parameter]
 	public bool EnableBaseballWildCardHighlighting { get; set; }
 
-	protected override async Task OnParametersSetAsync()
-	{
-		await TrySubmitTimeoutDefaultDecisionAsync();
-	}
-
 	private int GetSecondsRemaining()
 	{
 		return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
@@ -223,38 +216,6 @@
 		};
 
 		return rank;
-	}
-
-	private async Task TrySubmitTimeoutDefaultDecisionAsync()
-	{
-		if (HasDecided || ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
-		{
-			_autoActionTimerKey = null;
-			return;
-		}
-
-		if (IsDeciding || _isAutoActionInFlight)
-		{
-			return;
-		}
-
-		var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
-		if (_autoActionTimerKey == timerKey)
-		{
-			return;
-		}
-
-		_autoActionTimerKey = timerKey;
-		_isAutoActionInFlight = true;
-
-		try
-		{
-			await OnDecision.InvokeAsync("Stay");
-		}
-		finally
-		{
-			_isAutoActionInFlight = false;
-		}
 	}
 
 	/// <summary>

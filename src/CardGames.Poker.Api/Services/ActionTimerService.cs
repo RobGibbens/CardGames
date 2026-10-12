@@ -34,7 +34,7 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 	/// <inheritdoc />
 	public void StartTimer(Guid gameId, int playerSeatIndex,
 		int durationSeconds = IActionTimerService.DefaultTimerDurationSeconds, Func<Guid, int, Task>? onExpired = null,
-		TimeSpan? startDelay = null)
+		TimeSpan? startDelay = null, int handNumber = 0, ulong stateVersion = 0)
 	{
 		// Stop any existing timer for this game
 		StopTimer(gameId);
@@ -47,7 +47,9 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 			GameId = gameId,
 			PlayerSeatIndex = playerSeatIndex,
 			DurationSeconds = durationSeconds,
-			StartedAtUtc = DateTimeOffset.UtcNow.Add(effectiveStartDelay)
+			StartedAtUtc = DateTimeOffset.UtcNow.Add(effectiveStartDelay),
+			HandNumber = handNumber,
+			StateVersion = stateVersion
 		};
 
 		var timerState = new GameTimerState
@@ -91,7 +93,9 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 			PlayerSeatIndex = -1, // No specific player for chip check pause
 			DurationSeconds = durationSeconds,
 			StartedAtUtc = startedAtUtc ?? DateTimeOffset.UtcNow,
-			TimerType = ActionTimerType.ChipCheckPause
+			TimerType = ActionTimerType.ChipCheckPause,
+			HandNumber = 0,
+			StateVersion = 0
 		};
 
 		var timerState = new GameTimerState
@@ -127,8 +131,8 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 			timerState.Timer?.Dispose();
 			_logger.LogInformation("Stopped action timer for game {GameId}", gameId);
 
-			// Broadcast that timer is stopped
-			_ = BroadcastTimerStoppedAsync(gameId);
+			// Broadcast the timer that just stopped, keeping its seat and start time.
+			_ = BroadcastTimerStoppedAsync(timerState.State);
 		}
 	}
 
@@ -165,17 +169,14 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 		var state = timerState.State;
 		var secondsRemaining = state.SecondsRemaining;
 
-		// Broadcast timer update
-		await BroadcastTimerStateAsync(gameId, state);
-
-		// Check if timer has expired
+		// The <= 0 branch broadcasts the inactive stop for this timer and does not call BroadcastTimerStateAsync.
 		if (secondsRemaining <= 0)
 		{
 			_logger.LogInformation(
 				"Action timer expired for game {GameId}, player seat {SeatIndex}, type {TimerType}",
 				gameId, state.PlayerSeatIndex, state.TimerType);
 
-			// Stop the timer
+			// Stop the timer. StopTimer broadcasts ToStoppedDto for the removed state.
 			StopTimer(gameId);
 
 			// Invoke appropriate expiration callback based on timer type
@@ -197,7 +198,11 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 				{
 					_logger.LogError(ex, "Error in timer expiration callback for game {GameId}", gameId);
 				}
+
+			return;
 		}
+
+		await BroadcastTimerStateAsync(gameId, state);
 	}
 
 	private async Task BroadcastTimerStateAsync(Guid gameId, ActionTimerState state)
@@ -205,17 +210,8 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 		try
 		{
 			var groupName = GetGroupName(gameId);
-			var dto = new ActionTimerStateDto
-			{
-				SecondsRemaining = state.SecondsRemaining,
-				DurationSeconds = state.DurationSeconds,
-				StartedAtUtc = state.StartedAtUtc,
-				PlayerSeatIndex = state.PlayerSeatIndex,
-				IsActive = true
-			};
-
 			await _hubContext.Clients.Group(groupName)
-				.SendAsync("ActionTimerUpdated", dto);
+				.SendAsync("ActionTimerUpdated", ToActiveDto(state));
 		}
 		catch (Exception ex)
 		{
@@ -223,27 +219,46 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
 		}
 	}
 
-	private async Task BroadcastTimerStoppedAsync(Guid gameId)
+	private async Task BroadcastTimerStoppedAsync(ActionTimerState state)
 	{
 		try
 		{
-			var groupName = GetGroupName(gameId);
-			var dto = new ActionTimerStateDto
-			{
-				SecondsRemaining = 0,
-				DurationSeconds = 0,
-				StartedAtUtc = DateTimeOffset.UtcNow,
-				PlayerSeatIndex = -1,
-				IsActive = false
-			};
-
+			var groupName = GetGroupName(state.GameId);
 			await _hubContext.Clients.Group(groupName)
-				.SendAsync("ActionTimerUpdated", dto);
+				.SendAsync("ActionTimerUpdated", ToStoppedDto(state));
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error broadcasting timer stopped for game {GameId}", gameId);
+			_logger.LogError(ex, "Error broadcasting timer stopped for game {GameId}", state.GameId);
 		}
+	}
+
+	internal static ActionTimerStateDto ToActiveDto(ActionTimerState state)
+	{
+		return new ActionTimerStateDto
+		{
+			SecondsRemaining = state.SecondsRemaining,
+			DurationSeconds = state.DurationSeconds,
+			StartedAtUtc = state.StartedAtUtc,
+			PlayerSeatIndex = state.PlayerSeatIndex,
+			IsActive = true,
+			HandNumber = state.HandNumber,
+			StateVersion = state.StateVersion
+		};
+	}
+
+	internal static ActionTimerStateDto ToStoppedDto(ActionTimerState state)
+	{
+		return new ActionTimerStateDto
+		{
+			SecondsRemaining = 0,
+			DurationSeconds = state.DurationSeconds,
+			StartedAtUtc = state.StartedAtUtc,
+			PlayerSeatIndex = state.PlayerSeatIndex,
+			IsActive = false,
+			HandNumber = state.HandNumber,
+			StateVersion = state.StateVersion
+		};
 	}
 
 	private static string GetGroupName(Guid gameId)

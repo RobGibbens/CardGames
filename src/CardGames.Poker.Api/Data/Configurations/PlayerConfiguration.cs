@@ -23,6 +23,9 @@ public class PlayerConfiguration : IEntityTypeConfiguration<Player>
 		builder.Property(t => t.Email)
 			.HasMaxLength(PlayerFields.Email.MaxLength);
 
+		builder.Property(t => t.SignalRUserId)
+			.HasMaxLength(PlayerFields.Email.MaxLength);
+
 		builder.Property(t => t.ExternalId)
 			.HasMaxLength(PlayerFields.ExternalId.MaxLength);
 

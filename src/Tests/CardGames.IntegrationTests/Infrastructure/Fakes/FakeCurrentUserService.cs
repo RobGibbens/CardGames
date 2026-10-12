@@ -10,5 +10,7 @@ public class FakeCurrentUserService : ICurrentUserService
 
 	public string? UserEmail { get; set; } = "test@example.com";
 
+	public string? SignalRUserId { get; set; }
+
 	public bool IsAuthenticated { get; set; } = true;
 }

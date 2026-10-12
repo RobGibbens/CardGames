@@ -35,6 +35,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 	private readonly IAutoActionService _autoActionService;
 
 	private readonly IHubContext<GameHub> _hubContext;
+	private readonly IGameConnectionRegistry _connectionRegistry;
 	private readonly ILogger<GameStateBroadcaster> _logger;
 	private readonly ITableStateBuilder _tableStateBuilder;
 	private readonly BroadcastTelemetry _telemetry;
@@ -47,7 +48,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		IActionTimerService actionTimerService,
 		IAutoActionService autoActionService,
 		ILogger<GameStateBroadcaster> logger,
-		BroadcastTelemetry telemetry)
+		BroadcastTelemetry telemetry,
+		IGameConnectionRegistry connectionRegistry)
 	{
 		_hubContext = hubContext;
 		_tableStateBuilder = tableStateBuilder;
@@ -55,52 +57,89 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		_autoActionService = autoActionService;
 		_logger = logger;
 		_telemetry = telemetry;
+		_connectionRegistry = connectionRegistry;
 	}
 
 	/// <inheritdoc />
-	public async Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
+	public async Task<TableStatePublicDto?> BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
 	{
+		// The hand is already saved. A cancelled request must not skip later seats.
+		_ = cancellationToken;
+
 		var groupName = GetGroupName(gameId);
 
 		using var scope = CreateScope(gameId);
 
+		TableStatePublicDto? publicState;
 		try
 		{
-			// Build and send public state to the entire group
-			var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
-			if (publicState is not null)
-			{
-				_logger.LogInformation(
-					"Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
-					gameId, publicState.CurrentPhase, publicState.Seats.Count);
+			publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, CancellationToken.None);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error building public state for game {GameId}", gameId);
+			return null;
+		}
 
+		if (publicState is not null)
+		{
+			_logger.LogInformation(
+				"Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
+				gameId, publicState.CurrentPhase, publicState.Seats.Count);
+
+			var publicStateSent = false;
+			try
+			{
 				await SendGameBroadcastAsync(
 					_hubContext.Clients.Group(groupName),
 					"TableStateUpdated",
 					publicState,
 					gameId,
 					null,
-					cancellationToken);
+					CancellationToken.None);
+				publicStateSent = true;
 
 				_logger.LogDebug("Broadcast public state to group {GroupName}", groupName);
-
-				// Manage action timer based on current phase and actor
-				ManageActionTimer(gameId, publicState);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error broadcasting public state for game {GameId}", gameId);
 			}
 
-			// Get all player user IDs and send private state to each
-			var playerUserIds = await _tableStateBuilder.GetPlayerUserIdsAsync(gameId, cancellationToken);
-			_logger.LogInformation(
-				"Broadcasting private state to {PlayerCount} players: [{PlayerIds}]",
-				playerUserIds.Count, string.Join(", ", playerUserIds));
+			if (publicStateSent)
+				ManageActionTimer(gameId, publicState);
+		}
 
-			foreach (var userId in playerUserIds) await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
+		IReadOnlyList<string> playerUserIds;
+		try
+		{
+			playerUserIds = await _tableStateBuilder.GetPlayerUserIdsAsync(gameId, CancellationToken.None);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error broadcasting game state for game {GameId}", gameId);
-			throw;
+			_logger.LogError(ex, "Error loading player user ids for game {GameId}", gameId);
+			return publicState;
 		}
+
+		_logger.LogInformation(
+			"Broadcasting private state to {PlayerCount} players: [{PlayerIds}]",
+			playerUserIds.Count, string.Join(", ", playerUserIds));
+
+		foreach (var userId in playerUserIds)
+		{
+			try
+			{
+				await SendPrivateStateToUserAsync(gameId, userId, CancellationToken.None);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex,
+					"Failed to send private state to user {UserId} for game {GameId}",
+					userId, gameId);
+			}
+		}
+
+		return publicState;
 	}
 
 	/// <inheritdoc />
@@ -142,6 +181,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		string playerName,
 		int seatIndex,
 		bool canPlayCurrentHand,
+		Guid playerId,
 		CancellationToken cancellationToken = default)
 	{
 		var groupName = GetGroupName(gameId);
@@ -151,6 +191,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 			var notification = new PlayerJoinedDto
 			{
 				GameId = gameId,
+				PlayerId = playerId,
 				PlayerName = playerName,
 				SeatIndex = seatIndex,
 				CanPlayCurrentHand = canPlayCurrentHand,
@@ -159,9 +200,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 					: $"{playerName} has joined and will play next hand."
 			};
 
-			// Send to all in the group except the player who just joined
+			var excludedConnectionIds = _connectionRegistry.GetConnectionIds(gameId, playerId);
+			var client = excludedConnectionIds.Count == 0
+				? _hubContext.Clients.Group(groupName)
+				: _hubContext.Clients.GroupExcept(groupName, excludedConnectionIds);
+
 			await SendGameBroadcastAsync(
-				_hubContext.Clients.GroupExcept(groupName, [playerName]),
+				client,
 				"PlayerJoined",
 				notification,
 				gameId,
@@ -278,8 +323,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 		int seatIndex,
 		string? playerName,
 		string actionDescription,
+		int handNumber,
+		ulong stateVersion,
 		CancellationToken cancellationToken = default)
 	{
+		// The action is already saved. An aborted request must not cancel the label.
+		_ = cancellationToken;
+
 		var groupName = GetGroupName(gameId);
 		using var scope = CreateScope(gameId);
 		try
@@ -290,6 +340,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 				SeatIndex = seatIndex,
 				PlayerName = playerName,
 				ActionDescription = actionDescription,
+				HandNumber = handNumber,
+				StateVersion = stateVersion,
 				PerformedAtUtc = DateTimeOffset.UtcNow,
 				DisplayDurationSeconds = 5
 			};
@@ -300,7 +352,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 				notification,
 				gameId,
 				null,
-				cancellationToken);
+				CancellationToken.None);
 
 
 			_logger.LogDebug(
@@ -399,6 +451,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 			effectiveActorSeatIndex,
 			durationSeconds,
 			startDelay: startDelay,
+			handNumber: state.CurrentHandNumber,
+			stateVersion: state.StateVersion,
 			onExpired: async (gId, seatIndex) =>
 			{
 				using var timerScope = CreateScope(gId);

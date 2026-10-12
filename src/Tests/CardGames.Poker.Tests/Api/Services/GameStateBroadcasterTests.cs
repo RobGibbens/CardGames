@@ -212,6 +212,178 @@ public class GameStateBroadcasterTests
 		Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && entry.Exception == failure);
 	}
 
+	[Fact]
+	public async Task BroadcastGameStateAsync_CancelledTokenAndAliceSendFails_StillSendsBobPrivateState()
+	{
+		var gameId = Guid.NewGuid();
+		var aliceId = "alice@example.com";
+		var bobId = "bob@example.com";
+		var (sut, tableStateBuilder, groupProxy, aliceProxy, bobProxy) = CreateFanOutSubject(gameId, aliceId, bobId);
+		aliceProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+			.Returns(Task.FromException(new InvalidOperationException("alice send failed")));
+
+		var exception = await Record.ExceptionAsync(() =>
+			sut.BroadcastGameStateAsync(gameId, new CancellationToken(canceled: true)));
+
+		Assert.Null(exception);
+		await groupProxy.Received(1).SendCoreAsync(
+			"TableStateUpdated",
+			Arg.Any<object?[]>(),
+			CancellationToken.None);
+		await bobProxy.Received(1).SendCoreAsync(
+			"PrivateStateUpdated",
+			Arg.Any<object?[]>(),
+			CancellationToken.None);
+		await aliceProxy.Received(1).SendCoreAsync(
+			Arg.Any<string>(),
+			Arg.Any<object?[]>(),
+			CancellationToken.None);
+		await tableStateBuilder.Received(1).BuildPublicStateAsync(gameId, CancellationToken.None);
+		await tableStateBuilder.Received(1).GetPlayerUserIdsAsync(gameId, CancellationToken.None);
+		await tableStateBuilder.Received(1).BuildPrivateStateAsync(gameId, aliceId, CancellationToken.None);
+		await tableStateBuilder.Received(1).BuildPrivateStateAsync(gameId, bobId, CancellationToken.None);
+	}
+
+	[Fact]
+	public async Task BroadcastGameStateAsync_AlicePrivateStateBuildFails_StillSendsBobPrivateState()
+	{
+		var gameId = Guid.NewGuid();
+		var aliceId = "alice@example.com";
+		var bobId = "bob@example.com";
+		var (sut, tableStateBuilder, _, _, bobProxy) = CreateFanOutSubject(gameId, aliceId, bobId);
+		tableStateBuilder.BuildPrivateStateAsync(gameId, aliceId, Arg.Any<CancellationToken>())
+			.Returns<Task<PrivateStateDto?>>(_ => throw new InvalidOperationException("alice private state failed"));
+
+		var exception = await Record.ExceptionAsync(() =>
+			sut.BroadcastGameStateAsync(gameId, new CancellationToken(canceled: true)));
+
+		Assert.Null(exception);
+		await tableStateBuilder.Received(1).BuildPrivateStateAsync(gameId, aliceId, CancellationToken.None);
+		await tableStateBuilder.Received(1).BuildPrivateStateAsync(gameId, bobId, CancellationToken.None);
+		await bobProxy.Received(1).SendCoreAsync(
+			"PrivateStateUpdated",
+			Arg.Any<object?[]>(),
+			CancellationToken.None);
+	}
+
+	[Fact]
+	public async Task BroadcastPlayerJoinedAsync_KnownConnections_ExcludesThoseConnectionIds()
+	{
+		var gameId = Guid.NewGuid();
+		var playerId = Guid.NewGuid();
+		var excludedProxy = Substitute.For<IClientProxy>();
+		excludedProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+			.Returns(Task.CompletedTask);
+
+		var hubClients = Substitute.For<IHubClients>();
+		hubClients.GroupExcept(
+				$"game:{gameId}",
+				Arg.Is<IReadOnlyList<string>>(ids => ids.SequenceEqual(new[] { "conn-alice" })))
+			.Returns(excludedProxy);
+
+		var registry = Substitute.For<IGameConnectionRegistry>();
+		registry.GetConnectionIds(gameId, playerId).Returns(new[] { "conn-alice" });
+
+		var sut = CreateJoinedSubject(hubClients, registry);
+		var exception = await Record.ExceptionAsync(() =>
+			sut.BroadcastPlayerJoinedAsync(gameId, "Alice", 2, true, playerId));
+
+		Assert.Null(exception);
+		hubClients.Received(1).GroupExcept(
+			$"game:{gameId}",
+			Arg.Is<IReadOnlyList<string>>(ids => ids.SequenceEqual(new[] { "conn-alice" })));
+		hubClients.DidNotReceive().Group(Arg.Any<string>());
+		hubClients.DidNotReceive().GroupExcept(
+			Arg.Any<string>(),
+			Arg.Is<IReadOnlyList<string>>(ids => ids.Contains("Alice")));
+		await excludedProxy.Received(1).SendCoreAsync(
+			"PlayerJoined",
+			Arg.Is<object?[]>(args => IsPlayerJoined(args, playerId, "Alice")),
+			Arg.Any<CancellationToken>());
+	}
+
+	[Fact]
+	public async Task BroadcastPlayerJoinedAsync_NoKnownConnections_SendsToTheGroup()
+	{
+		var gameId = Guid.NewGuid();
+		var playerId = Guid.NewGuid();
+		var groupProxy = Substitute.For<IClientProxy>();
+		groupProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+			.Returns(Task.CompletedTask);
+
+		var hubClients = Substitute.For<IHubClients>();
+		hubClients.Group($"game:{gameId}").Returns(groupProxy);
+
+		var registry = Substitute.For<IGameConnectionRegistry>();
+		registry.GetConnectionIds(gameId, playerId).Returns(Array.Empty<string>());
+
+		var sut = CreateJoinedSubject(hubClients, registry);
+		var exception = await Record.ExceptionAsync(() =>
+			sut.BroadcastPlayerJoinedAsync(gameId, "Alice", 2, false, playerId));
+
+		Assert.Null(exception);
+		hubClients.Received(1).Group($"game:{gameId}");
+		hubClients.DidNotReceive().GroupExcept(Arg.Any<string>(), Arg.Any<IReadOnlyList<string>>());
+		await groupProxy.Received(1).SendCoreAsync(
+			"PlayerJoined",
+			Arg.Is<object?[]>(args => IsPlayerJoined(args, playerId, "Alice")),
+			Arg.Any<CancellationToken>());
+	}
+
+	private static (
+		GameStateBroadcaster Sut,
+		ITableStateBuilder TableStateBuilder,
+		IClientProxy GroupProxy,
+		IClientProxy AliceProxy,
+		IClientProxy BobProxy) CreateFanOutSubject(Guid gameId, string aliceId, string bobId)
+	{
+		var publicState = CreateState(gameId, "FIVECARDDRAW", "WaitingForPlayers", -1);
+		var tableStateBuilder = Substitute.For<ITableStateBuilder>();
+		tableStateBuilder.BuildPublicStateAsync(gameId, Arg.Any<CancellationToken>())
+			.Returns(publicState);
+		tableStateBuilder.GetPlayerUserIdsAsync(gameId, Arg.Any<CancellationToken>())
+			.Returns(new[] { aliceId, bobId });
+		tableStateBuilder.BuildPrivateStateAsync(gameId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+			.Returns(call => new PrivateStateDto
+			{
+				GameId = gameId,
+				PlayerName = call.ArgAt<string>(1),
+				Hand = []
+			});
+
+		var groupProxy = Substitute.For<IClientProxy>();
+		var aliceProxy = Substitute.For<IClientProxy>();
+		var bobProxy = Substitute.For<IClientProxy>();
+		groupProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+			.Returns(Task.CompletedTask);
+		aliceProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+			.Returns(Task.CompletedTask);
+		bobProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+			.Returns(Task.CompletedTask);
+
+		var hubClients = Substitute.For<IHubClients>();
+		hubClients.Group(Arg.Any<string>()).Returns(groupProxy);
+		hubClients.User(aliceId).Returns(aliceProxy);
+		hubClients.User(bobId).Returns(bobProxy);
+
+		var hubContext = Substitute.For<IHubContext<GameHub>>();
+		hubContext.Clients.Returns(hubClients);
+
+		var actionTimerService = Substitute.For<IActionTimerService>();
+		actionTimerService.GetTimerState(gameId).Returns((ActionTimerState?)null);
+
+		var sut = new GameStateBroadcaster(
+			hubContext,
+			tableStateBuilder,
+			actionTimerService,
+			Substitute.For<IAutoActionService>(),
+			Substitute.For<ILogger<GameStateBroadcaster>>(),
+			CreateTelemetry(),
+			EmptyConnectionRegistry());
+
+		return (sut, tableStateBuilder, groupProxy, aliceProxy, bobProxy);
+	}
+
 	private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(
 		TableStatePublicDto publicState,
 		ILogger<GameStateBroadcaster>? logger = null,
@@ -243,9 +415,40 @@ public class GameStateBroadcasterTests
 			actionTimerService,
 			Substitute.For<IAutoActionService>(),
 			logger ?? Substitute.For<ILogger<GameStateBroadcaster>>(),
-			telemetry ?? CreateTelemetry());
+			telemetry ?? CreateTelemetry(),
+			EmptyConnectionRegistry());
 
 		return (sut, tableStateBuilder, actionTimerService, clientProxy);
+	}
+
+	private static bool IsPlayerJoined(object?[] args, Guid playerId, string playerName)
+	{
+		return args.Length == 1 &&
+		       args[0] is PlayerJoinedDto dto &&
+		       dto.PlayerId == playerId &&
+		       dto.PlayerName == playerName;
+	}
+
+	private static GameStateBroadcaster CreateJoinedSubject(IHubClients hubClients, IGameConnectionRegistry registry)
+	{
+		var hubContext = Substitute.For<IHubContext<GameHub>>();
+		hubContext.Clients.Returns(hubClients);
+
+		return new GameStateBroadcaster(
+			hubContext,
+			Substitute.For<ITableStateBuilder>(),
+			Substitute.For<IActionTimerService>(),
+			Substitute.For<IAutoActionService>(),
+			Substitute.For<ILogger<GameStateBroadcaster>>(),
+			CreateTelemetry(),
+			registry);
+	}
+
+	private static IGameConnectionRegistry EmptyConnectionRegistry()
+	{
+		var registry = Substitute.For<IGameConnectionRegistry>();
+		registry.GetConnectionIds(Arg.Any<Guid>(), Arg.Any<Guid>()).Returns(Array.Empty<string>());
+		return registry;
 	}
 
 	private static BroadcastTelemetry CreateTelemetry()

@@ -13,10 +13,15 @@ public sealed class GameHubClient : IAsyncDisposable
 {
 	private readonly AuthenticationStateProvider _authStateProvider;
 	private readonly IConfiguration _configuration;
+	private readonly SemaphoreSlim _connectGate = new(1, 1);
 	private readonly ILogger<GameHubClient> _logger;
+	private int _connectionGeneration;
 	private Guid? _currentGameId;
 
 	private HubConnection? _hubConnection;
+	private Func<Exception?, Task>? _onClosed;
+	private Func<string?, Task>? _onReconnected;
+	private Func<Exception?, Task>? _onReconnecting;
 
 	/// <summary>
 	///     Initializes a new instance of the <see cref="GameHubClient" /> class.
@@ -49,15 +54,15 @@ public sealed class GameHubClient : IAsyncDisposable
 	/// <inheritdoc />
 	public async ValueTask DisposeAsync()
 	{
-		if (_hubConnection is not null)
+		await _connectGate.WaitAsync();
+		try
 		{
-			_hubConnection.Reconnecting -= OnReconnecting;
-			_hubConnection.Reconnected -= OnReconnected;
-			_hubConnection.Closed -= OnClosed;
-
-			await DisconnectAsync();
-			await _hubConnection.DisposeAsync();
-			_hubConnection = null;
+			if (_hubConnection is not null)
+				await DisconnectCoreAsync(CancellationToken.None);
+		}
+		finally
+		{
+			_connectGate.Release();
 		}
 	}
 
@@ -107,59 +112,31 @@ public sealed class GameHubClient : IAsyncDisposable
 	/// </summary>
 	public async Task ConnectAsync(CancellationToken cancellationToken = default)
 	{
-		if (_hubConnection is not null)
+		while (true)
 		{
-			_logger.LogDebug("Hub connection already exists, state: {State}", _hubConnection.State);
-			if (_hubConnection.State == HubConnectionState.Connected) return;
-		}
-
-		// Get user info for authentication
-		var userInfo = await GetUserInfoAsync();
-		var hubUrl = HubConnectionIdentity.HubUrl(_configuration, "/hubs/game");
-		_logger.LogInformation("Connecting to game hub at {HubUrl}", hubUrl);
-
-		_hubConnection = new HubConnectionBuilder()
-			.WithUrl(hubUrl, options =>
+			await _connectGate.WaitAsync(cancellationToken);
+			try
 			{
-				HubConnectionIdentity.Apply(options, _configuration, _authStateProvider);
-				ApplyUnsafeHeaders(options, userInfo);
-			})
-			.AddJsonProtocol(options =>
+				var state = _hubConnection?.State;
+				if (!GameHubConnectionPolicy.ShouldBuildNewConnection(state))
+				{
+					_logger.LogDebug("Hub connection already exists, state: {State}", state);
+					if (state == HubConnectionState.Connected)
+						return;
+				}
+				else
+				{
+					await StartNewConnectionAsync(cancellationToken);
+					return;
+				}
+			}
+			finally
 			{
-				// Match server-side JSON settings for proper deserialization
-				options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
-			})
-			.WithAutomaticReconnect(new[]
-			{
-				TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10),
-				TimeSpan.FromSeconds(30)
-			})
-			.Build();
+				_connectGate.Release();
+			}
 
-		// Wire up connection lifecycle events
-		_hubConnection.Reconnecting += OnReconnecting;
-		_hubConnection.Reconnected += OnReconnected;
-		_hubConnection.Closed += OnClosed;
-
-		// Subscribe to hub messages
-		_hubConnection.On<TableStatePublicDto>("TableStateUpdated", HandleTableStateUpdated);
-		_hubConnection.On<PrivateStateDto>("PrivateStateUpdated", HandlePrivateStateUpdated);
-		_hubConnection.On<PlayerJoinedDto>("PlayerJoined", HandlePlayerJoined);
-		_hubConnection.On<TableSettingsUpdatedDto>("TableSettingsUpdated", HandleTableSettingsUpdated);
-		_hubConnection.On<TableToastNotificationDto>("TableToastNotification", HandleTableToastNotification);
-		_hubConnection.On<ActionTimerStateDto>("ActionTimerUpdated", HandleActionTimerUpdated);
-		_hubConnection.On<PlayerActionPerformedDto>("PlayerActionPerformed", HandlePlayerActionPerformed);
-
-		try
-		{
-			await _hubConnection.StartAsync(cancellationToken);
-			_logger.LogInformation("Connected to game hub");
-			OnConnectionStateChanged?.Invoke(HubConnectionState.Connected);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Failed to connect to game hub");
-			throw;
+			if (await WaitForCurrentAttemptAsync(cancellationToken))
+				return;
 		}
 	}
 
@@ -217,23 +194,179 @@ public sealed class GameHubClient : IAsyncDisposable
 	/// </summary>
 	public async Task DisconnectAsync(CancellationToken cancellationToken = default)
 	{
-		if (_hubConnection is null) return;
+		await _connectGate.WaitAsync(cancellationToken);
+		try
+		{
+			await DisconnectCoreAsync(cancellationToken);
+		}
+		finally
+		{
+			_connectGate.Release();
+		}
+	}
 
-		_logger.LogInformation("Disconnecting from game hub");
+	private async Task StartNewConnectionAsync(CancellationToken cancellationToken)
+	{
+		await RetireCurrentConnectionAsync();
 
-		// Leave current game first
-		if (_currentGameId.HasValue) await LeaveGameAsync(_currentGameId.Value, cancellationToken);
+		var userInfo = await GetUserInfoAsync();
+		var hubUrl = HubConnectionIdentity.HubUrl(_configuration, "/hubs/game");
+		_logger.LogInformation("Connecting to game hub at {HubUrl}", hubUrl);
+
+		var connection = new HubConnectionBuilder()
+			.WithUrl(hubUrl, options =>
+			{
+				HubConnectionIdentity.Apply(options, _configuration, _authStateProvider);
+				ApplyUnsafeHeaders(options, userInfo);
+			})
+			.AddJsonProtocol(options =>
+			{
+				// Match server-side JSON settings for proper deserialization
+				options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
+			})
+			.WithAutomaticReconnect(new[]
+			{
+				TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10),
+				TimeSpan.FromSeconds(30)
+			})
+			.Build();
+
+		var generation = Volatile.Read(ref _connectionGeneration);
+		_hubConnection = connection;
+		Wire(connection, generation);
 
 		try
 		{
-			await _hubConnection.StopAsync(cancellationToken);
+			await connection.StartAsync(cancellationToken);
+			_logger.LogInformation("Connected to game hub");
+			if (GameHubConnectionPolicy.IsCurrent(generation, Volatile.Read(ref _connectionGeneration)))
+				OnConnectionStateChanged?.Invoke(HubConnectionState.Connected);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to connect to game hub");
+			if (ReferenceEquals(_hubConnection, connection))
+				await RetireCurrentConnectionAsync();
+			throw;
+		}
+	}
+
+	private async Task<bool> WaitForCurrentAttemptAsync(CancellationToken cancellationToken)
+	{
+		while (true)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			var state = _hubConnection?.State;
+			if (state == HubConnectionState.Connected)
+				return true;
+			if (state is null or HubConnectionState.Disconnected)
+				return false;
+
+			await Task.Delay(50, cancellationToken);
+		}
+	}
+
+	private async Task DisconnectCoreAsync(CancellationToken cancellationToken)
+	{
+		if (_hubConnection is null)
+			return;
+
+		_logger.LogInformation("Disconnecting from game hub");
+
+		try
+		{
+			if (_currentGameId.HasValue)
+				await LeaveGameAsync(_currentGameId.Value, cancellationToken);
+		}
+		finally
+		{
+			await RetireCurrentConnectionAsync();
+			_currentGameId = null;
+			OnConnectionStateChanged?.Invoke(HubConnectionState.Disconnected);
+		}
+	}
+
+	/// <summary>
+	///     Drops the current connection so a later start is the only object that can raise events.
+	///     Does not clear <see cref="_currentGameId" />.
+	/// </summary>
+	private async Task RetireCurrentConnectionAsync()
+	{
+		var connection = _hubConnection;
+		if (connection is null)
+			return;
+
+		_hubConnection = null;
+		Interlocked.Increment(ref _connectionGeneration);
+		Unwire(connection);
+
+		try
+		{
+			await connection.StopAsync();
+		}
+		catch (ObjectDisposedException)
+		{
 		}
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Error stopping hub connection");
 		}
 
-		OnConnectionStateChanged?.Invoke(HubConnectionState.Disconnected);
+		try
+		{
+			await connection.DisposeAsync();
+		}
+		catch (ObjectDisposedException)
+		{
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Error disposing hub connection");
+		}
+	}
+
+	private void Wire(HubConnection connection, int generation)
+	{
+		_onReconnecting = exception => OnReconnecting(exception, generation);
+		_onReconnected = connectionId => OnReconnected(connectionId, generation);
+		_onClosed = exception => OnClosed(exception, generation);
+
+		connection.Reconnecting += _onReconnecting;
+		connection.Reconnected += _onReconnected;
+		connection.Closed += _onClosed;
+
+		connection.On<TableStatePublicDto>("TableStateUpdated", state => HandleTableStateUpdated(state, generation));
+		connection.On<PrivateStateDto>("PrivateStateUpdated", state => HandlePrivateStateUpdated(state, generation));
+		connection.On<PlayerJoinedDto>("PlayerJoined", notification => HandlePlayerJoined(notification, generation));
+		connection.On<TableSettingsUpdatedDto>("TableSettingsUpdated",
+			notification => HandleTableSettingsUpdated(notification, generation));
+		connection.On<TableToastNotificationDto>("TableToastNotification",
+			notification => HandleTableToastNotification(notification, generation));
+		connection.On<ActionTimerStateDto>("ActionTimerUpdated",
+			timerState => HandleActionTimerUpdated(timerState, generation));
+		connection.On<PlayerActionPerformedDto>("PlayerActionPerformed",
+			notification => HandlePlayerActionPerformed(notification, generation));
+	}
+
+	private void Unwire(HubConnection connection)
+	{
+		if (_onReconnecting is not null)
+		{
+			connection.Reconnecting -= _onReconnecting;
+			_onReconnecting = null;
+		}
+
+		if (_onReconnected is not null)
+		{
+			connection.Reconnected -= _onReconnected;
+			_onReconnected = null;
+		}
+
+		if (_onClosed is not null)
+		{
+			connection.Closed -= _onClosed;
+			_onClosed = null;
+		}
 	}
 
 	private void ApplyUnsafeHeaders(Microsoft.AspNetCore.Http.Connections.Client.HttpConnectionOptions options,
@@ -286,8 +419,11 @@ public sealed class GameHubClient : IAsyncDisposable
 		}
 	}
 
-	private Task OnReconnecting(Exception? exception)
+	private Task OnReconnecting(Exception? exception, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return Task.CompletedTask;
+
 		if (exception is not null)
 			_logger.LogWarning(exception, "Hub connection lost, attempting to reconnect...");
 		else
@@ -297,8 +433,11 @@ public sealed class GameHubClient : IAsyncDisposable
 		return Task.CompletedTask;
 	}
 
-	private async Task OnReconnected(string? connectionId)
+	private async Task OnReconnected(string? connectionId, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return;
+
 		_logger.LogInformation("Hub connection restored with connection ID {ConnectionId}", connectionId);
 		OnConnectionStateChanged?.Invoke(HubConnectionState.Connected);
 
@@ -317,8 +456,11 @@ public sealed class GameHubClient : IAsyncDisposable
 		}
 	}
 
-	private Task OnClosed(Exception? exception)
+	private Task OnClosed(Exception? exception, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return Task.CompletedTask;
+
 		if (exception is not null)
 			_logger.LogError(exception, "Hub connection closed with error");
 		else
@@ -328,47 +470,65 @@ public sealed class GameHubClient : IAsyncDisposable
 		return Task.CompletedTask;
 	}
 
-	private async Task HandleTableStateUpdated(TableStatePublicDto state)
+	private async Task HandleTableStateUpdated(TableStatePublicDto state, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return;
+
 		_logger.LogDebug("Received TableStateUpdated for game {GameId}", state.GameId);
 
 		if (OnTableStateUpdated is not null) await OnTableStateUpdated(state);
 	}
 
-	private async Task HandlePrivateStateUpdated(PrivateStateDto state)
+	private async Task HandlePrivateStateUpdated(PrivateStateDto state, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return;
+
 		_logger.LogDebug("Received PrivateStateUpdated for game {GameId}, player {PlayerName}",
 			state.GameId, state.PlayerName);
 
 		if (OnPrivateStateUpdated is not null) await OnPrivateStateUpdated(state);
 	}
 
-	private async Task HandlePlayerJoined(PlayerJoinedDto notification)
+	private async Task HandlePlayerJoined(PlayerJoinedDto notification, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return;
+
 		_logger.LogDebug("Received PlayerJoined for game {GameId}, player {PlayerName} at seat {SeatIndex}",
 			notification.GameId, notification.PlayerName, notification.SeatIndex);
 
 		if (OnPlayerJoined is not null) await OnPlayerJoined(notification);
 	}
 
-	private async Task HandleTableSettingsUpdated(TableSettingsUpdatedDto notification)
+	private async Task HandleTableSettingsUpdated(TableSettingsUpdatedDto notification, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return;
+
 		_logger.LogDebug("Received TableSettingsUpdated for game {GameId}, updated by {UpdatedByName}",
 			notification.GameId, notification.UpdatedByName);
 
 		if (OnTableSettingsUpdated is not null) await OnTableSettingsUpdated(notification);
 	}
 
-	private async Task HandleTableToastNotification(TableToastNotificationDto notification)
+	private async Task HandleTableToastNotification(TableToastNotificationDto notification, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return;
+
 		_logger.LogDebug("Received TableToastNotification for game {GameId}: {Message}",
 			notification.GameId, notification.Message);
 
 		if (OnTableToastNotification is not null) await OnTableToastNotification(notification);
 	}
 
-	private async Task HandleActionTimerUpdated(ActionTimerStateDto timerState)
+	private async Task HandleActionTimerUpdated(ActionTimerStateDto timerState, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return;
+
 		_logger.LogDebug(
 			"Received ActionTimerUpdated: {SecondsRemaining}s remaining, seat {SeatIndex}, active: {IsActive}",
 			timerState.SecondsRemaining, timerState.PlayerSeatIndex, timerState.IsActive);
@@ -376,8 +536,11 @@ public sealed class GameHubClient : IAsyncDisposable
 		if (OnActionTimerUpdated is not null) await OnActionTimerUpdated(timerState);
 	}
 
-	private async Task HandlePlayerActionPerformed(PlayerActionPerformedDto notification)
+	private async Task HandlePlayerActionPerformed(PlayerActionPerformedDto notification, int handlerGeneration)
 	{
+		if (!GameHubConnectionPolicy.IsCurrent(handlerGeneration, Volatile.Read(ref _connectionGeneration)))
+			return;
+
 		_logger.LogDebug("Received PlayerActionPerformed for game {GameId}, seat {SeatIndex}: {Action}",
 			notification.GameId, notification.SeatIndex, notification.ActionDescription);
 

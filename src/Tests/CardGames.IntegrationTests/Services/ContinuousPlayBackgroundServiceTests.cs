@@ -1383,10 +1383,10 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 		public List<(Guid GameId, DateTimeOffset Time)> Broadcasts { get; } = new();
 		public List<TableToastNotificationDto> ToastNotifications { get; } = new();
 
-		public Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
+		public Task<TableStatePublicDto?> BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
 		{
 			Broadcasts.Add((gameId, DateTimeOffset.UtcNow));
-			return Task.CompletedTask;
+			return Task.FromResult<TableStatePublicDto?>(null);
 		}
 
 		public Task BroadcastGameStateToUserAsync(Guid gameId, string userId,
@@ -1396,7 +1396,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 		}
 
 		public Task BroadcastPlayerJoinedAsync(Guid gameId, string playerName, int seatPosition, bool isRejoining,
-			CancellationToken cancellationToken = default)
+			Guid playerId, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}
@@ -1421,7 +1421,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 		}
 
 		public Task BroadcastPlayerActionAsync(Guid gameId, int seatPosition, string? action, string description,
-			CancellationToken cancellationToken = default)
+			int handNumber, ulong stateVersion, CancellationToken cancellationToken = default)
 		{
 			return Task.CompletedTask;
 		}

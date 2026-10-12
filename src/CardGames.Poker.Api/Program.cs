@@ -126,6 +126,7 @@ public class Program
 				options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 			});
 		builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
+		builder.Services.AddSingleton<IGameConnectionRegistry, GameConnectionRegistry>();
 		builder.Services.AddSingleton<IActionTimerService, ActionTimerService>();
 		builder.Services.AddSingleton<IAutoActionService, AutoActionService>();
 		builder.Services.AddHostedService<GameJoinRequestExpiryBackgroundService>();

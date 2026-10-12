@@ -24,6 +24,12 @@ public interface ICurrentUserService
 	string? UserEmail { get; }
 
 	/// <summary>
+	///     Gets the SignalR user id for the current HTTP principal.
+	///     This is the email claim when present, otherwise the subject.
+	/// </summary>
+	string? SignalRUserId { get; }
+
+	/// <summary>
 	///     Gets a value indicating whether the user is authenticated.
 	/// </summary>
 	bool IsAuthenticated { get; }

@@ -12,6 +12,17 @@ public sealed record PlayerActionPerformedDto
 	public required Guid GameId { get; init; }
 
 	/// <summary>
+	///     The hand this action belongs to. Zero when the sender did not stamp a hand.
+	/// </summary>
+	public int HandNumber { get; init; }
+
+	/// <summary>
+	///     Monotonic version of the game row this action was stamped from.
+	///     Zero when the payload has no version.
+	/// </summary>
+	public ulong StateVersion { get; init; }
+
+	/// <summary>
 	///     The seat index of the player who performed the action.
 	/// </summary>
 	public required int SeatIndex { get; init; }

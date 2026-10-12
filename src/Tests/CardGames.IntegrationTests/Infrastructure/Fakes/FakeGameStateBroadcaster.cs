@@ -7,9 +7,9 @@ public class FakeGameStateBroadcaster : IGameStateBroadcaster
 {
 	public List<TableToastNotificationDto> ToastNotifications { get; } = [];
 
-	public Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
+	public Task<TableStatePublicDto?> BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
 	{
-		return Task.CompletedTask;
+		return Task.FromResult<TableStatePublicDto?>(null);
 	}
 
 	public Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
@@ -18,7 +18,7 @@ public class FakeGameStateBroadcaster : IGameStateBroadcaster
 	}
 
 	public Task BroadcastPlayerJoinedAsync(Guid gameId, string playerName, int seatIndex, bool canPlayCurrentHand,
-		CancellationToken cancellationToken = default)
+		Guid playerId, CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}
@@ -43,7 +43,7 @@ public class FakeGameStateBroadcaster : IGameStateBroadcaster
 	}
 
 	public Task BroadcastPlayerActionAsync(Guid gameId, int seatIndex, string? playerName, string actionDescription,
-		CancellationToken cancellationToken = default)
+		int handNumber, ulong stateVersion, CancellationToken cancellationToken = default)
 	{
 		return Task.CompletedTask;
 	}

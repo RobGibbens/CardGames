@@ -89,6 +89,10 @@ public class CurrentUserService(
 	}
 
 	/// <inheritdoc />
+	public string? SignalRUserId =>
+		CardGames.Poker.Api.Infrastructure.SignalRUserId.ForConnection(User);
+
+	/// <inheritdoc />
 	public bool IsAuthenticated
 	{
 		get

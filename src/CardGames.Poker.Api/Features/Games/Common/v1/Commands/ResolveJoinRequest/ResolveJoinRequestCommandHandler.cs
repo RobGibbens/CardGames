@@ -165,7 +165,7 @@ public sealed class ResolveJoinRequestCommandHandler(
 		await context.SaveChangesAsync(cancellationToken);
 
 		await gameStateBroadcaster.BroadcastPlayerJoinedAsync(game.Id, joinRequest.Player.Name, seatIndex.Value,
-			canPlayCurrentHand, cancellationToken);
+			canPlayCurrentHand, joinRequest.PlayerId, cancellationToken);
 		await NotifyRequesterAsync(joinRequest, game, now, cancellationToken);
 
 		logger.LogInformation("Host {HostId} approved join request {JoinRequestId} for game {GameId}",

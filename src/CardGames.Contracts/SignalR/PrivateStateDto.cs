@@ -12,6 +12,12 @@ public sealed record PrivateStateDto
 	public required Guid GameId { get; init; }
 
 	/// <summary>
+	///     Monotonic version of the game row this snapshot was read from.
+	///     Zero when the payload has no version.
+	/// </summary>
+	public ulong StateVersion { get; init; }
+
+	/// <summary>
 	///     The player's name/identifier.
 	/// </summary>
 	public required string PlayerName { get; init; }
@@ -20,6 +26,12 @@ public sealed record PrivateStateDto
 	///     The player's seat position.
 	/// </summary>
 	public int SeatPosition { get; init; }
+
+	/// <summary>
+	///     The hand number this private snapshot belongs to.
+	///     Zero when the snapshot was built before a hand number was sent.
+	/// </summary>
+	public int HandNumber { get; init; }
 
 	/// <summary>
 	///     The player's hand with cards face-up.

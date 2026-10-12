@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.AceChoice;
 using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
@@ -189,7 +190,7 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 	{
 		if (context.CurrentPhase.Equals(nameof(Phases.InBetweenTurn), StringComparison.OrdinalIgnoreCase))
 		{
-			// Auto-action for timed-out player: pass (bet 0)
+			// Auto-action for a timed-out player: ace-low, otherwise pass (bet 0).
 			var player = context.Game.GamePlayers
 				.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
 
@@ -197,12 +198,25 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 
 			try
 			{
-				var command = new PlaceBetCommand(
-					context.GameId, player.PlayerId, 0);
-				await context.Mediator.Send(command, context.CancellationToken);
-				context.Logger.LogInformation(
-					"Auto-pass completed for player {PlayerId} in In-Between game {GameId}",
-					player.PlayerId, context.GameId);
+				var state = GetState(context.Game);
+				if (state.SubPhase == TurnSubPhase.AwaitingAceChoice)
+				{
+					var command = new AceChoiceCommand(
+						context.GameId, player.PlayerId, AceIsHigh: false);
+					await context.Mediator.Send(command, context.CancellationToken);
+					context.Logger.LogInformation(
+						"Auto ace-low completed for player {PlayerId} in In-Between game {GameId}",
+						player.PlayerId, context.GameId);
+				}
+				else
+				{
+					var command = new PlaceBetCommand(
+						context.GameId, player.PlayerId, 0);
+					await context.Mediator.Send(command, context.CancellationToken);
+					context.Logger.LogInformation(
+						"Auto-pass completed for player {PlayerId} in In-Between game {GameId}",
+						player.PlayerId, context.GameId);
+				}
 			}
 			catch (Exception ex)
 			{

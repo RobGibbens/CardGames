@@ -373,8 +373,7 @@
 		           ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
 		           ActionTimer="@_actionTimerState"
 		           EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows"
-		           EnableBaseballWildCardHighlighting="@(IsBaseball || IsHoldTheBaseball)"
-		           OnTimeoutFold="@GetDrawTimeoutFoldCallback()"/>
+		           EnableBaseballWildCardHighlighting="@(IsBaseball || IsHoldTheBaseball)"/>
 	}
 
 	<!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -803,11 +802,14 @@
 
 	// Card Deal Animation state (for supported game variants)
 	private bool _dealAnimationInProgress;
+	private int _dealAnimationHandNumber;
+	private int _dealAnimationGeneration;
 	private bool _dealAnimationPausedForBuyCardOffer;
 	private int _dealPausedBuyCardOfferSeatIndex = -1;
 	private Timer? _dealTimer;
 	private TableStatePublicDto? _dealTargetState;
 	private PrivateStateDto? _dealPendingPrivateState;
+	private PrivateStateDto? _privateStateWaitingForHand;
 	private List<int> _dealOrderedSeatIndices = [];
 	private int _dealCurrentCardIndex; // Which card index we are dealing (0, 1, 2 for initial; 3, 4...)
 	private int _dealTargetEndIndex; // Stop dealing when _dealCurrentCardIndex reaches this
@@ -909,6 +911,7 @@
 
 	// Current table state (from SignalR)
 	private TableStatePublicDto? _tableState;
+	private ulong _appliedStateVersion;
 
 	// Phase category helper properties - driven by SignalR state
 	private bool IsBettingPhase =>
@@ -1287,6 +1290,9 @@
 			return;
 		}
 
+		if (PlayerJoinedToastPolicy.IsOwnJoin(notification, _currentPlayerId, _currentPlayerName, _loggedInUserEmail))
+			return;
+
 		Logger.LogDebug("Player {PlayerName} joined at seat {SeatIndex}", notification.PlayerName, notification.SeatIndex);
 
 		// Show toast notification to other players
@@ -1325,11 +1331,23 @@
 			return;
 		}
 
+		if (ShouldIgnoreStaleTableState(state))
+		{
+			return;
+		}
+
+		var previousDisplayedHandNumber = _tableState?.CurrentHandNumber ?? _gameResponse?.CurrentHandNumber ?? 0;
+
 		Logger.LogDebug("Received table state update for game {GameId}, phase: {Phase}", state.GameId, state.CurrentPhase);
 
 		// Store the table state for phase category checks
 		_tableState = state;
+		if (state.StateVersion > 0)
+		{
+			_appliedStateVersion = state.StateVersion;
+		}
 		await TryPlayTableSoundEffectsAsync(state.SoundEffects);
+		PrepareDealAnimationForIncomingState(state);
 
 		// In-Between: show bet controls once boundary cards arrive via SignalR
 		if (_ibWaitingForBoundaryCards && state.CommunityCards?.Any(c => c.IsFaceUp) == true)
@@ -1337,23 +1355,6 @@
 			_ibWaitingForBoundaryCards = false;
 			_ibShowBetControls = true;
 			_ibAceChoiceRequired = false;
-		}
-
-		if (_dealAnimationInProgress && _dealAnimationPausedForBuyCardOffer)
-		{
-			var currentOfferSeat = state.CurrentActorSeatIndex;
-			var offerAdvanced = !IsBuyCardOfferPhase || currentOfferSeat != _dealPausedBuyCardOfferSeatIndex;
-			if (offerAdvanced)
-			{
-				_dealAnimationPausedForBuyCardOffer = false;
-				_dealPausedBuyCardOfferSeatIndex = -1;
-				_dealTimer?.Change(100, DealAnimationDelayMs);
-			}
-		}
-
-		if (_dealAnimationInProgress)
-		{
-			_dealTargetState = state;
 		}
 
 		// Update deck hand description from state
@@ -1406,6 +1407,8 @@
 			// Update Dealer's Choice state from SignalR
 			_isDealersChoice = state.IsDealersChoice;
 			_dealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+			if (state.CurrentHandNumber > previousHandNumber)
+				_actionTimerState = null;
 			_actionTimerState = state.ActionTimer;
 
 			// Dealer's Choice: load available games when entering WaitingForDealerChoice
@@ -1740,6 +1743,8 @@
 
 			_isDealersChoice = state.IsDealersChoice;
 			_dealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+			if (state.CurrentHandNumber > previousDisplayedHandNumber)
+				_actionTimerState = null;
 			_actionTimerState = state.ActionTimer;
 
 			if (state.ChipCheckPause is not null)
@@ -1785,6 +1790,8 @@
 			CalculateHandOdds(_currentPrivateHand);
 		}
 
+		await ApplyPrivateStateWaitingForHandAsync(state);
+
 		// Redirect if the player requested to leave and is no longer seated (hand completed)
 		if (_hasRequestedLeave && !_isSeated)
 		{
@@ -1800,6 +1807,16 @@
 	private async Task HandlePrivateStateUpdatedAsync(PrivateStateDto state)
 	{
 		if (state.GameId != GameId)
+		{
+			return;
+		}
+
+		if (ShouldIgnorePrivateState(state))
+		{
+			return;
+		}
+
+		if (ShouldIgnoreStalePrivateState(state))
 		{
 			return;
 		}
@@ -1843,9 +1860,16 @@
 					"Skipping private state card update for seat {SeatIndex} during animation (Runout={Runout}, Deal={Deal})",
 					targetSeatIndex, isInRunoutAnimation, _dealAnimationInProgress);
 
-				if (_dealAnimationInProgress && state.Hand is { Count: > 0 })
+				if (ShouldDeferPrivateStateToDealAnimation(state))
 				{
 					_dealPendingPrivateState = state;
+				}
+				else if (_dealAnimationInProgress && state.Hand is { Count: > 0 } &&
+				         state.HandNumber > _dealAnimationHandNumber &&
+				         (_privateStateWaitingForHand is null ||
+				          state.HandNumber >= _privateStateWaitingForHand.HandNumber))
+				{
+					_privateStateWaitingForHand = state;
 				}
 			}
 			else if (state.Hand is { Count: > 0 })
@@ -4169,11 +4193,125 @@
 		};
 	}
 
+	private void PrepareDealAnimationForIncomingState(TableStatePublicDto state)
+	{
+		if (!_dealAnimationInProgress)
+		{
+			return;
+		}
+
+		if (state.CurrentHandNumber > _dealAnimationHandNumber)
+		{
+			AbandonDealAnimation(state.CurrentHandNumber);
+			return;
+		}
+
+		if (state.CurrentHandNumber < _dealAnimationHandNumber)
+		{
+			return;
+		}
+
+		if (_dealAnimationPausedForBuyCardOffer)
+		{
+			var currentOfferSeat = state.CurrentActorSeatIndex;
+			var offerAdvanced = !IsBuyCardOfferPhase || currentOfferSeat != _dealPausedBuyCardOfferSeatIndex;
+			if (offerAdvanced)
+			{
+				_dealAnimationPausedForBuyCardOffer = false;
+				_dealPausedBuyCardOfferSeatIndex = -1;
+				_dealTimer?.Change(100, DealAnimationDelayMs);
+			}
+		}
+
+		_dealTargetState = state;
+	}
+
+	private void AbandonDealAnimation(int incomingHandNumber)
+	{
+		_dealAnimationGeneration++;
+		_dealAnimationInProgress = false;
+		_dealAnimationHandNumber = 0;
+		_dealTimer?.Dispose();
+		_dealTimer = null;
+		_dealAnimationPausedForBuyCardOffer = false;
+		_dealPausedBuyCardOfferSeatIndex = -1;
+		_dealTargetState = null;
+		_dealPendingPrivateState = null;
+		_flyingCard = null;
+		_dealTargetCards.Clear();
+		_dealOrderedSeatIndices = [];
+		_dealCurrentCardIndex = 0;
+		_dealTargetEndIndex = 0;
+		_dealCurrentSeatIdx = 0;
+		_deferCommunityCardsForDealAnimation = false;
+
+		if (_privateStateWaitingForHand?.HandNumber < incomingHandNumber)
+		{
+			_privateStateWaitingForHand = null;
+		}
+	}
+
+	private bool ShouldIgnoreStaleTableState(TableStatePublicDto state)
+	{
+		var displayedHand = _tableState?.CurrentHandNumber ?? _gameResponse?.CurrentHandNumber ?? 0;
+		if (state.CurrentHandNumber > 0 && displayedHand > 0 && state.CurrentHandNumber < displayedHand)
+			return true;
+		if (state.StateVersion > 0 && _appliedStateVersion > 0 && state.StateVersion < _appliedStateVersion)
+			return true;
+		return false;
+	}
+
+	private bool ShouldIgnorePrivateState(PrivateStateDto state)
+	{
+		var displayedHand = _tableState?.CurrentHandNumber ?? _gameResponse?.CurrentHandNumber ?? 0;
+		return state.HandNumber > 0 && displayedHand > 0 && state.HandNumber < displayedHand;
+	}
+
+	private bool ShouldIgnoreStalePrivateState(PrivateStateDto state)
+	{
+		return state.StateVersion > 0 && _appliedStateVersion > 0 && state.StateVersion < _appliedStateVersion;
+	}
+
+	private bool ShouldDeferPrivateStateToDealAnimation(PrivateStateDto state)
+	{
+		return _dealAnimationInProgress
+		       && state.Hand is { Count: > 0 }
+		       && (state.HandNumber <= 0 || state.HandNumber == _dealAnimationHandNumber);
+	}
+
+	private async Task ApplyPrivateStateWaitingForHandAsync(TableStatePublicDto state)
+	{
+		var waiting = _privateStateWaitingForHand;
+		if (waiting?.HandNumber != state.CurrentHandNumber)
+		{
+			return;
+		}
+
+		if (_dealAnimationInProgress && _dealAnimationHandNumber == state.CurrentHandNumber)
+		{
+			_privateStateWaitingForHand = null;
+			if (waiting.Hand is { Count: > 0 })
+			{
+				_dealPendingPrivateState = waiting;
+			}
+
+			return;
+		}
+
+		if (!_dealAnimationInProgress)
+		{
+			_privateStateWaitingForHand = null;
+			await HandlePrivateStateUpdatedAsync(waiting);
+		}
+	}
+
 	private void StartCardDealAnimation(TableStatePublicDto state, int startCardIndex, int numberOfCardsToDeal, int detectedSeatIndex = -1)
 	{
 		Logger.LogInformation("Starting card deal animation for game {GameId}. StartIdx={Start}, Count={Count}, DetectedSeat={Seat}",
 			GameId, startCardIndex, numberOfCardsToDeal, detectedSeatIndex);
 
+		_dealAnimationGeneration++;
+		_dealAnimationHandNumber = state.CurrentHandNumber;
 		_dealAnimationInProgress = true;
 		_dealAnimationPausedForBuyCardOffer = false;
 		_dealPausedBuyCardOfferSeatIndex = -1;
@@ -4221,7 +4359,8 @@
 
 	private async void DealNextCard(object? state)
 	{
-		if (!_dealAnimationInProgress) return;
+		var generation = _dealAnimationGeneration;
+		if (!IsCurrentDealAnimation(generation)) return;
 
 		// Clear any previous flying card
 		_flyingCard = null;
@@ -4239,6 +4378,9 @@
 		{
 			await InvokeAsync(() =>
 			{
+				if (!IsCurrentDealAnimation(generation))
+					return;
+
 				_flyingCard = null;
 				CompleteCardDealAnimation();
 				StateHasChanged();
@@ -4280,9 +4422,13 @@
 			);
 
 			await InvokeStateHasChangedAsync();
+			if (!IsCurrentDealAnimation(generation))
+				return;
 
 			// Wait for the flying animation to complete (600ms matches CSS animation duration)
 			await Task.Delay(550);
+			if (!IsCurrentDealAnimation(generation))
+				return;
 
 			// Clear the flying card and add card to the seat
 			_flyingCard = null;
@@ -4313,16 +4459,24 @@
 				newHand.Add(newCard);
 			}
 
+			if (!IsCurrentDealAnimation(generation))
+				return;
+
 			_seats[seatListIndex] = seat with { Cards = newHand };
 
 			if (seatIndex == _currentPlayerSeatIndex)
 			{
 				await PlayDealCardSoundAsync(1);
+				if (!IsCurrentDealAnimation(generation))
+					return;
 			}
 
 			Logger.LogDebug("Deal Animation: CardIdx {CardIdx}, Seat {SeatIndex}, FaceUp={FaceUp}",
 				_dealCurrentCardIndex, seatIndex, isFaceUp);
 		}
+
+		if (!IsCurrentDealAnimation(generation))
+			return;
 
 		_dealCurrentSeatIdx++;
 
@@ -4335,6 +4489,9 @@
 
 		await InvokeStateHasChangedAsync();
 	}
+
+	private bool IsCurrentDealAnimation(int generation) =>
+		_dealAnimationInProgress && generation == _dealAnimationGeneration;
 
 	/// <summary>
 	///     Timer callback that reveals the next community card during a staggered flop reveal.
@@ -4638,10 +4795,15 @@
 		}
 
 		// Sync with Pending Private State (for current player hole cards)
-		if (_dealPendingPrivateState != null)
+		var pendingPrivateState = _dealPendingPrivateState;
+		_dealPendingPrivateState = null;
+		if (pendingPrivateState is not null)
 		{
-			_ = HandlePrivateStateUpdatedAsync(_dealPendingPrivateState);
-			_dealPendingPrivateState = null;
+			var displayedHand = _tableState?.CurrentHandNumber ?? _dealAnimationHandNumber;
+			if (pendingPrivateState.HandNumber <= 0 || pendingPrivateState.HandNumber == displayedHand)
+			{
+				_ = HandlePrivateStateUpdatedAsync(pendingPrivateState);
+			}
 		}
 	}
 
@@ -5292,43 +5454,6 @@
 	}
 
 	/// <summary>
-	///     Handles the draw phase timer expiry for games where standing pat is invalid
-	///     (e.g., Irish Hold 'Em requires exactly 2 discards).
-	///     Clears the draw panel immediately for responsive UI; the server-side auto-action
-	///     handles the actual fold and broadcasts the updated state.
-	/// </summary>
-	private async Task HandleDrawTimeoutFoldAsync()
-	{
-		Logger.LogInformation("Draw timer expired — folding via timeout for game {GameId}", GameId);
-
-		try
-		{
-			var response = await GameApiRouter.FoldDuringDrawAsync(GameId, _currentPlayerSeatIndex);
-			if (!response.IsSuccess)
-			{
-				Logger.LogWarning("Fold-during-draw API call failed for game {GameId}: {Error}", GameId, response.Error);
-			}
-		}
-		catch (Exception ex)
-		{
-			Logger.LogWarning(ex, "Fold-during-draw API call threw for game {GameId}; server auto-action will handle it", GameId);
-		}
-
-		ResetDrawPanelStateForNewHand();
-		await InvokeStateHasChangedAsync();
-	}
-
-	/// <summary>
-	///     Returns the OnTimeoutFold callback for games that fold on draw timeout, or default for others.
-	/// </summary>
-	private EventCallback GetDrawTimeoutFoldCallback()
-	{
-		return IsIrishStyleHoldEm
-			? EventCallback.Factory.Create(this, HandleDrawTimeoutFoldAsync)
-			: default;
-	}
-
-	/// <summary>
 	///     Recalculates the hand odds based on the current discard selection.
 	///     Cards not selected for discard are kept, and the odds are calculated
 	///     by simulating drawing replacement cards for the discarded ones.
@@ -5711,6 +5836,9 @@
 	/// </summary>
 	private async Task HandleActionTimerUpdatedAsync(ActionTimerStateDto timerState)
 	{
+		var displayedHand = _tableState?.CurrentHandNumber ?? _gameResponse?.CurrentHandNumber ?? 0;
+		if (ActionTimerUpdatePolicy.ShouldIgnore(timerState, displayedHand, _appliedStateVersion, _actionTimerState))
+			return;
 		_actionTimerState = timerState;
 		await InvokeStateHasChangedAsync();
 	}
@@ -5725,6 +5853,12 @@
 		{
 			return;
 		}
+
+		var displayedHand = _tableState?.CurrentHandNumber ?? _gameResponse?.CurrentHandNumber ?? 0;
+		if (notification.HandNumber > 0 && displayedHand > 0 && notification.HandNumber < displayedHand)
+			return;
+		if (notification.StateVersion > 0 && _appliedStateVersion > 0 && notification.StateVersion < _appliedStateVersion)
+			return;
 
 		var seatIndex = notification.SeatIndex;
 		if (seatIndex < 0 || seatIndex >= _seats.Count)

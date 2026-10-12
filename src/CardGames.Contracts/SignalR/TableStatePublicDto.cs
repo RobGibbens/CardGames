@@ -72,6 +72,12 @@ public sealed partial record TableStatePublicDto
 	public int CurrentHandNumber { get; init; }
 
 	/// <summary>
+	///     Monotonic version of the game row this snapshot was read from.
+	///     Zero when the payload has no version.
+	/// </summary>
+	public ulong StateVersion { get; init; }
+
+	/// <summary>
 	///     The name of the user who created the game.
 	/// </summary>
 	public string? CreatedByName { get; init; }
@@ -228,6 +234,17 @@ public sealed record ActionTimerStateDto
 	///     Whether the timer is currently active.
 	/// </summary>
 	public bool IsActive { get; init; }
+
+	/// <summary>
+	///     The hand this timer was started for. Zero when the tick is not tied to a hand.
+	/// </summary>
+	public int HandNumber { get; init; }
+
+	/// <summary>
+	///     Monotonic version of the snapshot that started this timer.
+	///     Zero when the tick has no version.
+	/// </summary>
+	public ulong StateVersion { get; init; }
 }
 
 /// <summary>

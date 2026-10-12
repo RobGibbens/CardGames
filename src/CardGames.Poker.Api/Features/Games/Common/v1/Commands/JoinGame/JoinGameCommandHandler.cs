@@ -345,6 +345,7 @@ public sealed class JoinGameCommandHandler(
 			playerName,
 			command.SeatIndex,
 			canPlayCurrentHand,
+			player.Id,
 			cancellationToken);
 
 		return new JoinGameSuccessful(
@@ -427,6 +428,7 @@ public sealed class JoinGameCommandHandler(
 			previousGamePlayer.Player.Name,
 			rejoinSeatIndex,
 			canPlayCurrentHand,
+			previousGamePlayer.PlayerId,
 			cancellationToken);
 
 		return new JoinGameSuccessful(
@@ -449,6 +451,7 @@ public sealed class JoinGameCommandHandler(
 			// Update email if not previously set (supports existing players before email tracking)
 			if (string.IsNullOrWhiteSpace(player.Email) && !string.IsNullOrWhiteSpace(email)) player.Email = email;
 
+			ApplyConnectionRoutingKey(player);
 			return player;
 		}
 
@@ -467,7 +470,18 @@ public sealed class JoinGameCommandHandler(
 			UpdatedAt = now
 		};
 
+		ApplyConnectionRoutingKey(player);
 		context.Players.Add(player);
 		return player;
+	}
+
+	private void ApplyConnectionRoutingKey(Player player)
+	{
+		var routingKey = currentUserService.SignalRUserId;
+		if (string.IsNullOrWhiteSpace(routingKey) ||
+		    string.Equals(player.SignalRUserId, routingKey, StringComparison.Ordinal))
+			return;
+
+		player.SignalRUserId = routingKey;
 	}
 }

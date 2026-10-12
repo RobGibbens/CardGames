@@ -236,6 +236,7 @@ public class GamePlayerResolverTests
 		public string? UserId => userId;
 		public string? UserName => userName;
 		public string? UserEmail => userEmail;
+		public string? SignalRUserId => null;
 		public bool IsAuthenticated => isAuthenticated;
 	}
 }
@@ -355,6 +356,8 @@ public class GameAuthorizationBehaviorTests
 		public string? UserId => accessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
 		public string? UserName => accessor.HttpContext?.User.FindFirstValue(ClaimTypes.Name);
 		public string? UserEmail => accessor.HttpContext?.User.FindFirstValue(ClaimTypes.Email);
+		public string? SignalRUserId =>
+			CardGames.Poker.Api.Infrastructure.SignalRUserId.ForConnection(accessor.HttpContext?.User);
 		public bool IsAuthenticated => accessor.HttpContext?.User.Identity?.IsAuthenticated == true;
 	}
 }

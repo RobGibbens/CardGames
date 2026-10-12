@@ -24,7 +24,8 @@ public interface IActionTimerService
 	/// <param name="onExpired">Callback invoked when the timer expires.</param>
 	/// <param name="startDelay">Optional delay before the countdown begins.</param>
 	void StartTimer(Guid gameId, int playerSeatIndex, int durationSeconds = DefaultTimerDurationSeconds,
-		Func<Guid, int, Task>? onExpired = null, TimeSpan? startDelay = null);
+		Func<Guid, int, Task>? onExpired = null, TimeSpan? startDelay = null, int handNumber = 0,
+		ulong stateVersion = 0);
 
 	/// <summary>
 	///     Starts a chip check pause timer for a game.
@@ -92,6 +93,16 @@ public sealed record ActionTimerState
 	///     This may be in the future when a timer has an initial delay.
 	/// </summary>
 	public required DateTimeOffset StartedAtUtc { get; init; }
+
+	/// <summary>
+	///     The hand this timer was started for. Zero for a chip-check pause.
+	/// </summary>
+	public int HandNumber { get; init; }
+
+	/// <summary>
+	///     Monotonic version of the snapshot that started this timer.
+	/// </summary>
+	public ulong StateVersion { get; init; }
 
 	/// <summary>
 	///     The number of seconds remaining on the timer.

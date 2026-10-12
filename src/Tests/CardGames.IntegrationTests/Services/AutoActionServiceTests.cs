@@ -1,4 +1,7 @@
 using CardGames.Poker.Api.Features.Games.BobBarker.v1.Commands.SelectShowcase;
+using CardGames.Poker.Api.Features.Games.InBetween;
+using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.AceChoice;
+using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
@@ -430,6 +433,43 @@ public class AutoActionServiceTests : IDisposable
 		var cmd = _mediator.SentCommands.OfType<DropOrStayCommand>().First();
 		cmd.Decision.Should().Be("Drop");
 		cmd.PlayerId.Should().Be(player.PlayerId);
+	}
+
+	[Fact]
+	public async Task PerformAutoActionAsync_InBetween_AwaitingAceChoice_ChoosesLow()
+	{
+		var gameId = Guid.NewGuid();
+		var playerSeat = 1;
+		var game = new Game
+		{
+			Id = gameId,
+			CurrentPhase = "InBetweenTurn",
+			CurrentPlayerIndex = playerSeat,
+			GameType = new GameType { Code = "INBETWEEN", Name = "In-Between" }
+		};
+		InBetweenVariantState.SetState(game, new InBetweenVariantState.InBetweenState
+		{
+			SubPhase = InBetweenVariantState.TurnSubPhase.AwaitingAceChoice
+		});
+
+		var player = new GamePlayer
+		{
+			GameId = gameId,
+			PlayerId = Guid.NewGuid(),
+			SeatPosition = playerSeat,
+			Status = GamePlayerStatus.Active
+		};
+
+		_dbContext.Games.Add(game);
+		_dbContext.GamePlayers.Add(player);
+		await _dbContext.SaveChangesAsync();
+
+		await _service.PerformAutoActionAsync(gameId, playerSeat);
+
+		var cmd = _mediator.SentCommands.Should().ContainSingle().Which.Should().BeOfType<AceChoiceCommand>().Subject;
+		cmd.AceIsHigh.Should().BeFalse();
+		cmd.PlayerId.Should().Be(player.PlayerId);
+		_mediator.SentCommands.Should().NotContain(c => c is PlaceBetCommand);
 	}
 
 	[Fact]

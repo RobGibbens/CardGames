@@ -13,7 +13,8 @@ public interface IGameStateBroadcaster
 	/// </summary>
 	/// <param name="gameId">The unique identifier of the game.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
-	Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default);
+	/// <returns>The public snapshot that was broadcast, or null when the game was missing.</returns>
+	Task<TableStatePublicDto?> BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	///     Broadcasts the current game state to a specific user.
@@ -31,12 +32,14 @@ public interface IGameStateBroadcaster
 	/// <param name="playerName">The name of the player who joined.</param>
 	/// <param name="seatIndex">The seat index the player joined at.</param>
 	/// <param name="canPlayCurrentHand">Whether the player can participate in the current hand.</param>
+	/// <param name="playerId">The seated player's id, used to exclude that player's hub connections.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	Task BroadcastPlayerJoinedAsync(
 		Guid gameId,
 		string playerName,
 		int seatIndex,
 		bool canPlayCurrentHand,
+		Guid playerId,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
@@ -74,11 +77,15 @@ public interface IGameStateBroadcaster
 	/// <param name="seatIndex">The seat index of the player who performed the action.</param>
 	/// <param name="playerName">The name of the player who performed the action.</param>
 	/// <param name="actionDescription">The display description of the action (e.g., "Checked", "Raised 50").</param>
+	/// <param name="handNumber">The hand number from the snapshot just broadcast.</param>
+	/// <param name="stateVersion">The state version from the snapshot just broadcast.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	Task BroadcastPlayerActionAsync(
 		Guid gameId,
 		int seatIndex,
 		string? playerName,
 		string actionDescription,
+		int handNumber,
+		ulong stateVersion,
 		CancellationToken cancellationToken = default);
 }

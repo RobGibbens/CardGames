@@ -161,58 +161,6 @@
 
 	private const int DefaultTimerDurationSeconds = 30;
 	private int _betAmount;
-	private string? _autoActionTimerKey;
-	private bool _isAutoActionInFlight;
-
-	protected override async Task OnParametersSetAsync()
-	{
-		await TrySubmitTimeoutDefaultDecisionAsync();
-	}
-
-	private async Task TrySubmitTimeoutDefaultDecisionAsync()
-	{
-		if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
-		{
-			_autoActionTimerKey = null;
-			return;
-		}
-
-		if (IsSubmitting || _isAutoActionInFlight)
-		{
-			return;
-		}
-
-		var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
-		if (_autoActionTimerKey == timerKey)
-		{
-			return;
-		}
-
-		_autoActionTimerKey = timerKey;
-		_isAutoActionInFlight = true;
-
-		try
-		{
-			if (IsAceChoiceRequired)
-			{
-				// Auto-choose "Low" when the timer expires
-				await OnAceChoice.InvokeAsync(false);
-			}
-			else if (ShowBetControls)
-			{
-				// Auto-pass when the timer expires
-				await OnPlaceBet.InvokeAsync(0);
-			}
-			else if (ShowDealPrompt)
-			{
-				await OnDealCards.InvokeAsync();
-			}
-		}
-		finally
-		{
-			_isAutoActionInFlight = false;
-		}
-	}
 
 	private void OnSliderChanged(ChangeEventArgs e)
 	{

@@ -202,8 +202,6 @@
 @code {
 	private const int DefaultTimerDurationSeconds = 60;
 	private const string PanelStorageKey = "cardGames.panelPosition.drawPanel";
-	private string? _autoActionTimerKey;
-	private bool _isAutoActionInFlight;
 	private string? _lastCardsKey;
 	private bool _cardsChangedWhileBusy;
 
@@ -308,14 +306,6 @@
 	public ActionTimerStateDto? ActionTimer { get; set; }
 
 	/// <summary>
-	///     Callback invoked when the timer expires and standing pat is not a valid default action
-	///     (e.g., Irish Hold 'Em requires exactly 2 discards, so timeout means fold).
-	///     When set, this is called instead of OnDraw([]) on timeout.
-	/// </summary>
-	[Parameter]
-	public EventCallback OnTimeoutFold { get; set; }
-
-	/// <summary>
 	///     Enables Kings and Lows wild card highlighting logic (kings + lowest non-king rank).
 	///     Keep false for other game types.
 	/// </summary>
@@ -333,10 +323,10 @@
 
 	private int SelectedCount => SelectedIndices.Count;
 
-	protected override async Task OnParametersSetAsync()
+	protected override Task OnParametersSetAsync()
 	{
 		ClearStaleSelectionIfNeeded();
-		await TrySubmitTimeoutDefaultActionAsync();
+		return Task.CompletedTask;
 	}
 
 	private void ClearStaleSelectionIfNeeded()
@@ -434,45 +424,6 @@
 			.ToList();
 
 		await OnDraw.InvokeAsync(selectedIndices);
-	}
-
-	private async Task TrySubmitTimeoutDefaultActionAsync()
-	{
-		if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0 || IsReadOnly)
-		{
-			_autoActionTimerKey = null;
-			return;
-		}
-
-		if (IsSubmitting || IsAnimating || _isAutoActionInFlight)
-		{
-			return;
-		}
-
-		var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
-		if (_autoActionTimerKey == timerKey)
-		{
-			return;
-		}
-
-		_autoActionTimerKey = timerKey;
-		_isAutoActionInFlight = true;
-
-		try
-		{
-			if (OnTimeoutFold.HasDelegate)
-			{
-				await OnTimeoutFold.InvokeAsync();
-			}
-			else
-			{
-				await OnDraw.InvokeAsync([]);
-			}
-		}
-		finally
-		{
-			_isAutoActionInFlight = false;
-		}
 	}
 
 	private static string GetSuitColorClass(string? suit)

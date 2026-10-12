@@ -49,6 +49,11 @@ public class Player : EntityWithRowVersion
 	public string? ExternalId { get; set; }
 
 	/// <summary>
+	///     User id SignalR assigned to this player's connection. <c>Clients.User</c> is called with this value.
+	/// </summary>
+	public string? SignalRUserId { get; set; }
+
+	/// <summary>
 	///     Optional avatar URL for the player.
 	/// </summary>
 	public string? AvatarUrl { get; set; }
