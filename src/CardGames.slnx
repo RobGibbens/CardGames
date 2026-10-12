@@ -62,6 +62,7 @@
   <Folder Name="/Tests/">
     <Project Path="Tests/CardGames.Core.French.Tests/CardGames.Core.French.Tests.csproj" />
     <Project Path="Tests/CardGames.Core.Tests/CardGames.Core.Tests.csproj" />
+    <Project Path="Tests/CardGames.E2E/CardGames.E2E.csproj" />
     <Project Path="Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj" />
     <Project Path="Tests/CardGames.Poker.CLI.Tests/CardGames.Poker.CLI.Tests.csproj" />
     <Project Path="Tests/CardGames.Poker.Tests/CardGames.Poker.Tests.csproj" />

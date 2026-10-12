@@ -105,7 +105,7 @@
 				<button class="btn btn-secondary confirm-dialog-btn" type="button" @onclick="CloseJoinBuyInModal" disabled="@_isJoiningSeat">
 					Cancel
 				</button>
-				<button class="btn btn-primary confirm-dialog-btn join-buy-in-submit-btn" type="button" @onclick="SubmitJoinBuyInAsync" disabled="@_isJoiningSeat">
+				<button class="btn btn-primary confirm-dialog-btn join-buy-in-submit-btn" data-testid="join-buy-in-submit" type="button" @onclick="SubmitJoinBuyInAsync" disabled="@_isJoiningSeat">
 					@if (_isJoiningSeat)
 					{
 						<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -251,6 +251,8 @@
 			}
 		}
 		<div class="connection-indicator @(_isConnected ? "connected" : "disconnected")"
+		     data-testid="connection-indicator"
+		     data-connected="@(_isConnected ? "true" : "false")"
 		     title="@(_isConnected ? "Connected" : "Disconnected")">
 			<span class="connection-dot"></span>
 		</div>
@@ -1276,6 +1278,27 @@
 		}
 	}
 
+	/// <summary>
+	///     Hub JoinGame rejects a caller who is not seated yet. Auto-join confirms the seat after that
+	///     first attempt, so take the seat in the group once the buy-in succeeds.
+	/// </summary>
+	private async Task JoinHubAfterTakingSeatAsync()
+	{
+		try
+		{
+			if (!GameHubClient.IsConnected)
+				await GameHubClient.ConnectAsync();
+
+			await GameHubClient.JoinGameAsync(GameId);
+			_isConnected = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed to join the SignalR group after taking a seat at game {GameId}", GameId);
+			_isConnected = false;
+		}
+	}
+
 	private void HandleConnectionStateChanged(HubConnectionState state)
 	{
 		_isConnected = state == HubConnectionState.Connected;
@@ -1297,6 +1320,11 @@
 
 		// Show toast notification to other players
 		await ShowToastAsync(notification.Message);
+
+		// PlayerJoined does not carry full seat snapshots; refresh from the API so occupied seats
+		// update even if a TableStateUpdated broadcast is delayed or missed.
+		await GetPlayersAndUpdateSeatsAsync();
+		await InvokeStateHasChangedAsync();
 	}
 
 	private async Task HandleTableToastNotificationAsync(TableToastNotificationDto notification)
@@ -3074,6 +3102,7 @@
 			_currentPlayerSeatIndex = seatIndex;
 			_playerChips = _joinBuyInAmount;
 			CloseJoinBuyInModal();
+			await JoinHubAfterTakingSeatAsync();
 
 			Logger.LogInformation(
 				"Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",

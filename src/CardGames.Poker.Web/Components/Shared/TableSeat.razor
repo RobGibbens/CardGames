@@ -5,6 +5,7 @@
 
 <div
 	class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")"
+	data-testid="seat"
 	data-seat-index="@Seat.SeatIndex">
 	<div id="seat-particle-host-@Seat.SeatIndex" class="seat-particle-host" aria-hidden="true"></div>
 	@if (Seat.IsOccupied)
@@ -147,7 +148,7 @@
 						}
 						else
 						{
-							<span class="player-name" title="@Seat.PlayerName">@GetDisplayName()</span>
+							<span class="player-name" data-testid="seat-player-name" title="@Seat.PlayerName">@GetDisplayName()</span>
 						}
 					</div>
 					<div class="pill-bottom-row">
@@ -210,7 +211,7 @@
 	}
 	else
 	{
-		<button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser"
+		<button class="empty-seat-button" data-testid="empty-seat" disabled="@IsSeatSelectionDisabledForCurrentUser"
 		        title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
 			@(IsSeatSelectionDisabledForCurrentUser ? "Empty" : "Sit Here")
 		</button>
