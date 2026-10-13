@@ -401,6 +401,30 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 	}
 
 	/// <summary>
+	///     Seats every player at a Pair Pressure table. Seat 0 is the host and the starting dealer.
+	///     Stakes are an ante, a bring-in, and fixed-limit small and big bets.
+	/// </summary>
+	public async Task<Guid> CreateSeatedPairPressureGameAsync(
+		string name,
+		IReadOnlyList<SeededPlayer> players,
+		int ante,
+		int bringIn,
+		int smallBet,
+		int bigBet)
+	{
+		if (players.Count < 2)
+			throw new ArgumentException("Pair Pressure needs at least two players.", nameof(players));
+
+		var game = await CreatePairPressureGameAsync(name, ante, bringIn, smallBet, bigBet, players[0]);
+		var now = DateTimeOffset.UtcNow;
+		for (var seat = 0; seat < players.Count; seat++)
+			_context.GamePlayers.Add(CreateSeat(game.Id, players[seat].PlayerId, seat, now));
+
+		await _context.SaveChangesAsync();
+		return game.Id;
+	}
+
+	/// <summary>
 	///     Seats every player at an ante Five Card Draw table. Seat 0 is the host and the starting dealer.
 	/// </summary>
 	public async Task<Guid> CreateSeatedFiveCardDrawGameAsync(
@@ -842,6 +866,44 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 		return game;
 	}
 
+	private async Task<Game> CreatePairPressureGameAsync(
+		string name,
+		int ante,
+		int bringIn,
+		int smallBet,
+		int bigBet,
+		SeededPlayer host)
+	{
+		await EnsureGameTypesAsync();
+		var gameType = await _context.GameTypes.SingleAsync(type => type.Code == "PAIRPRESSURE");
+		var now = DateTimeOffset.UtcNow;
+		var game = new Game
+		{
+			Id = Guid.CreateVersion7(),
+			GameTypeId = gameType.Id,
+			Name = name,
+			CurrentPhase = nameof(Phases.WaitingToStart),
+			CurrentHandNumber = 0,
+			DealerPosition = 0,
+			Ante = ante,
+			BringIn = bringIn,
+			SmallBet = smallBet,
+			BigBet = bigBet,
+			MinBet = smallBet,
+			CreatedById = host.UserId,
+			CreatedByName = host.Email,
+			Status = GameStatus.WaitingForPlayers,
+			RequiresJoinApproval = false,
+			CurrentPlayerIndex = -1,
+			CurrentDrawPlayerIndex = -1,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+		_context.Games.Add(game);
+		await _context.SaveChangesAsync();
+		return game;
+	}
+
 	private async Task<Game> CreateKingsAndLowsGameAsync(string name, int ante, SeededPlayer host)
 	{
 		await EnsureGameTypesAsync();
@@ -944,6 +1006,7 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 			CreateGameType("SOUTHDAKOTA", "South Dakota", 2, 10, 5, 0, 4, 9, now),
 			CreateGameType("IRISHHOLDEM", "Irish Hold 'Em", 2, 10, 4, 0, 5, 9, now),
 			CreateGameType("FOLLOWTHEQUEEN", "Follow the Queen", 2, 8, 2, 1, 0, 7, now),
+			CreateGameType("PAIRPRESSURE", "Pair Pressure", 2, 7, 2, 1, 0, 7, now),
 			CreateGameType("BASEBALL", "Baseball", 2, 8, 2, 1, 0, 7, now),
 			CreateGameType("GOODBADUGLY", "The Good, the Bad, and the Ugly", 2, 7, 2, 1, 0, 7, now),
 			CreateGameType("SCREWYOURNEIGHBOR", "Screw Your Neighbor", 3, 10, 1, 0, 0, 1, now),
