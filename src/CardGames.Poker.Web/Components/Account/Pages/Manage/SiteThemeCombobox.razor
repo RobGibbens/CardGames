@@ -1,0 +1,74 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="app-combobox">
+	<BbCombobox TValue="string"
+	            Options="_options"
+	            Value="_theme"
+	            ValueChanged="OnThemeChangedAsync"
+	            Placeholder="Default (Astrovista)"
+	            SearchPlaceholder="Search themes..."
+	            EmptyMessage="No themes found."
+	            MatchTriggerWidth="true"
+	            PopoverWidth="w-full"
+	            Class="bb:w-full"
+	            AriaLabel="Site Theme" />
+</div>
+<input type="hidden" name="Input.Theme" value="@_theme" />
+
+@code {
+	private static readonly IReadOnlyList<SelectOption<string>> _options =
+	[
+		new(string.Empty, "Default (Astrovista)"),
+		new("astrovista.css", "Astrovista"),
+		new("claudeplus.css", "Claudeplus"),
+		new("lightgreen.css", "Lightgreen")
+	];
+
+	[Parameter] public string? Theme { get; set; }
+
+	private string? _themeParameter;
+	private string _theme = string.Empty;
+	private IJSObjectReference? _module;
+
+	protected override void OnParametersSet()
+	{
+		if (string.Equals(_themeParameter, Theme, StringComparison.Ordinal))
+		{
+			return;
+		}
+
+		_themeParameter = Theme;
+		_theme = string.IsNullOrWhiteSpace(Theme) ? string.Empty : Theme;
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender)
+		{
+			return;
+		}
+
+		_module = await JS.InvokeAsync<IJSObjectReference>("import", "/themePreference.js");
+		await _module.InvokeVoidAsync("applySiteThemeStylesheet", string.IsNullOrEmpty(_theme) ? "astrovista.css" : _theme);
+	}
+
+	private async Task OnThemeChangedAsync(string? value)
+	{
+		_theme = value ?? string.Empty;
+		if (_module is null)
+		{
+			return;
+		}
+
+		await _module.InvokeVoidAsync("applyAndPersistSiteTheme", _theme);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_module is not null)
+		{
+			await _module.DisposeAsync();
+		}
+	}
+}

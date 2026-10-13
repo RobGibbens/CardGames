@@ -28,13 +28,24 @@
 					}
 					else
 					{
-						<InputSelect id="one-off-game-type" class="form-control league-modal-input" @bind-Value="_gameTypeCode">
-							<option value="">-- Select a game --</option>
-							@foreach (var game in _availableGames)
-							{
-								<option value="@game.Code">@game.Name</option>
-							}
-						</InputSelect>
+						<div class="app-combobox">
+							<BbCombobox TValue="string"
+							            Value="_gameTypeCode"
+							            ValueChanged="OnGameTypeSelected"
+							            Placeholder="Select a game"
+							            SearchPlaceholder="Search variants..."
+							            EmptyMessage="No variants found."
+							            MatchTriggerWidth="true"
+							            PopoverWidth="w-full"
+							            Class="bb:w-full"
+							            AriaLabel="Game Variant">
+								<BbComboboxItem TValue="string" Value="@string.Empty" Text="Select a game">-- Select a game --</BbComboboxItem>
+								@foreach (var game in _availableGames)
+								{
+									<BbComboboxItem TValue="string" Value="@game.Code" Text="@game.Name">@game.Name</BbComboboxItem>
+								}
+							</BbCombobox>
+						</div>
 					}
 				</div>
 				<div class="form-floating" data-label="Ante">
@@ -173,6 +184,11 @@
 		{
 			_isSubmitting = false;
 		}
+	}
+
+	private void OnGameTypeSelected(string? value)
+	{
+		_gameTypeCode = value ?? string.Empty;
 	}
 
 	private void ResetForm()

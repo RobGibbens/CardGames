@@ -958,7 +958,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new DrawPrivateDto
 		{
 			IsMyTurnToDraw = isIrishHoldEm
-				? isEligibleIrishDiscardActor
+				? isEligibleIrishDiscardActor && game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition
 				: isBobBarker
 					? isEligibleBobBarkerSelector
 					: game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,

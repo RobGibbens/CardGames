@@ -49,48 +49,54 @@
 		<div class="lobby-filters">
 			<div class="filter-group">
 				<label class="filter-label">Variant</label>
-				<BbCombobox TValue="string"
-				            Options="_variantOptions"
-				            Value="_selectedVariant"
-				            ValueChanged="OnVariantChangedAsync"
-				            Placeholder="All Variants"
-				            SearchPlaceholder="Search variants..."
-				            EmptyMessage="No variants found."
-				            PopoverWidth="w-full"
-				            MatchTriggerWidth="true"
-				            Class="bb:w-full"
-				            style="width: 100%"
-				            AriaLabel="Variant" />
+				<div class="app-combobox">
+					<BbCombobox TValue="string"
+					            Options="_variantOptions"
+					            Value="_selectedVariant"
+					            ValueChanged="OnVariantChangedAsync"
+					            Placeholder="All Variants"
+					            SearchPlaceholder="Search variants..."
+					            EmptyMessage="No variants found."
+					            PopoverWidth="w-full"
+					            MatchTriggerWidth="true"
+					            Class="bb:w-full"
+					            style="width: 100%"
+					            AriaLabel="Variant" />
+				</div>
 			</div>
 			<div class="filter-group">
 				<label class="filter-label">Seats</label>
-				<BbCombobox TValue="string"
-				            Options="_seatOptions"
-				            Value="_selectedSeats"
-				            ValueChanged="OnSeatsChanged"
-				            Placeholder="Any Size"
-				            SearchPlaceholder="Search seats..."
-				            EmptyMessage="No seat sizes found."
-				            PopoverWidth="w-full"
-				            MatchTriggerWidth="true"
-				            Class="bb:w-full"
-				            style="width: 100%"
-				            AriaLabel="Seats" />
+				<div class="app-combobox">
+					<BbCombobox TValue="string"
+					            Options="_seatOptions"
+					            Value="_selectedSeats"
+					            ValueChanged="OnSeatsChanged"
+					            Placeholder="Any Size"
+					            SearchPlaceholder="Search seats..."
+					            EmptyMessage="No seat sizes found."
+					            PopoverWidth="w-full"
+					            MatchTriggerWidth="true"
+					            Class="bb:w-full"
+					            style="width: 100%"
+					            AriaLabel="Seats" />
+				</div>
 			</div>
 			<div class="filter-group">
 				<label class="filter-label">Status</label>
-				<BbCombobox TValue="string"
-				            Options="_statusOptions"
-				            Value="_selectedStatus"
-				            ValueChanged="OnStatusChanged"
-				            Placeholder="All"
-				            SearchPlaceholder="Search status..."
-				            EmptyMessage="No statuses found."
-				            PopoverWidth="w-full"
-				            MatchTriggerWidth="true"
-				            Class="bb:w-full"
-				            style="width: 100%"
-				            AriaLabel="Status" />
+				<div class="app-combobox">
+					<BbCombobox TValue="string"
+					            Options="_statusOptions"
+					            Value="_selectedStatus"
+					            ValueChanged="OnStatusChanged"
+					            Placeholder="All"
+					            SearchPlaceholder="Search status..."
+					            EmptyMessage="No statuses found."
+					            PopoverWidth="w-full"
+					            MatchTriggerWidth="true"
+					            Class="bb:w-full"
+					            style="width: 100%"
+					            AriaLabel="Status" />
+				</div>
 			</div>
 			<button class="filter-clear-btn" @onclick="ClearFilters">
 				<span>

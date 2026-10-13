@@ -7,12 +7,21 @@
 			<div class="league-detail-card-actions">
 				@if (ShowSeasonSelector && Seasons.Count > 0)
 				{
-					<select class="league-detail-season-select" @onchange="OnSeasonSelectorChanged">
-						@foreach (var season in Seasons)
-						{
-							<option value="@season.SeasonId" selected="@(season.SeasonId == SelectedSeasonId)">@season.Name</option>
-						}
-					</select>
+					<div class="app-combobox app-combobox-compact">
+						<BbCombobox TValue="Guid"
+						            Value="@(SelectedSeasonId ?? Guid.Empty)"
+						            ValueChanged="HandleSeasonSelected"
+						            Placeholder="Select a season"
+						            SearchPlaceholder="Search seasons..."
+						            EmptyMessage="No seasons found."
+						            MatchTriggerWidth="true"
+						            AriaLabel="Season">
+							@foreach (var season in Seasons)
+							{
+								<BbComboboxItem TValue="Guid" Value="season.SeasonId" Text="@season.Name">@season.Name</BbComboboxItem>
+							}
+						</BbCombobox>
+					</div>
 				}
 				@if (CanManageLeague && SelectedSeasonId.HasValue)
 				{
@@ -115,7 +124,17 @@
 
 	[Parameter] public string BrowserTimeZoneId { get; set; } = "UTC";
 
-	[Parameter] public EventCallback<ChangeEventArgs> OnSeasonSelectorChanged { get; set; }
+	[Parameter] public EventCallback<Guid?> OnSeasonSelectorChanged { get; set; }
+
+	private Task HandleSeasonSelected(Guid seasonId)
+	{
+		if (seasonId == Guid.Empty)
+		{
+			return Task.CompletedTask;
+		}
+
+		return OnSeasonSelectorChanged.InvokeAsync(seasonId);
+	}
 
 	[Parameter] public EventCallback OpenSeasonEventModal { get; set; }
 

@@ -1232,7 +1232,8 @@ a:hover {
     padding-bottom: 0.625rem;
 }
 
-.auth-form .form-floating > select {
+.auth-form .form-floating > select,
+.auth-form .form-floating .app-combobox button[aria-haspopup] {
     padding-top: 1.625rem;
     padding-bottom: 0.625rem;
 }
@@ -1266,7 +1267,8 @@ a:hover {
 
 .auth-form .form-floating[data-label]:focus-within::after,
 .auth-form .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
-.auth-form .form-floating[data-label]:has(select)::after {
+.auth-form .form-floating[data-label]:has(select)::after,
+.auth-form .form-floating[data-label]:has(.app-combobox)::after {
     opacity: 0.65;
     top: 0;
     transform: scale(0.85) translateY(0.5rem);
@@ -2692,6 +2694,66 @@ a:hover {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.app-combobox {
+    width: 100%;
+    min-width: 0;
+}
+
+.app-combobox button[aria-haspopup] {
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: none !important;
+    justify-content: space-between;
+    text-align: left;
+    background: var(--bg-tertiary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 10px !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    line-height: 1.5;
+    min-height: calc(1.5em + 1.5rem + 2px);
+    padding: 0.75rem 1rem;
+    box-shadow: none;
+}
+
+.app-combobox button[aria-haspopup]:focus,
+.app-combobox button[aria-haspopup][aria-expanded="true"] {
+    outline: none;
+    background: var(--bg-secondary) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+}
+
+.app-combobox button[aria-haspopup]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.app-combobox-compact {
+    width: auto;
+    min-width: 5.5rem;
+}
+
+.app-combobox-compact button[aria-haspopup] {
+    width: auto !important;
+    min-width: 5.5rem;
+    min-height: 0;
+    font-size: 0.95rem;
+    padding: 0.4rem 0.75rem;
+}
+
+.league-detail-card-actions .app-combobox-compact {
+    min-width: 12rem;
+}
+
+.league-detail-card-actions .app-combobox-compact button[aria-haspopup] {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px !important;
+    background: var(--bg-secondary) !important;
 }
 
 .filter-clear-btn {
@@ -6450,7 +6512,11 @@ playing-card.card-wild-highlight {
 .league-form-modal .form-floating > .form-control,
 .season-modal .form-floating > .form-control,
 .season-event-modal .form-floating > .form-control,
-.one-off-event-modal .form-floating > .form-control {
+.one-off-event-modal .form-floating > .form-control,
+.league-form-modal .form-floating .app-combobox button[aria-haspopup],
+.season-modal .form-floating .app-combobox button[aria-haspopup],
+.season-event-modal .form-floating .app-combobox button[aria-haspopup],
+.one-off-event-modal .form-floating .app-combobox button[aria-haspopup] {
     padding-top: 1.625rem;
     padding-bottom: 0.625rem;
 }
@@ -6487,7 +6553,11 @@ playing-card.card-wild-highlight {
 .league-form-modal .form-floating[data-label]:has(select)::after,
 .season-modal .form-floating[data-label]:has(select)::after,
 .season-event-modal .form-floating[data-label]:has(select)::after,
-.one-off-event-modal .form-floating[data-label]:has(select)::after {
+.one-off-event-modal .form-floating[data-label]:has(select)::after,
+.league-form-modal .form-floating[data-label]:has(.app-combobox)::after,
+.season-modal .form-floating[data-label]:has(.app-combobox)::after,
+.season-event-modal .form-floating[data-label]:has(.app-combobox)::after,
+.one-off-event-modal .form-floating[data-label]:has(.app-combobox)::after {
     opacity: 0.65;
     top: 0;
     transform: scale(0.85) translateY(0.5rem);

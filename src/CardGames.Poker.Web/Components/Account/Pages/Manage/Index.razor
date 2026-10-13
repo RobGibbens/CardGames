@@ -76,21 +76,9 @@
 				</div>
 
 				<div class="form-floating mb-3" data-label="Site Theme">
-					<select @bind="Input.Theme" id="Input.Theme" name="Input.Theme" class="filter-select" data-site-theme-select>
-						<option value="">Default (Astrovista)</option>
-						@foreach (var themeName in AvailableThemes)
-						{
-							<option value="@themeName">@FormatThemeName(themeName)</option>
-						}
-					</select>
+					<SiteThemeCombobox Theme="Input.Theme" @rendermode="InteractiveServer"/>
 					<ValidationMessage For="() => Input.Theme" class="text-danger"/>
 				</div>
-
-				<script type="module">
-                    import { bindSiteThemeSelect } from "/themePreference.js";
-
-                    bindSiteThemeSelect("#Input\\.Theme");
-                </script>
 
 				<div class="account-profile-actions">
 					<button type="submit" class="btn btn-primary btn-lg">Save changes</button>
@@ -292,12 +280,6 @@
 		return AvailableThemes.Contains(normalized, StringComparer.OrdinalIgnoreCase)
 			? normalized
 			: null;
-	}
-
-	private static string FormatThemeName(string fileName)
-	{
-		var nameWithoutExtension = fileName.Replace(".css", "", StringComparison.OrdinalIgnoreCase);
-		return char.ToUpperInvariant(nameWithoutExtension[0]) + nameWithoutExtension[1..];
 	}
 
 	private static string? NormalizeAvatarUrl(string? url)

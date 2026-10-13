@@ -1,3 +1,4 @@
+using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDiscard;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
@@ -427,6 +428,36 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 		communityAtShowdown.Count(card => card.DealtAtPhase == "Turn").Should().Be(1);
 		communityAtShowdown.Count(card => card.DealtAtPhase == "River").Should().Be(1);
 		communityAtShowdown.Select(card => card.Id).Should().OnlyHaveUniqueItems();
+	}
+
+	[Fact]
+	public async Task PerformShowdown_AfterAllInRunout_AwardsPotAndCompletesHand()
+	{
+		var setup = await CreateDealtIrishHoldEmGameAsync(2, 0);
+		var game = setup.Game;
+
+		await AllInUntilPhaseChanges(game.Id);
+
+		var playersAtDraw = await GetFreshDbContext().GamePlayers
+			.Where(gp => gp.GameId == game.Id && !gp.HasFolded)
+			.ToListAsync();
+		var activeCount = playersAtDraw.Count;
+		for (var i = 0; i < activeCount; i++)
+		{
+			var discardResult = await Mediator.Send(
+				new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }, await CurrentDrawSeatAsync(game.Id)));
+			discardResult.IsT0.Should().BeTrue($"discard for player {i} should succeed");
+		}
+
+		var showdown = await Mediator.Send(new PerformShowdownCommand(game.Id));
+
+		showdown.IsT0.Should().BeTrue(showdown.IsT1 ? showdown.AsT1.Message : "showdown should succeed");
+		showdown.AsT0.CurrentPhase.Should().Be("Complete");
+		showdown.AsT0.Payouts.Values.Sum().Should().BeGreaterThan(0);
+
+		var completed = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+		completed.CurrentPhase.Should().Be("Complete");
+		completed.HandCompletedAt.Should().NotBeNull();
 	}
 
 	private async Task AllInUntilPhaseChanges(Guid gameId)

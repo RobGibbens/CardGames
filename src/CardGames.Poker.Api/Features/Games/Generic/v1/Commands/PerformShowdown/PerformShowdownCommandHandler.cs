@@ -77,9 +77,15 @@ public sealed class PerformShowdownCommandHandler(
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
-	public async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
+	public Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
 		PerformShowdownCommand command,
 		CancellationToken cancellationToken)
+		=> Handle(command, cancellationToken, attempt: 0);
+
+	private async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
+		PerformShowdownCommand command,
+		CancellationToken cancellationToken,
+		int attempt)
 	{
 		var now = DateTimeOffset.UtcNow;
 
@@ -168,7 +174,9 @@ public sealed class PerformShowdownCommandHandler(
 			game.CurrentPhase = nextPhase;
 			game.UpdatedAt = now;
 
-			await context.SaveChangesAsync(cancellationToken);
+			var recovered = await SaveOrRecoverFromConcurrentShowdownAsync(command, attempt, cancellationToken);
+			if (recovered is not null)
+				return recovered.Value;
 
 			var inlineHandCards = await context.GameCards
 				.Where(c => c.GameId == command.GameId &&
@@ -251,7 +259,9 @@ public sealed class PerformShowdownCommandHandler(
 
 			// Inline-showdown variants still need cashier settlement updates.
 			await handSettlementService.SettleHandAsync(game, settlementPayouts, cancellationToken);
-			await context.SaveChangesAsync(cancellationToken);
+			var settlementRecovered = await SaveOrRecoverFromConcurrentShowdownAsync(command, attempt, cancellationToken);
+			if (settlementRecovered is not null)
+				return settlementRecovered.Value;
 
 			return new PerformShowdownSuccessful
 			{
@@ -313,12 +323,14 @@ public sealed class PerformShowdownCommandHandler(
 		// 7. Handle win by fold (only one player remaining)
 		if (playersInHand.Count == 1)
 			return await HandleWinByFoldAsync(
+				command, attempt,
 				game, playersInHand[0], currentHandPots, totalPot,
 				playerCardGroups, usersByEmail, isAlreadyAwarded, now, cancellationToken);
 
 		// 8. Handle no players remaining (dead hand - everyone dropped)
 		if (playersInHand.Count == 0)
 			return await HandleDeadHandAsync(
+				command, attempt,
 				game, currentHandPots, totalPot, flowHandler,
 				isAlreadyAwarded, now, cancellationToken);
 
@@ -437,7 +449,9 @@ public sealed class PerformShowdownCommandHandler(
 			// 11b. Record per-hand settlement to cashier ledger
 			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
-			await context.SaveChangesAsync(cancellationToken);
+			var recovered = await SaveOrRecoverFromConcurrentShowdownAsync(command, attempt, cancellationToken);
+			if (recovered is not null)
+				return recovered.Value;
 			RecordCompletedHandMetrics(game, currentHandPots, now);
 
 			// 13. Record hand history
@@ -475,9 +489,35 @@ public sealed class PerformShowdownCommandHandler(
 	}
 
 	/// <summary>
+	///     Every seat loads showdown when the hand ends. The first save wins; the others reload
+	///     the awarded hand instead of failing the request.
+	/// </summary>
+	private async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>?> SaveOrRecoverFromConcurrentShowdownAsync(
+		PerformShowdownCommand command,
+		int attempt,
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await context.SaveChangesAsync(cancellationToken);
+			return null;
+		}
+		catch (DbUpdateConcurrencyException) when (attempt == 0)
+		{
+			logger.LogInformation(
+				"Showdown for game {GameId} collided with another showdown. Reloading the awarded hand.",
+				command.GameId);
+			context.ChangeTracker.Clear();
+			return await Handle(command, cancellationToken, attempt + 1);
+		}
+	}
+
+	/// <summary>
 	///     Handles a win-by-fold scenario where only one player remains.
 	/// </summary>
 	private async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> HandleWinByFoldAsync(
+		PerformShowdownCommand command,
+		int attempt,
 		Game game,
 		GamePlayer winner,
 		List<Pot> currentHandPots,
@@ -530,7 +570,9 @@ public sealed class PerformShowdownCommandHandler(
 			var foldPayouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } };
 			await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
-			await context.SaveChangesAsync(cancellationToken);
+			var recovered = await SaveOrRecoverFromConcurrentShowdownAsync(command, attempt, cancellationToken);
+			if (recovered is not null)
+				return recovered.Value;
 			RecordCompletedHandMetrics(game, currentHandPots, now);
 
 			// Record hand history for win-by-fold
@@ -576,6 +618,8 @@ public sealed class PerformShowdownCommandHandler(
 	///     Handles a dead hand scenario where no players remain (everyone dropped).
 	/// </summary>
 	private async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> HandleDeadHandAsync(
+		PerformShowdownCommand command,
+		int attempt,
 		Game game,
 		List<Pot> currentHandPots,
 		int totalPot,
@@ -623,7 +667,9 @@ public sealed class PerformShowdownCommandHandler(
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 			MoveDealer(game);
 
-			await context.SaveChangesAsync(cancellationToken);
+			var recovered = await SaveOrRecoverFromConcurrentShowdownAsync(command, attempt, cancellationToken);
+			if (recovered is not null)
+				return recovered.Value;
 			RecordCompletedHandMetrics(game, currentHandPots, now);
 		}
 

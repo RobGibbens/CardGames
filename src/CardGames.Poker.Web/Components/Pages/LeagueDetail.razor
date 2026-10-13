@@ -393,13 +393,24 @@
 						<input id="season-event-time" type="time" class="form-control league-modal-input league-modal-date-input" value="@_seasonEventScheduledTime" @onchange="OnSeasonEventScheduledTimeChanged"/>
 					</div>
 					<div class="col-md-5 league-form-inline-field">
-						<label class="form-label small" for="season-event-time-zone">Time zone</label>
-						<InputSelect id="season-event-time-zone" class="form-select league-modal-input league-modal-date-input" @bind-Value="_seasonEventTimeZoneId">
-							@foreach (var timeZone in TimeZoneOptions)
-							{
-								<option value="@timeZone.Id">@timeZone.DisplayName</option>
-							}
-						</InputSelect>
+						<label class="form-label small">Time zone</label>
+						<div class="app-combobox">
+							<BbCombobox TValue="string"
+							            Value="_seasonEventTimeZoneId"
+							            ValueChanged="OnSeasonEventTimeZoneSelected"
+							            Placeholder="Select a time zone"
+							            SearchPlaceholder="Search time zones..."
+							            EmptyMessage="No time zones found."
+							            MatchTriggerWidth="true"
+							            PopoverWidth="w-full"
+							            Class="bb:w-full"
+							            AriaLabel="Time zone">
+								@foreach (var timeZone in TimeZoneOptions)
+								{
+									<BbComboboxItem TValue="string" Value="@timeZone.Id" Text="@timeZone.DisplayName">@timeZone.DisplayName</BbComboboxItem>
+								}
+							</BbCombobox>
+						</div>
 					</div>
 				</div>
 				<div class="form-floating" data-label="Notes (optional)">
@@ -413,13 +424,24 @@
 					}
 					else
 					{
-						<InputSelect id="season-event-game-type" class="form-control league-modal-input" @bind-Value="_seasonEventGameTypeCode" @bind-Value:after="OnSeasonEventGameTypeChanged">
-							<option value="">-- Select a game --</option>
-							@foreach (var game in _availableLeagueGames)
-							{
-								<option value="@game.Code">@game.Name</option>
-							}
-						</InputSelect>
+						<div class="app-combobox">
+							<BbCombobox TValue="string"
+							            Value="_seasonEventGameTypeCode"
+							            ValueChanged="OnSeasonEventGameTypeSelected"
+							            Placeholder="Select a game"
+							            SearchPlaceholder="Search variants..."
+							            EmptyMessage="No variants found."
+							            MatchTriggerWidth="true"
+							            PopoverWidth="w-full"
+							            Class="bb:w-full"
+							            AriaLabel="Game Variant">
+								<BbComboboxItem TValue="string" Value="@string.Empty" Text="Select a game">-- Select a game --</BbComboboxItem>
+								@foreach (var game in _availableLeagueGames)
+								{
+									<BbComboboxItem TValue="string" Value="@game.Code" Text="@game.Name">@game.Name</BbComboboxItem>
+								}
+							</BbCombobox>
+						</div>
 					}
 				</div>
 				@if (SeasonEventSelectedGameHasBlinds)
@@ -1511,11 +1533,11 @@
 		string Name,
 		LeagueUpcomingEventEntryDto Entry);
 
-	private async Task OnSeasonSelectorChanged(ChangeEventArgs args)
+	private async Task OnSeasonSelectorChanged(Guid? seasonId)
 	{
-		if (args.Value is string rawValue && Guid.TryParse(rawValue, out var seasonId))
+		if (seasonId is Guid id && id != Guid.Empty)
 		{
-			await SelectSeasonAsync(seasonId);
+			await SelectSeasonAsync(id);
 			return;
 		}
 
@@ -2363,6 +2385,22 @@
 		_seasonEventSmallBlind = seasonEvent.SmallBlind ?? 5;
 		_seasonEventBigBlind = seasonEvent.BigBlind ?? 10;
 		_seasonEventTournamentBuyIn = seasonEvent.TournamentBuyIn ?? DefaultTournamentBuyIn;
+		OnSeasonEventGameTypeChanged();
+	}
+
+	private void OnSeasonEventTimeZoneSelected(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return;
+		}
+
+		_seasonEventTimeZoneId = value;
+	}
+
+	private void OnSeasonEventGameTypeSelected(string? value)
+	{
+		_seasonEventGameTypeCode = value ?? string.Empty;
 		OnSeasonEventGameTypeChanged();
 	}
 

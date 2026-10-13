@@ -188,6 +188,55 @@ public class TableStateBuilderTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task BuildPrivateStateAsync_IrishHoldEm_HeadsUpDrawPhase_OnlyCurrentDrawPlayerCanDiscard()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "IRISHHOLDEM", 2, ante: 0);
+		var game = setup.Game;
+		var now = DateTimeOffset.UtcNow;
+
+		game.CurrentHandNumber = 1;
+		game.CurrentHandGameTypeCode = "IRISHHOLDEM";
+		game.CurrentPhase = nameof(Phases.DrawPhase);
+		game.Status = GameStatus.InProgress;
+		game.DealerPosition = setup.GamePlayers[0].SeatPosition;
+		game.CurrentDrawPlayerIndex = setup.GamePlayers[1].SeatPosition;
+		game.CurrentPlayerIndex = setup.GamePlayers[1].SeatPosition;
+
+		foreach (var gamePlayer in setup.GamePlayers)
+		{
+			gamePlayer.HasDrawnThisRound = false;
+			gamePlayer.HasFolded = false;
+			gamePlayer.Status = GamePlayerStatus.Active;
+
+			for (var cardIndex = 0; cardIndex < 4; cardIndex++)
+				DbContext.GameCards.Add(new GameCard
+				{
+					Id = Guid.CreateVersion7(),
+					GameId = game.Id,
+					GamePlayerId = gamePlayer.Id,
+					HandNumber = 1,
+					Location = CardLocation.Hand,
+					Suit = (CardSuit)(cardIndex % 4),
+					Symbol = (CardSymbol)(cardIndex + 1),
+					DealOrder = cardIndex + 1,
+					IsVisible = false,
+					IsDiscarded = false,
+					DealtAt = now,
+					DealtAtPhase = nameof(Phases.Dealing)
+				});
+		}
+
+		await DbContext.SaveChangesAsync();
+
+		var dealerState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, setup.Players[0].Email!);
+		var otherState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, setup.Players[1].Email!);
+
+		dealerState!.Draw!.IsMyTurnToDraw.Should().BeFalse(
+			"heads-up Irish discard is sequential, so the dealer must not see the discard dialog while the other seat is to act");
+		otherState!.Draw!.IsMyTurnToDraw.Should().BeTrue();
+	}
+
+	[Fact]
 	public async Task BuildPrivateStateAsync_BobBarker_DrawPhase_AllEligiblePlayersCanChooseShowcaseConcurrently()
 	{
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", 3, ante: 0);

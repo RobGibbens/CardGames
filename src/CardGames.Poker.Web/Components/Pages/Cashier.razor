@@ -145,13 +145,19 @@
 					</div>
 
 					<div class="cashier-pager-toolbar">
-						<label class="small text-muted mb-0" for="ledger-page-size">Rows per page</label>
-						<select id="ledger-page-size" class="form-control cashier-page-size" value="@_pageSize" @onchange="OnPageSizeChangedAsync" disabled="@_isLoading">
-							@foreach (var option in PageSizeOptions)
-							{
-								<option value="@option">@option</option>
-							}
-						</select>
+						<span class="small text-muted mb-0">Rows per page</span>
+						<div class="app-combobox app-combobox-compact">
+							<BbCombobox TValue="int"
+							            Options="_pageSizeOptions"
+							            Value="_pageSize"
+							            ValueChanged="OnPageSizeChangedAsync"
+							            Placeholder="Rows"
+							            SearchPlaceholder="Search..."
+							            EmptyMessage="No page sizes found."
+							            MatchTriggerWidth="true"
+							            Disabled="_isLoading"
+							            AriaLabel="Rows per page" />
+						</div>
 						<div class="cashier-pager-buttons" role="group" aria-label="Ledger page navigation">
 							<button class="btn btn-sm btn-outline-secondary" @onclick="LoadFirstPageAsync" disabled="@(_isLoading || !HasPreviousPage)">First</button>
 							<button class="btn btn-sm btn-outline-secondary" @onclick="LoadPreviousPageAsync" disabled="@(_isLoading || !HasPreviousPage)">Previous</button>
@@ -169,6 +175,8 @@
 @code {
 	private const int DefaultPageSize = 10;
 	private static readonly int[] PageSizeOptions = [10, 25, 50, 100];
+	private static readonly IReadOnlyList<SelectOption<int>> _pageSizeOptions =
+		PageSizeOptions.Select(option => new SelectOption<int>(option, option.ToString())).ToList();
 
 	private bool _isLoading;
 	private string? _error;
@@ -343,9 +351,9 @@
 		await LoadAsync();
 	}
 
-	private async Task OnPageSizeChangedAsync(ChangeEventArgs args)
+	private async Task OnPageSizeChangedAsync(int pageSize)
 	{
-		if (args.Value is not string rawValue || !int.TryParse(rawValue, out var pageSize))
+		if (pageSize <= 0)
 		{
 			return;
 		}

@@ -75,6 +75,33 @@ export function bindSiteThemeSelect(selector) {
     applySiteThemeStylesheet(themeSelect.value);
 }
 
+export async function applyAndPersistSiteTheme(stylesheet) {
+    applySiteThemeStylesheet(stylesheet);
+
+    const form = document.querySelector("form.account-profile-form");
+    if (form === null) {
+        return;
+    }
+
+    const antiforgeryToken = form.querySelector('input[name="__RequestVerificationToken"]');
+    const formData = new FormData();
+    formData.set("theme", stylesheet ?? "");
+
+    if (antiforgeryToken instanceof HTMLInputElement) {
+        formData.set(antiforgeryToken.name, antiforgeryToken.value);
+    }
+
+    const response = await fetch("/Account/Manage/SiteTheme", {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin"
+    });
+
+    if (!response.ok) {
+        throw new Error(`Unable to persist site theme. Status: ${response.status}`);
+    }
+}
+
 function getSystemPrefersDark() {
     return window.matchMedia(systemThemeQuery).matches;
 }
