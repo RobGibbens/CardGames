@@ -207,6 +207,13 @@ public sealed class HoldEmTable
 			await Assertions.Expect(overlay.Locator("[data-testid='showdown-verb']")).ToHaveTextAsync("wins by fold");
 			await Assertions.Expect(overlay.Locator(".winner-hand-stage")).ToHaveCountAsync(0);
 		}
+
+		if (!string.IsNullOrWhiteSpace(script.WinnerDescription))
+		{
+			await Assertions.Expect(overlay.Locator(".winner-hand-callout")).ToHaveTextAsync(
+				script.WinnerDescription,
+				new LocatorAssertionsToHaveTextOptions { Timeout = 15_000 });
+		}
 	}
 
 	private async Task ExpectStacksAsync(IReadOnlyList<int> stacks)

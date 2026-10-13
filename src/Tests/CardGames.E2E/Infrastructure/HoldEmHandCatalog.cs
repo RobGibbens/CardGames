@@ -77,6 +77,11 @@ public sealed record HoldEmHandScript
 	public required int AwardedAmount { get; init; }
 
 	public bool WonByFold { get; init; }
+
+	/// <summary>
+	///     Showdown callout text. Set for hands that reach an evaluated showdown.
+	/// </summary>
+	public string? WinnerDescription { get; init; }
 }
 
 public static class HoldEmSeats
