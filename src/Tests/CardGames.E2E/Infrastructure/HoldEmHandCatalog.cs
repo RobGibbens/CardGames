@@ -36,7 +36,8 @@ public sealed record HoldEmAction(
 	int? StreetBet = null,
 	int? CommunityCount = null)
 {
-	public static HoldEmAction Fold(HoldEmPosition actor) => new(actor, HoldEmActionKind.Fold);
+	public static HoldEmAction Fold(HoldEmPosition actor, int? potAfter = null) =>
+		new(actor, HoldEmActionKind.Fold, PotAfter: potAfter);
 
 	public static HoldEmAction Check(HoldEmPosition actor, int? communityCount = null) =>
 		new(actor, HoldEmActionKind.Check, CommunityCount: communityCount);
@@ -352,7 +353,132 @@ public static class HoldEmHandCatalog
 		BigBlindRaisesLimpers
 	];
 
-	public static IEnumerable<HoldEmHandScript> All => Orbit.Append(SidePot);
+	/// <summary>
+	///     SB 40, UTG 80, BB and middle call 80 then the big blind bets 100 and is called.
+	///     Aces take the 160 main, kings the 120 side, queens the 200 side.
+	/// </summary>
+	public static HoldEmHandScript ThreeTiers { get; } = new()
+	{
+		Name = "Three contribution tiers",
+		HoleCards = Holes("6c 7d", "Ah Ad", "Qh Qd", "Kh Kd", "Jh Jd", "7c 8c"),
+		Board = ["2c", "3d", "4h", "5s", "9c"],
+		Actions =
+		[
+			HoldEmAction.AllIn(HoldEmPosition.UnderTheGun, potAfter: 95, streetBet: 80),
+			HoldEmAction.Call(HoldEmPosition.Middle, callAmount: 80, potAfter: 175, streetBet: 80),
+			HoldEmAction.Fold(HoldEmPosition.Cutoff),
+			HoldEmAction.Fold(HoldEmPosition.Button),
+			HoldEmAction.AllIn(HoldEmPosition.SmallBlind, potAfter: 210, streetBet: 40),
+			HoldEmAction.Call(HoldEmPosition.BigBlind, callAmount: 70, potAfter: 280),
+			HoldEmAction.Bet(HoldEmPosition.BigBlind, amount: 100, potAfter: 380, communityCount: 3),
+			HoldEmAction.Call(HoldEmPosition.Middle, callAmount: 100, potAfter: 480, streetBet: 100),
+			HoldEmAction.Check(HoldEmPosition.BigBlind, communityCount: 4),
+			HoldEmAction.Check(HoldEmPosition.Middle),
+			HoldEmAction.Check(HoldEmPosition.BigBlind, communityCount: 5),
+			HoldEmAction.Check(HoldEmPosition.Middle)
+		],
+		Nets = new Dictionary<HoldEmPosition, int>
+		{
+			[HoldEmPosition.SmallBlind] = 120,
+			[HoldEmPosition.UnderTheGun] = 40,
+			[HoldEmPosition.BigBlind] = 20,
+			[HoldEmPosition.Middle] = -180
+		},
+		Winner = HoldEmPosition.BigBlind,
+		AwardedAmount = 200,
+		WonByFold = false
+	};
+
+	/// <summary>Blinds fold to an open raise. Their chips stay in the pot.</summary>
+	public static HoldEmHandScript FoldedChipsRemain { get; } = new()
+	{
+		Name = "Folded chips remain in the pot",
+		HoleCards = Holes("2h 3h", "4h 5h", "6h 7h", "Ah Ad", "Kc Qd", "8c 9c"),
+		Board = ["2d", "3d", "4d", "5d", "6d"],
+		Actions =
+		[
+			HoldEmAction.Raise(HoldEmPosition.UnderTheGun, raiseTo: 30, potAfter: 45),
+			HoldEmAction.Fold(HoldEmPosition.Middle),
+			HoldEmAction.Fold(HoldEmPosition.Cutoff),
+			HoldEmAction.Fold(HoldEmPosition.Button),
+			HoldEmAction.Fold(HoldEmPosition.SmallBlind),
+			HoldEmAction.Fold(HoldEmPosition.BigBlind, potAfter: 45)
+		],
+		Nets = new Dictionary<HoldEmPosition, int>
+		{
+			[HoldEmPosition.UnderTheGun] = 15,
+			[HoldEmPosition.SmallBlind] = -5,
+			[HoldEmPosition.BigBlind] = -10
+		},
+		Winner = HoldEmPosition.UnderTheGun,
+		AwardedAmount = 45,
+		WonByFold = true
+	};
+
+	/// <summary>
+	///     Two short aces chop the 200 main pot. Kings win the 200 side pot.
+	/// </summary>
+	public static HoldEmHandScript SplitMainDifferentSideWinner { get; } = new()
+	{
+		Name = "Split main and a different side winner",
+		HoleCards = Holes("6c 7d", "Ah Ad", "Kh Kd", "As Ac", "Qh Qd", "7c 8c"),
+		Board = ["2c", "3d", "4h", "5s", "9c"],
+		Actions =
+		[
+			HoldEmAction.AllIn(HoldEmPosition.UnderTheGun, potAfter: 65, streetBet: 50),
+			HoldEmAction.Call(HoldEmPosition.Middle, callAmount: 50, potAfter: 115, streetBet: 50),
+			HoldEmAction.Fold(HoldEmPosition.Cutoff),
+			HoldEmAction.Fold(HoldEmPosition.Button),
+			HoldEmAction.AllIn(HoldEmPosition.SmallBlind, potAfter: 160, streetBet: 50),
+			HoldEmAction.Call(HoldEmPosition.BigBlind, callAmount: 40, potAfter: 200),
+			HoldEmAction.Bet(HoldEmPosition.BigBlind, amount: 100, potAfter: 300, communityCount: 3),
+			HoldEmAction.Call(HoldEmPosition.Middle, callAmount: 100, potAfter: 400, streetBet: 100),
+			HoldEmAction.Check(HoldEmPosition.BigBlind, communityCount: 4),
+			HoldEmAction.Check(HoldEmPosition.Middle),
+			HoldEmAction.Check(HoldEmPosition.BigBlind, communityCount: 5),
+			HoldEmAction.Check(HoldEmPosition.Middle)
+		],
+		Nets = new Dictionary<HoldEmPosition, int>
+		{
+			[HoldEmPosition.SmallBlind] = 50,
+			[HoldEmPosition.UnderTheGun] = 50,
+			[HoldEmPosition.BigBlind] = 50,
+			[HoldEmPosition.Middle] = -150
+		},
+		Winner = HoldEmPosition.BigBlind,
+		AwardedAmount = 200,
+		WonByFold = false
+	};
+
+	/// <summary>The big blind can only call 100 of an open shove. 900 comes back uncalled.</summary>
+	public static HoldEmHandScript UncalledRefund { get; } = new()
+	{
+		Name = "Uncalled shove refund",
+		HoleCards = Holes("5h 6h", "5d 6d", "Ah Ad", "7c 2d", "Th Jh", "Qc Qd"),
+		Board = ["As", "9c", "4d", "3h", "8s"],
+		Actions =
+		[
+			HoldEmAction.AllIn(HoldEmPosition.UnderTheGun, potAfter: 1015, streetBet: 1000),
+			HoldEmAction.Fold(HoldEmPosition.Middle),
+			HoldEmAction.Fold(HoldEmPosition.Cutoff),
+			HoldEmAction.Fold(HoldEmPosition.Button),
+			HoldEmAction.Fold(HoldEmPosition.SmallBlind),
+			HoldEmAction.AllIn(HoldEmPosition.BigBlind, potAfter: 1105, streetBet: 100)
+		],
+		Nets = new Dictionary<HoldEmPosition, int>
+		{
+			[HoldEmPosition.BigBlind] = 105,
+			[HoldEmPosition.UnderTheGun] = -100,
+			[HoldEmPosition.SmallBlind] = -5
+		},
+		Winner = HoldEmPosition.BigBlind,
+		AwardedAmount = 205,
+		WonByFold = false
+	};
+
+	public static IEnumerable<HoldEmHandScript> All =>
+		Orbit.Append(SidePot).Append(ThreeTiers).Append(FoldedChipsRemain)
+			.Append(SplitMainDifferentSideWinner).Append(UncalledRefund);
 
 	private static Dictionary<HoldEmPosition, IReadOnlyList<string>> Holes(
 		string button,

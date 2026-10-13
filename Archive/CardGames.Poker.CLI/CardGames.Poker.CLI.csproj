@@ -7,6 +7,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Features>runtime-async=on</Features>
+  </PropertyGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="CardGames.Poker.CLI.Tests" />
   </ItemGroup>

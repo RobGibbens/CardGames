@@ -119,13 +119,18 @@ public class PotManager
 				}
 			}
 
-			if (potAmount > 0) _pots.Add(new Pot(potAmount, eligiblePlayers));
+			// A layer funded only by folded players is dead money. It stays with the
+			// last pot someone can still win instead of becoming an unclaimable pot.
+			if (potAmount > 0 && eligiblePlayers.Count > 0)
+				_pots.Add(new Pot(potAmount, eligiblePlayers));
 
 			previousLevel = level;
 		}
 
-		// Create final pot for remaining contributions
-		var maxContribution = _contributions.Values.Max();
+		// Create final pot for remaining contributions that at least one
+		// non-folded player matched. A single unmatched contesting player is a
+		// real one-player pot at this layer; folded-only excess is not.
+		var maxContribution = _contributions.Values.DefaultIfEmpty(0).Max();
 		if (maxContribution > previousLevel)
 		{
 			var finalPotAmount = 0;
@@ -142,15 +147,22 @@ public class PotManager
 				}
 			}
 
-			if (finalPotAmount > 0) _pots.Add(new Pot(finalPotAmount, eligibleForFinal));
+			if (finalPotAmount > 0 && eligibleForFinal.Count > 0)
+				_pots.Add(new Pot(finalPotAmount, eligibleForFinal));
 		}
 
-		// Ensure we haven't lost any money
+		// Folded-only chips were left out of the pots above. Put them in the
+		// last pot that still has a winner so the hand cannot drop chips.
 		var calculatedTotal = _pots.Sum(p => p.Amount);
 		if (calculatedTotal != totalAmount)
-			// If there's a discrepancy, adjust the last pot
-			if (_pots.Count > 0)
-				_pots[^1].Add(totalAmount - calculatedTotal);
+		{
+			var destination = _pots.LastOrDefault(pot => pot.EligiblePlayers.Count > 0);
+			if (destination is null)
+				throw new InvalidOperationException(
+					$"Pot calculation of {totalAmount} has no eligible winner.");
+
+			destination.Add(totalAmount - calculatedTotal);
+		}
 	}
 
 	/// <summary>
@@ -180,10 +192,17 @@ public class PotManager
 
 		foreach (var pot in _pots)
 		{
-			if (pot.Amount == 0 || pot.EligiblePlayers.Count == 0) continue;
+			if (pot.Amount == 0) continue;
 
-			var winners = determineWinners(pot.EligiblePlayers).ToList();
-			if (winners.Count == 0) continue;
+			if (pot.EligiblePlayers.Count == 0)
+				throw new InvalidOperationException($"Pot of {pot.Amount} has no eligible winner.");
+
+			var winners = determineWinners(pot.EligiblePlayers)
+				.Where(winner => pot.EligiblePlayers.Contains(winner))
+				.Distinct()
+				.ToList();
+			if (winners.Count == 0)
+				throw new InvalidOperationException($"Pot of {pot.Amount} has no eligible winner.");
 
 			var share = pot.Amount / winners.Count;
 			var remainder = pot.Amount % winners.Count;
@@ -229,7 +248,10 @@ public class PotManager
 
 		foreach (var pot in _pots)
 		{
-			if (pot.Amount == 0 || pot.EligiblePlayers.Count == 0) continue;
+			if (pot.Amount == 0) continue;
+
+			if (pot.EligiblePlayers.Count == 0)
+				throw new InvalidOperationException($"Pot of {pot.Amount} has no eligible winner.");
 
 			// Split pot into two halves (high hand pool gets the odd chip)
 			var sevensPool = pot.Amount / 2;

@@ -6,6 +6,10 @@
 	  <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Features>runtime-async=on</Features>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.16.0-preview.2" />
   </ItemGroup>

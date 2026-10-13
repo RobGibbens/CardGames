@@ -58,6 +58,36 @@ public sealed class HoldEmSixPlayerTests : E2ETestBase
 			stacks: [1_000, 1_000, 200, 80, 1_000, 1_000]));
 	}
 
+	[E2EFact(240_000)]
+	public async Task ThreeTiers_DifferentPlayersWinEachPot()
+	{
+		await ExecuteAsync(() => PlayHandAsync(
+			HoldEmHandCatalog.ThreeTiers,
+			stacks: [1_000, 40, 1_000, 80, 1_000, 1_000]));
+	}
+
+	[E2EFact(240_000)]
+	public async Task FoldedChipsRemain_RaiserTakesTheBlinds()
+	{
+		await ExecuteAsync(() => PlayHandAsync(HoldEmHandCatalog.FoldedChipsRemain));
+	}
+
+	[E2EFact(240_000)]
+	public async Task SplitMain_SidePotGoesToTheBigBlind()
+	{
+		await ExecuteAsync(() => PlayHandAsync(
+			HoldEmHandCatalog.SplitMainDifferentSideWinner,
+			stacks: [1_000, 50, 1_000, 50, 1_000, 1_000]));
+	}
+
+	[E2EFact(240_000)]
+	public async Task UncalledShove_RefundsTheExcessAndAwardsTheMatchedPot()
+	{
+		await ExecuteAsync(() => PlayHandAsync(
+			HoldEmHandCatalog.UncalledRefund,
+			stacks: [1_000, 1_000, 100, 1_000, 1_000, 1_000]));
+	}
+
 	[E2EFact(900_000)]
 	public async Task ThreeOrbits_EachPlayerPostsBothBlindsAndDealsThreeTimes()
 	{

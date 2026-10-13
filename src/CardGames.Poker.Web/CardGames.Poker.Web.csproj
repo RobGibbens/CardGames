@@ -8,6 +8,10 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Features>runtime-async=on</Features>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Remove="wwwroot\css\themes\**" />
     <Content Remove="wwwroot\css\themes\**" />

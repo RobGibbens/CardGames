@@ -85,6 +85,47 @@ public class HoldEmHandCatalogTests
 	}
 
 	[Fact]
+	public void ThreeTiers_NetsMatchTheFourContributionLevels()
+	{
+		var ledger = new HoldEmLedger([1_000, 40, 1_000, 80, 1_000, 1_000]);
+		ledger.Apply(HoldEmHandCatalog.ThreeTiers, dealerSeat: 0);
+
+		Assert.Equal([1_000, 160, 1_020, 120, 820, 1_000], ledger.Stacks);
+		Assert.Equal(ledger.StartingSum, ledger.Stacks.Sum());
+	}
+
+	[Fact]
+	public void FoldedChipsRemain_PaysTheRaiserTheBlinds()
+	{
+		var ledger = new HoldEmLedger(Enumerable.Repeat(1_000, HoldEmSeats.Count).ToArray());
+		ledger.Apply(HoldEmHandCatalog.FoldedChipsRemain, dealerSeat: 0);
+
+		Assert.Equal(1_015, ledger.Stacks[HoldEmSeats.Index(0, HoldEmPosition.UnderTheGun)]);
+		Assert.Equal(995, ledger.Stacks[HoldEmSeats.Index(0, HoldEmPosition.SmallBlind)]);
+		Assert.Equal(990, ledger.Stacks[HoldEmSeats.Index(0, HoldEmPosition.BigBlind)]);
+		Assert.Equal(6_000, ledger.Stacks.Sum());
+	}
+
+	[Fact]
+	public void SplitMainDifferentSideWinner_NetsMatchTheChopAndTheSidePot()
+	{
+		var ledger = new HoldEmLedger([1_000, 50, 1_000, 50, 1_000, 1_000]);
+		ledger.Apply(HoldEmHandCatalog.SplitMainDifferentSideWinner, dealerSeat: 0);
+
+		Assert.Equal([1_000, 100, 1_050, 100, 850, 1_000], ledger.Stacks);
+	}
+
+	[Fact]
+	public void UncalledRefund_ReturnsTheUnmatchedShoveAndAwardsTheMatchedPot()
+	{
+		var ledger = new HoldEmLedger([1_000, 1_000, 100, 1_000, 1_000, 1_000]);
+		ledger.Apply(HoldEmHandCatalog.UncalledRefund, dealerSeat: 0);
+
+		Assert.Equal([1_000, 995, 205, 900, 1_000, 1_000], ledger.Stacks);
+		Assert.Equal(205, HoldEmHandCatalog.UncalledRefund.AwardedAmount);
+	}
+
+	[Fact]
 	public void ThreeOrbits_ConserveTheSixThousandStartingChips()
 	{
 		var ledger = new HoldEmLedger(Enumerable.Repeat(1_000, HoldEmSeats.Count).ToArray());

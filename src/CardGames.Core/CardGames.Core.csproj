@@ -20,6 +20,10 @@
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 
+  <PropertyGroup>
+    <Features>runtime-async=on</Features>
+  </PropertyGroup>
+
 	<ItemGroup>
 	  <PackageReference Include="Nerdbank.GitVersioning" Version="3.11.202-beta">
 	    <PrivateAssets>all</PrivateAssets>

@@ -37,10 +37,24 @@ public static class HoldEmPotLayers
 
 		if (contesting.Count >= 2)
 		{
-			var ranked = contesting.OrderByDescending(stake => stake.Contributed).ToList();
-			uncalled = ranked[0].Contributed - ranked[1].Contributed;
-			if (uncalled > 0)
-				uncalledPlayerId = ranked[0].GamePlayerId;
+			// A folded caller still matches a bet. Refund only the portion that
+			// nobody — including folded players — put in.
+			var ranked = contesting
+				.OrderByDescending(stake => stake.Contributed)
+				.ThenBy(stake => stake.GamePlayerId)
+				.ToList();
+			var highest = ranked[0].Contributed;
+			if (ranked[1].Contributed < highest)
+			{
+				var matchedByAnyoneElse = stakes
+					.Where(stake => stake.GamePlayerId != ranked[0].GamePlayerId)
+					.Select(stake => stake.Contributed)
+					.DefaultIfEmpty(0)
+					.Max();
+				uncalled = Math.Max(0, highest - matchedByAnyoneElse);
+				if (uncalled > 0)
+					uncalledPlayerId = ranked[0].GamePlayerId;
+			}
 		}
 
 		if (contesting.Count == 0)

@@ -7,6 +7,10 @@
 	  <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Features>runtime-async=on</Features>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="8.11.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
