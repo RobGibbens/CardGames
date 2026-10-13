@@ -169,7 +169,7 @@ public sealed class PlayerSession : IAsyncDisposable
 		await SetBetAmountAsync(panel, amount);
 		var button = panel.Locator("[data-testid='action-raise']");
 		await Assertions.Expect(button.Locator(".action-label")).ToHaveTextAsync(
-			$"Raise {amount.ToString(CultureInfo.InvariantCulture)}",
+			$"Raise to {amount.ToString(CultureInfo.InvariantCulture)}",
 			new LocatorAssertionsToHaveTextOptions { Timeout = 15_000 });
 		await ClickUntilDismissedAsync(button);
 	}
