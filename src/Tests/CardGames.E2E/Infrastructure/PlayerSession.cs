@@ -282,6 +282,44 @@ public sealed class PlayerSession : IAsyncDisposable
 	}
 
 	/// <summary>
+	///     Discards exactly two of the four hole cards in the Discard Phase panel. The panel sorts by
+	///     rank, so each click targets the card face. The button stays disabled until both are selected.
+	/// </summary>
+	public async Task DiscardTwoAsync(string firstCardCode, string secondCardCode)
+	{
+		var panel = Page.Locator(".draw-panel");
+		await panel.WaitForAsync(new LocatorWaitForOptions
+		{
+			State = WaitForSelectorState.Visible,
+			Timeout = 45_000
+		});
+		await Assertions.Expect(panel.Locator(".draw-panel-title")).ToContainTextAsync(
+			"Discard Phase",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await Assertions.Expect(panel.Locator(".draw-card-wrapper")).ToHaveCountAsync(
+			4,
+			new LocatorAssertionsToHaveCountOptions { Timeout = 15_000 });
+
+		foreach (var cardCode in new[] { firstCardCode, secondCardCode })
+		{
+			var (rank, suit) = DrawPanelFace(cardCode);
+			var card = panel.Locator(
+				$".draw-card-wrapper:has(playing-card[rank='{rank}'][suit='{suit}'])");
+			await card.EvaluateAsync("element => element.click()");
+		}
+
+		var discard = panel.Locator(".discard-btn");
+		await Assertions.Expect(discard).ToContainTextAsync(
+			"Discard 2",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await Assertions.Expect(discard).ToBeEnabledAsync(
+			new LocatorAssertionsToBeEnabledOptions { Timeout = 15_000 });
+		await discard.EvaluateAsync("element => element.click()");
+		await Assertions.Expect(panel).ToBeHiddenAsync(
+			new LocatorAssertionsToBeHiddenOptions { Timeout = 20_000 });
+	}
+
+	/// <summary>
 	///     Stands pat in the Five Card Draw panel.
 	/// </summary>
 	public async Task StandPatAsync()
