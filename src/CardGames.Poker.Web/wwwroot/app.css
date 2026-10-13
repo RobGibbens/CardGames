@@ -2655,9 +2655,18 @@ a:hover {
 .filter-group {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
     gap: 0.375rem;
-    flex: 1;
-    min-width: 150px;
+    flex: 1 1 14rem;
+    min-width: 14rem;
+}
+
+.filter-group > :not(label),
+.filter-group button[aria-haspopup] {
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: none !important;
+    align-self: stretch;
 }
 
 .filter-label {
