@@ -13,7 +13,12 @@ public sealed class SelectShowcaseCommandHandler(CardsDbContext context)
 	: IRequestHandler<SelectShowcaseCommand, OneOf<SelectShowcaseSuccessful, SelectShowcaseError>>
 {
 	private const int InitialHoleCardCount = 5;
-	private const int MaxConcurrencyAttempts = 2;
+
+	/// <summary>
+	///     Every live player may submit at once. Each save bumps the game row, so a five-handed
+	///     table needs several optimistic-concurrency retries before the last selection lands.
+	/// </summary>
+	private const int MaxConcurrencyAttempts = 8;
 
 	public async Task<OneOf<SelectShowcaseSuccessful, SelectShowcaseError>> Handle(
 		SelectShowcaseCommand command,

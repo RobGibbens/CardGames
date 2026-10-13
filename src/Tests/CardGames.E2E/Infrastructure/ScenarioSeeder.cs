@@ -144,6 +144,32 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 	}
 
 	/// <summary>
+	///     Seats every player at a blind-based Bob Barker table. Seat 0 is the host and the starting dealer.
+	/// </summary>
+	public async Task<Guid> CreateSeatedBobBarkerGameAsync(
+		string name,
+		IReadOnlyList<SeededPlayer> players,
+		int smallBlind,
+		int bigBlind,
+		IReadOnlyList<int>? stacks = null)
+	{
+		if (players.Count < 2)
+			throw new ArgumentException("Bob Barker needs at least two players.", nameof(players));
+
+		stacks ??= Enumerable.Repeat(SeatedStack, players.Count).ToArray();
+		if (stacks.Count != players.Count)
+			throw new ArgumentException("Provide one stack per seated player.", nameof(stacks));
+
+		var game = await CreateBobBarkerGameAsync(name, smallBlind, bigBlind, players[0]);
+		var now = DateTimeOffset.UtcNow;
+		for (var seat = 0; seat < players.Count; seat++)
+			_context.GamePlayers.Add(CreateSeat(game.Id, players[seat].PlayerId, seat, now, stacks[seat]));
+
+		await _context.SaveChangesAsync();
+		return game.Id;
+	}
+
+	/// <summary>
 	///     Seats every player at a Baseball table. Seat 0 is the host and the starting dealer.
 	///     Stakes are an ante, a bring-in, and fixed-limit small and big bets. The buy price is the minimum bet.
 	/// </summary>
@@ -205,6 +231,41 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 			BigBlind = bigBlind,
 			CreatedById = host?.UserId,
 			CreatedByName = host?.Email,
+			Status = GameStatus.WaitingForPlayers,
+			RequiresJoinApproval = false,
+			CurrentPlayerIndex = -1,
+			CurrentDrawPlayerIndex = -1,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+		_context.Games.Add(game);
+		await _context.SaveChangesAsync();
+		return game;
+	}
+
+	private async Task<Game> CreateBobBarkerGameAsync(
+		string name,
+		int smallBlind,
+		int bigBlind,
+		SeededPlayer host)
+	{
+		await EnsureGameTypesAsync();
+		var gameType = await _context.GameTypes.SingleAsync(type => type.Code == "BOBBARKER");
+		var now = DateTimeOffset.UtcNow;
+		var game = new Game
+		{
+			Id = Guid.CreateVersion7(),
+			GameTypeId = gameType.Id,
+			Name = name,
+			CurrentPhase = nameof(Phases.WaitingToStart),
+			CurrentHandNumber = 0,
+			DealerPosition = 0,
+			Ante = 0,
+			MinBet = bigBlind,
+			SmallBlind = smallBlind,
+			BigBlind = bigBlind,
+			CreatedById = host.UserId,
+			CreatedByName = host.Email,
 			Status = GameStatus.WaitingForPlayers,
 			RequiresJoinApproval = false,
 			CurrentPlayerIndex = -1,

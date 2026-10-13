@@ -213,6 +213,61 @@ public sealed class PlayerSession : IAsyncDisposable
 		await ClickUntilDismissedAsync(panel.Locator("[data-testid='action-all-in']"));
 	}
 
+	/// <summary>
+	///     Picks one hole card in the Choose Showcase panel. The panel sorts by rank, so the
+	///     click targets the card face and the original hole index travels with that element.
+	/// </summary>
+	public async Task ChooseShowcaseAsync(string cardCode)
+	{
+		var panel = Page.Locator(".draw-panel");
+		await panel.WaitForAsync(new LocatorWaitForOptions
+		{
+			State = WaitForSelectorState.Visible,
+			Timeout = 45_000
+		});
+		await Assertions.Expect(panel.Locator(".draw-panel-title")).ToContainTextAsync(
+			"Choose Showcase",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await Assertions.Expect(panel.Locator(".draw-card-wrapper")).ToHaveCountAsync(
+			5,
+			new LocatorAssertionsToHaveCountOptions { Timeout = 15_000 });
+
+		var (rank, suit) = DrawPanelFace(cardCode);
+		var card = panel.Locator(
+			$".draw-card-wrapper:has(playing-card[rank='{rank}'][suit='{suit}'])");
+		await card.EvaluateAsync("element => element.click()");
+
+		var choose = panel.Locator(".discard-btn");
+		await Assertions.Expect(choose).ToContainTextAsync(
+			"Choose 1",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await choose.EvaluateAsync("element => element.click()");
+		await Assertions.Expect(panel).ToBeHiddenAsync(
+			new LocatorAssertionsToBeHiddenOptions { Timeout = 20_000 });
+	}
+
+	private static (string Rank, string Suit) DrawPanelFace(string cardCode)
+	{
+		var rank = char.ToUpperInvariant(cardCode[0]) switch
+		{
+			'A' => "Ace",
+			'K' => "King",
+			'Q' => "Queen",
+			'J' => "Jack",
+			'T' => "10",
+			_ => cardCode[0].ToString()
+		};
+		var suit = char.ToLowerInvariant(cardCode[1]) switch
+		{
+			'h' => "Hearts",
+			'd' => "Diamonds",
+			's' => "Spades",
+			'c' => "Clubs",
+			_ => throw new InvalidOperationException($"Unexpected card '{cardCode}'.")
+		};
+		return (rank, suit);
+	}
+
 	public async Task DecideBuyCardAsync(bool accept, int price)
 	{
 		var button = Page.Locator(accept
