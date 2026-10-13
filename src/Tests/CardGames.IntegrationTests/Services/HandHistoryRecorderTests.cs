@@ -109,7 +109,7 @@ public class HandHistoryRecorderTests : IDisposable
 	}
 
 	[Fact]
-	public async Task RecordHandHistoryAsync_GeneralException_RethrowsAndLogs()
+	public async Task RecordHandHistoryAsync_GeneralException_ReturnsFalseAndContinues()
 	{
 		// Arrange
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
@@ -123,10 +123,10 @@ public class HandHistoryRecorderTests : IDisposable
 		var parameters = CreateDefaultParameters(Guid.NewGuid(), Guid.NewGuid());
 
 		// Act
-		var act = async () => await recorder.RecordHandHistoryAsync(parameters);
+		var result = await recorder.RecordHandHistoryAsync(parameters);
 
-		// Assert
-		await act.Should().ThrowAsync<Exception>().WithMessage("Database connection lost");
+		// Assert — recording failures are logged and swallowed so the game loop can continue
+		result.Should().BeFalse();
 	}
 
 	[Theory]

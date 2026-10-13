@@ -163,8 +163,9 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		var setup = await CreateDealtRedRiverGameAsync(2, 0);
 
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "River");
-		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Hearts);
+		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Spades);
 		await ConfigureNextDeckCardAsync(setup.Game.Id, CardSuit.Clubs, CardSymbol.King);
+		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Hearts);
 
 		var preAllInContext = GetFreshDbContext();
 		var preAllInGame = await preAllInContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
@@ -281,8 +282,9 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		var setup = await CreateDealtRedRiverGameAsync(2, 0);
 
 		await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "River");
-		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Hearts);
+		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Spades);
 		await ConfigureNextDeckCardAsync(setup.Game.Id, CardSuit.Clubs, CardSymbol.King);
+		await SetRiverSuitAsync(setup.Game.Id, CardSuit.Hearts);
 
 		var firstAllIn = await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingActionType.AllIn)
 		{
@@ -444,6 +446,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		}
 
 		await context.SaveChangesAsync();
+		DbContext.ChangeTracker.Clear();
 	}
 
 	private async Task ConfigureNextDeckCardAsync(
@@ -468,6 +471,7 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
 		deckCards[deckOffset].Symbol = bonusSymbol;
 
 		await context.SaveChangesAsync();
+		DbContext.ChangeTracker.Clear();
 	}
 
 	private async Task<OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>

@@ -315,7 +315,7 @@
 **Requested by:** Rob Gibbens
 **What:** Verified that Aspire is already installed and operational in the CardGames project via NuGet SDK (v13.1.0). Current package set includes Aspire.AppHost.Sdk 13.1.0 alongside Azure SQL, Functions, Storage, DevTunnels, Redis, Service Bus, and StackExchange.Redis.DistributedCaching all at v13.1.1. Build and restore confirm all packages are accessible from nuget.org.
 **Why:** Aspire was already integrated during AppHost setup; no marketplace installation or workload installation required. Build pipeline confirms operational readiness.
-**Future notes:** Keep Aspire packages pinned to v13.1.1 for compatibility with CardGames.AppHost.Sdk/13.1.0. Aspire versioning should coordinate with .NET SDK updates (.NET 10.0.100 in use).
+**Future notes:** Keep Aspire packages pinned to v13.1.1 for compatibility with CardGames.AppHost.Sdk/13.1.0. Aspire versioning should coordinate with .NET SDK updates (.NET 11.0.100-rc.1.26425.128 in use).
 
 ### 2026-02-18: Web Design Reviewer skill installation & marketplace readiness
 **By:** Livingston (DevOps)
@@ -337,7 +337,7 @@
 
 **Scope & Capabilities:**
 The refactor skill addresses:
-- C# modernization (.NET 10)
+- C# modernization (.NET 11)
 - SOLID principle application and pattern recognition
 - Complexity reduction in game orchestration
 - Test-aware refactoring with xUnit/FluentAssertions
@@ -375,7 +375,7 @@ Current local variant will remain stable regardless of marketplace availability.
 **Why:** Completes team skill portfolio for NuGet/package-management operations across CardGames solution. Local variant provides immediate functionality while remaining future-ready for marketplace-based skill distribution if GitHub Copilot CLI marketplace supports skill plugins.
 **Scope & Integration:**
 - NuGet package add/update/remove guidance for CardGames.sln and multi-target projects
-- Dependency version alignment (Aspire v13.1.1 pinning, .NET 10.0.100 coordination)
+- Dependency version alignment (Aspire v13.1.1 pinning, .NET 11.0.100-rc.1.26425.128 coordination)
 - Directory.Packages.props centralized management and override resolution
 - Integration with Livingston (DevOps), Danny (backend), Linus (frontend), Basher (testing), Rusty (architecture)
 - Activation: Via `/skills` command or `@nuget-manager` mention

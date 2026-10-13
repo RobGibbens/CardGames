@@ -4,11 +4,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Project** | CardGames (.NET 10 card games platform) |
+| **Project** | CardGames (.NET 11 card games platform) |
 | **Requested by** | Rob Gibbens |
 | **Git user.name** | Rob Gibbens |
 | **Git user.email** | [email scrubbed] |
-| **Stack** | C#/.NET (`net10.0`), ASP.NET API, Blazor Web, xUnit + FluentAssertions |
+| **Stack** | C#/.NET (`net11.0`), ASP.NET API, Blazor Web, xUnit + FluentAssertions |
 | **Initialized** | 2026-02-17 |
 
 ## Members

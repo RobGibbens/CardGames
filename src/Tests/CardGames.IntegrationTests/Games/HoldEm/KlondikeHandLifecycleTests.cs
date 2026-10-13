@@ -151,7 +151,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 
 		var fresh = GetFreshDbContext();
 		var game = await fresh.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
-		game.CurrentPhase.Should().Be("Showdown");
+		game.CurrentPhase.Should().Be("KlondikeReveal");
 
 		var communityCards = await fresh.GameCards
 			.Where(gc => gc.GameId == setup.Game.Id
@@ -169,7 +169,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 
 		var klondikeCard = communityCards.Single(c => c.DealtAtPhase == "KlondikeCard");
 		klondikeCard.DealOrder.Should().Be(0);
-		klondikeCard.IsVisible.Should().BeFalse("Klondike Card should remain face-down even after runout");
+		klondikeCard.IsVisible.Should().BeTrue("all-in runout reveals the Klondike card as it enters KlondikeReveal");
 	}
 
 	#endregion
@@ -282,7 +282,7 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 			.FirstAsync(gc => gc.GameId == setup.Game.Id
 			                  && gc.HandNumber == game.CurrentHandNumber
 			                  && gc.DealtAtPhase == "KlondikeCard");
-		klondikeCardBefore.IsVisible.Should().BeFalse("Klondike card should be face-down before showdown");
+		klondikeCardBefore.IsVisible.Should().BeTrue("KlondikeReveal shows the wild card before showdown");
 
 		// Perform showdown via GenericPerformShowdownCommand (same as GenericPerformShowdownAsync API)
 		var showdownResult = await Mediator.Send(new PerformShowdownCommand(setup.Game.Id));
@@ -391,6 +391,15 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
 			var game = await GetFreshDbContext().Games.AsNoTracking().FirstAsync(g => g.Id == gameId);
 			if (string.Equals(game.CurrentPhase, targetPhase, StringComparison.OrdinalIgnoreCase))
 				return;
+
+			if (string.Equals(game.CurrentPhase, "KlondikeReveal", StringComparison.OrdinalIgnoreCase) &&
+			    string.Equals(targetPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
+			{
+				var tracked = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+				tracked.CurrentPhase = "Showdown";
+				await DbContext.SaveChangesAsync();
+				return;
+			}
 
 			var result = await SendPassiveBettingActionAsync(gameId);
 			result.IsT0.Should()

@@ -41,17 +41,24 @@ public class HoldEmHandLifecycleTests : IntegrationTestBase
 		// Walk through the betting round actors until it completes.
 		for (var i = 0; i < activePlayers.Count; i++)
 		{
-			var freshRound = await GetFreshDbContext().BettingRounds
+			var freshContext = GetFreshDbContext();
+			var freshRound = await freshContext.BettingRounds
 				.FirstOrDefaultAsync(br => br.GameId == game.Id && !br.IsComplete);
 			if (freshRound is null) break; // Round already completed
 
+			var actor = await freshContext.GamePlayers.AsNoTracking()
+				.FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == freshRound.CurrentActorIndex);
+			var action = freshRound.CurrentBet > actor.CurrentBet
+				? BettingActionType.Call
+				: BettingActionType.Check;
+
 			var result = await Mediator.Send(
-				new ProcessBettingActionCommand(game.Id, BettingActionType.Check)
+				new ProcessBettingActionCommand(game.Id, action)
 		{
 			BoundSeat = await TryCurrentBettingSeatAsync(game.Id)
 		});
 
-			result.IsT0.Should().BeTrue($"check by player at iteration {i} should succeed");
+			result.IsT0.Should().BeTrue($"betting action by player at iteration {i} should succeed");
 		}
 
 		// Assert — game should have advanced to Flop

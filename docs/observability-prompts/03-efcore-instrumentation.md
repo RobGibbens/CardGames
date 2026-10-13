@@ -26,7 +26,7 @@ Poker API so `CardsDbContext` queries appear as child spans under the request/Me
 1. Add the package reference to `src/CardGames.Poker.Api/CardGames.Poker.Api.csproj`:
    `OpenTelemetry.Instrumentation.EntityFrameworkCore` (match the OpenTelemetry version line already
    used by the other OTel packages in the project; prefer the latest stable compatible with the
-   project's `net10.0` target). Use `dotnet add package` rather than hand-editing if possible.
+   project's `net11.0` target). Use `dotnet add package` rather than hand-editing if possible.
 2. In the `WithTracing` block in `Program.cs`, add:
    ```csharp
    x.AddEntityFrameworkCoreInstrumentation(o =>

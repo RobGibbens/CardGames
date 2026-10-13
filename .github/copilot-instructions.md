@@ -2,7 +2,7 @@
 
 ## Code Style
 
-- Primary stack is C#/.NET (`net10.0`) across API, Web, Contracts, and tests.
+- Primary stack is C#/.NET (`net11.0`) across API, Web, Contracts, and tests.
 - Prefer readable, domain-first code and preserve existing naming/patterns from [README.md](../README.md).
 - Keep game-specific orchestration out of generic UI/API flow; follow the metadata-driven approach in [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md).
 - In tests, follow existing xUnit + FluentAssertions style under [src/Tests](../src/Tests).

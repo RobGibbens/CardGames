@@ -2,6 +2,7 @@ using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ChooseDealerGame;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
+using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Services;
 using Microsoft.Extensions.Logging;
 using Xunit.Sdk;
@@ -657,8 +658,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 		var winnerBalance = await walletService.GetBalanceAsync(winner.PlayerId, CancellationToken.None);
 		var loserBalance = await walletService.GetBalanceAsync(loser.PlayerId, CancellationToken.None);
 
-		winnerBalance.Should().Be(25);
-		loserBalance.Should().Be(-25);
+		winnerBalance.Should().Be(CashierAccountInitializer.StartingChipAmount + 25);
+		loserBalance.Should().Be(CashierAccountInitializer.StartingChipAmount - 25);
 	}
 
 	[Fact]

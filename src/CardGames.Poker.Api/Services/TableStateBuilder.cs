@@ -1761,11 +1761,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					ShowcaseCardValue = showcaseCard is null
 						? null
 						: GetBobBarkerCardValue(showcaseCard.Symbol, bobBarkerDealerCard?.Symbol == CardSymbol.Ace),
-					Cards = OrderCardsForDisplay(
-							gp.Cards.Where(c => !c.IsDiscarded
-							                    && c.HandNumber == game.CurrentHandNumber
-							                    && (!isBobBarker || selectedShowcaseDealOrder is null ||
-							                        c.DealOrder != selectedShowcaseDealOrder.Value)),
+					Cards = OrderShowdownCards(
+							gp,
+							playerHandEvaluations,
+							game.CurrentHandNumber,
+							isBobBarker,
+							selectedShowcaseDealOrder,
 							isStudStyleShowdown)
 						.Select(c => new CardPublicDto
 						{
@@ -3171,6 +3172,31 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <param name="cards">The collection of cards to order.</param>
 	/// <param name="isSevenCardStud">Whether this is a Seven Card Stud game.</param>
 	/// <returns>Cards ordered in the correct deal sequence.</returns>
+	private static IEnumerable<GameCard> OrderShowdownCards(
+		GamePlayer gamePlayer,
+		Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand?
+			kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int>
+			wildIndexes, List<int> bestCardIndexes)> playerHandEvaluations,
+		int handNumber,
+		bool isBobBarker,
+		int? selectedShowcaseDealOrder,
+		bool isStudStyleShowdown)
+	{
+		if (playerHandEvaluations.TryGetValue(gamePlayer.Player.Name, out var evaluation) &&
+		    evaluation.cards.Any(c => c.Location == CardLocation.Community))
+		{
+			// Keep hole-then-community order so BestCardIndexes match the displayed list.
+			return evaluation.cards.Where(c => !c.IsDiscarded && c.HandNumber == handNumber);
+		}
+
+		return OrderCardsForDisplay(
+			gamePlayer.Cards.Where(c => !c.IsDiscarded
+			                            && c.HandNumber == handNumber
+			                            && (!isBobBarker || selectedShowcaseDealOrder is null ||
+			                                c.DealOrder != selectedShowcaseDealOrder.Value)),
+			isStudStyleShowdown);
+	}
+
 	private static IEnumerable<GameCard> OrderCardsForDisplay(IEnumerable<GameCard> cards, bool isSevenCardStud)
 	{
 		if (isSevenCardStud)

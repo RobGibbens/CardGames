@@ -111,7 +111,8 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 				Notes = "Bring chips",
 				GameTypeCode = "OMAHA",
 				Ante = 25,
-				MinBet = 50
+				MinBet = 50,
+				TournamentBuyIn = 100
 			}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -122,8 +123,11 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		storedEvent.ScheduledAtUtc.Should().Be(scheduledAtUtc);
 		storedEvent.EventType.Should().Be(LeagueOneOffEventType.Tournament);
 		storedEvent.GameTypeCode.Should().Be("OMAHA");
-		storedEvent.Ante.Should().Be(25);
+		storedEvent.Ante.Should().Be(0, "Omaha is a blind game, so ante is not stored");
 		storedEvent.MinBet.Should().Be(50);
+		storedEvent.SmallBlind.Should().Be(25);
+		storedEvent.BigBlind.Should().Be(50);
+		storedEvent.TournamentBuyIn.Should().Be(100);
 		storedEvent.Notes.Should().Be("Bring chips");
 	}
 

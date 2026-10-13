@@ -30,7 +30,9 @@ public class CreateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		{
 			Name = "Friday Night",
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
-			EventType = LeagueOneOffEventType.CashGame
+			EventType = LeagueOneOffEventType.CashGame,
+			GameTypeCode = "HOLDEM",
+			MinBet = 20
 		}));
 
 		result.IsT0.Should().BeTrue();
@@ -94,7 +96,9 @@ public class CreateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		{
 			Name = "Friday Night",
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1),
-			EventType = LeagueOneOffEventType.CashGame
+			EventType = LeagueOneOffEventType.CashGame,
+			GameTypeCode = "HOLDEM",
+			MinBet = 20
 		}));
 
 		result.IsT1.Should().BeTrue();

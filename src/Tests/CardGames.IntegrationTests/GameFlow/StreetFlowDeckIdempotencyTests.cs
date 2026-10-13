@@ -45,6 +45,7 @@ public class StreetFlowDeckIdempotencyTests : IntegrationTestBase
 		await DbContext.SaveChangesAsync();
 
 		await SeedPersistedDeckAsync(setup.Game.Id, setup.Game.CurrentHandNumber);
+		await MoveFirstDoorCardOffFourAsync(setup.Game.Id, setup.Game.CurrentHandNumber);
 
 		// Act
 		await handler.DealCardsAsync(
@@ -87,6 +88,22 @@ public class StreetFlowDeckIdempotencyTests : IntegrationTestBase
 			});
 
 		DbContext.GameCards.AddRange(deckCards);
+		await DbContext.SaveChangesAsync();
+	}
+
+	/// <summary>
+	///     The seeded deck's first door card is a four, which pauses Baseball for a buy-card offer
+	///     before the rest of third street is dealt.
+	/// </summary>
+	private async Task MoveFirstDoorCardOffFourAsync(Guid gameId, int handNumber)
+	{
+		var doorCard = await DbContext.GameCards.SingleAsync(c =>
+			c.GameId == gameId && c.HandNumber == handNumber && c.DealOrder == 2);
+		var swapCard = await DbContext.GameCards.SingleAsync(c =>
+			c.GameId == gameId && c.HandNumber == handNumber && c.DealOrder == 3);
+
+		(doorCard.Suit, swapCard.Suit) = (swapCard.Suit, doorCard.Suit);
+		(doorCard.Symbol, swapCard.Symbol) = (swapCard.Symbol, doorCard.Symbol);
 		await DbContext.SaveChangesAsync();
 	}
 }

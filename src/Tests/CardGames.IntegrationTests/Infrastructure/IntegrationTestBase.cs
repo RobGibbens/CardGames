@@ -1,4 +1,5 @@
 using CardGames.IntegrationTests.Infrastructure.Fakes;
+using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Evaluation;
@@ -46,6 +47,8 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 		services.AddHybridCache();
 #pragma warning restore EXTEXP0018
 		services.AddOptions();
+		services.AddMetrics();
+		services.AddSingleton<LeaguesTelemetry>();
 
 		// Add services
 		services.AddSingleton<IActionTimerService, FakeActionTimerService>();

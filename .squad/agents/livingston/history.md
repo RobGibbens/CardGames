@@ -44,7 +44,7 @@
 - microsoft-docs skill was not available in configured marketplaces.
 - Created skill variant at `.ai-team/skills/microsoft-docs/SKILL.md` with official Microsoft documentation and learning resource guidance.
 - Skill provides API reference navigation, framework patterns, Azure integration guidance, authentication documentation, performance best practices, code samples, migration paths, and troubleshooting resources.
-- Covers .NET 10, ASP.NET Core, Blazor, Entity Framework Core, Azure SDK, authentication/authorization, testing frameworks, Dependency Injection, Redis caching, and Cloud design patterns.
+- Covers .NET 11, ASP.NET Core, Blazor, Entity Framework Core, Azure SDK, authentication/authorization, testing frameworks, Dependency Injection, Redis caching, and Cloud design patterns.
 - Integrated with team routing: works with Livingston (infrastructure/Azure), Danny (API/.NET patterns), Linus (Blazor/Web), Basher (test frameworks), Rusty (architecture), and Scribe (API references).
 - Idempotent success: skill file structure in place and ready for activation via `/skills` command or `@microsoft-docs` mention.
 

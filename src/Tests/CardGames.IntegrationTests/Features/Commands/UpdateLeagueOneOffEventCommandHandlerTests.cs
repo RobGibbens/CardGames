@@ -60,8 +60,10 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		savedEvent.Name.Should().Be("High Stakes");
 		savedEvent.ScheduledAtUtc.Should().Be(scheduledAtUtc);
 		savedEvent.GameTypeCode.Should().Be("OMAHA");
-		savedEvent.Ante.Should().Be(25);
+		savedEvent.Ante.Should().Be(0, "Omaha is a blind game, so ante is not stored");
 		savedEvent.MinBet.Should().Be(50);
+		savedEvent.SmallBlind.Should().Be(25);
+		savedEvent.BigBlind.Should().Be(50);
 		savedEvent.Notes.Should().Be("Updated notes");
 		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
 		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);

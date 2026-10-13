@@ -1,4 +1,5 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Games.GameFlow;
 using Microsoft.Extensions.Logging;
@@ -187,6 +188,8 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 		var now = DateTimeOffset.UtcNow;
 		var game = CreateDCGame(now, "Complete", 0, 0);
 		game.Ante = 10;
+		game.GameType!.Code = PokerGameMetadataRegistry.KingsAndLowsCode;
+		game.CurrentHandGameTypeCode = PokerGameMetadataRegistry.KingsAndLowsCode;
 		AddActivePlayers(game, 3);
 
 		_dbContext.Games.Add(game);
@@ -206,7 +209,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 		_dbContext.Pots.Add(currentHandPot);
 		await _dbContext.SaveChangesAsync();
 
-		var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+		var handler = _flowHandlerFactory.SetHandlerForCode(PokerGameMetadataRegistry.KingsAndLowsCode);
 		handler.InitialPhase = "Dealing";
 		handler.SkipsAnteCollection = true;
 		handler.IsMultiHandVariant = true;

@@ -63,6 +63,7 @@ public class BaseballDealHandsCommandHandlerTests : IntegrationTestBase
 
 		await Mediator.Send(new StartHandCommand(setup.Game.Id));
 		await Mediator.Send(new CollectAntesCommand(setup.Game.Id));
+		await ScriptThirdStreetDoorCardsAsync(setup.Game.Id, setup.Game.CurrentHandNumber);
 		await Mediator.Send(new DealHandsCommand(setup.Game.Id));
 
 		var thirdStreetBoardCards = await DbContext.GameCards
@@ -123,6 +124,7 @@ public class BaseballDealHandsCommandHandlerTests : IntegrationTestBase
 
 		await Mediator.Send(new StartHandCommand(setup.Game.Id));
 		await Mediator.Send(new CollectAntesCommand(setup.Game.Id));
+		await ScriptThirdStreetDoorCardsAsync(setup.Game.Id, setup.Game.CurrentHandNumber);
 		await Mediator.Send(new DealHandsCommand(setup.Game.Id));
 
 		var thirdStreetBoardCards = await DbContext.GameCards
@@ -159,5 +161,22 @@ public class BaseballDealHandsCommandHandlerTests : IntegrationTestBase
 		var success = result.AsT0;
 		success.CurrentPlayerIndex.Should().Be(lynne.SeatPosition);
 		success.CurrentPlayerName.Should().Be("Lynne");
+	}
+
+	private async Task ScriptThirdStreetDoorCardsAsync(Guid gameId, int handNumber)
+	{
+		var openingDeck = await DbContext.GameCards
+			.Where(gc => gc.GameId == gameId
+			             && gc.HandNumber == handNumber
+			             && gc.Location == CardLocation.Deck)
+			.OrderBy(gc => gc.DealOrder)
+			.Take(6)
+			.ToListAsync();
+
+		openingDeck[2].Symbol = CardSymbol.King;
+		openingDeck[2].Suit = CardSuit.Hearts;
+		openingDeck[5].Symbol = CardSymbol.Jack;
+		openingDeck[5].Suit = CardSuit.Clubs;
+		await DbContext.SaveChangesAsync();
 	}
 }

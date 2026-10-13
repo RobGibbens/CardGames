@@ -10,9 +10,9 @@ namespace CardGames.IntegrationTests.EndToEnd;
 public class KingsAndLowsGameFlowTests : IntegrationTestBase
 {
 	[Fact]
-	public async Task FullGameFlow_StartHand_TransitionsToDealing()
+	public async Task FullGameFlow_StartHand_DealsAndTransitionsToDropOrStay()
 	{
-		// Arrange - Kings and Lows starts with Dealing, not CollectingAntes
+		// Arrange - StartHand deals immediately and lands on DropOrStay
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
 
 		// Act
@@ -21,7 +21,7 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
 		// Assert
 		result.IsT0.Should().BeTrue();
 		var success = result.AsT0;
-		success.CurrentPhase.Should().Be(nameof(Phases.Dealing));
+		success.CurrentPhase.Should().Be(nameof(Phases.DropOrStay));
 	}
 
 	[Fact]
@@ -286,7 +286,7 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
 		var result1 = await Mediator.Send(new StartHandCommand(setup.Game.Id));
 		result1.IsT0.Should().BeTrue();
 		result1.AsT0.HandNumber.Should().Be(1);
-		result1.AsT0.CurrentPhase.Should().Be(nameof(Phases.Dealing));
+		result1.AsT0.CurrentPhase.Should().Be(nameof(Phases.DropOrStay));
 
 		// Complete hand 1
 		var game = await DbContext.Games.FirstAsync(g => g.Id == setup.Game.Id);
@@ -297,7 +297,7 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
 		var result2 = await Mediator.Send(new StartHandCommand(setup.Game.Id));
 		result2.IsT0.Should().BeTrue();
 		result2.AsT0.HandNumber.Should().Be(2);
-		result2.AsT0.CurrentPhase.Should().Be(nameof(Phases.Dealing));
+		result2.AsT0.CurrentPhase.Should().Be(nameof(Phases.DropOrStay));
 
 		// Verify DropOrStay decisions are reset between hands
 		var players = await GetFreshDbContext().GamePlayers
