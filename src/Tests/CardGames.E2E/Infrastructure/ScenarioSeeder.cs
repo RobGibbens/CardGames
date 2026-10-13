@@ -404,6 +404,35 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 	}
 
 	/// <summary>
+	///     Seats every player at a Screw Your Neighbor table. Seat 0 is the host and the starting dealer.
+	///     <paramref name="stackSize" /> is the ante: each player buys in for three stacks, and the low card loses one.
+	/// </summary>
+	public async Task<Guid> CreateSeatedScrewYourNeighborGameAsync(
+		string name,
+		IReadOnlyList<SeededPlayer> players,
+		int stackSize,
+		IReadOnlyList<int>? stacks = null)
+	{
+		if (players.Count < 3)
+			throw new ArgumentException("Screw Your Neighbor needs at least three players.", nameof(players));
+
+		if (stackSize <= 0)
+			throw new ArgumentException("A stack must be worth at least one chip.", nameof(stackSize));
+
+		stacks ??= Enumerable.Repeat(stackSize * 3, players.Count).ToArray();
+		if (stacks.Count != players.Count)
+			throw new ArgumentException("Provide one stack per seated player.", nameof(stacks));
+
+		var game = await CreateScrewYourNeighborGameAsync(name, stackSize, players[0]);
+		var now = DateTimeOffset.UtcNow;
+		for (var seat = 0; seat < players.Count; seat++)
+			_context.GamePlayers.Add(CreateSeat(game.Id, players[seat].PlayerId, seat, now, stacks[seat]));
+
+		await _context.SaveChangesAsync();
+		return game.Id;
+	}
+
+	/// <summary>
 	///     Seats every player at a Baseball table. Seat 0 is the host and the starting dealer.
 	///     Stakes are an ante, a bring-in, and fixed-limit small and big bets. The buy price is the minimum bet.
 	/// </summary>
@@ -896,6 +925,34 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 			CurrentHandNumber = 0,
 			DealerPosition = 0,
 			Ante = ante,
+			CreatedById = host.UserId,
+			CreatedByName = host.Email,
+			Status = GameStatus.WaitingForPlayers,
+			RequiresJoinApproval = false,
+			CurrentPlayerIndex = -1,
+			CurrentDrawPlayerIndex = -1,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+		_context.Games.Add(game);
+		await _context.SaveChangesAsync();
+		return game;
+	}
+
+	private async Task<Game> CreateScrewYourNeighborGameAsync(string name, int stackSize, SeededPlayer host)
+	{
+		await EnsureGameTypesAsync();
+		var gameType = await _context.GameTypes.SingleAsync(type => type.Code == "SCREWYOURNEIGHBOR");
+		var now = DateTimeOffset.UtcNow;
+		var game = new Game
+		{
+			Id = Guid.CreateVersion7(),
+			GameTypeId = gameType.Id,
+			Name = name,
+			CurrentPhase = nameof(Phases.WaitingToStart),
+			CurrentHandNumber = 0,
+			DealerPosition = 0,
+			Ante = stackSize,
 			CreatedById = host.UserId,
 			CreatedByName = host.Email,
 			Status = GameStatus.WaitingForPlayers,
