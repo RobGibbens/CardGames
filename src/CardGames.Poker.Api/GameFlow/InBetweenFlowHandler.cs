@@ -720,8 +720,10 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		}
 		else
 		{
-			game.NextHandStartsAt = null;
-			game.Status = GameStatus.Completed;
+			// The pot is empty, but the table stays up. Continuous play deals the next hand
+			// after the same results pause used by other cash games.
+			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+			game.Status = GameStatus.InProgress;
 		}
 
 		await context.SaveChangesAsync(cancellationToken);

@@ -222,6 +222,32 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 	}
 
 	/// <summary>
+	///     Seats every player at an In-Between table. Seat 0 is the host and the starting dealer.
+	///     The only stake is the ante that builds each hand's pot.
+	/// </summary>
+	public async Task<Guid> CreateSeatedInBetweenGameAsync(
+		string name,
+		IReadOnlyList<SeededPlayer> players,
+		int ante,
+		IReadOnlyList<int>? stacks = null)
+	{
+		if (players.Count < 2)
+			throw new ArgumentException("In-Between needs at least two players.", nameof(players));
+
+		stacks ??= Enumerable.Repeat(SeatedStack, players.Count).ToArray();
+		if (stacks.Count != players.Count)
+			throw new ArgumentException("Provide one stack per seated player.", nameof(stacks));
+
+		var game = await CreateInBetweenGameAsync(name, ante, players[0]);
+		var now = DateTimeOffset.UtcNow;
+		for (var seat = 0; seat < players.Count; seat++)
+			_context.GamePlayers.Add(CreateSeat(game.Id, players[seat].PlayerId, seat, now, stacks[seat]));
+
+		await _context.SaveChangesAsync();
+		return game.Id;
+	}
+
+	/// <summary>
 	///     Seats every player at a Baseball table. Seat 0 is the host and the starting dealer.
 	///     Stakes are an ante, a bring-in, and fixed-limit small and big bets. The buy price is the minimum bet.
 	/// </summary>
@@ -445,6 +471,34 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 		return game;
 	}
 
+	private async Task<Game> CreateInBetweenGameAsync(string name, int ante, SeededPlayer host)
+	{
+		await EnsureGameTypesAsync();
+		var gameType = await _context.GameTypes.SingleAsync(type => type.Code == "INBETWEEN");
+		var now = DateTimeOffset.UtcNow;
+		var game = new Game
+		{
+			Id = Guid.CreateVersion7(),
+			GameTypeId = gameType.Id,
+			Name = name,
+			CurrentPhase = nameof(Phases.WaitingToStart),
+			CurrentHandNumber = 0,
+			DealerPosition = 0,
+			Ante = ante,
+			CreatedById = host.UserId,
+			CreatedByName = host.Email,
+			Status = GameStatus.WaitingForPlayers,
+			RequiresJoinApproval = false,
+			CurrentPlayerIndex = -1,
+			CurrentDrawPlayerIndex = -1,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+		_context.Games.Add(game);
+		await _context.SaveChangesAsync();
+		return game;
+	}
+
 	private async Task<Game> CreateBaseballGameAsync(
 		string name,
 		int ante,
@@ -599,7 +653,8 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 			CreateGameType("BASEBALL", "Baseball", 2, 8, 2, 1, 0, 7, now),
 			CreateGameType("GOODBADUGLY", "The Good, the Bad, and the Ugly", 2, 7, 2, 1, 0, 7, now),
 			CreateGameType("SCREWYOURNEIGHBOR", "Screw Your Neighbor", 3, 10, 1, 0, 0, 1, now),
-			CreateGameType("KLONDIKE", "Klondike", 2, 10, 2, 0, 6, 2, now)
+			CreateGameType("KLONDIKE", "Klondike", 2, 10, 2, 0, 6, 2, now),
+			CreateGameType("INBETWEEN", "In-Between", 2, 20, 0, 0, 3, 0, now)
 		};
 
 		await _context.GameTypes.AddRangeAsync(gameTypes);
