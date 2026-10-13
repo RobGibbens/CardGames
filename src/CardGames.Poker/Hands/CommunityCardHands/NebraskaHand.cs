@@ -18,6 +18,18 @@ public sealed class NebraskaHand : CommunityCardsHand
 	}
 
 	/// <summary>
+	///     A legal hand needs three hole cards and two community cards. Earlier streets have no
+	///     such combination, so report an incomplete hand instead of enumerating an empty set.
+	/// </summary>
+	protected override IEnumerable<IReadOnlyCollection<Card>> PossibleHands()
+	{
+		if (HoleCards.Count < 3 || CommunityCards.Count < 2)
+			return [new List<Card>()];
+
+		return base.PossibleHands();
+	}
+
+	/// <summary>
 	///     Gets the evaluated best 5-card hand honoring Nebraska rules (exactly 3 hole + 2 community).
 	/// </summary>
 	public IReadOnlyCollection<Card> EvaluatedBestCards => field ??= FindBestFiveCardHand();

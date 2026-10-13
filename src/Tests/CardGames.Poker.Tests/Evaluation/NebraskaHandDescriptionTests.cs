@@ -40,4 +40,23 @@ public class NebraskaHandDescriptionTests
 
 		description.Should().Be("Straight to the Eight");
 	}
+
+	[Fact]
+	public void NebraskaHand_BeforeTwoCommunityCards_DoesNotThrow()
+	{
+		var holeCards = new List<Card>
+		{
+			new(Suit.Hearts, Symbol.Seven),
+			new(Suit.Hearts, Symbol.Eight),
+			new(Suit.Hearts, Symbol.Nine),
+			new(Suit.Hearts, Symbol.Ten),
+			new(Suit.Hearts, Symbol.Jack)
+		};
+
+		var hand = new NebraskaHand(holeCards, []);
+
+		var description = HandDescriptionFormatter.GetHandDescription(hand);
+
+		description.Should().Be("Incomplete Hand");
+	}
 }
