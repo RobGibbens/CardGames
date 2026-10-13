@@ -19,6 +19,18 @@ public static class ScriptedDeckClient
 		return SetAsync(apiBaseUrl, gameId, cards, cancellationToken);
 	}
 
+	public static Task ScriptRedRiverAsync(
+		string apiBaseUrl,
+		Guid gameId,
+		int dealerSeat,
+		IReadOnlyDictionary<int, IReadOnlyList<string>> holeCardsBySeat,
+		IReadOnlyList<string> board,
+		CancellationToken cancellationToken = default)
+	{
+		var cards = RedRiverDeckScript.Build(dealerSeat, holeCardsBySeat, board);
+		return SetAsync(apiBaseUrl, gameId, cards, cancellationToken);
+	}
+
 	public static Task ScriptNebraskaAsync(
 		string apiBaseUrl,
 		Guid gameId,
