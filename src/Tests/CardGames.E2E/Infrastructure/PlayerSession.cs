@@ -247,10 +247,11 @@ public sealed class PlayerSession : IAsyncDisposable
 	}
 
 	/// <summary>
-	///     Discards one of the three hole cards in the Discard Phase panel. The panel sorts by
-	///     rank, so the click targets the card face.
+	///     Discards one hole card in the Discard Phase panel. Crazy Pineapple shows three cards.
+	///     Phil's Mom shows four before the flop and three after it. The panel sorts by rank, so
+	///     the click targets the card face.
 	/// </summary>
-	public async Task DiscardOneAsync(string cardCode)
+	public async Task DiscardOneAsync(string cardCode, int holeCount = 3)
 	{
 		var panel = Page.Locator(".draw-panel");
 		await panel.WaitForAsync(new LocatorWaitForOptions
@@ -262,7 +263,7 @@ public sealed class PlayerSession : IAsyncDisposable
 			"Discard Phase",
 			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
 		await Assertions.Expect(panel.Locator(".draw-card-wrapper")).ToHaveCountAsync(
-			3,
+			holeCount,
 			new LocatorAssertionsToHaveCountOptions { Timeout = 15_000 });
 
 		var (rank, suit) = DrawPanelFace(cardCode);
