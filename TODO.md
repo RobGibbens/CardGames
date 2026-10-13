@@ -1,5 +1,7 @@
 # TODO
 
+## TODO
+
 - [ ] Animate the chips going to/from the pot
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
