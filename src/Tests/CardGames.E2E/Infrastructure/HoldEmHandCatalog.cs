@@ -82,6 +82,11 @@ public sealed record HoldEmHandScript
 	///     Showdown callout text. Set for hands that reach an evaluated showdown.
 	/// </summary>
 	public string? WinnerDescription { get; init; }
+
+	/// <summary>
+	///     Face-down wild card dealt after the hole cards. Set for Klondike scripts.
+	/// </summary>
+	public string? KlondikeCard { get; init; }
 }
 
 public static class HoldEmSeats

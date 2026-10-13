@@ -109,7 +109,11 @@
 						@if (KlondikeCard is not null)
 						{
 							var klondikeStatusClass = KlondikeCard.IsFaceUp ? "revealed" : "hidden";
-							<div class="klondike-card-slot @klondikeStatusClass">
+							var klondikeFaceUp = KlondikeCard.IsFaceUp && !string.IsNullOrWhiteSpace(KlondikeCard.Rank);
+							<div class="klondike-card-slot @klondikeStatusClass"
+							     data-testid="klondike-card"
+							     data-rank="@(klondikeFaceUp ? KlondikeCard.Rank : null)"
+							     data-suit="@(klondikeFaceUp ? KlondikeCard.Suit : null)">
 								@if (KlondikeCard.IsFaceUp && !string.IsNullOrWhiteSpace(KlondikeCard.Rank))
 								{
 									<playing-card rank="@GetPlayingCardRank(KlondikeCard.Rank)" suit="@KlondikeCard.Suit"
