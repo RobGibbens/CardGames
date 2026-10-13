@@ -10,6 +10,9 @@ namespace CardGames.E2E.Infrastructure;
 public sealed class PlayerSession : IAsyncDisposable
 {
 	private readonly IBrowserContext _context;
+	private readonly Lock _errorGate = new();
+	private readonly List<string> _pageErrors = [];
+	private readonly List<string> _consoleErrors = [];
 	private bool _traceFinished;
 
 	private PlayerSession(IBrowserContext context, IPage page, SeededPlayer player)
@@ -17,6 +20,36 @@ public sealed class PlayerSession : IAsyncDisposable
 		_context = context;
 		Page = page;
 		Player = player;
+		page.PageError += (_, error) => AddError(_pageErrors, error);
+		page.Console += (_, message) =>
+		{
+			if (string.Equals(message.Type, "error", StringComparison.OrdinalIgnoreCase))
+				AddError(_consoleErrors, message.Text);
+		};
+	}
+
+	public IReadOnlyList<string> PageErrors
+	{
+		get
+		{
+			lock (_errorGate)
+				return _pageErrors.ToArray();
+		}
+	}
+
+	public IReadOnlyList<string> ConsoleErrors
+	{
+		get
+		{
+			lock (_errorGate)
+				return _consoleErrors.ToArray();
+		}
+	}
+
+	private void AddError(List<string> errors, string error)
+	{
+		lock (_errorGate)
+			errors.Add(error);
 	}
 
 	public IPage Page { get; }
@@ -180,18 +213,41 @@ public sealed class PlayerSession : IAsyncDisposable
 		await ClickUntilDismissedAsync(panel.Locator("[data-testid='action-all-in']"));
 	}
 
+	public async Task DecideBuyCardAsync(bool accept, int price)
+	{
+		var button = Page.Locator(accept
+			? "[data-testid='buy-card-accept']"
+			: "[data-testid='buy-card-decline']");
+		await button.WaitForAsync(new LocatorWaitForOptions
+		{
+			State = WaitForSelectorState.Visible,
+			Timeout = 30_000
+		});
+		await Assertions.Expect(Page.Locator("[data-testid='buy-card-price']")).ToContainTextAsync(
+			price.ToString(CultureInfo.InvariantCulture),
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await button.EvaluateAsync("element => element.click()");
+		await Assertions.Expect(Page.Locator(".buy-card-panel")).ToBeHiddenAsync(
+			new LocatorAssertionsToBeHiddenOptions { Timeout = 20_000 });
+	}
+
 	/// <summary>
 	///     The action panel is scaled and fades in, so a mouse click on that box often never
 	///     reaches the Blazor handler. Dispatch one click and wait until the action is accepted.
 	///     The button leaves when the turn moves. It stays when this player closes the street
-	///     and is first to act on the next one, so a new community card counts as acceptance too.
+	///     and is first to act on the next one, so a new community card or stud up-card counts
+	///     as acceptance too. A showdown that appears after the click does as well.
 	///     A second click is rejected once the first action has already moved the turn.
 	/// </summary>
 	private async Task ClickUntilDismissedAsync(ILocator button)
 	{
 		var testId = await button.GetAttributeAsync("data-testid") ?? "action";
 		var community = Page.Locator("[data-testid='community-card']");
+		var studUpCards = Page.Locator("[data-testid='hole-card'].face-up");
+		var showdown = Page.Locator("[aria-label='Showdown results']");
 		var communityBefore = await community.CountAsync();
+		var studBefore = await studUpCards.CountAsync();
+		var showdownBefore = await showdown.IsVisibleAsync();
 		await button.EvaluateAsync("element => element.click()");
 
 		var deadline = DateTime.UtcNow.AddSeconds(20);
@@ -201,6 +257,12 @@ public sealed class PlayerSession : IAsyncDisposable
 				return;
 
 			if (await community.CountAsync() > communityBefore)
+				return;
+
+			if (await studUpCards.CountAsync() > studBefore)
+				return;
+
+			if (!showdownBefore && await showdown.IsVisibleAsync())
 				return;
 
 			await Task.Delay(100);

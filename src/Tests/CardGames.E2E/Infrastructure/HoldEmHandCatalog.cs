@@ -84,7 +84,26 @@ public static class HoldEmSeats
 	public const int Count = 6;
 
 	public static int Index(int dealerSeat, HoldEmPosition position) =>
-		(dealerSeat + (int)position) % Count;
+		Index(Count, dealerSeat, position);
+
+	public static int Index(int seatCount, int dealerSeat, HoldEmPosition position) =>
+		(dealerSeat + Offset(seatCount, position)) % seatCount;
+
+	/// <summary>
+	///     Seat offset from the dealer. The cutoff is the last seat, so a five-handed cutoff
+	///     is offset 4 and a six-handed cutoff stays offset 5. Middle exists only at six-max.
+	/// </summary>
+	public static int Offset(int seatCount, HoldEmPosition position) => position switch
+	{
+		HoldEmPosition.Cutoff => seatCount - 1,
+		HoldEmPosition.Middle when seatCount == Count => (int)HoldEmPosition.Middle,
+		HoldEmPosition.Button => (int)HoldEmPosition.Button,
+		HoldEmPosition.SmallBlind => (int)HoldEmPosition.SmallBlind,
+		HoldEmPosition.BigBlind => (int)HoldEmPosition.BigBlind,
+		HoldEmPosition.UnderTheGun => (int)HoldEmPosition.UnderTheGun,
+		_ => throw new InvalidOperationException(
+			$"{position} is not a seat at a {seatCount}-handed table.")
+	};
 }
 
 /// <summary>
@@ -107,7 +126,7 @@ public sealed class HoldEmLedger
 	public void Apply(HoldEmHandScript script, int dealerSeat)
 	{
 		foreach (var (position, net) in script.Nets)
-			_stacks[HoldEmSeats.Index(dealerSeat, position)] += net;
+			_stacks[HoldEmSeats.Index(_stacks.Length, dealerSeat, position)] += net;
 
 		var sum = _stacks.Sum();
 		if (sum != StartingSum)

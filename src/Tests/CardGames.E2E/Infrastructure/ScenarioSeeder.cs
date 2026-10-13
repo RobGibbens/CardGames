@@ -143,6 +143,31 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 		return game.Id;
 	}
 
+	/// <summary>
+	///     Seats every player at a Baseball table. Seat 0 is the host and the starting dealer.
+	///     Stakes are an ante, a bring-in, and fixed-limit small and big bets. The buy price is the minimum bet.
+	/// </summary>
+	public async Task<Guid> CreateSeatedBaseballGameAsync(
+		string name,
+		IReadOnlyList<SeededPlayer> players,
+		int ante,
+		int bringIn,
+		int smallBet,
+		int bigBet,
+		int buyCardPrice)
+	{
+		if (players.Count < 2)
+			throw new ArgumentException("Baseball needs at least two players.", nameof(players));
+
+		var game = await CreateBaseballGameAsync(name, ante, bringIn, smallBet, bigBet, buyCardPrice, players[0]);
+		var now = DateTimeOffset.UtcNow;
+		for (var seat = 0; seat < players.Count; seat++)
+			_context.GamePlayers.Add(CreateSeat(game.Id, players[seat].PlayerId, seat, now));
+
+		await _context.SaveChangesAsync();
+		return game.Id;
+	}
+
 	public async Task<int> GetCashierBalanceAsync(Guid playerId)
 	{
 		var account = await _context.PlayerChipAccounts
@@ -180,6 +205,46 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 			BigBlind = bigBlind,
 			CreatedById = host?.UserId,
 			CreatedByName = host?.Email,
+			Status = GameStatus.WaitingForPlayers,
+			RequiresJoinApproval = false,
+			CurrentPlayerIndex = -1,
+			CurrentDrawPlayerIndex = -1,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+		_context.Games.Add(game);
+		await _context.SaveChangesAsync();
+		return game;
+	}
+
+	private async Task<Game> CreateBaseballGameAsync(
+		string name,
+		int ante,
+		int bringIn,
+		int smallBet,
+		int bigBet,
+		int buyCardPrice,
+		SeededPlayer host)
+	{
+		await EnsureGameTypesAsync();
+		var gameType = await _context.GameTypes.SingleAsync(type => type.Code == "BASEBALL");
+		var now = DateTimeOffset.UtcNow;
+		var game = new Game
+		{
+			Id = Guid.CreateVersion7(),
+			GameTypeId = gameType.Id,
+			Name = name,
+			CurrentPhase = nameof(Phases.WaitingToStart),
+			CurrentHandNumber = 0,
+			DealerPosition = 0,
+			Ante = ante,
+			BringIn = bringIn,
+			SmallBet = smallBet,
+			BigBet = bigBet,
+			MinBet = buyCardPrice,
+			GameSettings = $"{{\"buyCardPrice\":{buyCardPrice}}}",
+			CreatedById = host.UserId,
+			CreatedByName = host.Email,
 			Status = GameStatus.WaitingForPlayers,
 			RequiresJoinApproval = false,
 			CurrentPlayerIndex = -1,

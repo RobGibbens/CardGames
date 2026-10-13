@@ -4,7 +4,7 @@ using Microsoft.Playwright;
 namespace CardGames.E2E.Infrastructure;
 
 /// <summary>
-///     Six logged-in browsers at one Hold'em table. Plays a <see cref="HoldEmHandScript" />
+///     Logged-in browsers at one Hold'em table. Plays a <see cref="HoldEmHandScript" />
 ///     through the action panel and checks the board, pot, blinds, and stacks.
 /// </summary>
 public sealed class HoldEmTable
@@ -12,6 +12,7 @@ public sealed class HoldEmTable
 	private readonly string _apiBaseUrl;
 	private readonly Guid _gameId;
 	private readonly IReadOnlyList<SeededPlayer> _players;
+	private readonly int _seatCount;
 	private readonly IReadOnlyList<PlayerSession> _sessions;
 
 	private HoldEmTable(
@@ -23,6 +24,7 @@ public sealed class HoldEmTable
 		_apiBaseUrl = apiBaseUrl;
 		_gameId = gameId;
 		_players = players;
+		_seatCount = players.Count;
 		_sessions = sessions;
 	}
 
@@ -87,7 +89,7 @@ public sealed class HoldEmTable
 					await ExpectPotAsync(pot);
 
 				if (action.StreetBet is int streetBet)
-					await ExpectStreetBetAsync(HoldEmSeats.Index(dealerSeat, action.Actor), streetBet);
+					await ExpectStreetBetAsync(SeatIndex(dealerSeat, action.Actor), streetBet);
 			});
 		}
 
@@ -98,18 +100,33 @@ public sealed class HoldEmTable
 			await ExpectStacksAsync(ledger.Stacks);
 			await Task.WhenAll(_sessions.Select(session => session.CloseShowdownAsync()));
 		});
+
+		await ExpectNoAppExceptionsAsync();
+	}
+
+	/// <summary>
+	///     Fails when a seated browser recorded an uncaught error, a console error, or the Blazor error UI.
+	/// </summary>
+	public async Task ExpectNoAppExceptionsAsync()
+	{
+		var problems = await CollectAppExceptionsAsync();
+		if (problems.Count > 0)
+			Assert.Fail(string.Join(Environment.NewLine, problems));
 	}
 
 	private async Task ScriptAsync(HoldEmHandScript script, int dealerSeat)
 	{
 		var holes = script.HoleCards.ToDictionary(
-			pair => HoldEmSeats.Index(dealerSeat, pair.Key),
+			pair => SeatIndex(dealerSeat, pair.Key),
 			pair => pair.Value);
 		await ScriptedDeckClient.ScriptHoldEmAsync(_apiBaseUrl, _gameId, dealerSeat, holes, script.Board);
 	}
 
+	private int SeatIndex(int dealerSeat, HoldEmPosition position) =>
+		HoldEmSeats.Index(_seatCount, dealerSeat, position);
+
 	private PlayerSession Actor(int dealerSeat, HoldEmPosition position) =>
-		_sessions[HoldEmSeats.Index(dealerSeat, position)];
+		_sessions[SeatIndex(dealerSeat, position)];
 
 	private PlayerSession Host => _sessions[0];
 
@@ -143,8 +160,8 @@ public sealed class HoldEmTable
 	private async Task ExpectButtonAndBlindsAsync(int dealerSeat)
 	{
 		var page = Host.Page;
-		var smallBlind = (dealerSeat + (int)HoldEmPosition.SmallBlind) % HoldEmSeats.Count;
-		var bigBlind = (dealerSeat + (int)HoldEmPosition.BigBlind) % HoldEmSeats.Count;
+		var smallBlind = SeatIndex(dealerSeat, HoldEmPosition.SmallBlind);
+		var bigBlind = SeatIndex(dealerSeat, HoldEmPosition.BigBlind);
 
 		await Assertions.Expect(page.Locator("[data-testid='dealer-button']")).ToHaveCountAsync(
 			1,
@@ -172,7 +189,7 @@ public sealed class HoldEmTable
 
 	private async Task ExpectShowdownAsync(HoldEmHandScript script, int dealerSeat)
 	{
-		var winnerSeat = HoldEmSeats.Index(dealerSeat, script.Winner);
+		var winnerSeat = SeatIndex(dealerSeat, script.Winner);
 		var overlay = Host.Page.Locator("[aria-label='Showdown results']");
 		await overlay.WaitForAsync(new LocatorWaitForOptions
 		{
@@ -275,7 +292,7 @@ public sealed class HoldEmTable
 		}
 	}
 
-	private static async Task StepAsync(HoldEmHandScript script, HoldEmAction? action, Func<Task> step)
+	private async Task StepAsync(HoldEmHandScript script, HoldEmAction? action, Func<Task> step)
 	{
 		try
 		{
@@ -286,8 +303,30 @@ public sealed class HoldEmTable
 			var where = action is null
 				? "showdown"
 				: $"{action.Actor} {action.Kind}";
-			throw new InvalidOperationException($"Hand '{script.Name}' failed during {where}.", exception);
+			var problems = await CollectAppExceptionsAsync();
+			var app = problems.Count == 0
+				? ""
+				: $" App exceptions: {string.Join(" | ", problems)}";
+			throw new InvalidOperationException($"Hand '{script.Name}' failed during {where}.{app}", exception);
 		}
+	}
+
+	private async Task<List<string>> CollectAppExceptionsAsync()
+	{
+		var problems = new List<string>();
+		foreach (var session in _sessions)
+		{
+			foreach (var error in session.PageErrors)
+				problems.Add($"{session.Player.Email} page error: {error}");
+
+			foreach (var error in session.ConsoleErrors)
+				problems.Add($"{session.Player.Email} console error: {error}");
+
+			if (await session.Page.Locator("#blazor-error-ui").IsVisibleAsync())
+				problems.Add($"{session.Player.Email} shows the Blazor error UI.");
+		}
+
+		return problems;
 	}
 
 	private static string ToCode(string rank, string suit)

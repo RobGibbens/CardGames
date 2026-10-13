@@ -8,7 +8,7 @@
 			<i class="fa-solid fa-baseball"></i>
 			<span>Buy Card Option</span>
 		</div>
-		<div class="buy-card-subtitle">Buy price: @BuyCardPrice.ToString("N0") chips</div>
+		<div class="buy-card-subtitle" data-testid="buy-card-price">Buy price: @BuyCardPrice.ToString("N0") chips</div>
 		@if (PendingOfferCount > 1)
 		{
 			<div class="buy-card-pending">@PendingOfferCount offers remaining</div>
@@ -34,12 +34,14 @@
 
 	<div class="buy-card-actions">
 		<button class="buy-card-btn accept"
+		        data-testid="buy-card-accept"
 		        @onclick="() => OnDecision.InvokeAsync(true)"
 		        disabled="@IsSubmitting">
 			<i class="fa-solid fa-circle-check"></i>
 			Buy
 		</button>
 		<button class="buy-card-btn decline"
+		        data-testid="buy-card-decline"
 		        @onclick="() => OnDecision.InvokeAsync(false)"
 		        disabled="@IsSubmitting">
 			<i class="fa-solid fa-circle-xmark"></i>
