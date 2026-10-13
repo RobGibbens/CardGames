@@ -2461,6 +2461,22 @@
 			.ToList();
 	}
 
+	private static bool IsBlankShowdownResult(PerformShowdownSuccessful? result)
+	{
+		if (result is null || result.WonByFold == true)
+		{
+			return false;
+		}
+
+		var hasWinnerFromHands = result.PlayerHands?.Any(h =>
+			!string.IsNullOrWhiteSpace(h.PlayerName) &&
+			(h.IsWinner == true || h.AmountWon.GetValueOrDefault() > 0)) == true;
+		var hasWinnerFromPayouts = result.Payouts?.Any(kvp =>
+			!string.IsNullOrWhiteSpace(kvp.Key) && kvp.Value > 0) == true;
+		var hasAnyCards = result.PlayerHands?.Any(h => h.Cards is { Count: > 0 }) == true;
+		return !hasWinnerFromHands && !hasWinnerFromPayouts && !hasAnyCards;
+	}
+
 	private static bool HasUsableShowdownResult(PerformShowdownSuccessful? result)
 	{
 		if (result is null)
@@ -3732,6 +3748,12 @@
 		{
 			if (!HasUsableShowdownResult(_showdownResult))
 			{
+				if (IsBlankShowdownResult(_showdownResult))
+				{
+					Logger.LogDebug("TryLoadShowdownAsync: Showdown has no winner and no cards; leaving the overlay hidden.");
+					return;
+				}
+
 				Logger.LogDebug("TryLoadShowdownAsync: Existing showdown payload incomplete; refreshing from API.");
 				_showdownResult = null;
 			}
@@ -3858,6 +3880,12 @@
 			}
 
 			_showdownResult = showdownResponse.Content;
+			if (!HasUsableShowdownResult(_showdownResult))
+			{
+				Logger.LogDebug("TryLoadShowdownAsync: Showdown payload is not usable; leaving the overlay hidden.");
+				return;
+			}
+
 			_showdownStateSnapshot ??= _tableState?.Showdown;
 
 			var showdownCommunityCards = GetShowdownCommunityCards();

@@ -291,12 +291,12 @@ public class PerformShowdownCommandHandler(
 						MoveDealer(game);
 					}
 
-					// Settle player-vs-deck win to cashier ledger
-					if (isWinner)
-					{
-						var winPayouts = new Dictionary<string, int> { { player.Player.Name, totalPot } };
-						await handSettlementService.SettleHandAsync(game, winPayouts, cancellationToken);
-					}
+					// Settle the player-vs-deck result. A win pays the pot. A loss posts the match,
+					// which was added to this hand's contribution above.
+					var settlementPayouts = isWinner
+						? new Dictionary<string, int> { { player.Player.Name, totalPot } }
+						: new Dictionary<string, int>();
+					await handSettlementService.SettleHandAsync(game, settlementPayouts, cancellationToken);
 
 					await context.SaveChangesAsync(cancellationToken);
 

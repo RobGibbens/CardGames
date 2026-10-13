@@ -331,6 +331,20 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 		game.UpdatedAt = now;
 		MoveDealer(game);
 
+		// The draw-complete transition awards this showdown here, so the cashier has to
+		// settle on this path. The API handler skips settlement once the pot is awarded.
+		var settlementPayouts = new Dictionary<string, int>();
+		foreach (var payout in payouts)
+		{
+			var name = gamePlayersList.First(gp => gp.PlayerId == payout.playerId).Player.Name;
+			settlementPayouts[name] = payout.amount;
+		}
+
+		await new HandSettlementService(new PlayerChipWalletService(context)).SettleHandAsync(
+			game,
+			settlementPayouts,
+			cancellationToken);
+
 		await context.SaveChangesAsync(cancellationToken);
 
 		// Build winning hand description

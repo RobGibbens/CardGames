@@ -320,6 +320,29 @@ public sealed class PlayerSession : IAsyncDisposable
 	}
 
 	/// <summary>
+	///     Waits until this player can drop or stay.
+	/// </summary>
+	public async Task WaitForDropOrStayAsync()
+	{
+		await DropOrStayPanelAsync();
+	}
+
+	/// <summary>
+	///     Drops or stays. The buttons hide once this player has decided, including when that
+	///     decision is the last one and the panel closes.
+	/// </summary>
+	public async Task DropOrStayAsync(bool stay)
+	{
+		var panel = await DropOrStayPanelAsync();
+		var button = panel.Locator(stay ? ".stay-btn" : ".drop-btn");
+		await Assertions.Expect(button).ToBeEnabledAsync(
+			new LocatorAssertionsToBeEnabledOptions { Timeout = 15_000 });
+		await button.EvaluateAsync("element => element.click()");
+		await Assertions.Expect(panel.Locator(".drop-or-stay-actions")).ToBeHiddenAsync(
+			new LocatorAssertionsToBeHiddenOptions { Timeout = 20_000 });
+	}
+
+	/// <summary>
 	///     Stands pat in the Five Card Draw panel.
 	/// </summary>
 	public async Task StandPatAsync()
@@ -334,13 +357,35 @@ public sealed class PlayerSession : IAsyncDisposable
 	}
 
 	/// <summary>
-	///     Discards the given faces in the Five Card Draw panel and draws replacements.
-	///     The panel is ordered by deal, so each click targets the card face.
+	///     Keeps the deck's five cards in the player-versus-deck overlay.
+	/// </summary>
+	public async Task KeepDeckAsync()
+	{
+		var overlay = Page.Locator(".player-vs-deck-overlay");
+		await overlay.WaitForAsync(new LocatorWaitForOptions
+		{
+			State = WaitForSelectorState.Visible,
+			Timeout = 45_000
+		});
+		var keep = overlay.Locator(".stand-pat-btn");
+		await Assertions.Expect(keep).ToContainTextAsync(
+			"Keep All",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await Assertions.Expect(keep).ToBeEnabledAsync(
+			new LocatorAssertionsToBeEnabledOptions { Timeout = 15_000 });
+		await keep.EvaluateAsync("element => element.click()");
+		await Assertions.Expect(overlay).ToBeHiddenAsync(
+			new LocatorAssertionsToBeHiddenOptions { Timeout = 45_000 });
+	}
+
+	/// <summary>
+	///     Discards the given faces in the draw panel and draws replacements.
+	///     Kings and Lows can discard all five. The click targets the card face.
 	/// </summary>
 	public async Task DiscardCardsAsync(IReadOnlyList<string> cardCodes)
 	{
-		if (cardCodes.Count is < 1 or > 4)
-			throw new ArgumentOutOfRangeException(nameof(cardCodes), "Discard 1 to 4 cards.");
+		if (cardCodes.Count is < 1 or > 5)
+			throw new ArgumentOutOfRangeException(nameof(cardCodes), "Discard 1 to 5 cards.");
 
 		var panel = await WaitForDrawPhaseAsync();
 		await Assertions.Expect(panel.Locator(".draw-card-wrapper")).ToHaveCountAsync(
@@ -370,9 +415,23 @@ public sealed class PlayerSession : IAsyncDisposable
 			new LocatorAssertionsToBeHiddenOptions { Timeout = 30_000 });
 	}
 
+	private async Task<ILocator> DropOrStayPanelAsync()
+	{
+		var panel = Page.Locator(".drop-or-stay-panel");
+		await panel.WaitForAsync(new LocatorWaitForOptions
+		{
+			State = WaitForSelectorState.Visible,
+			Timeout = 45_000
+		});
+		return panel;
+	}
+
 	private async Task<ILocator> WaitForDrawPhaseAsync()
 	{
-		var panel = Page.Locator(".draw-panel");
+		var panel = Page.Locator(".draw-panel").Filter(new LocatorFilterOptions
+		{
+			HasText = "Draw Phase"
+		});
 		await panel.WaitForAsync(new LocatorWaitForOptions
 		{
 			State = WaitForSelectorState.Visible,
