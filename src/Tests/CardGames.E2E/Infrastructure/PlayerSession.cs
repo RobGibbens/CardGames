@@ -281,6 +281,71 @@ public sealed class PlayerSession : IAsyncDisposable
 			new LocatorAssertionsToBeHiddenOptions { Timeout = 20_000 });
 	}
 
+	/// <summary>
+	///     Stands pat in the Five Card Draw panel.
+	/// </summary>
+	public async Task StandPatAsync()
+	{
+		var panel = await WaitForDrawPhaseAsync();
+		var standPat = panel.Locator(".stand-pat-btn");
+		await Assertions.Expect(standPat).ToBeEnabledAsync(
+			new LocatorAssertionsToBeEnabledOptions { Timeout = 15_000 });
+		await standPat.EvaluateAsync("element => element.click()");
+		await Assertions.Expect(panel).ToBeHiddenAsync(
+			new LocatorAssertionsToBeHiddenOptions { Timeout = 30_000 });
+	}
+
+	/// <summary>
+	///     Discards the given faces in the Five Card Draw panel and draws replacements.
+	///     The panel is ordered by deal, so each click targets the card face.
+	/// </summary>
+	public async Task DiscardCardsAsync(IReadOnlyList<string> cardCodes)
+	{
+		if (cardCodes.Count is < 1 or > 4)
+			throw new ArgumentOutOfRangeException(nameof(cardCodes), "Discard 1 to 4 cards.");
+
+		var panel = await WaitForDrawPhaseAsync();
+		await Assertions.Expect(panel.Locator(".draw-card-wrapper")).ToHaveCountAsync(
+			5,
+			new LocatorAssertionsToHaveCountOptions { Timeout = 15_000 });
+
+		foreach (var cardCode in cardCodes)
+		{
+			var (rank, suit) = DrawPanelFace(cardCode);
+			var card = panel.Locator(
+				$".draw-card-wrapper:has(playing-card[rank='{rank}'][suit='{suit}'])");
+			await card.EvaluateAsync("element => element.click()");
+		}
+
+		await Assertions.Expect(panel.Locator(".selection-count")).ToContainTextAsync(
+			$"{cardCodes.Count.ToString(CultureInfo.InvariantCulture)} card",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+
+		var discard = panel.Locator(".discard-btn");
+		await Assertions.Expect(discard).ToContainTextAsync(
+			$"Discard {cardCodes.Count.ToString(CultureInfo.InvariantCulture)}",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await Assertions.Expect(discard).ToBeEnabledAsync(
+			new LocatorAssertionsToBeEnabledOptions { Timeout = 15_000 });
+		await discard.EvaluateAsync("element => element.click()");
+		await Assertions.Expect(panel).ToBeHiddenAsync(
+			new LocatorAssertionsToBeHiddenOptions { Timeout = 30_000 });
+	}
+
+	private async Task<ILocator> WaitForDrawPhaseAsync()
+	{
+		var panel = Page.Locator(".draw-panel");
+		await panel.WaitForAsync(new LocatorWaitForOptions
+		{
+			State = WaitForSelectorState.Visible,
+			Timeout = 45_000
+		});
+		await Assertions.Expect(panel.Locator(".draw-panel-title")).ToContainTextAsync(
+			"Draw Phase",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		return panel;
+	}
+
 	private static (string Rank, string Suit) DrawPanelFace(string cardCode)
 	{
 		var rank = char.ToUpperInvariant(cardCode[0]) switch
