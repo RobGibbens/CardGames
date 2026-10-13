@@ -123,16 +123,19 @@ public sealed class HoldEmLedger
 
 	public IReadOnlyList<int> Stacks => _stacks;
 
-	public void Apply(HoldEmHandScript script, int dealerSeat)
+	public void Apply(HoldEmHandScript script, int dealerSeat) =>
+		Apply(script.Name, script.Nets, dealerSeat);
+
+	public void Apply(string handName, IReadOnlyDictionary<HoldEmPosition, int> nets, int dealerSeat)
 	{
-		foreach (var (position, net) in script.Nets)
+		foreach (var (position, net) in nets)
 			_stacks[HoldEmSeats.Index(_stacks.Length, dealerSeat, position)] += net;
 
 		var sum = _stacks.Sum();
 		if (sum != StartingSum)
 		{
 			throw new InvalidOperationException(
-				$"Hand '{script.Name}' changed the table chip total from {StartingSum} to {sum}.");
+				$"Hand '{handName}' changed the table chip total from {StartingSum} to {sum}.");
 		}
 	}
 }

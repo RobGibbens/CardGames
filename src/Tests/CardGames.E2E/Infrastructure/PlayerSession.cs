@@ -246,6 +246,41 @@ public sealed class PlayerSession : IAsyncDisposable
 			new LocatorAssertionsToBeHiddenOptions { Timeout = 20_000 });
 	}
 
+	/// <summary>
+	///     Discards one of the three hole cards in the Discard Phase panel. The panel sorts by
+	///     rank, so the click targets the card face.
+	/// </summary>
+	public async Task DiscardOneAsync(string cardCode)
+	{
+		var panel = Page.Locator(".draw-panel");
+		await panel.WaitForAsync(new LocatorWaitForOptions
+		{
+			State = WaitForSelectorState.Visible,
+			Timeout = 45_000
+		});
+		await Assertions.Expect(panel.Locator(".draw-panel-title")).ToContainTextAsync(
+			"Discard Phase",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await Assertions.Expect(panel.Locator(".draw-card-wrapper")).ToHaveCountAsync(
+			3,
+			new LocatorAssertionsToHaveCountOptions { Timeout = 15_000 });
+
+		var (rank, suit) = DrawPanelFace(cardCode);
+		var card = panel.Locator(
+			$".draw-card-wrapper:has(playing-card[rank='{rank}'][suit='{suit}'])");
+		await card.EvaluateAsync("element => element.click()");
+
+		var discard = panel.Locator(".discard-btn");
+		await Assertions.Expect(discard).ToContainTextAsync(
+			"Discard 1",
+			new LocatorAssertionsToContainTextOptions { Timeout = 15_000 });
+		await Assertions.Expect(discard).ToBeEnabledAsync(
+			new LocatorAssertionsToBeEnabledOptions { Timeout = 15_000 });
+		await discard.EvaluateAsync("element => element.click()");
+		await Assertions.Expect(panel).ToBeHiddenAsync(
+			new LocatorAssertionsToBeHiddenOptions { Timeout = 20_000 });
+	}
+
 	private static (string Rank, string Suit) DrawPanelFace(string cardCode)
 	{
 		var rank = char.ToUpperInvariant(cardCode[0]) switch
