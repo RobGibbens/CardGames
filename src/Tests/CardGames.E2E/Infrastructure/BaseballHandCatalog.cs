@@ -1,15 +1,5 @@
 namespace CardGames.E2E.Infrastructure;
 
-/// <summary>
-///     How third street is dealt. The host's start button uses seat order.
-///     Continuous play uses the flow handler, which starts left of the dealer.
-/// </summary>
-public enum BaseballDealPath
-{
-	SeatOrder,
-	LeftOfDealer
-}
-
 public enum BaseballStreet
 {
 	Third,
@@ -138,8 +128,6 @@ public sealed record BaseballHandScript
 {
 	public required string Name { get; init; }
 
-	public required BaseballDealPath ThirdStreetPath { get; init; }
-
 	public required IReadOnlyDictionary<HoldEmPosition, BaseballHolding> Holdings { get; init; }
 
 	public required IReadOnlyList<BaseballAction> Actions { get; init; }
@@ -205,7 +193,6 @@ public static class BaseballFiveMaxCatalog
 	public static BaseballHandScript FoldToBringIn { get; } = new()
 	{
 		Name = "Fold to the bring-in",
-		ThirdStreetPath = BaseballDealPath.SeatOrder,
 		Holdings = Hands(
 			Holes("5d 6d", "Kh"),
 			Holes("5h 6h", "Qh"),
@@ -231,7 +218,6 @@ public static class BaseballFiveMaxCatalog
 	public static BaseballHandScript DeclineFour { get; } = new()
 	{
 		Name = "Decline a four",
-		ThirdStreetPath = BaseballDealPath.LeftOfDealer,
 		Holdings = Hands(
 			Holes("7h 8h", "Qc"),
 			Holes("7c 8c", "4h"),
@@ -266,7 +252,6 @@ public static class BaseballFiveMaxCatalog
 	public static BaseballHandScript BuyFourth { get; } = new()
 	{
 		Name = "Buy a four",
-		ThirdStreetPath = BaseballDealPath.LeftOfDealer,
 		Holdings = Hands(
 			Holes("6d 7d", "Qd"),
 			Holes("6h 7h", "Qh"),
@@ -322,7 +307,6 @@ public static class BaseballFiveMaxCatalog
 	public static BaseballHandScript WildShowdown { get; } = new()
 	{
 		Name = "Wild-card showdown",
-		ThirdStreetPath = BaseballDealPath.LeftOfDealer,
 		Holdings = Hands(
 			Holes("5d 6d", "Jd"),
 			Holes("5h 6h", "Qh"),
@@ -368,7 +352,6 @@ public static class BaseballFiveMaxCatalog
 	public static BaseballHandScript BigBetRaise { get; } = new()
 	{
 		Name = "Big-bet raise",
-		ThirdStreetPath = BaseballDealPath.LeftOfDealer,
 		Holdings = Hands(
 			Holes("5s 6s", "Kd"),
 			Holes("5d 9s", "Qd"),

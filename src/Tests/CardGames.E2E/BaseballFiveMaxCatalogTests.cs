@@ -54,7 +54,7 @@ public class BaseballFiveMaxCatalogTests
 		Assert.Equal(["4h"], smallBlind.UpCards);
 
 		var four = trace.Deck.ToList().IndexOf("4h");
-		Assert.Equal("9c", trace.Deck[four + 1]);
+		Assert.Equal("7s", trace.Deck[four + 1]);
 	}
 
 	[Fact]

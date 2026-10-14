@@ -139,17 +139,17 @@ public class DealHandsCommandHandlerTests
 			Amount = 10,
 			CreatedAt = DateTimeOffset.UtcNow
 		};
-		var alice = await context.GamePlayers.SingleAsync(player => player.SeatPosition == 0);
+		var bob = await context.GamePlayers.SingleAsync(player => player.SeatPosition == 1);
 		context.PotContributions.Add(new PotContribution
 		{
 			Id = Guid.NewGuid(),
 			PotId = pot.Id,
-			GamePlayerId = alice.Id,
+			GamePlayerId = bob.Id,
 			Amount = 5,
 			IsEligibleToWin = true,
 			ContributedAt = DateTimeOffset.UtcNow
 		});
-		alice.TotalContributedThisHand = 5;
+		bob.TotalContributedThisHand = 5;
 		context.Pots.Add(pot);
 		await context.SaveChangesAsync();
 
@@ -199,6 +199,51 @@ public class DealHandsCommandHandlerTests
 		otherPlayer.CurrentBet.Should().Be(0);
 		otherPlayer.ChipStack.Should().Be(3);
 		otherPlayer.IsAllIn.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task Handle_ThirdStreet_DealsClockwiseFromTheSeatLeftOfTheDealer()
+	{
+		await using var context = CreateContext();
+		var game = await SeedClockwiseGameAsync(context, nameof(Phases.ThirdStreet), includeThirdStreetCards: false);
+		var sut = CreateSut(context);
+
+		var result = await sut.Handle(new DealHandsCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		var updated = await context.Games.SingleAsync();
+		updated.BringInPlayerIndex.Should().Be(0);
+
+		await AssertSeatCardsAsync(context, seatPosition: 1,
+			(CardSymbol.Ace, CardSuit.Spades, CardLocation.Hole, false, 1),
+			(CardSymbol.King, CardSuit.Hearts, CardLocation.Hole, false, 2),
+			(CardSymbol.Queen, CardSuit.Spades, CardLocation.Board, true, 3));
+		await AssertSeatCardsAsync(context, seatPosition: 2,
+			(CardSymbol.Jack, CardSuit.Diamonds, CardLocation.Hole, false, 1),
+			(CardSymbol.Ten, CardSuit.Clubs, CardLocation.Hole, false, 2),
+			(CardSymbol.Nine, CardSuit.Hearts, CardLocation.Board, true, 3));
+		await AssertSeatCardsAsync(context, seatPosition: 0,
+			(CardSymbol.Eight, CardSuit.Diamonds, CardLocation.Hole, false, 1),
+			(CardSymbol.Seven, CardSuit.Clubs, CardLocation.Hole, false, 2),
+			(CardSymbol.Six, CardSuit.Spades, CardLocation.Board, true, 3));
+	}
+
+	[Fact]
+	public async Task Handle_FourthStreet_ContinuesClockwiseFromTheSeatLeftOfTheDealer()
+	{
+		await using var context = CreateContext();
+		var game = await SeedClockwiseGameAsync(context, nameof(Phases.FourthStreet), includeThirdStreetCards: true);
+		var sut = CreateSut(context);
+
+		var result = await sut.Handle(new DealHandsCommand(game.Id), CancellationToken.None);
+
+		result.IsT0.Should().BeTrue();
+		await AssertSeatCardsAsync(context, seatPosition: 1,
+			(CardSymbol.Five, CardSuit.Hearts, CardLocation.Board, true, 4));
+		await AssertSeatCardsAsync(context, seatPosition: 2,
+			(CardSymbol.Four, CardSuit.Diamonds, CardLocation.Board, true, 4));
+		await AssertSeatCardsAsync(context, seatPosition: 0,
+			(CardSymbol.Three, CardSuit.Clubs, CardLocation.Board, true, 4));
 	}
 
 	private static DealHandsCommandHandler CreateSut(CardsDbContext context)
@@ -260,6 +305,150 @@ public class DealHandsCommandHandlerTests
 
 		await context.SaveChangesAsync();
 		return game;
+	}
+
+	private static readonly (CardSymbol Symbol, CardSuit Suit)[] ClockwisePrefix =
+	[
+		(CardSymbol.Ace, CardSuit.Spades),
+		(CardSymbol.King, CardSuit.Hearts),
+		(CardSymbol.Queen, CardSuit.Spades),
+		(CardSymbol.Jack, CardSuit.Diamonds),
+		(CardSymbol.Ten, CardSuit.Clubs),
+		(CardSymbol.Nine, CardSuit.Hearts),
+		(CardSymbol.Eight, CardSuit.Diamonds),
+		(CardSymbol.Seven, CardSuit.Clubs),
+		(CardSymbol.Six, CardSuit.Spades),
+		(CardSymbol.Five, CardSuit.Hearts),
+		(CardSymbol.Four, CardSuit.Diamonds),
+		(CardSymbol.Three, CardSuit.Clubs)
+	];
+
+	private static async Task<Game> SeedClockwiseGameAsync(
+		CardsDbContext context,
+		string currentPhase,
+		bool includeThirdStreetCards)
+	{
+		var now = DateTimeOffset.UtcNow;
+		var game = new Game
+		{
+			Id = Guid.NewGuid(),
+			CurrentPhase = currentPhase,
+			CurrentHandNumber = 1,
+			DealerPosition = 0,
+			BringIn = 5,
+			SmallBet = 10,
+			BigBet = 20,
+			MinBet = 10,
+			Status = GameStatus.InProgress,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+
+		var alice = CreatePlayer("Alice", now);
+		var bob = CreatePlayer("Bob", now);
+		var carol = CreatePlayer("Carol", now);
+		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, now);
+		var bobGamePlayer = CreateGamePlayer(game, bob, 1, now);
+		var carolGamePlayer = CreateGamePlayer(game, carol, 2, now);
+		var seats = new Dictionary<int, GamePlayer>
+		{
+			[0] = aliceGamePlayer,
+			[1] = bobGamePlayer,
+			[2] = carolGamePlayer
+		};
+
+		context.Games.Add(game);
+		context.Players.AddRange(alice, bob, carol);
+		context.GamePlayers.AddRange(aliceGamePlayer, bobGamePlayer, carolGamePlayer);
+
+		if (includeThirdStreetCards)
+		{
+			AddDealtThirdStreet(context, game, seats[1], ClockwisePrefix.Take(3).ToArray(), now);
+			AddDealtThirdStreet(context, game, seats[2], ClockwisePrefix.Skip(3).Take(3).ToArray(), now);
+			AddDealtThirdStreet(context, game, seats[0], ClockwisePrefix.Skip(6).Take(3).ToArray(), now);
+
+			for (var cardIndex = 9; cardIndex < ClockwisePrefix.Length; cardIndex++)
+				context.GameCards.Add(CreatePrefixDeckCard(game, cardIndex, now));
+		}
+		else
+		{
+			for (var cardIndex = 0; cardIndex < 9; cardIndex++)
+				context.GameCards.Add(CreatePrefixDeckCard(game, cardIndex, now));
+		}
+
+		await context.SaveChangesAsync();
+		return game;
+	}
+
+	private static void AddDealtThirdStreet(
+		CardsDbContext context,
+		Game game,
+		GamePlayer player,
+		(CardSymbol Symbol, CardSuit Suit)[] cards,
+		DateTimeOffset now)
+	{
+		for (var index = 0; index < cards.Length; index++)
+		{
+			var faceUp = index == 2;
+			context.GameCards.Add(new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				Game = game,
+				GamePlayerId = player.Id,
+				GamePlayer = player,
+				HandNumber = game.CurrentHandNumber,
+				DealOrder = index + 1,
+				Location = faceUp ? CardLocation.Board : CardLocation.Hole,
+				IsVisible = faceUp,
+				Symbol = cards[index].Symbol,
+				Suit = cards[index].Suit,
+				DealtAt = now,
+				DealtAtPhase = nameof(Phases.ThirdStreet)
+			});
+		}
+	}
+
+	private static GameCard CreatePrefixDeckCard(Game game, int cardIndex, DateTimeOffset now)
+	{
+		var card = ClockwisePrefix[cardIndex];
+		return new GameCard
+		{
+			Id = Guid.NewGuid(),
+			GameId = game.Id,
+			Game = game,
+			HandNumber = game.CurrentHandNumber,
+			DealOrder = 100 + cardIndex,
+			Location = CardLocation.Deck,
+			IsVisible = false,
+			Symbol = card.Symbol,
+			Suit = card.Suit,
+			DealtAt = now,
+			DealtAtPhase = nameof(Phases.ThirdStreet)
+		};
+	}
+
+	private static async Task AssertSeatCardsAsync(
+		CardsDbContext context,
+		int seatPosition,
+		params (CardSymbol Symbol, CardSuit Suit, CardLocation Location, bool Visible, int DealOrder)[] expected)
+	{
+		var playerId = await context.GamePlayers
+			.Where(player => player.SeatPosition == seatPosition)
+			.Select(player => player.Id)
+			.SingleAsync();
+
+		var cards = await context.GameCards
+			.Where(card => card.GamePlayerId == playerId && card.Location != CardLocation.Deck && !card.IsDiscarded)
+			.OrderBy(card => card.DealOrder)
+			.ToListAsync();
+
+		var matched = cards
+			.Where(card => expected.Any(item => item.DealOrder == card.DealOrder))
+			.Select(card => (card.Symbol, card.Suit, card.Location, card.IsVisible, card.DealOrder))
+			.ToArray();
+
+		matched.Should().Equal(expected);
 	}
 
 	private static Player CreatePlayer(string name, DateTimeOffset now)

@@ -2,9 +2,8 @@ namespace CardGames.E2E.Infrastructure;
 
 /// <summary>
 ///     Builds a 52-card Follow the Queen deck in the order the server deals it.
-///     The first hand is dealt by <c>DealHands</c> in seat order. Later hands are dealt by
-///     <c>FollowTheQueenFlowHandler</c>, which starts left of the dealer. Later streets are
-///     dealt in seat order and skip anyone who folded. Seventh street is face down.
+///     Every street starts left of the dealer and skips anyone who folded.
+///     Seventh street is face down.
 ///     The wild-rank walk is not that deal order: each street is read clockwise from the
 ///     seat left of the dealer.
 /// </summary>
@@ -53,7 +52,7 @@ public static class FollowTheQueenDeckScript
 			if (stillIn < 2)
 				break;
 
-			DealStreet(plans, street, deck, used, dealerSeat, script.ThirdStreetPath);
+			DealStreet(plans, street, deck, used, dealerSeat);
 		}
 
 		foreach (var card in StandardDeck)
@@ -143,13 +142,10 @@ public static class FollowTheQueenDeckScript
 		FollowTheQueenStreet street,
 		List<string> deck,
 		HashSet<string> used,
-		int dealerSeat,
-		FollowTheQueenDealPath thirdStreetPath)
+		int dealerSeat)
 	{
 		var expected = ExpectedCards(street);
-		var order = street == FollowTheQueenStreet.Third && thirdStreetPath == FollowTheQueenDealPath.LeftOfDealer
-			? LeftOfDealer(dealerSeat)
-			: SeatOrder();
+		var order = LeftOfDealer(dealerSeat);
 
 		foreach (var seat in order)
 		{
@@ -204,8 +200,6 @@ public static class FollowTheQueenDeckScript
 		FollowTheQueenStreet.Sixth => holding.Sixth,
 		_ => null
 	};
-
-	private static IReadOnlyList<int> SeatOrder() => [0, 1, 2, 3, 4];
 
 	private static IReadOnlyList<int> LeftOfDealer(int dealerSeat) =>
 		Enumerable.Range(1, FollowTheQueenFiveMaxCatalog.SeatCount)

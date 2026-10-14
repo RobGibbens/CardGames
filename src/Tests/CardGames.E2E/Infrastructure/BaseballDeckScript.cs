@@ -2,10 +2,9 @@ namespace CardGames.E2E.Infrastructure;
 
 /// <summary>
 ///     Builds a 52-card Baseball deck in the order the server deals it.
-///     The first hand is dealt by <c>DealHands</c> in seat order. Later hands are dealt by
-///     <c>BaseballFlowHandler</c>, which starts left of the dealer. A face-up four pauses the
-///     street. Accepting the buy takes the next deck card as a face-down extra, and dealing
-///     then resumes in seat order, skipping anyone who already has enough cards for the street.
+///     Every street starts left of the dealer. A face-up four pauses the street.
+///     Accepting the buy takes the next deck card as a face-down extra, and dealing
+///     then resumes left of the dealer, skipping anyone who already has enough cards for the street.
 /// </summary>
 public static class BaseballDeckScript
 {
@@ -43,7 +42,7 @@ public static class BaseballDeckScript
 			if (stillIn < 2)
 				break;
 
-			DealStreet(script, plans, street, deck, used, dealerSeat);
+			DealStreet(plans, street, deck, used, dealerSeat);
 		}
 
 		foreach (var card in StandardDeck)
@@ -63,7 +62,6 @@ public static class BaseballDeckScript
 	}
 
 	private static void DealStreet(
-		BaseballHandScript script,
 		SeatPlan[] plans,
 		BaseballStreet street,
 		List<string> deck,
@@ -71,10 +69,7 @@ public static class BaseballDeckScript
 		int dealerSeat)
 	{
 		var expected = ExpectedCards(street);
-		var initialOrder = street == BaseballStreet.Third && script.ThirdStreetPath == BaseballDealPath.LeftOfDealer
-			? LeftOfDealer(dealerSeat)
-			: SeatOrder();
-		var order = initialOrder;
+		var order = LeftOfDealer(dealerSeat);
 
 		while (true)
 		{
@@ -108,8 +103,6 @@ public static class BaseballDeckScript
 
 			if (!paused)
 				return;
-
-			order = SeatOrder();
 		}
 	}
 
@@ -145,8 +138,6 @@ public static class BaseballDeckScript
 
 		deck.Add(normalized);
 	}
-
-	private static IReadOnlyList<int> SeatOrder() => [0, 1, 2, 3, 4];
 
 	private static IReadOnlyList<int> LeftOfDealer(int dealerSeat) =>
 		Enumerable.Range(1, BaseballFiveMaxCatalog.SeatCount)

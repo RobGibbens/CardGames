@@ -73,10 +73,13 @@ public class DealHandsCommandHandler(
 			};
 		}
 
-		// 3. Get active players
+		// 3. Get active players, clockwise from the seat left of the dealer.
+		var dealerPosition = game.DealerPosition;
+		var totalSeats = game.GamePlayers.Max(gp => gp.SeatPosition) + 1;
+
 		var activePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
-			.OrderBy(gp => gp.SeatPosition)
+			.OrderBy(gp => (gp.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
 			.ToList();
 
 		logger.LogDebug(
