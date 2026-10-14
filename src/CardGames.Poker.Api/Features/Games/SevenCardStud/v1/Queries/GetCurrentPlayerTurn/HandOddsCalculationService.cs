@@ -17,7 +17,7 @@ public static class HandOddsCalculationService
 	///     Calculates the odds of achieving each hand type for a Seven Card Stud hand.
 	/// </summary>
 	/// <param name="heroCards">The player's current hand cards.</param>
-	/// <param name="deadCards">Cards that are known to be out of play (e.g., folded players' cards).</param>
+	/// <param name="deadCards">The current hand's face-up, non-discarded cards of folded players.</param>
 	/// <returns>Hand odds response with probabilities for each hand type.</returns>
 	public static HandOddsResponse CalculateStudOdds(
 		IReadOnlyList<DealtCard> heroCards,

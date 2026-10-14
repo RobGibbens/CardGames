@@ -63,12 +63,11 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, IGamePlaye
 		HandOddsResponse? handOdds = null;
 		if (callerIsActor)
 		{
-			var deadCards = await context.GameCards
-				.Where(gc => gc.GamePlayer.GameId == request.GameId
-				             && gc.GamePlayer.HasFolded
-				             && !gc.IsDiscarded)
-				.AsNoTracking()
-				.ToListAsync(cancellationToken);
+			var deadCards = await KnownDeadCards.LoadAsync(
+				context,
+				request.GameId,
+				game.CurrentHandNumber,
+				cancellationToken);
 
 			handOdds = HandOddsCalculationService.CalculateStudOdds(
 				gamePlayer.Cards,
