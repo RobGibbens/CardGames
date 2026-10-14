@@ -395,7 +395,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context, GameEven
 	}
 
 	/// <summary>
-	///     Calculates and creates side pots when players are all-in for different amounts.
+	///     Replaces the current hand's pot with one pot per all-in layer.
+	///     A folded contribution stays in the layer it reached.
 	/// </summary>
 	private void CalculateSidePots(Game game, List<GamePlayer> activePlayers)
 	{
@@ -404,20 +405,18 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context, GameEven
 
 		if (playersInHand.Count < 2) return;
 
-		// Get contribution levels from all-in players, sorted ascending
-		var allInLevels = playersInHand
-			.Where(p => p.IsAllIn)
-			.Select(p => p.TotalContributedThisHand)
-			.Where(c => c > 0)
-			.Distinct()
-			.OrderBy(c => c)
+		var stakes = activePlayers
+			.Select(player => new FiveCardDrawSidePots.Stake(
+				player.Id,
+				player.TotalContributedThisHand,
+				player.HasFolded,
+				player.IsAllIn))
 			.ToList();
 
-		if (allInLevels.Count == 0) return; // No side pots needed
+		var layers = FiveCardDrawSidePots.Build(stakes);
+		if (layers.Count == 0) return;
 
-		// Get current pots for this hand
 		var currentPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
-		var totalContributions = activePlayers.Sum(p => p.TotalContributedThisHand);
 		var currentPotIds = currentPots.Select(p => p.Id).ToList();
 
 		// Delete existing contributions for current hand's pots directly from DbContext
@@ -430,150 +429,38 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context, GameEven
 			context.PotContributions.RemoveRange(existingContributions);
 		}
 
-		// Remove existing pots
 		foreach (var pot in currentPots) game.Pots.Remove(pot);
 
-		var previousLevel = 0;
-		var potOrder = 0;
-
-		// Create pots for each all-in level (smallest to largest)
-		foreach (var level in allInLevels)
+		foreach (var layer in layers)
 		{
-			var potAmount = 0;
-			var eligiblePlayers = new List<GamePlayer>();
-
-			// Calculate pot amount and determine eligible players
-			foreach (var player in activePlayers)
+			var pot = new Pot
 			{
-				var contribution = player.TotalContributedThisHand;
-				// Player contributes to this pot if they've put in at least 'level' chips
-				if (contribution >= level)
+				GameId = game.Id,
+				HandNumber = game.CurrentHandNumber,
+				PotType = layer.PotOrder == 0 ? PotType.Main : PotType.Side,
+				PotOrder = layer.PotOrder,
+				Amount = layer.Amount,
+				MaxContributionPerPlayer = layer.MaxContributionPerPlayer,
+				CreatedAt = now
+			};
+
+			foreach (var slice in layer.Slices)
+				pot.Contributions.Add(new PotContribution
 				{
-					var contributionToThisPot = Math.Min(contribution, level) - previousLevel;
-					if (contributionToThisPot > 0)
-					{
-						potAmount += contributionToThisPot;
-						// Only non-folded players are eligible to win
-						if (!player.HasFolded) eligiblePlayers.Add(player);
-					}
-				}
-			}
+					GamePlayerId = slice.GamePlayerId,
+					Amount = slice.Amount,
+					IsEligibleToWin = slice.Eligible,
+					ContributedAt = now
+				});
 
-			if (potAmount > 0)
-			{
-				var pot = new Pot
-				{
-					GameId = game.Id,
-					HandNumber = game.CurrentHandNumber,
-					PotType = potOrder == 0 ? PotType.Main : PotType.Side,
-					PotOrder = potOrder,
-					Amount = potAmount,
-					MaxContributionPerPlayer = level - previousLevel,
-					CreatedAt = now
-				};
-
-				// Add contributions for eligible (non-folded) players
-				foreach (var player in eligiblePlayers)
-					pot.Contributions.Add(new PotContribution
-					{
-						GamePlayerId = player.Id,
-						Amount = Math.Min(player.TotalContributedThisHand, level) - previousLevel,
-						IsEligibleToWin = true,
-						ContributedAt = now
-					});
-
-				// Add contributions from folded players (money stays in pot, but not eligible to win)
-				foreach (var player in activePlayers.Where(p => p.HasFolded))
-				{
-					var contribution = player.TotalContributedThisHand;
-					if (contribution >= level)
-					{
-						var contributionToThisPot = Math.Min(contribution, level) - previousLevel;
-						if (contributionToThisPot > 0)
-							pot.Contributions.Add(new PotContribution
-							{
-								GamePlayerId = player.Id,
-								Amount = contributionToThisPot,
-								IsEligibleToWin = false,
-								ContributedAt = now
-							});
-					}
-				}
-
-				game.Pots.Add(pot);
-				potOrder++;
-			}
-
-			previousLevel = level;
+			game.Pots.Add(pot);
 		}
 
-		// Create final pot for remaining contributions (above highest all-in level)
-		var maxContribution = activePlayers.Max(p => p.TotalContributedThisHand);
-		if (maxContribution > previousLevel)
-		{
-			var finalPotAmount = 0;
-			var eligibleForFinal = new List<GamePlayer>();
-
-			foreach (var player in activePlayers)
-			{
-				var contribution = player.TotalContributedThisHand;
-				if (contribution > previousLevel)
-				{
-					var contributionToFinal = contribution - previousLevel;
-					finalPotAmount += contributionToFinal;
-					if (!player.HasFolded) eligibleForFinal.Add(player);
-				}
-			}
-
-			if (finalPotAmount > 0)
-			{
-				var finalPot = new Pot
-				{
-					GameId = game.Id,
-					HandNumber = game.CurrentHandNumber,
-					PotType = PotType.Side,
-					PotOrder = potOrder,
-					Amount = finalPotAmount,
-					MaxContributionPerPlayer = maxContribution - previousLevel,
-					CreatedAt = now
-				};
-
-				foreach (var player in eligibleForFinal)
-					finalPot.Contributions.Add(new PotContribution
-					{
-						GamePlayerId = player.Id,
-						Amount = player.TotalContributedThisHand - previousLevel,
-						IsEligibleToWin = true,
-						ContributedAt = now
-					});
-
-				// Add contributions from folded players
-				foreach (var player in activePlayers.Where(p => p.HasFolded))
-				{
-					var contribution = player.TotalContributedThisHand;
-					if (contribution > previousLevel)
-						finalPot.Contributions.Add(new PotContribution
-						{
-							GamePlayerId = player.Id,
-							Amount = contribution - previousLevel,
-							IsEligibleToWin = false,
-							ContributedAt = now
-						});
-				}
-
-				game.Pots.Add(finalPot);
-			}
-		}
-
-		// Verify total equals contributions and adjust if needed
-		var calculatedTotal = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).Sum(p => p.Amount);
-		if (calculatedTotal != totalContributions && game.Pots.Any(p => p.HandNumber == game.CurrentHandNumber))
-		{
-			// Adjust last pot to match
-			var lastPot = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber)
-				.OrderByDescending(p => p.PotOrder).First();
-			lastPot.Amount += totalContributions - calculatedTotal;
-		}
+		var persistedTotal = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).Sum(p => p.Amount);
+		var contributed = activePlayers.Sum(p => p.TotalContributedThisHand);
+		if (persistedTotal != contributed)
+			throw new InvalidOperationException(
+				$"Side pots total {persistedTotal}, but contributions total {contributed}.");
 	}
 
 	/// <summary>
