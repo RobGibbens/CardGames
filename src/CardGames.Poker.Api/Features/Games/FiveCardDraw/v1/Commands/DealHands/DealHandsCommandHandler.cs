@@ -99,6 +99,7 @@ public class DealHandsCommandHandler(CardsDbContext context, GameEventsTelemetry
 		// Deal cards to each player from the persisted deck
 		var deckIndex = 0;
 		var playerHands = new List<PlayerDealtCards>();
+		var publicCards = new Dictionary<int, List<DealtCard>>();
 
 		// Sort players starting from left of dealer
 		var dealerPosition = game.DealerPosition;
@@ -203,8 +204,20 @@ public class DealHandsCommandHandler(CardsDbContext context, GameEventsTelemetry
 			HandNumber = game.CurrentHandNumber,
 			CurrentPlayerIndex = firstActorIndex,
 			CurrentPlayerName = currentPlayerName,
-			PlayerHands = playerHands
+			PlayerHands = PublicPlayerHands(playerHands, publicCards)
 		};
+	}
+
+	private static List<PlayerDealtCards> PublicPlayerHands(
+		List<PlayerDealtCards> playerHands,
+		Dictionary<int, List<DealtCard>> publicCards)
+	{
+		return playerHands
+			.Select(hand => hand with
+			{
+				Cards = publicCards.TryGetValue(hand.SeatPosition, out var cards) ? cards : []
+			})
+			.ToList();
 	}
 
 	/// <summary>

@@ -20,13 +20,12 @@ public class GoodBadUglyFiveMaxCatalogTests
 
 			for (var dealer = 0; dealer < GoodBadUglyFiveMaxCatalog.SeatCount; dealer++)
 			{
-				var opening = GoodBadUglyDeckScript.Build(dealer, script, communityFirst: false);
+				var opening = GoodBadUglyDeckScript.Build(dealer, script, communityFirst: true);
 				var later = GoodBadUglyDeckScript.Build(dealer, script, communityFirst: true);
-				var holeCount = GoodBadUglyFiveMaxCatalog.SeatCount * 4;
 				Assert.Equal(52, opening.Distinct(StringComparer.Ordinal).Count());
 				Assert.Equal(52, later.Distinct(StringComparer.Ordinal).Count());
-				Assert.Equal(script.HoleCards[HoldEmPosition.SmallBlind], opening.Take(4));
-				Assert.Equal(script.Community, opening.Skip(holeCount).Take(3));
+				Assert.Equal(script.Community, opening.Take(3));
+				Assert.Equal(script.HoleCards[HoldEmPosition.SmallBlind], opening.Skip(3).Take(4));
 				Assert.Equal(script.Community, later.Take(3));
 				Assert.Equal(script.HoleCards[HoldEmPosition.SmallBlind], later.Skip(3).Take(4));
 			}

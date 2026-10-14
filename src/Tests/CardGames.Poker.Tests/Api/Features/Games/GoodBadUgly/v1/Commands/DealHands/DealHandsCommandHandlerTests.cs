@@ -79,17 +79,25 @@ public class DealHandsCommandHandlerTests
 		var databaseRoot = new InMemoryDatabaseRoot();
 		Guid gameId;
 		Guid firstPlayerId;
+		Guid firstInDealOrderPlayerId;
 		Guid[] staleCardIds;
 
 		await using (var setupContext = CreateContext(databaseName, databaseRoot))
 		{
 			var game = await SeedGameAsync(setupContext, addStaleCards: true);
 			gameId = game.Id;
-			firstPlayerId = await setupContext.GamePlayers
+			var seatedPlayers = await setupContext.GamePlayers
 				.Where(gamePlayer => gamePlayer.GameId == gameId)
 				.OrderBy(gamePlayer => gamePlayer.SeatPosition)
+				.Select(gamePlayer => new { gamePlayer.Id, gamePlayer.SeatPosition })
+				.ToListAsync();
+			firstPlayerId = seatedPlayers[0].Id;
+			firstInDealOrderPlayerId = seatedPlayers
+				.OrderBy(gamePlayer => gamePlayer.SeatPosition > game.DealerPosition
+					? gamePlayer.SeatPosition
+					: gamePlayer.SeatPosition + 1000)
 				.Select(gamePlayer => gamePlayer.Id)
-				.FirstAsync();
+				.First();
 
 			staleCardIds = await setupContext.GameCards
 				.Where(gameCard => gameCard.GameId == gameId && gameCard.GamePlayerId == firstPlayerId &&
@@ -105,7 +113,7 @@ public class DealHandsCommandHandlerTests
 
 			result.IsT0.Should().BeTrue();
 			result.AsT0.PlayerHands.Should().HaveCount(2);
-			result.AsT0.PlayerHands.Should().OnlyContain(playerHand => playerHand.Cards.Count == 4);
+			result.AsT0.PlayerHands.Should().OnlyContain(playerHand => playerHand.Cards.Count == 0);
 		}
 
 		await using var verificationContext = CreateContext(databaseName, databaseRoot);
@@ -131,6 +139,29 @@ public class DealHandsCommandHandlerTests
 
 		communityCards.Should().HaveCount(3);
 		communityCards.Select(gameCard => gameCard.DealtAtPhase).Should().Equal("TheGood", "TheBad", "TheUgly");
+		communityCards.Select(gameCard => (gameCard.Symbol, gameCard.Suit))
+			.Should()
+			.Equal(SeededDeckCard(0), SeededDeckCard(1), SeededDeckCard(2));
+
+		persistedPlayerCards
+			.Where(gameCard => gameCard.GamePlayerId == firstInDealOrderPlayerId &&
+			                   gameCard.Location == CardLocation.Hole)
+			.OrderBy(gameCard => gameCard.DealOrder)
+			.Select(gameCard => (gameCard.DealOrder, gameCard.Symbol, gameCard.Suit))
+			.Should()
+			.Equal(
+				(1, SeededDeckCard(3).Symbol, SeededDeckCard(3).Suit),
+				(2, SeededDeckCard(4).Symbol, SeededDeckCard(4).Suit),
+				(3, SeededDeckCard(5).Symbol, SeededDeckCard(5).Suit),
+				(4, SeededDeckCard(6).Symbol, SeededDeckCard(6).Suit));
+
+		persistedPlayerCards
+			.Where(gameCard => gameCard.GamePlayerId != firstInDealOrderPlayerId &&
+			                   gameCard.Location == CardLocation.Hole)
+			.OrderBy(gameCard => gameCard.DealOrder)
+			.Select(gameCard => (gameCard.Symbol, gameCard.Suit))
+			.Should()
+			.Equal(SeededDeckCard(7), SeededDeckCard(8), SeededDeckCard(9), SeededDeckCard(10));
 	}
 
 	private static DealHandsCommandHandler CreateSut(CardsDbContext context)
@@ -248,6 +279,11 @@ public class DealHandsCommandHandlerTests
 		};
 	}
 
+	private static (CardSymbol Symbol, CardSuit Suit) SeededDeckCard(int cardIndex)
+	{
+		return ((CardSymbol)(cardIndex % 13 + 2), (CardSuit)(cardIndex % 4));
+	}
+
 	private static GameCard CreateDeckCard(Game game, int cardIndex, DateTimeOffset now)
 	{
 		return new GameCard
@@ -259,8 +295,8 @@ public class DealHandsCommandHandlerTests
 			DealOrder = 100 + cardIndex,
 			Location = CardLocation.Deck,
 			IsVisible = false,
-			Symbol = (CardSymbol)(cardIndex % 13 + 2),
-			Suit = (CardSuit)(cardIndex % 4),
+			Symbol = SeededDeckCard(cardIndex).Symbol,
+			Suit = SeededDeckCard(cardIndex).Suit,
 			DealtAt = now,
 			DealtAtPhase = nameof(Phases.ThirdStreet)
 		};

@@ -97,6 +97,7 @@ public class DealHandsCommandHandler(CardsDbContext context, GameEventsTelemetry
 
 		var deckIndex = 0;
 		var playerHands = new List<PlayerDealtCards>();
+		var publicCards = new Dictionary<int, List<DealtCard>>();
 		var dealerPosition = game.DealerPosition;
 		var totalSeats = game.GamePlayers.Max(gp => gp.SeatPosition) + 1;
 		var playersInDealOrder = activePlayers
@@ -194,8 +195,20 @@ public class DealHandsCommandHandler(CardsDbContext context, GameEventsTelemetry
 			HandNumber = game.CurrentHandNumber,
 			CurrentPlayerIndex = firstActorIndex,
 			CurrentPlayerName = currentPlayerName,
-			PlayerHands = playerHands
+			PlayerHands = PublicPlayerHands(playerHands, publicCards)
 		};
+	}
+
+	private static List<PlayerDealtCards> PublicPlayerHands(
+		List<PlayerDealtCards> playerHands,
+		Dictionary<int, List<DealtCard>> publicCards)
+	{
+		return playerHands
+			.Select(hand => hand with
+			{
+				Cards = publicCards.TryGetValue(hand.SeatPosition, out var cards) ? cards : []
+			})
+			.ToList();
 	}
 
 	/// <summary>

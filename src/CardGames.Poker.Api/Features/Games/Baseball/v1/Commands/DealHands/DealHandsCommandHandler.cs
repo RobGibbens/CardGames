@@ -88,6 +88,7 @@ public class DealHandsCommandHandler(
 		var expectedCardsForStreet = BaseballGameSettings.GetExpectedCardsForStreet(streetPhase);
 		var deckIndex = 0;
 		var playerHands = new List<PlayerDealtCards>();
+		var publicCards = new Dictionary<int, List<DealtCard>>();
 		var buyCardOffers = new List<BaseballGameSettings.BuyCardOfferState>();
 
 		var existingStreetCards = await context.GameCards
@@ -141,8 +142,10 @@ public class DealHandsCommandHandler(
 					var boardCard = deckCards[deckIndex++];
 					AssignCardToPlayer(boardCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, streetPhase,
 						now, false);
-					dealtCards.Add(new DealtCard
-						{ Suit = boardCard.Suit, Symbol = boardCard.Symbol, DealOrder = boardCard.DealOrder });
+					var dealtBoardCard = new DealtCard
+						{ Suit = boardCard.Suit, Symbol = boardCard.Symbol, DealOrder = boardCard.DealOrder };
+					dealtCards.Add(dealtBoardCard);
+					RememberPublicCard(publicCards, gamePlayer.SeatPosition, dealtBoardCard);
 					cardCountsByPlayer[gamePlayer.Id] = cardCountsByPlayer.GetValueOrDefault(gamePlayer.Id, 0) + 1;
 
 					if (boardCard.Symbol == CardSymbol.Four)
@@ -181,8 +184,10 @@ public class DealHandsCommandHandler(
 				var upCard = deckCards[deckIndex++];
 				AssignCardToPlayer(upCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, streetPhase, now,
 					false);
-				dealtCards.Add(new DealtCard
-					{ Suit = upCard.Suit, Symbol = upCard.Symbol, DealOrder = upCard.DealOrder });
+				var dealtUpCard = new DealtCard
+					{ Suit = upCard.Suit, Symbol = upCard.Symbol, DealOrder = upCard.DealOrder };
+				dealtCards.Add(dealtUpCard);
+				RememberPublicCard(publicCards, gamePlayer.SeatPosition, dealtUpCard);
 				cardCountsByPlayer[gamePlayer.Id] = cardCountsByPlayer.GetValueOrDefault(gamePlayer.Id, 0) + 1;
 
 				if (upCard.Symbol == CardSymbol.Four)
@@ -233,7 +238,7 @@ public class DealHandsCommandHandler(
 				HandNumber = game.CurrentHandNumber,
 				CurrentPlayerIndex = game.CurrentPlayerIndex,
 				CurrentPlayerName = offerPlayerName,
-				PlayerHands = playerHands
+				PlayerHands = PublicPlayerHands(playerHands, publicCards)
 			};
 		}
 
@@ -358,8 +363,34 @@ public class DealHandsCommandHandler(
 			HandNumber = game.CurrentHandNumber,
 			CurrentPlayerIndex = game.CurrentPlayerIndex,
 			CurrentPlayerName = currentPlayerName,
-			PlayerHands = playerHands
+			PlayerHands = PublicPlayerHands(playerHands, publicCards)
 		};
+	}
+
+	private static void RememberPublicCard(
+		Dictionary<int, List<DealtCard>> publicCards,
+		int seatPosition,
+		DealtCard card)
+	{
+		if (!publicCards.TryGetValue(seatPosition, out var cards))
+		{
+			cards = [];
+			publicCards[seatPosition] = cards;
+		}
+
+		cards.Add(card);
+	}
+
+	private static List<PlayerDealtCards> PublicPlayerHands(
+		List<PlayerDealtCards> playerHands,
+		Dictionary<int, List<DealtCard>> publicCards)
+	{
+		return playerHands
+			.Select(hand => hand with
+			{
+				Cards = publicCards.TryGetValue(hand.SeatPosition, out var cards) ? cards : []
+			})
+			.ToList();
 	}
 
 	private static int FindBringInPlayer(List<PlayerDealtCards> playerHands)

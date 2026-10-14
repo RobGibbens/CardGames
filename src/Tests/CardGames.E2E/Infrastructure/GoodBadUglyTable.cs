@@ -57,7 +57,7 @@ public sealed class GoodBadUglyTable
 	{
 		if (startGame)
 		{
-			await ScriptAsync(script, dealerSeat, communityFirst: false);
+			await ScriptAsync(script, dealerSeat, communityFirst: true);
 			await _sessions[0].StartGameAsync();
 		}
 

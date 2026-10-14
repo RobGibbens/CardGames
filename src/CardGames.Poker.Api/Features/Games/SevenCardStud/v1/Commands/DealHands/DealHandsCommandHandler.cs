@@ -113,6 +113,7 @@ public class DealHandsCommandHandler(
 		var deckIndex = 0;
 
 		var playerHands = new List<PlayerDealtCards>();
+		var publicCards = new Dictionary<int, List<DealtCard>>();
 
 		// 5. Deal cards based on street
 		foreach (var gamePlayer in activePlayers)
@@ -195,8 +196,10 @@ public class DealHandsCommandHandler(
 				var boardGameCard = deckCards[deckIndex++];
 				AssignCardToPlayer(boardGameCard, gamePlayer, CardLocation.Board, playerDealOrder++, true,
 					game.CurrentPhase, now);
-				dealtCards.Add(new DealtCard
-					{ Suit = boardGameCard.Suit, Symbol = boardGameCard.Symbol, DealOrder = boardGameCard.DealOrder });
+				var boardCard = new DealtCard
+					{ Suit = boardGameCard.Suit, Symbol = boardGameCard.Symbol, DealOrder = boardGameCard.DealOrder };
+				dealtCards.Add(boardCard);
+				RememberPublicCard(publicCards, gamePlayer.SeatPosition, boardCard);
 			}
 			else if (game.CurrentPhase == nameof(Phases.SeventhStreet))
 			{
@@ -227,8 +230,10 @@ public class DealHandsCommandHandler(
 				var gameCard = deckCards[deckIndex++];
 				AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Board, playerDealOrder++, true, game.CurrentPhase,
 					now);
-				dealtCards.Add(new DealtCard
-					{ Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder });
+				var upCard = new DealtCard
+					{ Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder };
+				dealtCards.Add(upCard);
+				RememberPublicCard(publicCards, gamePlayer.SeatPosition, upCard);
 			}
 
 			playerHands.Add(new PlayerDealtCards
@@ -372,8 +377,34 @@ public class DealHandsCommandHandler(
 			HandNumber = game.CurrentHandNumber,
 			CurrentPlayerIndex = firstActorSeatPosition,
 			CurrentPlayerName = currentPlayerName,
-			PlayerHands = playerHands
+			PlayerHands = PublicPlayerHands(playerHands, publicCards)
 		};
+	}
+
+	private static void RememberPublicCard(
+		Dictionary<int, List<DealtCard>> publicCards,
+		int seatPosition,
+		DealtCard card)
+	{
+		if (!publicCards.TryGetValue(seatPosition, out var cards))
+		{
+			cards = [];
+			publicCards[seatPosition] = cards;
+		}
+
+		cards.Add(card);
+	}
+
+	private static List<PlayerDealtCards> PublicPlayerHands(
+		List<PlayerDealtCards> playerHands,
+		Dictionary<int, List<DealtCard>> publicCards)
+	{
+		return playerHands
+			.Select(hand => hand with
+			{
+				Cards = publicCards.TryGetValue(hand.SeatPosition, out var cards) ? cards : []
+			})
+			.ToList();
 	}
 
 	/// <summary>

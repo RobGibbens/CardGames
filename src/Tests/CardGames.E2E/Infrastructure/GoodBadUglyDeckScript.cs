@@ -1,10 +1,8 @@
 namespace CardGames.E2E.Infrastructure;
 
 /// <summary>
-///     Builds a 52-card Good, Bad, and Ugly deck. The clicked start path deals four hole
-///     cards to each player, starting left of the dealer, and then The Good, The Bad, and
-///     The Ugly. Later hands are dealt by <c>GoodBadUglyFlowHandler</c>, which places those
-///     three table cards first and then deals the same hole-card blocks.
+///     Builds a 52-card Good, Bad, and Ugly deck. Three table cards are dealt first,
+///     then four hole cards to each seat from the left of the dealer.
 /// </summary>
 public static class GoodBadUglyDeckScript
 {
