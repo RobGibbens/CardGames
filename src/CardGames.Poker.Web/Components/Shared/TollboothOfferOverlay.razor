@@ -1,7 +1,7 @@
 @using CardGames.Contracts.SignalR
 @namespace CardGames.Poker.Web.Components.Shared
 
-<div class="tollbooth-offer-panel @(IsSubmitting ? "submitting" : "")">
+<div class="tollbooth-offer-panel @(IsSubmitting ? "submitting" : "")" data-testid="tollbooth-offer">
 	<div class="tollbooth-offer-header">
 		<div class="tollbooth-offer-title">
 			<i class="fa-solid fa-road"></i>
@@ -29,6 +29,7 @@
 				</div>
 			}
 			<button class="tollbooth-offer-btn furthest"
+			        data-testid="tollbooth-furthest"
 			        @onclick="ChooseFurthest"
 			        disabled="@IsSubmitting"
 			        title="Take the card furthest from the deck">
@@ -45,6 +46,7 @@
 				</div>
 			}
 			<button class="tollbooth-offer-btn nearest"
+			        data-testid="tollbooth-nearest"
 			        @onclick="ChooseNearest"
 			        disabled="@(IsSubmitting || !CanAffordNearest)"
 			        title="Take the card nearest to the deck">
@@ -58,6 +60,7 @@
 				<playing-card rank="0" backcolor="#44F" style="height:92px;width:64px;"></playing-card>
 			</div>
 			<button class="tollbooth-offer-btn deck"
+			        data-testid="tollbooth-deck"
 			        @onclick="ChooseDeck"
 			        disabled="@(IsSubmitting || !CanAffordDeck)"
 			        title="Take the top card from the deck">
