@@ -146,3 +146,6 @@ src/.idea/.idea.CardGames/.idea/
 .squad-workstream
 
 *.lscache
+
+# Local environment files
+.env
