@@ -1,5 +1,7 @@
 # TODO
 
+CARDGAMES_E2E=1 CARDGAMES_E2E_HEADED=1 dotnet test src/Tests/CardGames.E2E/CardGames.E2E.csproj --filter HoldEmSixPlayer
+
 ## TODO
 
 - [ ] Animate the chips going to/from the pot
