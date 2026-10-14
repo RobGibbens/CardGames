@@ -245,7 +245,7 @@ Nebraska hand shape (best 3 hole + 2 community) with a shorter board: 5 hole car
 
 ### Razz (`RAZZ`)
 
-Reuses Seven Card Stud dealing and betting. Showdown must not build a `StudHand` inside the stud `PerformShowdown`. That endpoint delegates `RAZZ` (including a Dealer's Choice hand whose current type is `RAZZ`) to the generic showdown handler, which evaluates `RazzHand` as ace-to-five low.
+Reuses Seven Card Stud dealing. Action order is Razz, not stud: the highest door brings in (ace is the lowest door), the best ace-to-five board acts first on later streets, and an open pair on fourth street uses the big bet. Showdown must not build a `StudHand` inside the stud `PerformShowdown`. That endpoint delegates `RAZZ` (including a Dealer's Choice hand whose current type is `RAZZ`) to the generic showdown handler, which evaluates `RazzHand` as ace-to-five low.
 
 ### Pair Pressure (`PAIRPRESSURE`)
 

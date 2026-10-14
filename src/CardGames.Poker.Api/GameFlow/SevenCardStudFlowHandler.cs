@@ -5,7 +5,11 @@ using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettin
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
+using CardGames.Poker.Games.Razz;
 using CardGames.Poker.Games.SevenCardStud;
+using CoreCard = CardGames.Core.French.Cards.Card;
+using CoreSuit = CardGames.Core.French.Cards.Suit;
+using CoreSymbol = CardGames.Core.French.Cards.Symbol;
 using Microsoft.EntityFrameworkCore;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
@@ -51,6 +55,11 @@ public class SevenCardStudFlowHandler : BaseGameFlowHandler
 {
 	/// <inheritdoc />
 	public override string GameTypeCode => "SEVENCARDSTUD";
+
+	/// <summary>
+	///     Razz posts the highest door and acts from the best low board. Stud keeps the low door.
+	/// </summary>
+	protected virtual bool UsesRazzLowActionOrder => false;
 
 	/// <summary>
 	///     Gets the street names for Seven Card Stud.
@@ -271,8 +280,8 @@ public class SevenCardStudFlowHandler : BaseGameFlowHandler
 		// Reset CurrentBet for all players
 		foreach (var player in game.GamePlayers) player.CurrentBet = 0;
 
-		// Determine bring-in player (lowest up card)
-		var bringInPlayer = FindBringInPlayer(playerUpCards);
+		// Stud: lowest door. Razz: highest door, ace low.
+		var bringInPlayer = FindBringInPlayer(playerUpCards, UsesRazzLowActionOrder);
 		var bringInSeatPosition = bringInPlayer?.SeatPosition ??
 		                          playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
 
@@ -323,25 +332,37 @@ public class SevenCardStudFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <summary>
-	///     Finds the player with the lowest up card for bring-in determination.
-	///     Lower card value loses. For ties, use suit order: clubs (lowest) &lt; diamonds &lt; hearts &lt; spades (highest).
+	///     Finds the bring-in player. Stud uses the lowest door. Razz uses the highest door, ace low.
 	/// </summary>
-	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
+	private static GamePlayer? FindBringInPlayer(
+		List<(GamePlayer Player, GameCard UpCard)> playerUpCards,
+		bool razz)
 	{
 		if (playerUpCards.Count == 0) return null;
 
-		GamePlayer? lowestPlayer = null;
-		GameCard? lowestCard = null;
+		GamePlayer? selectedPlayer = null;
+		GameCard? selectedCard = null;
 
 		foreach (var (player, upCard) in playerUpCards)
-			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
+			if (selectedCard is null || IsBringInCard(upCard, selectedCard, razz))
 			{
-				lowestCard = upCard;
-				lowestPlayer = player;
+				selectedCard = upCard;
+				selectedPlayer = player;
 			}
 
-		return lowestPlayer;
+		return selectedPlayer;
 	}
+
+	private static bool IsBringInCard(GameCard candidate, GameCard current, bool razz)
+	{
+		if (!razz)
+			return CompareCardsForBringIn(candidate, current) < 0;
+
+		return RazzBoardOrder.BringsInOver(ToCoreCard(candidate), ToCoreCard(current));
+	}
+
+	private static CoreCard ToCoreCard(GameCard card) =>
+		new((CoreSuit)(int)card.Suit, (CoreSymbol)(int)card.Symbol);
 
 	/// <summary>
 	///     Compares two cards for bring-in determination.

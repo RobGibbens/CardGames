@@ -39,6 +39,11 @@ public class RazzRulesTests
 		rules.SpecialRules!["AcesLow"].Should().Be(true);
 		rules.SpecialRules["StraightsAndFlushesIgnored"].Should().Be(true);
 		rules.SpecialRules["HasQualifier"].Should().Be(false);
+		rules.SpecialRules["BringInOnLowestCard"].Should().Be(false);
+		rules.SpecialRules["BringInOnHighestCard"].Should().Be(true);
+		rules.SpecialRules["AceIsLowestForBringIn"].Should().Be(true);
+		rules.SpecialRules["LaterStreetLowBoardActsFirst"].Should().Be(true);
+		rules.SpecialRules["OpenPairDoublesFourthStreet"].Should().Be(true);
 	}
 
 	[Fact]

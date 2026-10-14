@@ -47,6 +47,12 @@ public sealed class RazzHand : HandBase
 			.First();
 	}
 
+	/// <summary>
+	///     Ace-to-five strength of the cards that are already showing.
+	///     A higher value is the better low, including boards shorter than five cards.
+	/// </summary>
+	public static long BoardStrength(IReadOnlyCollection<Card> cards) => GetRazzStrength(cards);
+
 	public static string GetLowHandDescription(IReadOnlyCollection<Card> cards)
 	{
 		var ordered = cards

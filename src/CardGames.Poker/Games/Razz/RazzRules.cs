@@ -139,7 +139,11 @@ public static class RazzRules
 				["StraightsAndFlushesIgnored"] = true,
 				["HasQualifier"] = false,
 				["HasBringIn"] = true,
-				["BringInOnLowestCard"] = true,
+				["BringInOnLowestCard"] = false,
+				["BringInOnHighestCard"] = true,
+				["AceIsLowestForBringIn"] = true,
+				["LaterStreetLowBoardActsFirst"] = true,
+				["OpenPairDoublesFourthStreet"] = true,
 				["MaxPlayerCards"] = 7
 			}
 		};

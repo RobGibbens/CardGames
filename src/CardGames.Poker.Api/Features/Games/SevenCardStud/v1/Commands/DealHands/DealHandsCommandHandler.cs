@@ -4,12 +4,16 @@ using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Games.Razz;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 using BettingRoundEntity = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
+using CoreCard = CardGames.Core.French.Cards.Card;
+using CoreSuit = CardGames.Core.French.Cards.Suit;
+using CoreSymbol = CardGames.Core.French.Cards.Symbol;
 
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
 
@@ -255,13 +259,14 @@ public class DealHandsCommandHandler(
 		var lastAggressorIndex = -1;
 		var roundComplete = false;
 		var bringInSeatPosition = -1;
+		var razz = UsesRazzActionOrder(game);
 
 		if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 		{
 			await StudGameStakesNormalizer.EnsureLegacyBringInAsync(context, game, cancellationToken);
 
-			// Third Street: bring-in player is lowest up card
-			bringInSeatPosition = FindBringInPlayer(activePlayers, playerHands);
+			// Stud posts the lowest door. Razz posts the highest door, with ace low.
+			bringInSeatPosition = FindBringInPlayer(activePlayers, playerHands, razz);
 
 			// Post the bring-in bet if configured
 			var bringIn = game.BringIn ?? 0;
@@ -284,8 +289,9 @@ public class DealHandsCommandHandler(
 		}
 		else
 		{
-			// Other streets: player with the best visible hand acts first
-			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
+			// Stud: best high board. Razz: best ace-to-five low board.
+			firstActorSeatPosition = FindBestVisibleHandPlayer(
+				activePlayers, game.Id, game.CurrentHandNumber, context, razz);
 		}
 
 		if (!roundComplete && firstActorSeatPosition < 0)
@@ -295,6 +301,10 @@ public class DealHandsCommandHandler(
 		var isSmallBetStreet = game.CurrentPhase == nameof(Phases.ThirdStreet) ||
 		                       game.CurrentPhase == nameof(Phases.FourthStreet);
 		var minBet = isSmallBetStreet ? game.SmallBet ?? game.MinBet ?? 0 : game.BigBet ?? game.MinBet ?? 0;
+		if (razz &&
+		    game.CurrentPhase == nameof(Phases.FourthStreet) &&
+		    LivePlayerShowsPair(activePlayers, game.CurrentHandNumber, context))
+			minBet = game.BigBet ?? game.MinBet ?? minBet;
 
 		// 9. Create betting round record
 		var roundNumber = game.CurrentPhase switch
@@ -367,13 +377,15 @@ public class DealHandsCommandHandler(
 	}
 
 	/// <summary>
-	///     Finds the player with the lowest up card for bring-in determination.
-	///     In case of tie, use suit order: clubs (lowest), diamonds, hearts, spades (highest).
+	///     Finds the bring-in seat. Stud uses the lowest door. Razz uses the highest door, ace low.
 	/// </summary>
-	private static int FindBringInPlayer(List<GamePlayer> activePlayers, List<PlayerDealtCards> playerHands)
+	private static int FindBringInPlayer(
+		List<GamePlayer> activePlayers,
+		List<PlayerDealtCards> playerHands,
+		bool razz)
 	{
-		var lowestSeatPosition = -1;
-		DealtCard? lowestCard = null;
+		var selectedSeatPosition = -1;
+		DealtCard? selectedCard = null;
 
 		foreach (var playerHand in playerHands)
 		{
@@ -381,15 +393,37 @@ public class DealHandsCommandHandler(
 			var upCard = playerHand.Cards.LastOrDefault();
 			if (upCard is null) continue;
 
-			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
+			if (selectedCard is null || IsBringInCard(upCard, selectedCard, razz))
 			{
-				lowestCard = upCard;
-				lowestSeatPosition = playerHand.SeatPosition;
+				selectedCard = upCard;
+				selectedSeatPosition = playerHand.SeatPosition;
 			}
 		}
 
-		return lowestSeatPosition;
+		return selectedSeatPosition;
 	}
+
+	private static bool UsesRazzActionOrder(Game game)
+	{
+		var code = string.IsNullOrWhiteSpace(game.CurrentHandGameTypeCode)
+			? game.GameType?.Code
+			: game.CurrentHandGameTypeCode;
+		return string.Equals(code, PokerGameMetadataRegistry.RazzCode, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool IsBringInCard(DealtCard candidate, DealtCard current, bool razz)
+	{
+		if (!razz)
+			return CompareCardsForBringIn(candidate, current) < 0;
+
+		return RazzBoardOrder.BringsInOver(ToCoreCard(candidate), ToCoreCard(current));
+	}
+
+	private static CoreCard ToCoreCard(DealtCard card) =>
+		new((CoreSuit)(int)card.Suit, (CoreSymbol)(int)card.Symbol);
+
+	private static CoreCard ToCoreCard(GameCard card) =>
+		new((CoreSuit)(int)card.Suit, (CoreSymbol)(int)card.Symbol);
 
 	/// <summary>
 	///     Compares two cards for bring-in determination.
@@ -444,7 +478,7 @@ public class DealHandsCommandHandler(
 	///     Evaluates hand strength including pairs, trips, two pair, and high cards.
 	/// </summary>
 	private static int FindBestVisibleHandPlayer(List<GamePlayer> activePlayers, Guid gameId, int handNumber,
-		CardsDbContext context)
+		CardsDbContext context, bool razz)
 	{
 		var bestSeatPosition = -1;
 		long bestStrength = -1;
@@ -452,15 +486,11 @@ public class DealHandsCommandHandler(
 		foreach (var player in activePlayers)
 		{
 			// Get visible board cards for this player
-			var boardCards = context.GameCards
-				.Where(gc => gc.GamePlayerId == player.Id &&
-				             gc.HandNumber == handNumber &&
-				             gc.Location == CardLocation.Board &&
-				             gc.IsVisible &&
-				             !gc.IsDiscarded)
-				.ToList();
+			var boardCards = BoardCards(context, player.Id, handNumber);
 
-			var strength = EvaluateVisibleHand(boardCards);
+			var strength = razz
+				? RazzBoardOrder.LowBoardStrength(boardCards.Select(ToCoreCard).ToList())
+				: EvaluateVisibleHand(boardCards);
 
 			if (strength > bestStrength)
 			{
@@ -471,6 +501,30 @@ public class DealHandsCommandHandler(
 
 		return bestSeatPosition;
 	}
+
+	private static bool LivePlayerShowsPair(
+		List<GamePlayer> activePlayers,
+		int handNumber,
+		CardsDbContext context)
+	{
+		foreach (var player in activePlayers)
+		{
+			var symbols = BoardCards(context, player.Id, handNumber).Select(card => (int)card.Symbol);
+			if (RazzBoardOrder.HasOpenPair(symbols))
+				return true;
+		}
+
+		return false;
+	}
+
+	private static List<GameCard> BoardCards(CardsDbContext context, Guid gamePlayerId, int handNumber) =>
+		context.GameCards
+			.Where(gc => gc.GamePlayerId == gamePlayerId &&
+			             gc.HandNumber == handNumber &&
+			             gc.Location == CardLocation.Board &&
+			             gc.IsVisible &&
+			             !gc.IsDiscarded)
+			.ToList();
 
 	private static int GetPlayerLeftOfDealerSeatPosition(List<GamePlayer> activePlayers, int dealerSeatPosition)
 	{
