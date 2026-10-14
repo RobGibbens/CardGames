@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CardGames.Poker.Api.Data.Entities;
 
 namespace CardGames.Poker.Api.Services;
@@ -41,5 +42,45 @@ internal static class HandVisibilityHelper
 			return gamePlayers.Any(gp => gp.HasFolded);
 
 		return false;
+	}
+
+	/// <summary>
+	///     True while an all-in runout is at showdown and no pot for the supplied
+	///     current-hand list has been awarded. Face-down cards stay unpublished in that window.
+	/// </summary>
+	internal static bool IsUnawardedAllInRunout(Game game, IReadOnlyList<Pot> currentHandPots)
+	{
+		if (!string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
+			return false;
+
+		if (string.IsNullOrWhiteSpace(game.GameSettings))
+			return false;
+
+		if (currentHandPots.Any(p => p.IsAwarded))
+			return false;
+
+		try
+		{
+			using var settingsDoc = JsonDocument.Parse(game.GameSettings);
+			var root = settingsDoc.RootElement;
+			if (root.ValueKind != JsonValueKind.Object)
+				return false;
+
+			if (!root.TryGetProperty("allInRunout", out var allInRunoutProp)
+			    || allInRunoutProp.ValueKind != JsonValueKind.True)
+				return false;
+
+			if (root.TryGetProperty("runoutHandNumber", out var handNumberProp)
+			    && (handNumberProp.ValueKind != JsonValueKind.Number
+			        || !handNumberProp.TryGetInt32(out var runoutHandNumber)
+			        || runoutHandNumber != game.CurrentHandNumber))
+				return false;
+
+			return true;
+		}
+		catch (JsonException)
+		{
+			return false;
+		}
 	}
 }

@@ -452,8 +452,9 @@ public sealed record BobBarkerShowdownStateDto
 
 	/// <summary>
 	///     The numeric value used for showcase scoring.
+	///     Null while the dealer card is still hidden.
 	/// </summary>
-	public int DealerCardValue { get; init; }
+	public int? DealerCardValue { get; init; }
 
 	/// <summary>
 	///     Player names who won the main-hand half of the pot.

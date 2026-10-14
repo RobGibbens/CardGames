@@ -67,4 +67,72 @@ public class HandVisibilityHelperTests
 		HandVisibilityHelper.IsWinByFoldHand(game, players, pots, hasKingsAndLowsDeckHand)
 			.Should().Be(expected);
 	}
+
+	[Fact]
+	public void IsUnawardedAllInRunout_ReturnsTrueWhileShowdownPotIsUnawarded()
+	{
+		var game = new Game
+		{
+			CurrentPhase = "Showdown",
+			CurrentHandNumber = 1,
+			GameSettings = """{"allInRunout":true,"runoutStreets":["SeventhStreet"],"runoutHandNumber":1}"""
+		};
+
+		HandVisibilityHelper.IsUnawardedAllInRunout(game, [new Pot { IsAwarded = false }])
+			.Should().BeTrue();
+	}
+
+	[Fact]
+	public void IsUnawardedAllInRunout_MissingRunoutHandNumberStillMatchesCurrentHand()
+	{
+		var game = new Game
+		{
+			CurrentPhase = "Showdown",
+			CurrentHandNumber = 1,
+			GameSettings = """{"allInRunout":true,"runoutStreets":["SeventhStreet"]}"""
+		};
+
+		HandVisibilityHelper.IsUnawardedAllInRunout(game, [new Pot { IsAwarded = false }])
+			.Should().BeTrue();
+	}
+
+	[Theory]
+	[InlineData("Complete", """{"allInRunout":true,"runoutHandNumber":1}""", 1, false)]
+	[InlineData("FourthStreet", """{"allInRunout":true,"runoutHandNumber":1}""", 1, false)]
+	[InlineData("Showdown", """{"allInRunout":false,"runoutHandNumber":1}""", 1, false)]
+	[InlineData("Showdown", """{"allInRunout":"true","runoutHandNumber":1}""", 1, false)]
+	[InlineData("Showdown", """{"allInRunout":true,"runoutHandNumber":2}""", 1, false)]
+	[InlineData("Showdown", null, 1, false)]
+	[InlineData("Showdown", "", 1, false)]
+	[InlineData("Showdown", "{", 1, false)]
+	public void IsUnawardedAllInRunout_ReturnsFalseOutsideTheWindow(
+		string phase,
+		string? gameSettings,
+		int currentHandNumber,
+		bool potAwarded)
+	{
+		var game = new Game
+		{
+			CurrentPhase = phase,
+			CurrentHandNumber = currentHandNumber,
+			GameSettings = gameSettings
+		};
+
+		HandVisibilityHelper.IsUnawardedAllInRunout(game, [new Pot { IsAwarded = potAwarded }])
+			.Should().BeFalse();
+	}
+
+	[Fact]
+	public void IsUnawardedAllInRunout_AwardedCurrentHandPotEndsTheWindow()
+	{
+		var game = new Game
+		{
+			CurrentPhase = "Showdown",
+			CurrentHandNumber = 1,
+			GameSettings = """{"allInRunout":true,"runoutStreets":["SeventhStreet"],"runoutHandNumber":1}"""
+		};
+
+		HandVisibilityHelper.IsUnawardedAllInRunout(game, [new Pot { IsAwarded = true }])
+			.Should().BeFalse();
+	}
 }

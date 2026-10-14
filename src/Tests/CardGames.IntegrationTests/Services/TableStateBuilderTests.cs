@@ -1710,6 +1710,111 @@ public class TableStateBuilderTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task BuildPublicStateAsync_SevenCardStud_UnawardedAllInRunout_HidesHoleCards()
+	{
+		var (game, alice, bob) = await SeedSevenCardStudAllInRunoutAsync(nameof(Phases.Showdown), potAwarded: false);
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+		result.Should().NotBeNull();
+		var runout = result!.AllInRunout;
+		runout.Should().NotBeNull();
+		var runoutCards = runout!.RunoutCardsBySeat!;
+		var aliceRunout = runoutCards[0];
+		aliceRunout.Should().ContainSingle(c =>
+			c.DealOrder == 3 && c.IsFaceUp && c.Rank == "7" && c.Suit == "Clubs");
+		aliceRunout.Should().ContainSingle(c =>
+			c.DealOrder == 4 && !c.IsFaceUp && c.Rank == null && c.Suit == null);
+		var bobRunout = runoutCards[1];
+		bobRunout.Should().ContainSingle(c =>
+			c.DealOrder == 3 && c.IsFaceUp && c.Rank == "2" && c.Suit == "Spades");
+		bobRunout.Should().ContainSingle(c =>
+			c.DealOrder == 4 && !c.IsFaceUp && c.Rank == null && c.Suit == null);
+
+		var aliceSeat = result.Seats.Single(s => s.SeatIndex == 0);
+		var bobSeat = result.Seats.Single(s => s.SeatIndex == 1);
+		aliceSeat.Cards.Should().ContainSingle(c => c.IsFaceUp && c.Rank == "7" && c.Suit == "Clubs");
+		aliceSeat.Cards.Where(c => !c.IsFaceUp && c.Rank == null && c.Suit == null).Should().HaveCount(3);
+		bobSeat.Cards.Should().ContainSingle(c => c.IsFaceUp && c.Rank == "2" && c.Suit == "Spades");
+		bobSeat.Cards.Where(c => !c.IsFaceUp && c.Rank == null && c.Suit == null).Should().HaveCount(3);
+		result.Seats.SelectMany(s => s.Cards).Should().NotContain(c =>
+			c.Rank == "A" || c.Rank == "3" || c.Rank == "K" || c.Rank == "9");
+
+		result.Showdown.Should().NotBeNull();
+		result.Showdown!.WonByFold.Should().BeFalse();
+		result.Showdown.IsComplete.Should().BeFalse();
+		AssertStudRunoutShowdownCardsHidden(result.Showdown.PlayerResults.Single(r => r.SeatPosition == 0), "7",
+			"Clubs");
+		AssertStudRunoutShowdownCardsHidden(result.Showdown.PlayerResults.Single(r => r.SeatPosition == 1), "2",
+			"Spades");
+
+		var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
+		{
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+		});
+		json.Should().NotContain("\"rank\":\"A\"");
+		json.Should().NotContain("\"rank\":\"3\"");
+		json.Should().NotContain("\"rank\":\"K\"");
+		json.Should().NotContain("\"rank\":\"9\"");
+		json.Should().Contain("\"rank\":\"7\"");
+		json.Should().Contain("\"rank\":\"2\"");
+
+		var alicePrivate = await TableStateBuilder.BuildPrivateStateForPlayerAsync(game.Id, alice.Id);
+		alicePrivate.Should().NotBeNull();
+		alicePrivate!.Hand.Should().Contain(c => c.Rank == "A" && c.Suit == "Hearts");
+		alicePrivate.Hand.Should().Contain(c => c.Rank == "A" && c.Suit == "Diamonds");
+		alicePrivate.Hand.Should().Contain(c => c.Rank == "7" && c.Suit == "Clubs");
+		alicePrivate.Hand.Should().Contain(c => c.Rank == "3" && c.Suit == "Hearts" && !c.IsPubliclyVisible);
+		alicePrivate.Hand.Should().NotContain(c =>
+			(c.Rank == "K" && c.Suit == "Hearts")
+			|| (c.Rank == "K" && c.Suit == "Diamonds")
+			|| (c.Rank == "2" && c.Suit == "Spades")
+			|| (c.Rank == "9" && c.Suit == "Clubs"));
+
+		var bobPrivate = await TableStateBuilder.BuildPrivateStateForPlayerAsync(game.Id, bob.Id);
+		bobPrivate.Should().NotBeNull();
+		bobPrivate!.Hand.Should().Contain(c => c.Rank == "K" && c.Suit == "Hearts");
+		bobPrivate.Hand.Should().Contain(c => c.Rank == "K" && c.Suit == "Diamonds");
+		bobPrivate.Hand.Should().Contain(c => c.Rank == "2" && c.Suit == "Spades");
+		bobPrivate.Hand.Should().Contain(c => c.Rank == "9" && c.Suit == "Clubs" && !c.IsPubliclyVisible);
+		bobPrivate.Hand.Should().NotContain(c =>
+			(c.Rank == "A" && c.Suit == "Hearts")
+			|| (c.Rank == "A" && c.Suit == "Diamonds")
+			|| (c.Rank == "3" && c.Suit == "Hearts"));
+	}
+
+	[Fact]
+	public async Task BuildPublicStateAsync_SevenCardStud_AwardedAllInRunoutAtShowdown_RevealsSeats()
+	{
+		var (game, _, _) = await SeedSevenCardStudAllInRunoutAsync(nameof(Phases.Showdown), potAwarded: true);
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+		result.Should().NotBeNull();
+		var runout = result!.AllInRunout;
+		runout.Should().NotBeNull();
+		var runoutCards = runout!.RunoutCardsBySeat!;
+		runoutCards[0].Should().ContainSingle(c =>
+			c.DealOrder == 4 && !c.IsFaceUp && c.Rank == null && c.Suit == null);
+		runoutCards[1].Should().ContainSingle(c =>
+			c.DealOrder == 4 && !c.IsFaceUp && c.Rank == null && c.Suit == null);
+
+		AssertStudRunoutCardsRevealed(result);
+	}
+
+	[Fact]
+	public async Task BuildPublicStateAsync_SevenCardStud_AwardedAllInRunoutAtComplete_RevealsSeats()
+	{
+		var (game, _, _) = await SeedSevenCardStudAllInRunoutAsync(nameof(Phases.Complete), potAwarded: true);
+
+		var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+		result.Should().NotBeNull();
+		result!.AllInRunout.Should().BeNull();
+		AssertStudRunoutCardsRevealed(result);
+	}
+
+	[Fact]
 	public async Task BuildPrivateStateAsync_BobBarker_FoldWin_OwnerSeesOwnShowcaseCard()
 	{
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", 3, ante: 0);
@@ -1950,5 +2055,124 @@ public class TableStateBuilderTests : IntegrationTestBase
 
 		await DbContext.SaveChangesAsync();
 		return setup;
+	}
+
+	private async Task<(Game Game, Player Alice, Player Bob)> SeedSevenCardStudAllInRunoutAsync(
+		string phase,
+		bool potAwarded)
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "SEVENCARDSTUD", 2);
+		var game = setup.Game;
+		var now = DateTimeOffset.UtcNow;
+		var alice = setup.Players[0];
+		var bob = setup.Players[1];
+		alice.Name = "Alice";
+		bob.Name = "Bob";
+
+		game.CurrentHandNumber = 1;
+		game.CurrentPhase = phase;
+		game.Status = GameStatus.InProgress;
+		game.GameSettings =
+			"""{"allInRunout":true,"runoutStreets":["FifthStreet","SixthStreet","SeventhStreet"],"runoutHandNumber":1}""";
+
+		var aliceSeat = setup.GamePlayers.Single(gp => gp.SeatPosition == 0);
+		var bobSeat = setup.GamePlayers.Single(gp => gp.SeatPosition == 1);
+		aliceSeat.ChipStack = 100;
+		bobSeat.ChipStack = 100;
+		aliceSeat.HasFolded = false;
+		bobSeat.HasFolded = false;
+
+		AddStudRunoutCard(game.Id, aliceSeat.Id, now, 1, CardLocation.Hole, CardSuit.Hearts, CardSymbol.Ace,
+			"ThirdStreet", false);
+		AddStudRunoutCard(game.Id, aliceSeat.Id, now, 2, CardLocation.Hole, CardSuit.Diamonds, CardSymbol.Ace,
+			"ThirdStreet", false);
+		AddStudRunoutCard(game.Id, aliceSeat.Id, now, 3, CardLocation.Board, CardSuit.Clubs, CardSymbol.Seven,
+			"FifthStreet", true);
+		AddStudRunoutCard(game.Id, aliceSeat.Id, now, 4, CardLocation.Hole, CardSuit.Hearts, CardSymbol.Three,
+			"SeventhStreet", false);
+		AddStudRunoutCard(game.Id, bobSeat.Id, now, 1, CardLocation.Hole, CardSuit.Hearts, CardSymbol.King,
+			"ThirdStreet", false);
+		AddStudRunoutCard(game.Id, bobSeat.Id, now, 2, CardLocation.Hole, CardSuit.Diamonds, CardSymbol.King,
+			"ThirdStreet", false);
+		AddStudRunoutCard(game.Id, bobSeat.Id, now, 3, CardLocation.Board, CardSuit.Spades, CardSymbol.Deuce,
+			"FifthStreet", true);
+		AddStudRunoutCard(game.Id, bobSeat.Id, now, 4, CardLocation.Hole, CardSuit.Clubs, CardSymbol.Nine,
+			"SeventhStreet", false);
+
+		DbContext.Pots.Add(new PotEntity
+		{
+			GameId = game.Id,
+			HandNumber = 1,
+			PotType = PotType.Main,
+			Amount = 40,
+			IsAwarded = potAwarded,
+			CreatedAt = now
+		});
+
+		await DbContext.SaveChangesAsync();
+		return (game, alice, bob);
+	}
+
+	private void AddStudRunoutCard(
+		Guid gameId,
+		Guid gamePlayerId,
+		DateTimeOffset dealtAt,
+		int dealOrder,
+		CardLocation location,
+		CardSuit suit,
+		CardSymbol symbol,
+		string dealtAtPhase,
+		bool isVisible)
+	{
+		DbContext.GameCards.Add(new GameCard
+		{
+			GameId = gameId,
+			GamePlayerId = gamePlayerId,
+			HandNumber = 1,
+			Location = location,
+			Suit = suit,
+			Symbol = symbol,
+			DealOrder = dealOrder,
+			IsVisible = isVisible,
+			DealtAt = dealtAt,
+			DealtAtPhase = dealtAtPhase
+		});
+	}
+
+	private static void AssertStudRunoutShowdownCardsHidden(
+		ShowdownPlayerResultDto result,
+		string faceUpRank,
+		string faceUpSuit)
+	{
+		result.HandRanking.Should().BeNull();
+		result.HandDescription.Should().BeNull();
+		result.BestCardIndexes.Should().BeNull();
+		result.WildCardIndexes.Should().BeNull();
+		result.Cards.Should().ContainSingle(c => c.IsFaceUp && c.Rank == faceUpRank && c.Suit == faceUpSuit);
+		result.Cards.Where(c => !c.IsFaceUp && c.Rank == null && c.Suit == null).Should().HaveCount(3);
+		result.Cards.Should().NotContain(c => c.Rank == "A" || c.Rank == "3" || c.Rank == "K" || c.Rank == "9");
+	}
+
+	private static void AssertStudRunoutCardsRevealed(TableStatePublicDto result)
+	{
+		void AssertRevealed(IReadOnlyList<CardPublicDto> cards, string rank, string suit)
+		{
+			cards.Should().Contain(c => c.IsFaceUp && c.Rank == rank && c.Suit == suit);
+		}
+
+		var aliceSeat = result.Seats.Single(s => s.SeatIndex == 0);
+		var bobSeat = result.Seats.Single(s => s.SeatIndex == 1);
+		AssertRevealed(aliceSeat.Cards, "A", "Hearts");
+		AssertRevealed(aliceSeat.Cards, "3", "Hearts");
+		AssertRevealed(bobSeat.Cards, "K", "Hearts");
+		AssertRevealed(bobSeat.Cards, "9", "Clubs");
+
+		result.Showdown.Should().NotBeNull();
+		var aliceResult = result.Showdown!.PlayerResults.Single(r => r.SeatPosition == 0);
+		var bobResult = result.Showdown.PlayerResults.Single(r => r.SeatPosition == 1);
+		AssertRevealed(aliceResult.Cards, "A", "Hearts");
+		AssertRevealed(aliceResult.Cards, "3", "Hearts");
+		AssertRevealed(bobResult.Cards, "K", "Hearts");
+		AssertRevealed(bobResult.Cards, "9", "Clubs");
 	}
 }

@@ -158,10 +158,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		var isWinByFold = HandVisibilityHelper.IsWinByFoldHand(
 			game, gamePlayers, currentHandPots, hasKingsAndLowsDeckHand);
+		var isUnawardedAllInRunout = HandVisibilityHelper.IsUnawardedAllInRunout(game, currentHandPots);
 
 		var seats = gamePlayers
 			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code,
-				game.CurrentPhase, userProfilesByEmail, isWinByFold))
+				game.CurrentPhase, userProfilesByEmail, isWinByFold, isUnawardedAllInRunout))
 			.ToList();
 
 		var serverUtcNow = DateTimeOffset.UtcNow;
@@ -251,7 +252,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			: null;
 
 		var showdown = await BuildShowdownPublicDtoAsync(game, gamePlayers, userProfilesByEmail, isWinByFold,
-			cancellationToken);
+			isUnawardedAllInRunout, cancellationToken);
 		var soundEffects = BuildTableSoundEffects(game, showdown);
 
 		return new TableStatePublicDto
@@ -656,7 +657,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		string? gameTypeCode,
 		string? currentPhase,
 		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail,
-		bool isWinByFoldHand)
+		bool isWinByFoldHand,
+		bool isUnawardedAllInRunout)
 	{
 		var firstName = GetPlayerFirstName(gamePlayer, userProfilesByEmail);
 		var avatarUrl = GetPlayerAvatarUrl(gamePlayer, userProfilesByEmail);
@@ -686,7 +688,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Contested showdown reveals staying players' cards. A fold-win does not:
 		// only cards that were already public during the hand stay face-up.
 		var shouldShowCardsForContestedShowdown =
-			isShowdownPhase && !gamePlayer.HasFolded && !isWinByFoldHand;
+			isShowdownPhase && !gamePlayer.HasFolded && !isWinByFoldHand && !isUnawardedAllInRunout;
 
 		var publicCards = playerCards.Select(card =>
 		{
@@ -972,6 +974,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		List<GamePlayer> gamePlayers,
 		Dictionary<string, UserProfile> userProfilesByEmail,
 		bool isWinByFoldHand,
+		bool isUnawardedAllInRunout,
 		CancellationToken cancellationToken)
 	{
 		var isTwosJacksAxe = IsTwosJacksAxeGame(game.GameType?.Code);
@@ -1716,6 +1719,23 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					bestCardIndexes = eval.bestCardIndexes.Count > 0 ? eval.bestCardIndexes : null;
 				}
 
+				var handDescription = isWinByFoldHand
+					? null
+					: isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED",
+						StringComparison.OrdinalIgnoreCase)
+						? "Dead Hand (The Ugly)"
+						: playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
+							? HandDescriptionFormatter.GetHandDescription(e.hand)
+							: null;
+
+				if (isUnawardedAllInRunout)
+				{
+					handRanking = null;
+					handDescription = null;
+					wildIndexes = null;
+					bestCardIndexes = null;
+				}
+
 				userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
 
 				actualPayouts.TryGetValue(gp.Player.Name, out var payouts);
@@ -1727,6 +1747,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						!c.IsDiscarded && c.HandNumber == game.CurrentHandNumber &&
 						c.DealOrder == selectedShowcaseDealOrder.Value)
 					: null;
+				var showShowcaseCard = showcaseCard is not null
+				                       && (showcaseCard.IsVisible || (!isWinByFoldHand && !isUnawardedAllInRunout));
 
 				return new ShowdownPlayerResultDto
 				{
@@ -1734,14 +1756,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					PlayerFirstName = GetPlayerFirstName(gp, userProfilesByEmail),
 					SeatPosition = gp.SeatPosition,
 					HandRanking = handRanking,
-					HandDescription = isWinByFoldHand
-						? null
-						: isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED",
-							StringComparison.OrdinalIgnoreCase)
-							? "Dead Hand (The Ugly)"
-							: playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
-								? HandDescriptionFormatter.GetHandDescription(e.hand)
-								: null,
+					HandDescription = handDescription,
 					AmountWon = payouts.Total,
 					SevensAmountWon = payouts.Sevens,
 					HighHandAmountWon = payouts.High,
@@ -1756,12 +1771,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						? null
 						: new CardPublicDto
 						{
-							IsFaceUp = true,
-							Rank = MapSymbolToRank(showcaseCard.Symbol),
-							Suit = GetCardSuitString(showcaseCard.Suit),
+							IsFaceUp = showShowcaseCard,
+							Rank = showShowcaseCard ? MapSymbolToRank(showcaseCard.Symbol) : null,
+							Suit = showShowcaseCard ? GetCardSuitString(showcaseCard.Suit) : null,
 							DealOrder = showcaseCard.DealOrder
 						},
-					ShowcaseCardValue = showcaseCard is null
+					ShowcaseCardValue = showcaseCard is null || !showShowcaseCard
 						? null
 						: GetBobBarkerCardValue(showcaseCard.Symbol, bobBarkerDealerCard?.Symbol == CardSymbol.Ace),
 					Cards = OrderShowdownCards(
@@ -1771,12 +1786,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							isBobBarker,
 							selectedShowcaseDealOrder,
 							isStudStyleShowdown)
-						.Select(c => new CardPublicDto
+						.Select(c =>
 						{
-							IsFaceUp = isWinByFoldHand ? c.IsVisible : true,
-							Rank = isWinByFoldHand && !c.IsVisible ? null : MapSymbolToRank(c.Symbol),
-							Suit = isWinByFoldHand && !c.IsVisible ? null : GetCardSuitString(c.Suit),
-							DealOrder = c.DealOrder
+							var showCard = c.IsVisible || (!isWinByFoldHand && !isUnawardedAllInRunout);
+							return new CardPublicDto
+							{
+								IsFaceUp = showCard,
+								Rank = showCard ? MapSymbolToRank(c.Symbol) : null,
+								Suit = showCard ? GetCardSuitString(c.Suit) : null,
+								DealOrder = c.DealOrder
+							};
 						})
 						.ToList()
 				};
@@ -1814,6 +1833,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 		}
 
+		var showBobBarkerDealerCard = bobBarkerDealerCard is not null
+		                             && (bobBarkerDealerCard.IsVisible || !isUnawardedAllInRunout);
+
 		return new ShowdownPublicDto
 		{
 			PlayerResults = playerResults,
@@ -1827,13 +1849,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				{
 					DealerCard = new CardPublicDto
 					{
-						IsFaceUp = true,
-						Rank = MapSymbolToRank(bobBarkerDealerCard.Symbol),
-						Suit = GetCardSuitString(bobBarkerDealerCard.Suit),
+						IsFaceUp = showBobBarkerDealerCard,
+						Rank = showBobBarkerDealerCard ? MapSymbolToRank(bobBarkerDealerCard.Symbol) : null,
+						Suit = showBobBarkerDealerCard ? GetCardSuitString(bobBarkerDealerCard.Suit) : null,
 						DealOrder = bobBarkerDealerCard.DealOrder
 					},
-					DealerCardValue = GetBobBarkerCardValue(bobBarkerDealerCard.Symbol,
-						bobBarkerDealerCard.Symbol == CardSymbol.Ace),
+					DealerCardValue = showBobBarkerDealerCard
+						? GetBobBarkerCardValue(bobBarkerDealerCard.Symbol,
+							bobBarkerDealerCard.Symbol == CardSymbol.Ace)
+						: null,
 					MainHandWinners = mainHandWinners.OrderBy(name => name).ToList(),
 					ShowcaseWinners = showcaseWinners.OrderBy(name => name).ToList()
 				}
@@ -2751,6 +2775,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		};
 	}
 
+	private static CardPublicDto ToRunoutPublicCard(GameCard card)
+	{
+		var faceUp = card.IsVisible;
+		return new CardPublicDto
+		{
+			IsFaceUp = faceUp,
+			Rank = faceUp ? MapSymbolToRank(card.Symbol) : null,
+			Suit = faceUp ? GetCardSuitString(card.Suit) : null,
+			DealOrder = card.DealOrder
+		};
+	}
+
 	/// <summary>
 	///     Builds the All-In Runout state for games where all players went all-in
 	///     and remaining streets were dealt without betting.
@@ -2825,13 +2861,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					.ToListAsync(cancellationToken);
 
 				if (runoutCards.Count > 0)
-					runoutCardsBySeat[player.SeatPosition] = runoutCards.Select(c => new CardPublicDto
-					{
-						IsFaceUp = c.IsVisible,
-						Rank = MapSymbolToRank(c.Symbol),
-						Suit = c.Suit.ToString(),
-						DealOrder = c.DealOrder
-					}).ToList();
+					runoutCardsBySeat[player.SeatPosition] = runoutCards.Select(ToRunoutPublicCard).ToList();
 			}
 
 			// Map street names to friendly descriptions
