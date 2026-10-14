@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
@@ -11,6 +12,7 @@ using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.PerformShowdow
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
+using CardGames.Poker.Hands.DrawHands;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -24,19 +26,26 @@ public class PerformShowdownCommandHandlerTests
 	[Fact]
 	public async Task Handle_WhenMainAndSidePotsTie_PaysOddChipsPerPotClockwiseFromTheDealer()
 	{
+		var aliceHand = new DrawHand(RoyalFlush);
+		var bobHand = new DrawHand(RoyalFlush);
+		var carolHand = new DrawHand(RoyalFlush);
+		aliceHand.Strength.Should().Be(bobHand.Strength);
+		aliceHand.Strength.Should().Be(carolHand.Strength);
+
 		await using var context = CreateContext();
 		var game = await SeedShowdownAsync(context);
-		var sut = CreateSut(context);
+		var settlement = Substitute.For<IHandSettlementService>();
+		var sut = CreateSut(context, settlement);
 
 		var result = await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
 		var payouts = result.AsT0.Payouts;
 		payouts["Carol"].Should().Be(5);
-		payouts["Alice"].Should().Be(4);
+		payouts["Alice"].Should().Be(3);
 		payouts["Bob"].Should().Be(1);
-		payouts.Values.Sum().Should().Be(10);
-		await AssertStacksAsync(context, ("Carol", 105), ("Alice", 104), ("Bob", 101));
+		await AssertStacksAsync(context, ("Carol", 105), ("Alice", 103), ("Bob", 101));
+		(await context.GamePlayers.SumAsync(gamePlayer => gamePlayer.ChipStack)).Should().Be(309);
 
 		var pots = await context.Pots
 			.Where(pot => pot.GameId == game.Id && pot.HandNumber == game.CurrentHandNumber)
@@ -44,23 +53,36 @@ public class PerformShowdownCommandHandlerTests
 			.ToListAsync();
 		var main = ReadWinnerPayouts(pots[0].WinnerPayouts);
 		main["Carol"].Should().Be(2);
-		main["Alice"].Should().Be(2);
+		main["Alice"].Should().Be(1);
 		main["Bob"].Should().Be(1);
-		main.Values.Sum().Should().Be(5);
+		pots[0].WinnerPayouts.Should().NotContain("\"amount\":5");
+		pots[0].WinnerPayouts.Should().NotContain("\"amount\":3");
 
 		var side = ReadWinnerPayouts(pots[1].WinnerPayouts);
 		side["Carol"].Should().Be(3);
 		side["Alice"].Should().Be(2);
 		side.Should().NotContainKey("Bob");
-		side.Values.Sum().Should().Be(5);
+		pots[1].WinnerPayouts.Should().NotContain("\"amount\":5");
+		pots[1].WinnerPayouts.Should().NotContain("Bob");
+
+		await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		await AssertStacksAsync(context, ("Carol", 105), ("Alice", 103), ("Bob", 101));
+		await settlement.Received(1).SettleHandAsync(
+			Arg.Any<Game>(),
+			Arg.Is<Dictionary<string, int>>(paid =>
+				paid.Count == 3 && paid["Carol"] == 5 && paid["Alice"] == 3 && paid["Bob"] == 1),
+			Arg.Any<CancellationToken>());
 	}
 
-	private static PerformShowdownCommandHandler CreateSut(CardsDbContext context)
+	private static PerformShowdownCommandHandler CreateSut(
+		CardsDbContext context,
+		IHandSettlementService? settlement = null)
 	{
 		return new PerformShowdownCommandHandler(
 			context,
 			Substitute.For<IHandHistoryRecorder>(),
-			Substitute.For<IHandSettlementService>(),
+			settlement ?? Substitute.For<IHandSettlementService>(),
 			new HandEvaluatorFactory());
 	}
 
@@ -110,13 +132,14 @@ public class PerformShowdownCommandHandlerTests
 			}
 		}
 
-		var mainPot = CreatePot(game, PotType.Main, 0, 5, now);
+		var mainPot = CreatePot(game, PotType.Main, 0, 4, now);
 		AddContribution(mainPot, gamePlayers["Alice"], now, true);
 		AddContribution(mainPot, gamePlayers["Bob"], now, true);
 		AddContribution(mainPot, gamePlayers["Carol"], now, true);
 
 		var sidePot = CreatePot(game, PotType.Side, 1, 5, now);
 		AddContribution(sidePot, gamePlayers["Alice"], now, true);
+		AddContribution(sidePot, gamePlayers["Bob"], now, false);
 		AddContribution(sidePot, gamePlayers["Carol"], now, true);
 
 		context.Pots.AddRange(mainPot, sidePot);
@@ -203,6 +226,7 @@ public class PerformShowdownCommandHandlerTests
 			HandNumber = game.CurrentHandNumber,
 			DealOrder = dealOrder,
 			Location = CardLocation.Hole,
+			IsDiscarded = false,
 			IsVisible = false,
 			Suit = suit,
 			Symbol = symbol,
@@ -232,6 +256,15 @@ public class PerformShowdownCommandHandlerTests
 	}
 
 	private static readonly (string Name, int Seat)[] Seats = [("Alice", 0), ("Bob", 3), ("Carol", 5)];
+
+	private static readonly Card[] RoyalFlush =
+	[
+		new(Suit.Hearts, Symbol.Ace),
+		new(Suit.Hearts, Symbol.King),
+		new(Suit.Hearts, Symbol.Queen),
+		new(Suit.Hearts, Symbol.Jack),
+		new(Suit.Hearts, Symbol.Ten)
+	];
 
 	private static readonly (CardSuit Suit, CardSymbol Symbol)[] RoyalHearts =
 	[

@@ -4,12 +4,14 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Hands.DrawHands;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -23,24 +25,53 @@ public class PerformShowdownCommandHandlerTests
 	[Fact]
 	public async Task Handle_WhenNoNaturalSevens_PaysTheHandPoolClockwiseFromTheDealer()
 	{
+		var aliceHand = new TwosJacksManWithTheAxeDrawHand(RoyalFlush);
+		var bobHand = new TwosJacksManWithTheAxeDrawHand(RoyalFlush);
+		var carolHand = new TwosJacksManWithTheAxeDrawHand(RoyalFlush);
+		aliceHand.HasNaturalPairOfSevens().Should().BeFalse();
+		bobHand.HasNaturalPairOfSevens().Should().BeFalse();
+		carolHand.HasNaturalPairOfSevens().Should().BeFalse();
+		aliceHand.Strength.Should().Be(bobHand.Strength);
+		aliceHand.Strength.Should().Be(carolHand.Strength);
+
 		await using var context = CreateContext();
-		var game = await SeedShowdownAsync(context, 5, RoyalHearts);
-		var sut = CreateSut(context);
+		var game = await SeedShowdownAsync(context, 4, RoyalHearts);
+		var settlement = Substitute.For<IHandSettlementService>();
+		var sut = CreateSut(context, settlement);
 
 		var result = await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
+		result.AsT0.SevensPoolRolledOver.Should().BeTrue();
 		var payouts = result.AsT0.Payouts;
 		payouts["Carol"].Should().Be(2);
-		payouts["Alice"].Should().Be(2);
+		payouts["Alice"].Should().Be(1);
 		payouts["Bob"].Should().Be(1);
-		payouts.Values.Sum().Should().Be(5);
-		await AssertStacksAsync(context, ("Carol", 102), ("Alice", 102), ("Bob", 101));
+		await AssertStacksAsync(context, ("Carol", 102), ("Alice", 101), ("Bob", 101));
+		await AssertSplitPayoutsAsync(context, ("Carol", 0, 2), ("Alice", 0, 1), ("Bob", 0, 1));
+
+		await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
+
+		await AssertStacksAsync(context, ("Carol", 102), ("Alice", 101), ("Bob", 101));
+		await settlement.Received(1).SettleHandAsync(
+			Arg.Any<Game>(),
+			Arg.Is<Dictionary<string, int>>(paid =>
+				paid.Count == 3 && paid["Carol"] == 2 && paid["Alice"] == 1 && paid["Bob"] == 1),
+			Arg.Any<CancellationToken>());
 	}
 
 	[Fact]
 	public async Task Handle_WhenEveryPlayerHasNaturalSevensAndTheSameHighHand_SplitsEachPoolClockwise()
 	{
+		var aliceHand = new TwosJacksManWithTheAxeDrawHand(NaturalSevensHand);
+		var bobHand = new TwosJacksManWithTheAxeDrawHand(NaturalSevensHand);
+		var carolHand = new TwosJacksManWithTheAxeDrawHand(NaturalSevensHand);
+		aliceHand.HasNaturalPairOfSevens().Should().BeTrue();
+		bobHand.HasNaturalPairOfSevens().Should().BeTrue();
+		carolHand.HasNaturalPairOfSevens().Should().BeTrue();
+		aliceHand.Strength.Should().Be(bobHand.Strength);
+		aliceHand.Strength.Should().Be(carolHand.Strength);
+
 		await using var context = CreateContext();
 		var game = await SeedShowdownAsync(context, 7, NaturalSevens);
 		var sut = CreateSut(context);
@@ -48,12 +79,14 @@ public class PerformShowdownCommandHandlerTests
 		var result = await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
 
 		result.IsT0.Should().BeTrue();
+		result.AsT0.SevensPoolRolledOver.Should().BeFalse();
 		var payouts = result.AsT0.Payouts;
 		payouts["Carol"].Should().Be(3);
 		payouts["Alice"].Should().Be(2);
 		payouts["Bob"].Should().Be(2);
-		payouts.Values.Sum().Should().Be(7);
 		await AssertStacksAsync(context, ("Carol", 103), ("Alice", 102), ("Bob", 102));
+		(await StackSumAsync(context)).Should().Be(307);
+		await AssertSplitPayoutsAsync(context, ("Carol", 1, 2), ("Alice", 1, 1), ("Bob", 1, 1));
 	}
 
 	[Fact]
@@ -199,12 +232,14 @@ public class PerformShowdownCommandHandlerTests
 		await AssertStacksAsync(context, ("Carol", 102), ("Alice", 102), ("Bob", 101));
 	}
 
-	private static PerformShowdownCommandHandler CreateSut(CardsDbContext context)
+	private static PerformShowdownCommandHandler CreateSut(
+		CardsDbContext context,
+		IHandSettlementService? settlement = null)
 	{
 		return new PerformShowdownCommandHandler(
 			context,
 			Substitute.For<IHandHistoryRecorder>(),
-			Substitute.For<IHandSettlementService>());
+			settlement ?? Substitute.For<IHandSettlementService>());
 	}
 
 	private static CardsDbContext CreateContext()
@@ -312,6 +347,7 @@ public class PerformShowdownCommandHandlerTests
 			HandNumber = game.CurrentHandNumber,
 			DealOrder = dealOrder,
 			Location = CardLocation.Hole,
+			IsDiscarded = false,
 			IsVisible = false,
 			Suit = suit,
 			Symbol = symbol,
@@ -331,6 +367,24 @@ public class PerformShowdownCommandHandlerTests
 	}
 
 	private static readonly (string Name, int Seat)[] Seats = [("Alice", 0), ("Bob", 3), ("Carol", 5)];
+
+	private static readonly Card[] RoyalFlush =
+	[
+		new(Suit.Hearts, Symbol.Ace),
+		new(Suit.Hearts, Symbol.King),
+		new(Suit.Hearts, Symbol.Queen),
+		new(Suit.Hearts, Symbol.Jack),
+		new(Suit.Hearts, Symbol.Ten)
+	];
+
+	private static readonly Card[] NaturalSevensHand =
+	[
+		new(Suit.Clubs, Symbol.Seven),
+		new(Suit.Diamonds, Symbol.Seven),
+		new(Suit.Hearts, Symbol.Ace),
+		new(Suit.Hearts, Symbol.King),
+		new(Suit.Hearts, Symbol.Queen)
+	];
 
 	private static readonly (CardSuit Suit, CardSymbol Symbol)[] RoyalHearts =
 	[
@@ -512,6 +566,25 @@ public class PerformShowdownCommandHandlerTests
 
 		await context.SaveChangesAsync();
 		return game;
+	}
+
+	private static async Task AssertSplitPayoutsAsync(
+		CardsDbContext context,
+		params (string Name, int SevensAmount, int HighHandAmount)[] expected)
+	{
+		var pot = await context.Pots.SingleAsync(candidate => candidate.HandNumber == 1 && candidate.PotOrder == 0);
+		using var document = JsonDocument.Parse(pot.WinnerPayouts!);
+		var payouts = document.RootElement.EnumerateArray()
+			.Select(element => (
+				Name: element.GetProperty("playerName").GetString()!,
+				SevensAmount: element.GetProperty("sevensAmount").GetInt32(),
+				HighHandAmount: element.GetProperty("highHandAmount").GetInt32()))
+			.ToList();
+
+		payouts.Should().BeEquivalentTo(expected.Select(entry => (
+			entry.Name,
+			entry.SevensAmount,
+			entry.HighHandAmount)));
 	}
 
 	private static async Task AssertPotPayoutsAsync(
