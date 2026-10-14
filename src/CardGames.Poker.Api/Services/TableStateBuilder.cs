@@ -1596,8 +1596,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				}
 				else
 				{
-					// All remaining players were eliminated by The Ugly: split among all
-					foreach (var kvp in playerHandEvaluations) highHandWinners.Add(kvp.Key);
+					// Every remaining player is dead, so the best dead hand wins.
+					// Equal strengths still split the pot.
+					var maxDeadStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
+					foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxDeadStrength))
+						highHandWinners.Add(kvp.Key);
 				}
 			}
 			else

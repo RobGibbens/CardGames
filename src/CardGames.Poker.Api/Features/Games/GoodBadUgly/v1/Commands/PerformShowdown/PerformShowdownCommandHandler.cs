@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common.Showdown;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Hands.StudHands;
 using CardGames.Poker.Hands.WildCards;
 using MediatR;
@@ -326,6 +327,8 @@ public class PerformShowdownCommandHandler(
 		var playerHandsList = playerHandEvaluations.Select(kvp =>
 		{
 			var isWinner = winners.Contains(kvp.Key);
+			var eliminatedByUgly = isGoodBadUgly && string.Equals(
+				kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase);
 			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
 
 			// Get the best 5-card hand and find their indexes in the original card list
@@ -357,12 +360,14 @@ public class PerformShowdownCommandHandler(
 					Symbol = c.Symbol
 				}).ToList(),
 				HandType = kvp.Value.hand.Type.ToString(),
+				HandDescription = eliminatedByUgly
+					? "Dead Hand (The Ugly)"
+					: HandDescriptionFormatter.GetHandDescription(kvp.Value.hand),
 				HandStrength = kvp.Value.hand.Strength,
 				IsWinner = isWinner,
 				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
 				BestCardIndexes = bestCardIndexes,
-				IsEliminatedByUgly = isGoodBadUgly && string.Equals(
-					kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase)
+				IsEliminatedByUgly = eliminatedByUgly
 			};
 		}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
 
