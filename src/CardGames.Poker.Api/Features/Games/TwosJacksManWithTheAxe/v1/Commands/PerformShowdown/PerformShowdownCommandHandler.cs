@@ -38,6 +38,7 @@ public class PerformShowdownCommandHandler(
 			.Include(g => g.GamePlayers)
 			.ThenInclude(gp => gp.Player)
 			.Include(g => g.Pots)
+			.ThenInclude(p => p.Contributions)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -190,74 +191,79 @@ public class PerformShowdownCommandHandler(
 			playerHandEvaluations[gamePlayer.Player.Name] = (wildHand, cards, gamePlayer, wildIndexes);
 		}
 
-		// 8. Order evaluated players clockwise from the dealer for leftover chips
-		var orderedPlayers = OddChipOrder.OrderClockwiseFromDealer(
-			playerHandEvaluations.Values.Select(value => value.gamePlayer),
-			game.DealerPosition,
-			gamePlayer => gamePlayer.SeatPosition);
-		var orderedPlayerNames = orderedPlayers.Select(gamePlayer => gamePlayer.Player.Name).ToList();
-
-		// 9. Apply 7s half-pot + high hand half-pot logic
+		// 8. Award each current-hand pot to the players who matched it
+		var payouts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+		var sevensPayouts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+		var highHandPayouts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 		var sevensWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		var highHandWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		var sevensPoolRolledOver = false;
+		var potAwards = new Dictionary<Guid, List<PotAward>>();
 
-		// Determine sevens winners (natural pair of 7s)
-		foreach (var kvp in playerHandEvaluations)
-			if (kvp.Value.hand.HasNaturalPairOfSevens())
-				sevensWinners.Add(kvp.Key);
-
-		// Determine high hand winners
-		if (playerHandEvaluations.Count > 0)
+		foreach (var pot in currentHandPots.OrderBy(p => p.PotOrder))
 		{
-			var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-			foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
-				highHandWinners.Add(kvp.Key);
-		}
+			if (pot.Amount == 0)
+				continue;
 
-		// Calculate payouts using 7s split pot logic
-		var sevensPool = totalPot / 2;
-		var handPool = totalPot - sevensPool;
+			var eligible = EligibleForPot(pot, playerHandEvaluations);
+			if (eligible.Count == 0)
+				return new PerformShowdownError
+				{
+					Message = $"Pot {pot.PotOrder} of {pot.Amount} has no eligible winner.",
+					Code = PerformShowdownErrorCode.InvalidGameState
+				};
 
-		// If no sevens winners, roll sevens pool into hand pool
-		if (sevensWinners.Count == 0)
-		{
-			handPool += sevensPool;
-			sevensPool = 0;
-			sevensPoolRolledOver = true;
-		}
+			var sevensHere = eligible
+				.Where(entry => entry.Value.hand.HasNaturalPairOfSevens())
+				.Select(entry => entry.Value.gamePlayer)
+				.ToList();
+			var maxStrength = eligible.Max(entry => entry.Value.hand.Strength);
+			var highHere = eligible
+				.Where(entry => entry.Value.hand.Strength == maxStrength)
+				.Select(entry => entry.Value.gamePlayer)
+				.ToList();
 
-		var payouts = new Dictionary<string, int>();
-		var sevensPayouts = new Dictionary<string, int>();
-		var highHandPayouts = new Dictionary<string, int>();
-
-		// Award sevens pool
-		if (sevensPool > 0 && sevensWinners.Count > 0)
-		{
-			var sevensWinnersList = orderedPlayerNames.Where(name => sevensWinners.Contains(name)).ToList();
-			var sevensShares = OddChipOrder.Distribute(sevensPool, sevensWinnersList);
-			for (var index = 0; index < sevensWinnersList.Count; index++)
+			var sevensHalf = pot.Amount / 2;
+			var highHalf = pot.Amount - sevensHalf;
+			if (sevensHere.Count == 0)
 			{
-				var winner = sevensWinnersList[index];
-				var payout = sevensShares[index];
-				sevensPayouts[winner] = payout;
-				payouts[winner] = payouts.GetValueOrDefault(winner, 0) + payout;
+				highHalf += sevensHalf;
+				sevensHalf = 0;
+				sevensPoolRolledOver = true;
 			}
+
+			var awards = new List<PotAward>();
+			if (sevensHalf > 0)
+				awards.AddRange(AwardHalf(sevensHere, sevensHalf, game.DealerPosition, isSevens: true));
+			if (highHalf > 0)
+				awards.AddRange(AwardHalf(highHere, highHalf, game.DealerPosition, isSevens: false));
+
+			awards = awards.Where(award => award.Amount > 0).ToList();
+
+			foreach (var award in awards)
+			{
+				Add(payouts, award.PlayerName, award.Amount);
+				if (award.IsSevens)
+				{
+					Add(sevensPayouts, award.PlayerName, award.Amount);
+					sevensWinners.Add(award.PlayerName);
+				}
+				else
+				{
+					Add(highHandPayouts, award.PlayerName, award.Amount);
+					highHandWinners.Add(award.PlayerName);
+				}
+			}
+
+			potAwards[pot.Id] = awards;
 		}
 
-		// Award high hand pool
-		if (handPool > 0 && highHandWinners.Count > 0)
-		{
-			var highHandWinnersList = orderedPlayerNames.Where(name => highHandWinners.Contains(name)).ToList();
-			var highHandShares = OddChipOrder.Distribute(handPool, highHandWinnersList);
-			for (var index = 0; index < highHandWinnersList.Count; index++)
+		if (payouts.Values.Sum() != currentHandPots.Sum(p => p.Amount))
+			return new PerformShowdownError
 			{
-				var winner = highHandWinnersList[index];
-				var payout = highHandShares[index];
-				highHandPayouts[winner] = payout;
-				payouts[winner] = payouts.GetValueOrDefault(winner, 0) + payout;
-			}
-		}
+				Message = "Awarded chips do not equal the current hand's pots.",
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
 
 		// 10. Update player chip stacks
 		if (!isAlreadyAwarded)
@@ -268,35 +274,35 @@ public class PerformShowdownCommandHandler(
 				gamePlayer.ChipStack += payout.Value;
 			}
 
-			// 11. Mark pots as awarded
-			var winnerList = payouts.Keys.ToList();
-			var winReason = winnerList.Count > 1
-				? $"Split pot - {playerHandEvaluations[winnerList[0]].hand.Type}"
-				: playerHandEvaluations[winnerList[0]].hand.Type.ToString();
-
-			if (sevensWinners.Count > 0)
-				winReason = $"7s: {string.Join(", ", sevensWinners)}; High: {string.Join(", ", highHandWinners)}";
-
-			var winnerPayoutsList = payouts.Select(p =>
-			{
-				var gp = playerHandEvaluations[p.Key].gamePlayer;
-				return new
-				{
-					playerId = gp.PlayerId.ToString(),
-					playerName = p.Key,
-					amount = p.Value,
-					sevensAmount = sevensPayouts.GetValueOrDefault(p.Key, 0),
-					highHandAmount = highHandPayouts.GetValueOrDefault(p.Key, 0)
-				};
-			}).ToList();
-			var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
-
+			// 11. Mark pots as awarded with that pot's winners only
 			foreach (var pot in currentHandPots)
 			{
+				potAwards.TryGetValue(pot.Id, out var awards);
+				awards ??= [];
+
+				var winnerPayoutsList = awards
+					.GroupBy(award => award.PlayerName, StringComparer.OrdinalIgnoreCase)
+					.Select(group =>
+					{
+						var name = group.Key;
+						var sevensForThisPot = group.Where(award => award.IsSevens).Sum(award => award.Amount);
+						var highForThisPot = group.Where(award => !award.IsSevens).Sum(award => award.Amount);
+						var gamePlayer = playerHandEvaluations[name].gamePlayer;
+						return new
+						{
+							playerId = gamePlayer.PlayerId.ToString(),
+							playerName = name,
+							amount = sevensForThisPot + highForThisPot,
+							sevensAmount = sevensForThisPot,
+							highHandAmount = highForThisPot
+						};
+					})
+					.ToList();
+
 				pot.IsAwarded = true;
 				pot.AwardedAt = now;
-				pot.WinReason = winReason;
-				pot.WinnerPayouts = winnerPayoutsJson;
+				pot.WinReason = WinReasonForPot(awards, playerHandEvaluations);
+				pot.WinnerPayouts = JsonSerializer.Serialize(winnerPayoutsList);
 			}
 
 			// 12. Update game state
@@ -310,11 +316,15 @@ public class PerformShowdownCommandHandler(
 			await context.SaveChangesAsync(cancellationToken);
 
 			// Record hand history for showdown
-			var winnerInfos = payouts.Select(kvp =>
-			{
-				var gp = playerHandEvaluations[kvp.Key].gamePlayer;
-				return (gp.PlayerId, kvp.Key, kvp.Value);
-			}).ToList();
+			var winnerInfos = payouts
+				.Where(kvp => kvp.Value > 0)
+				.Select(kvp =>
+				{
+					var gp = playerHandEvaluations[kvp.Key].gamePlayer;
+					return (gp.PlayerId, PlayerName: kvp.Key, kvp.Value);
+				})
+				.ToList();
+			var winnerList = winnerInfos.Select(winner => winner.PlayerName).ToList();
 
 			await RecordHandHistoryAsync(
 				game,
@@ -324,7 +334,7 @@ public class PerformShowdownCommandHandler(
 				false,
 				winnerInfos,
 				winnerList,
-				winReason,
+				HandWinReason(sevensWinners, highHandWinners, playerHandEvaluations),
 				cancellationToken);
 		}
 
@@ -371,6 +381,95 @@ public class PerformShowdownCommandHandler(
 			SevensPayouts = sevensPayouts,
 			HighHandPayouts = highHandPayouts
 		};
+	}
+
+	private sealed record PotAward(string PlayerName, int Amount, bool IsSevens);
+
+	private static Dictionary<string, (TwosJacksManWithTheAxeDrawHand hand, List<GameCard> cards, GamePlayer gamePlayer,
+		List<int> wildIndexes)> EligibleForPot(
+		CardGames.Poker.Api.Data.Entities.Pot pot,
+		Dictionary<string, (TwosJacksManWithTheAxeDrawHand hand, List<GameCard> cards, GamePlayer gamePlayer, List<int>
+			wildIndexes)> playerHandEvaluations)
+	{
+		if (pot.Contributions.Count == 0)
+			return playerHandEvaluations;
+
+		var eligibleIds = pot.Contributions
+			.Where(contribution => contribution.IsEligibleToWin)
+			.Select(contribution => contribution.GamePlayerId)
+			.ToHashSet();
+
+		return playerHandEvaluations
+			.Where(entry => eligibleIds.Contains(entry.Value.gamePlayer.Id))
+			.ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.OrdinalIgnoreCase);
+	}
+
+	private static List<PotAward> AwardHalf(
+		List<GamePlayer> winners,
+		int amount,
+		int dealerSeat,
+		bool isSevens)
+	{
+		var ordered = OddChipOrder.OrderClockwiseFromDealer(
+			winners,
+			dealerSeat,
+			gamePlayer => gamePlayer.SeatPosition);
+		var shares = OddChipOrder.Distribute(amount, ordered);
+		var awards = new List<PotAward>(ordered.Count);
+		for (var index = 0; index < ordered.Count; index++)
+			awards.Add(new PotAward(ordered[index].Player.Name, shares[index], isSevens));
+		return awards;
+	}
+
+	private static void Add(Dictionary<string, int> target, string name, int amount)
+	{
+		target[name] = target.GetValueOrDefault(name, 0) + amount;
+	}
+
+	private static string? WinReasonForPot(
+		List<PotAward> awards,
+		Dictionary<string, (TwosJacksManWithTheAxeDrawHand hand, List<GameCard> cards, GamePlayer gamePlayer, List<int>
+			wildIndexes)> playerHandEvaluations)
+	{
+		var sevensNames = awards
+			.Where(award => award.IsSevens)
+			.Select(award => award.PlayerName)
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToList();
+		var highNames = awards
+			.Where(award => !award.IsSevens)
+			.Select(award => award.PlayerName)
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToList();
+
+		if (sevensNames.Count > 0)
+			return $"7s: {string.Join(", ", sevensNames)}; High: {string.Join(", ", highNames)}";
+
+		if (highNames.Count == 1)
+			return playerHandEvaluations[highNames[0]].hand.Type.ToString();
+
+		if (highNames.Count > 1)
+			return $"Split pot - {playerHandEvaluations[highNames[0]].hand.Type}";
+
+		return null;
+	}
+
+	private static string? HandWinReason(
+		HashSet<string> sevensWinners,
+		HashSet<string> highHandWinners,
+		Dictionary<string, (TwosJacksManWithTheAxeDrawHand hand, List<GameCard> cards, GamePlayer gamePlayer, List<int>
+			wildIndexes)> playerHandEvaluations)
+	{
+		if (sevensWinners.Count > 0)
+			return $"7s: {string.Join(", ", sevensWinners)}; High: {string.Join(", ", highHandWinners)}";
+
+		if (highHandWinners.Count > 1)
+			return $"Split pot - {playerHandEvaluations[highHandWinners.First()].hand.Type}";
+
+		if (highHandWinners.Count == 1)
+			return playerHandEvaluations[highHandWinners.First()].hand.Type.ToString();
+
+		return null;
 	}
 
 	/// <summary>
