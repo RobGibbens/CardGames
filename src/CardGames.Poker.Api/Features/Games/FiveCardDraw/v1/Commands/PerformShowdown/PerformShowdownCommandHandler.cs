@@ -280,26 +280,20 @@ public class PerformShowdownCommandHandler(
 
 				if (eligibleHands.Count == 0) continue; // No eligible players for this pot (shouldn't happen)
 
-				// Determine winner(s) for this pot
+				// Determine winner(s) for this pot and pay leftover chips clockwise from the dealer
 				var maxStrength = eligibleHands.Values.Max(h => h.hand.Strength);
-				var potWinners = eligibleHands
-					.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-					.Select(kvp => kvp.Key)
-					.ToList();
-
-				// Calculate payouts for this pot
-				var potPayoutPerWinner = pot.Amount / potWinners.Count;
-				var potRemainder = pot.Amount % potWinners.Count;
+				var orderedWinners = OddChipOrder.OrderClockwiseFromDealer(
+					eligibleHands.Where(kvp => kvp.Value.hand.Strength == maxStrength),
+					game.DealerPosition,
+					kvp => kvp.Value.gamePlayer.SeatPosition);
+				var shares = OddChipOrder.Distribute(pot.Amount, orderedWinners);
+				var potWinners = orderedWinners.Select(kvp => kvp.Key).ToList();
 
 				var potPayoutsList = new List<object>();
-				foreach (var winner in potWinners)
+				for (var index = 0; index < potWinners.Count; index++)
 				{
-					var payout = potPayoutPerWinner;
-					if (potRemainder > 0)
-					{
-						payout++;
-						potRemainder--;
-					}
+					var winner = potWinners[index];
+					var payout = shares[index];
 
 					// Add to total payouts
 					if (payouts.TryGetValue(winner, out var existingPayout))

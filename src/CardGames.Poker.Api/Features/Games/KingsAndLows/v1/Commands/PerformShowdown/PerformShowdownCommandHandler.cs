@@ -472,25 +472,20 @@ public class PerformShowdownCommandHandler(
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 
-		// 8. Determine winners (highest strength)
+		// 8. Determine winners (highest strength) and pay leftover chips clockwise from the dealer
 		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-		var winners = playerHandEvaluations
-			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-			.Select(kvp => kvp.Key)
-			.ToList();
+		var orderedWinners = OddChipOrder.OrderClockwiseFromDealer(
+			playerHandEvaluations.Where(kvp => kvp.Value.hand.Strength == maxStrength),
+			game.DealerPosition,
+			kvp => kvp.Value.gamePlayer.SeatPosition);
+		var shares = OddChipOrder.Distribute(totalPot, orderedWinners);
+		var winners = orderedWinners.Select(kvp => kvp.Key).ToList();
+		var payouts = new Dictionary<string, int>();
+		for (var index = 0; index < winners.Count; index++)
+			payouts[winners[index]] = shares[index];
 
 		// Determine losers (players who didn't win)
 		var losers = playerHandEvaluations.Keys.Except(winners).ToList();
-
-		// 9. Calculate payouts (split pot if multiple winners)
-		var payoutPerWinner = totalPot / winners.Count;
-		var remainder = totalPot % winners.Count;
-		var payouts = new Dictionary<string, int>();
-
-		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
-
-		// Add remainder to first winner (closest to dealer's left)
-		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
 
 		// 10. Update player chip stacks
 		if (!isAlreadyAwarded)

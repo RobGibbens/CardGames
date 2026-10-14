@@ -190,16 +190,12 @@ public class PerformShowdownCommandHandler(
 			playerHandEvaluations[gamePlayer.Player.Name] = (wildHand, cards, gamePlayer, wildIndexes);
 		}
 
-		// 8. Build ordered player list for deterministic remainder distribution (dealer-left first)
-		var orderedPlayerNames = new List<string>();
-		for (var i = 1; i <= game.GamePlayers.Count; i++)
-		{
-			var idx = (game.DealerPosition + i) % game.GamePlayers.Count;
-			var player = game.GamePlayers.OrderBy(gp => gp.SeatPosition).Skip(idx).FirstOrDefault()
-			             ?? game.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
-			if (!player.HasFolded && playerHandEvaluations.ContainsKey(player.Player.Name))
-				orderedPlayerNames.Add(player.Player.Name);
-		}
+		// 8. Order evaluated players clockwise from the dealer for leftover chips
+		var orderedPlayers = OddChipOrder.OrderClockwiseFromDealer(
+			playerHandEvaluations.Values.Select(value => value.gamePlayer),
+			game.DealerPosition,
+			gamePlayer => gamePlayer.SeatPosition);
+		var orderedPlayerNames = orderedPlayers.Select(gamePlayer => gamePlayer.Player.Name).ToList();
 
 		// 9. Apply 7s half-pot + high hand half-pot logic
 		var sevensWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -238,19 +234,12 @@ public class PerformShowdownCommandHandler(
 		// Award sevens pool
 		if (sevensPool > 0 && sevensWinners.Count > 0)
 		{
-			var sevensWinnersList = orderedPlayerNames.Where(n => sevensWinners.Contains(n)).ToList();
-			var share = sevensPool / sevensWinnersList.Count;
-			var remainder = sevensPool % sevensWinnersList.Count;
-
-			foreach (var winner in sevensWinnersList)
+			var sevensWinnersList = orderedPlayerNames.Where(name => sevensWinners.Contains(name)).ToList();
+			var sevensShares = OddChipOrder.Distribute(sevensPool, sevensWinnersList);
+			for (var index = 0; index < sevensWinnersList.Count; index++)
 			{
-				var payout = share;
-				if (remainder > 0)
-				{
-					payout++;
-					remainder--;
-				}
-
+				var winner = sevensWinnersList[index];
+				var payout = sevensShares[index];
 				sevensPayouts[winner] = payout;
 				payouts[winner] = payouts.GetValueOrDefault(winner, 0) + payout;
 			}
@@ -259,19 +248,12 @@ public class PerformShowdownCommandHandler(
 		// Award high hand pool
 		if (handPool > 0 && highHandWinners.Count > 0)
 		{
-			var highHandWinnersList = orderedPlayerNames.Where(n => highHandWinners.Contains(n)).ToList();
-			var share = handPool / highHandWinnersList.Count;
-			var remainder = handPool % highHandWinnersList.Count;
-
-			foreach (var winner in highHandWinnersList)
+			var highHandWinnersList = orderedPlayerNames.Where(name => highHandWinners.Contains(name)).ToList();
+			var highHandShares = OddChipOrder.Distribute(handPool, highHandWinnersList);
+			for (var index = 0; index < highHandWinnersList.Count; index++)
 			{
-				var payout = share;
-				if (remainder > 0)
-				{
-					payout++;
-					remainder--;
-				}
-
+				var winner = highHandWinnersList[index];
+				var payout = highHandShares[index];
 				highHandPayouts[winner] = payout;
 				payouts[winner] = payouts.GetValueOrDefault(winner, 0) + payout;
 			}

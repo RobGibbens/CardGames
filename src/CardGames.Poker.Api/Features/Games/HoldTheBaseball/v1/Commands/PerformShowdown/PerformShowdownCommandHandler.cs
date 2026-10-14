@@ -205,18 +205,15 @@ public class PerformShowdownCommandHandler(
 			};
 
 		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-		var winners = playerHandEvaluations
-			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-			.Select(kvp => kvp.Key)
-			.ToList();
-
-		var payoutPerWinner = totalPot / winners.Count;
-		var remainder = totalPot % winners.Count;
+		var orderedWinners = OddChipOrder.OrderClockwiseFromDealer(
+			playerHandEvaluations.Where(kvp => kvp.Value.hand.Strength == maxStrength),
+			game.DealerPosition,
+			kvp => kvp.Value.gamePlayer.SeatPosition);
+		var shares = OddChipOrder.Distribute(totalPot, orderedWinners);
+		var winners = orderedWinners.Select(kvp => kvp.Key).ToList();
 		var payouts = new Dictionary<string, int>();
-
-		foreach (var winner in winners) payouts[winner] = payoutPerWinner;
-
-		if (remainder > 0 && winners.Count > 0) payouts[winners[0]] += remainder;
+		for (var index = 0; index < winners.Count; index++)
+			payouts[winners[index]] = shares[index];
 
 		if (!isAlreadyAwarded)
 		{

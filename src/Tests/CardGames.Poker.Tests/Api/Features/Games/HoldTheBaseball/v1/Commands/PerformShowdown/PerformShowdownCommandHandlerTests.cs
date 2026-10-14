@@ -1,8 +1,10 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 using CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
@@ -11,50 +13,27 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using NSubstitute;
 using Xunit;
-using PotEntity = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Tests.Api.Features.Games.HoldTheBaseball.v1.Commands.PerformShowdown;
 
 public class PerformShowdownCommandHandlerTests
 {
 	[Fact]
-	public async Task Handle_WhenGameIsMissing_ReturnsGameNotFound()
+	public async Task Handle_WhenThreePlayersTie_PaysOddChipsClockwiseFromTheDealer()
 	{
 		await using var context = CreateContext();
-		var sut = CreateSut(context);
-
-		var result = await sut.Handle(new PerformShowdownCommand(Guid.NewGuid()), CancellationToken.None);
-
-		result.IsT1.Should().BeTrue();
-		result.AsT1.Code.Should().Be(PerformShowdownErrorCode.GameNotFound);
-	}
-
-	[Fact]
-	public async Task Handle_WhenGameIsNotInShowdown_ReturnsInvalidGameState()
-	{
-		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, nameof(Phases.River));
+		var game = await SeedShowdownAsync(context, 5);
 		var sut = CreateSut(context);
 
 		var result = await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
 
-		result.IsT1.Should().BeTrue();
-		result.AsT1.Code.Should().Be(PerformShowdownErrorCode.InvalidGameState);
-		result.AsT1.Message.Should().Contain(nameof(Phases.River));
-	}
-
-	[Fact]
-	public async Task Handle_WhenPlayersDoNotHaveEnoughHoleCards_ReturnsInvalidGameState()
-	{
-		await using var context = CreateContext();
-		var game = await SeedGameAsync(context, nameof(Phases.Showdown), 1);
-		var sut = CreateSut(context);
-
-		var result = await sut.Handle(new PerformShowdownCommand(game.Id), CancellationToken.None);
-
-		result.IsT1.Should().BeTrue();
-		result.AsT1.Code.Should().Be(PerformShowdownErrorCode.InvalidGameState);
-		result.AsT1.Message.Should().Contain("No eligible hands could be evaluated");
+		result.IsT0.Should().BeTrue();
+		var payouts = result.AsT0.Payouts;
+		payouts["Carol"].Should().Be(2);
+		payouts["Alice"].Should().Be(2);
+		payouts["Bob"].Should().Be(1);
+		payouts.Values.Sum().Should().Be(5);
+		await AssertStacksAsync(context, ("Carol", 102), ("Alice", 102), ("Bob", 101));
 	}
 
 	private static PerformShowdownCommandHandler CreateSut(CardsDbContext context)
@@ -67,20 +46,14 @@ public class PerformShowdownCommandHandlerTests
 
 	private static CardsDbContext CreateContext()
 	{
-		return CreateContext(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot());
-	}
-
-	private static CardsDbContext CreateContext(string databaseName, InMemoryDatabaseRoot databaseRoot)
-	{
 		var options = new DbContextOptionsBuilder<CardsDbContext>()
-			.UseInMemoryDatabase(databaseName, databaseRoot)
+			.UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot())
 			.Options;
 
 		return new CardsDbContext(options);
 	}
 
-	private static async Task<Game> SeedGameAsync(CardsDbContext context, string currentPhase,
-		int holeCardsPerPlayer = 0)
+	private static async Task<Game> SeedShowdownAsync(CardsDbContext context, int potAmount)
 	{
 		var now = DateTimeOffset.UtcNow;
 		var gameType = new GameType
@@ -100,47 +73,60 @@ public class PerformShowdownCommandHandlerTests
 			CreatedAt = now,
 			UpdatedAt = now
 		};
-
 		var game = new Game
 		{
 			Id = Guid.NewGuid(),
 			GameTypeId = gameType.Id,
 			GameType = gameType,
-			CurrentPhase = currentPhase,
+			CurrentPhase = nameof(Phases.Showdown),
 			CurrentHandNumber = 1,
-			DealerPosition = 0,
+			DealerPosition = 3,
 			Status = GameStatus.InProgress,
 			CreatedAt = now,
 			UpdatedAt = now
 		};
-
-		var alice = CreatePlayer("Alice", now);
-		var bob = CreatePlayer("Bob", now);
-		var aliceGamePlayer = CreateGamePlayer(game, alice, 0, now);
-		var bobGamePlayer = CreateGamePlayer(game, bob, 1, now);
-
 		context.GameTypes.Add(gameType);
 		context.Games.Add(game);
-		context.Players.AddRange(alice, bob);
-		context.GamePlayers.AddRange(aliceGamePlayer, bobGamePlayer);
-		context.Pots.Add(new PotEntity
+
+		foreach (var (name, seat) in Seats)
+		{
+			var player = CreatePlayer(name, now);
+			var gamePlayer = CreateGamePlayer(game, player, seat, now);
+			context.Players.Add(player);
+			context.GamePlayers.Add(gamePlayer);
+			context.GameCards.Add(CreateHoleCard(game, gamePlayer, 1, CardSuit.Hearts, CardSymbol.Ace, now));
+			context.GameCards.Add(CreateHoleCard(game, gamePlayer, 2, CardSuit.Diamonds, CardSymbol.Ace, now));
+		}
+
+		for (var cardIndex = 0; cardIndex < Community.Length; cardIndex++)
+		{
+			context.GameCards.Add(new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				Game = game,
+				HandNumber = game.CurrentHandNumber,
+				DealOrder = cardIndex + 1,
+				Location = CardLocation.Community,
+				IsVisible = true,
+				Suit = Community[cardIndex].Suit,
+				Symbol = Community[cardIndex].Symbol,
+				DealtAt = now,
+				DealtAtPhase = nameof(Phases.Dealing)
+			});
+		}
+
+		context.Pots.Add(new Pot
 		{
 			GameId = game.Id,
 			Game = game,
 			HandNumber = game.CurrentHandNumber,
 			PotType = PotType.Main,
 			PotOrder = 0,
-			Amount = 120,
+			Amount = potAmount,
+			IsAwarded = false,
 			CreatedAt = now
 		});
-
-		for (var cardIndex = 0; cardIndex < holeCardsPerPlayer; cardIndex++)
-		{
-			context.GameCards.Add(CreateHoleCard(game, aliceGamePlayer, cardIndex + 1, CardSuit.Hearts,
-				(CardSymbol)(cardIndex + 13), now));
-			context.GameCards.Add(CreateHoleCard(game, bobGamePlayer, cardIndex + 1, CardSuit.Spades,
-				(CardSymbol)(cardIndex + 11), now));
-		}
 
 		await context.SaveChangesAsync();
 		return game;
@@ -167,9 +153,10 @@ public class PerformShowdownCommandHandlerTests
 			PlayerId = player.Id,
 			Player = player,
 			SeatPosition = seatPosition,
-			ChipStack = 200,
-			StartingChips = 200,
+			ChipStack = 100,
+			StartingChips = 100,
 			Status = GamePlayerStatus.Active,
+			HasFolded = false,
 			JoinedAt = now,
 			RowVersion = [1, 2, 3]
 		};
@@ -200,4 +187,25 @@ public class PerformShowdownCommandHandlerTests
 			DealtAtPhase = nameof(Phases.Dealing)
 		};
 	}
+
+	private static async Task AssertStacksAsync(CardsDbContext context, params (string Name, int Stack)[] expected)
+	{
+		var stacks = await context.GamePlayers
+			.Include(gamePlayer => gamePlayer.Player)
+			.ToDictionaryAsync(gamePlayer => gamePlayer.Player.Name, gamePlayer => gamePlayer.ChipStack);
+
+		foreach (var (name, stack) in expected)
+			stacks[name].Should().Be(stack);
+	}
+
+	private static readonly (string Name, int Seat)[] Seats = [("Alice", 0), ("Bob", 3), ("Carol", 5)];
+
+	private static readonly (CardSuit Suit, CardSymbol Symbol)[] Community =
+	[
+		(CardSuit.Clubs, CardSymbol.King),
+		(CardSuit.Clubs, CardSymbol.Queen),
+		(CardSuit.Clubs, CardSymbol.Jack),
+		(CardSuit.Clubs, CardSymbol.Ten),
+		(CardSuit.Clubs, CardSymbol.Deuce)
+	];
 }
