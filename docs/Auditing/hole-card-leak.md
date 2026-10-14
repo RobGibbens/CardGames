@@ -11,7 +11,9 @@ While a hand is in `Showdown`, `GameSettings` says this hand is an all-in runout
 
 After any pot for the current hand is awarded, or the phase is `Complete`, a contested showdown still reveals every non-folded player's cards, including hole cards whose `IsVisible` is still false. That final reveal is the existing rule. This plan does not remove it.
 
-The viewer's private state still contains that viewer's own hidden cards.
+During the unawarded window, `Showdown.PlayerResults` also omits `HandRanking`, `HandDescription`, `BestCardIndexes`, and `WildCardIndexes`. Those strings and indexes are computed from the hidden cards. A description such as "three of a kind, threes" publishes the seventh-street rank even when `Rank` is null.
+
+The viewer's private state still contains that viewer's own hidden cards, including seventh street.
 
 ## Why both sites leak
 
@@ -21,7 +23,7 @@ The viewer's private state still contains that viewer's own hidden cards.
 - `src/CardGames.Poker.Api/Features/Games/Baseball/v1/Commands/ProcessBettingAction/ProcessBettingActionCommandHandler.cs`
 - `src/CardGames.Poker.Api/Features/Games/FollowTheQueen/v1/Commands/ProcessBettingAction/ProcessBettingActionCommandHandler.cs`
 - `src/CardGames.Poker.Api/Features/Games/GoodBadUgly/v1/Commands/ProcessBettingAction/ProcessBettingActionCommandHandler.cs`
-- `src/CardGames.Poker.Api/Features/Games/Tollbooth/TollboothRunout.cs` (`IsVisible = !isSeventhStreet`), reached from the Seven Card Stud betting handler
+- `src/CardGames.Poker.Api/Features/Games/Tollbooth/TollboothRunout.cs` (`IsVisible = !isSeventhStreet`). `SevenCardStud` `ProcessBettingActionCommandHandler.DealRemainingStreetsAsync` calls it when the hand type is Tollbooth. `Tollbooth` `ChooseCardCommandHandler` also calls it and then sets `allInRunout` and `CurrentPhase = Showdown`.
 
 Hold'em-style runouts use the same `allInRunout` flag and deal community cards with `IsVisible = true`. Their hole cards stay `IsVisible = false`.
 
@@ -110,19 +112,23 @@ var showCard = c.IsVisible || (!isWinByFoldHand && !isUnawardedAllInRunout);
 
 Set `IsFaceUp = showCard`. Set `Rank` and `Suit` only when `showCard` is true. Use `MapSymbolToRank` and `GetCardSuitString`, which this projection already uses.
 
-Apply the same `showCard` rule to the Bob Barker showcase card and the Bob Barker dealer card in that method. A hidden showcase or dealer card stays `IsFaceUp` false with null rank and suit while `isUnawardedAllInRunout` is true. When the flag is false, those two objects stay face up with rank and suit, which is what `BuildPublicStateAsync_BobBarker_ContestedShowdown_PublishesShowcaseCards` requires.
+In that same player-result projection, when `isUnawardedAllInRunout` is true, set `HandRanking`, `HandDescription`, `BestCardIndexes`, and `WildCardIndexes` to null. Leave the evaluation that decides the pot alone. This only stops the public DTO from carrying it before the pot is awarded. When the flag is false, those four fields stay exactly as they are now.
+
+Apply the same `showCard` rule to the Bob Barker showcase card and the Bob Barker dealer card in that method. A hidden showcase or dealer card stays `IsFaceUp` false with null rank and suit while `isUnawardedAllInRunout` is true. When the card is hidden, `ShowcaseCardValue` and `BobBarker.DealerCardValue` are null too. When the flag is false, those objects stay face up with rank, suit, and value, which is what `BuildPublicStateAsync_BobBarker_ContestedShowdown_PublishesShowcaseCards` requires.
 
 Do not change `BuildPrivateHand`, `BuildPrivateStateFromSeatAsync`, or any `*PrivateDto`.
 
 Do not set `IsVisible = true` on seventh street when the phase becomes `Showdown`. The stored flag stays false. The `Complete` reveal works because `shouldShowCardsForContestedShowdown` becomes true again once the runout is no longer unawarded.
 
-Completion: during the window, `Seats[].Cards`, `Showdown.PlayerResults[].Cards`, showcase, and the Bob Barker dealer card omit rank and suit for every `IsVisible == false` card. Face-up upcards and face-up community cards still publish rank and suit.
+Completion: during the window, `Seats[].Cards`, `AllInRunout.RunoutCardsBySeat`, `Showdown.PlayerResults[].Cards`, showcase, and the Bob Barker dealer card omit rank and suit for every `IsVisible == false` card. `HandRanking`, `HandDescription`, `BestCardIndexes`, and `WildCardIndexes` are null. Face-up upcards and face-up community cards still publish rank and suit.
 
 ## Step 4. Tests
 
 ### Unit tests
 
 Extend `src/Tests/CardGames.Poker.Tests/Api/Services/HandVisibilityHelperTests.cs`.
+
+`HandVisibilityHelper` is `internal`. `CardGames.Poker.Api.csproj` already has `InternalsVisibleTo` for `CardGames.Poker.Tests`. Call the method directly. Do not make it public.
 
 `IsUnawardedAllInRunout` returns true for phase `Showdown`, settings `{"allInRunout":true,"runoutStreets":["SeventhStreet"],"runoutHandNumber":1}`, `CurrentHandNumber` 1, and a pot with `IsAwarded` false.
 
@@ -131,11 +137,16 @@ It returns false for each of these, one case at a time:
 - phase `Complete`
 - phase `FourthStreet`
 - `allInRunout` false
+- `allInRunout` stored as the string `"true"` rather than a JSON boolean
 - `runoutHandNumber` 2 while `CurrentHandNumber` is 1
 - missing `GameSettings`
+- empty `GameSettings`
 - invalid JSON
-- a current-hand pot with `IsAwarded` true
-- missing `runoutHandNumber` still returns true when the other true conditions hold
+- a pot in the passed list with `IsAwarded` true, even while phase is still `Showdown`
+
+The helper does not filter by hand number. `BuildPublicStateAsync` passes only the current hand's pots. A unit test that wants "an old awarded pot does not end the window" passes a list that contains only the current hand's unawarded pot.
+
+Missing `runoutHandNumber` still returns true when the other true conditions hold. That matches `BuildAllInRunoutStateAsync`, which treats a missing `runoutHandNumber` as the current hand.
 
 ### Integration tests
 
@@ -149,14 +160,26 @@ Unawarded runout at `Showdown`:
 - One unawarded current-hand pot.
 - Phase `Showdown`.
 
+Give both players `ChipStack` 100 so a chip count cannot be mistaken for a rank. `DealOrder` may be 1 through 4.
+
 Assert all of the following on `BuildPublicStateAsync`:
 
-- Alice's runout entry for the `7c` is face up with rank `7` and suit `Clubs`.
-- Alice's runout entry for the `3h` is face down with null rank and null suit. Bob's `9c` entry is the same.
-- Alice's seat contains a face-up `7` and also contains face-down cards with null rank and suit for the aces and the `3h`.
-- Bob's seat does not contain rank `A`, `3`, `K`, or `9`.
-- `Showdown.PlayerResults` for both players follows the same face-up and face-down split.
-- `Showdown.WonByFold` is false.
+- `AllInRunout` is not null. Alice's runout entry whose `DealOrder` is the `7c` is face up with rank `7` and suit `Clubs`. Alice's runout entry for the `3h` is face down with null rank and null suit. Bob's `2s` runout entry is face up with rank `2` and suit `Spades`. Bob's `9c` entry is face down with null rank and null suit.
+- Alice's seat contains a face-up `7` of clubs. The seat also contains face-down cards with null rank and null suit for `Ah`, `Ad`, and `3h`. Bob's seat contains a face-up `2` of spades and face-down cards for `Kh`, `Kd`, and `9c`.
+- Neither seat's `Cards` collection contains rank `A`, `3`, `K`, or `9`.
+- `Showdown` is not null, `Showdown.WonByFold` is false, and `Showdown.IsComplete` is false.
+- `Showdown.PlayerResults` for both players uses the same face-up and face-down split as the seats. `HandRanking`, `HandDescription`, `BestCardIndexes`, and `WildCardIndexes` are null on both results.
+- Serialize `result` with `JsonSerializer` and `PropertyNamingPolicy = JsonNamingPolicy.CamelCase`. The JSON does not contain `"rank":"A"`, `"rank":"3"`, `"rank":"K"`, or `"rank":"9"`. It does contain `"rank":"7"` and `"rank":"2"`.
+
+Then call `BuildPrivateStateForPlayerAsync` for Alice's `PlayerId`. Her private hand contains `Ah`, `Ad`, `7c`, and `3h`, with `3h` `IsPubliclyVisible` false. It does not contain `Kh`, `Kd`, `2s`, or `9c`. Bob's private hand contains his four cards and does not contain Alice's aces or `3h`. `BuildPrivateHand` already returns every owned card; this assertion is the guard that the public fix did not strip the owner's seventh street.
+
+Awarded pot while the phase is still `Showdown`:
+
+- Same cards and the same `GameSettings`.
+- Phase remains `Showdown`.
+- The current-hand pot has `IsAwarded` true.
+- `IsUnawardedAllInRunout` is therefore false. Both seats and `Showdown.PlayerResults` publish `Ah`, `3h`, `Kh`, and `9c` face up with rank and suit. `HandRanking` may be non-null. This is the reveal that must survive if showdown persists the award before the phase leaves `Showdown`.
+- `AllInRunout` may still be present because `BuildAllInRunoutStateAsync` keys off phase `Showdown`. Its `3h` and `9c` entries stay face down with null rank and suit, because `ToRunoutPublicCard` follows `IsVisible`. The seats are the reveal.
 
 Awarded hand at `Complete`:
 
@@ -194,7 +217,8 @@ Completion: those three filters pass. The new unawarded-runout test fails on the
 
 The work is done when:
 
-- An unawarded `Showdown` broadcast for an all-in runout contains no rank and no suit for any card with `IsVisible` false, in `AllInRunout`, `Seats`, and `Showdown`.
+- An unawarded `Showdown` broadcast for an all-in runout contains no rank and no suit for any card with `IsVisible` false, in `AllInRunout`, `Seats`, and `Showdown`, and the showdown results do not carry hand rank, hand description, or best-card indexes.
+- The camelCase JSON of that broadcast does not contain the hidden ranks.
 - The same cards are face up with rank and suit once the phase is `Complete` or a current-hand pot is awarded.
 - Face-up runout streets still publish rank and suit during the window.
 - The viewer's private hand still includes that viewer's hidden cards.
