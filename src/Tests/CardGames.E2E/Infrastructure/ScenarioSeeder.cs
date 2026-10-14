@@ -603,6 +603,28 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 	}
 
 	/// <summary>
+	///     Seats every player at an ante Twos, Jacks, Man with the Axe table.
+	///     Seat 0 is the host and the starting dealer.
+	/// </summary>
+	public async Task<Guid> CreateSeatedTwosJacksManWithTheAxeGameAsync(
+		string name,
+		IReadOnlyList<SeededPlayer> players,
+		int ante,
+		int minBet)
+	{
+		if (players.Count < 2)
+			throw new ArgumentException("Twos, Jacks, Man with the Axe needs at least two players.", nameof(players));
+
+		var game = await CreateTwosJacksManWithTheAxeGameAsync(name, ante, minBet, players[0]);
+		var now = DateTimeOffset.UtcNow;
+		for (var seat = 0; seat < players.Count; seat++)
+			_context.GamePlayers.Add(CreateSeat(game.Id, players[seat].PlayerId, seat, now));
+
+		await _context.SaveChangesAsync();
+		return game.Id;
+	}
+
+	/// <summary>
 	///     Seats every player at an ante Five Card Draw table. Seat 0 is the host and the starting dealer.
 	/// </summary>
 	public async Task<Guid> CreateSeatedFiveCardDrawGameAsync(
@@ -1343,6 +1365,39 @@ public sealed class ScenarioSeeder : IAsyncDisposable
 			DealerPosition = 0,
 			Ante = ante,
 			MinBet = ante,
+			CreatedById = host.UserId,
+			CreatedByName = host.Email,
+			Status = GameStatus.WaitingForPlayers,
+			RequiresJoinApproval = false,
+			CurrentPlayerIndex = -1,
+			CurrentDrawPlayerIndex = -1,
+			CreatedAt = now,
+			UpdatedAt = now
+		};
+		_context.Games.Add(game);
+		await _context.SaveChangesAsync();
+		return game;
+	}
+
+	private async Task<Game> CreateTwosJacksManWithTheAxeGameAsync(
+		string name,
+		int ante,
+		int minBet,
+		SeededPlayer host)
+	{
+		await EnsureGameTypesAsync();
+		var gameType = await _context.GameTypes.SingleAsync(type => type.Code == "TWOSJACKSMANWITHTHEAXE");
+		var now = DateTimeOffset.UtcNow;
+		var game = new Game
+		{
+			Id = Guid.CreateVersion7(),
+			GameTypeId = gameType.Id,
+			Name = name,
+			CurrentPhase = nameof(Phases.WaitingToStart),
+			CurrentHandNumber = 0,
+			DealerPosition = 0,
+			Ante = ante,
+			MinBet = minBet,
 			CreatedById = host.UserId,
 			CreatedByName = host.Email,
 			Status = GameStatus.WaitingForPlayers,
