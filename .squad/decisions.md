@@ -1,5 +1,27 @@
 # Decisions
 
+### 2026-10-15: .NET 11 SDK and framework packages upgraded to RC2
+
+**By:** Agent (DevOps assist)
+**Requested by:** Rob Gibbens
+
+**What:** Pinned the solution to .NET SDK `11.0.100-rc.2.26504.105` in `global.json` and aligned Microsoft.AspNetCore.* / Microsoft.EntityFrameworkCore.* / Microsoft.Extensions.* package references from `11.0.0-rc.1.26425.128` to `11.0.0-rc.2.26504.105` across API, Web, MigrationService, and test projects.
+
+**Why:** Move the repo to the RC2 SDK train so local builds, package versions, and shared framework bits stay in sync with the pinned SDK.
+
+**Applied in:**
+- `global.json`
+- `src/CardGames.Poker.Api/CardGames.Poker.Api.csproj`
+- `src/CardGames.Poker.Web/CardGames.Poker.Web.csproj`
+- `src/CardGames.MigrationService/CardGames.MigrationService.csproj`
+- `src/Tests/CardGames.Poker.Tests/CardGames.Poker.Tests.csproj`
+- `src/Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj`
+- `src/Tests/CardGames.E2E/CardGames.E2E.csproj`
+
+**Verification:**
+- `dotnet --version` reports `11.0.100-rc.2.26504.105`
+- `dotnet build src/CardGames.slnx` succeeded with 0 errors
+
 ### 2026-03-19: Lobby group headings use explicit top spacing between sections
 
 **By:** Arwen (Frontend Dev)
@@ -315,7 +337,7 @@
 **Requested by:** Rob Gibbens
 **What:** Verified that Aspire is already installed and operational in the CardGames project via NuGet SDK (v13.1.0). Current package set includes Aspire.AppHost.Sdk 13.1.0 alongside Azure SQL, Functions, Storage, DevTunnels, Redis, Service Bus, and StackExchange.Redis.DistributedCaching all at v13.1.1. Build and restore confirm all packages are accessible from nuget.org.
 **Why:** Aspire was already integrated during AppHost setup; no marketplace installation or workload installation required. Build pipeline confirms operational readiness.
-**Future notes:** Keep Aspire packages pinned to v13.1.1 for compatibility with CardGames.AppHost.Sdk/13.1.0. Aspire versioning should coordinate with .NET SDK updates (.NET 11.0.100-rc.1.26425.128 in use).
+**Future notes:** Keep Aspire packages pinned to v13.1.1 for compatibility with CardGames.AppHost.Sdk/13.1.0. Aspire versioning should coordinate with .NET SDK updates (.NET 11.0.100-rc.2.26504.105 in use).
 
 ### 2026-02-18: Web Design Reviewer skill installation & marketplace readiness
 **By:** Livingston (DevOps)
@@ -375,7 +397,7 @@ Current local variant will remain stable regardless of marketplace availability.
 **Why:** Completes team skill portfolio for NuGet/package-management operations across CardGames solution. Local variant provides immediate functionality while remaining future-ready for marketplace-based skill distribution if GitHub Copilot CLI marketplace supports skill plugins.
 **Scope & Integration:**
 - NuGet package add/update/remove guidance for CardGames.sln and multi-target projects
-- Dependency version alignment (Aspire v13.1.1 pinning, .NET 11.0.100-rc.1.26425.128 coordination)
+- Dependency version alignment (Aspire v13.1.1 pinning, .NET 11.0.100-rc.2.26504.105 coordination)
 - Directory.Packages.props centralized management and override resolution
 - Integration with Livingston (DevOps), Danny (backend), Linus (frontend), Basher (testing), Rusty (architecture)
 - Activation: Via `/skills` command or `@nuget-manager` mention

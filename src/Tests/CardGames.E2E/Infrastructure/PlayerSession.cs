@@ -592,9 +592,6 @@ public abstract class E2ETestBase : IAsyncLifetime
 
 	public async Task InitializeAsync()
 	{
-		if (!E2EFactAttribute.IsEnabled)
-			return;
-
 		await Fixture.EnsureStartedAsync();
 		await Fixture.ResetDatabaseAsync();
 		_seeder = new ScenarioSeeder(Fixture.ConnectionString);

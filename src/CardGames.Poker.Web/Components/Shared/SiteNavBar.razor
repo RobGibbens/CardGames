@@ -15,10 +15,20 @@
 			<span class="nav-logo-icon">
 				<i class="fa-thin fa-spade"></i>
 			</span>
-			<span>Dealer's Choice Poker</span>
+			<span class="nav-logo-text">
+				<span class="nav-logo-name">Dealer's Choice</span><span class="nav-logo-suffix"> Poker</span>
+			</span>
 		</a>
 
 		<ul class="nav-links @(isMobileMenuOpen ? "active" : "")" id="navLinks">
+			<AuthorizeView>
+				<NotAuthorized>
+					<li class="nav-mobile-auth">
+						<a href="/Account/Login" class="btn btn-secondary">Sign In</a>
+						<a href="/Account/Register" class="btn btn-primary">Get Started</a>
+					</li>
+				</NotAuthorized>
+			</AuthorizeView>
 			<li>
 				<a href="/lobby">Lobby</a>
 			</li>
@@ -84,8 +94,10 @@
 					</div>
 				</Authorized>
 				<NotAuthorized>
-					<a href="/Account/Login" class="btn btn-secondary btn-sm">Sign In</a>
-					<a href="/Account/Register" class="btn btn-primary btn-sm">Get Started</a>
+					<div class="nav-guest-actions">
+						<a href="/Account/Login" class="btn btn-secondary btn-sm">Sign In</a>
+						<a href="/Account/Register" class="btn btn-primary btn-sm">Get Started</a>
+					</div>
 				</NotAuthorized>
 			</AuthorizeView>
 

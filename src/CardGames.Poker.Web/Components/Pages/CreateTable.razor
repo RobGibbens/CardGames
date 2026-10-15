@@ -908,13 +908,51 @@ else
 
 	@@media (max-width: 768px) {
 		.create-table-dc-variant {
-			grid-template-columns: 40px minmax(0, 1fr) auto auto;
-			padding: 0.6rem 0.75rem;
+			grid-template-columns: 44px minmax(0, 1fr) auto;
+			grid-template-areas:
+				"icon name toggle"
+				"icon players toggle"
+				"desc desc desc";
+			column-gap: 0.7rem;
+			row-gap: 0.15rem;
+			align-items: center;
+			padding: 0.85rem;
 		}
 
 		.create-table-dc-variant-icon {
-			width: 40px;
-			height: 40px;
+			grid-area: icon;
+			width: 44px;
+			height: 44px;
+			align-self: start;
+			margin-top: 0.15rem;
+		}
+
+		.create-table-dc-variant-name {
+			grid-area: name;
+			white-space: normal;
+			overflow: visible;
+			text-overflow: unset;
+			line-height: 1.25;
+			align-self: end;
+		}
+
+		.create-table-dc-variant-players {
+			grid-area: players;
+			align-self: start;
+		}
+
+		.create-table-dc-variant-toggle {
+			grid-area: toggle;
+			padding-left: 0.25rem;
+			align-self: center;
+		}
+
+		.create-table-dc-variant-desc {
+			grid-area: desc;
+			margin-top: 0.45rem;
+			padding-top: 0.55rem;
+			border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+			line-height: 1.45;
 		}
 	}
 

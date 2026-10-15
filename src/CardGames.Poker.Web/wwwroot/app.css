@@ -366,6 +366,23 @@ a:hover {
     transform: rotate(15deg) scale(1.1);
 }
 
+.nav-logo-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-guest-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nav-mobile-auth {
+    display: none;
+}
+
 .nav-links {
     display: flex;
     align-items: center;
@@ -1392,6 +1409,84 @@ a:hover {
 }
 
 @media (max-width: 768px) {
+    .nav-container {
+        height: 60px;
+        padding: 0 1rem;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .nav-logo {
+        font-size: 1rem;
+        gap: 0.5rem;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .nav-logo-icon {
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+    }
+
+    .nav-logo > span:not(.nav-logo-icon) {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .nav-actions {
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .nav-guest-actions {
+        display: none;
+    }
+
+    .theme-toggle {
+        width: 40px;
+        height: 40px;
+    }
+
+    .nav-mobile-auth {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.25rem 0 0.75rem;
+    }
+
+    .nav-links .nav-mobile-auth .btn {
+        display: inline-flex;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .nav-links .nav-mobile-auth .btn::after {
+        display: none;
+    }
+
+    .nav-links .nav-mobile-auth .btn-primary {
+        color: white;
+    }
+
+    .nav-links .nav-mobile-auth .btn-primary:hover {
+        color: white;
+        background: var(--gradient-button-hover);
+    }
+
+    .nav-links .nav-mobile-auth .btn-secondary {
+        color: var(--text-primary);
+    }
+
+    .nav-links .nav-mobile-auth .btn-secondary:hover {
+        color: white;
+        background: var(--accent);
+    }
+
     .nav-links {
         display: none;
         position: absolute;
@@ -1467,6 +1562,10 @@ a:hover {
 }
 
 @media (max-width: 480px) {
+    .nav-logo-suffix {
+        display: none;
+    }
+
     .hero-actions {
         flex-direction: column;
         width: 100%;
@@ -1693,6 +1792,22 @@ a:hover {
     margin: 0;
 }
 
+.leagues-page-header {
+    align-items: center;
+}
+
+.leagues-page-header .lobby-header-content {
+    min-width: 0;
+}
+
+.leagues-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
 .lobby-create-btn {
     display: block;
     width: fit-content;
@@ -1861,6 +1976,17 @@ a:hover {
 
 .league-club-description {
     margin-top: 0.2rem;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+}
+
+.league-club-name {
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+}
+
+.league-club-role {
+    margin-top: 0.15rem;
 }
 
 .cashier-section-title.league-create-title {
@@ -3137,6 +3263,46 @@ a:hover {
         flex-direction: column;
         align-items: stretch;
         text-align: center;
+        padding: 1.25rem;
+        gap: 1rem;
+    }
+
+    .lobby-header.leagues-page-header {
+        text-align: left;
+        align-items: stretch;
+    }
+
+    .leagues-page-header .lobby-title {
+        justify-content: flex-start;
+        font-size: 1.6rem;
+    }
+
+    .leagues-page-header .lobby-subtitle {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    .leagues-page-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        justify-content: stretch;
+    }
+
+    .leagues-page-actions .btn {
+        width: 100%;
+        min-height: 2.5rem;
+        white-space: normal;
+    }
+
+    .league-club-header-inline {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.65rem;
+    }
+
+    .league-club-header-inline .league-club-title-group {
+        width: 100%;
     }
 
     .lobby-create-btn {

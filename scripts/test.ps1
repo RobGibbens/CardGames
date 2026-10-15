@@ -12,8 +12,6 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
-$env:CARDGAMES_E2E = '1'
-
 $dotnetArgs = New-Object System.Collections.Generic.List[string]
 foreach ($arg in $args) {
     if ($arg -eq '--headed') {
@@ -24,7 +22,7 @@ foreach ($arg in $args) {
     }
 }
 
-Write-Host "Running dotnet tests with Playwright E2E enabled (CARDGAMES_E2E=1)."
+Write-Host "Running dotnet tests."
 if ($env:CARDGAMES_E2E_HEADED -eq '1') {
     Write-Host "Chromium will run headed."
 }

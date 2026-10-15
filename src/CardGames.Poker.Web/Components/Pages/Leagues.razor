@@ -20,7 +20,7 @@
 
 <main class="lobby-main">
 	<div class="lobby-container">
-		<div class="lobby-header" style="position: relative;">
+		<div class="lobby-header leagues-page-header">
 			<div class="lobby-header-content">
 				<h1 class="lobby-title">
 					<i class="fa-solid fa-users"></i>
@@ -28,7 +28,7 @@
 				</h1>
 				<p class="lobby-subtitle">Create a league and view leagues where you are a member.</p>
 			</div>
-			<div style="position: absolute; top: 1.25rem; right: 1.25rem; display: flex; gap: 0.5rem;">
+			<div class="leagues-page-actions">
 				<button class="btn btn-primary btn-sm" @onclick="OpenCreateModal">
 					<i class="fa-solid fa-plus me-1"></i> Create League
 				</button>
@@ -94,15 +94,17 @@
 										<div class="card-body league-club-body d-flex flex-column">
 											<div class="league-club-header league-club-header-inline">
 												<div class="league-club-title-group">
-													<h2 class="h5 mb-0 fw-semibold text-break league-club-name">
+													<h2 class="h5 mb-0 fw-semibold league-club-name">
 														@league.Name
 													</h2>
-													<p class="card-text small text-muted mb-0 league-club-description">
-														@GetTruncatedDescription(league.Description)
-													</p>
+													@if (!string.IsNullOrWhiteSpace(league.Description))
+													{
+														<p class="card-text small text-muted mb-0 league-club-description">
+															@GetTruncatedDescription(league.Description)
+														</p>
+													}
 												</div>
-												<!-- <span class="badge ms-1 league-role-badge @GetRolePillClass(league.Role)">@GetRolePillLabel(league.Role)</span> -->
-												<span class="stat-pill stat-pill-purple">
+												<span class="stat-pill stat-pill-purple league-club-role">
 													<span class="stat-circle">1</span>
 													<span>@league.Role</span>
 												</span>

@@ -11,8 +11,6 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
-export CARDGAMES_E2E=1
-
 dotnet_args=()
 for arg in "$@"; do
   if [[ "$arg" == "--headed" ]]; then
@@ -22,7 +20,7 @@ for arg in "$@"; do
   fi
 done
 
-echo "Running dotnet tests with Playwright E2E enabled (CARDGAMES_E2E=1)."
+echo "Running dotnet tests."
 if [[ "${CARDGAMES_E2E_HEADED:-}" == "1" ]]; then
   echo "Chromium will run headed."
 fi

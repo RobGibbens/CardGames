@@ -88,6 +88,13 @@ public sealed class PlaywrightAppFixture : IAsyncLifetime
 
 	private async Task StartCoreAsync()
 	{
+		// Test Explorer inherits the IDE run-session variables. DCP then tries to launch
+		// project resources through Visual Studio, that launch fails, and api is reported
+		// as FailedToStart because it waits for migrations. These tests start projects directly.
+		Environment.SetEnvironmentVariable("DEBUG_SESSION_PORT", null);
+		Environment.SetEnvironmentVariable("DEBUG_SESSION_TOKEN", null);
+		Environment.SetEnvironmentVariable("DEBUG_SESSION_SERVER_CERTIFICATE", null);
+
 		var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.CardGames_AppHost>();
 		builder.Configuration["Parameters:internalIdentitySigningKey"] = SigningKey;
 		builder.CreateResourceBuilder<ProjectResource>("api")

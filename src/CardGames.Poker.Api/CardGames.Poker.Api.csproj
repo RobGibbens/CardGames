@@ -26,43 +26,43 @@
 		<PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
 		<PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.6.1" />
 		<!-- Aspire 13.6.1 still depends on the EF Core 10 SQL Server provider. EF Core 11 changed IReadOnlyIndex.Properties, so that provider throws MissingMethodException while Identity builds the model. -->
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="11.0.0-rc.1.26425.128" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="11.0.0-rc.2.26504.105" />
 		<PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.6.1" />
 		<PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
-		<PackageReference Include="GitHub.Copilot.SDK" Version="1.0.21-preview.1" />
+		<PackageReference Include="GitHub.Copilot.SDK" Version="1.0.22" />
 		<PackageReference Include="LinqKit.Microsoft.EntityFrameworkCore" Version="10.1.0" />
 		<PackageReference Include="MediatR" Version="14.2.0" />
 
-		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="11.0.0-rc.1.26425.128" NoWarn="NU1605" />
-		<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="11.0.0-rc.1.26425.128" NoWarn="NU1605" />
-		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.1.26425.128" />
-		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="11.0.0-rc.1.26425.128" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="11.0.0-rc.2.26504.105" NoWarn="NU1605" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="11.0.0-rc.2.26504.105" NoWarn="NU1605" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.2.26504.105" />
+		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
 
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.1.26425.128">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.2.26504.105">
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="11.0.0-rc.1.26425.128">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="11.0.0-rc.2.26504.105">
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="11.0.0-rc.1.26425.128" />
-		<PackageReference Include="Microsoft.Identity.Web" Version="4.16.0" />
-		<PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="4.16.0" />
-		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.16.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="11.0.0-rc.2.26504.105" />
+		<PackageReference Include="Microsoft.Identity.Web" Version="4.16.1" />
+		<PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="4.16.1" />
+		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.16.1" />
 
 		<PackageReference Include="OneOf" Version="3.0.271" />
 		<PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.6.1" />
 		<PackageReference Include="Aspire.Azure.Messaging.ServiceBus" Version="13.6.1" />
 		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.21.0" />
-		<PackageReference Include="OpenTelemetry" Version="1.19.1" />
-		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.19.1" />
-		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
+		<PackageReference Include="OpenTelemetry" Version="1.20.0" />
+		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.20.0" />
+		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.0" />
 		<PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.19.1-beta.1" />
-		<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
-		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
+		<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.20.0" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.0" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.19.1-beta.1" />
-		<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.20.0" />
 		<PackageReference Include="Riok.Mapperly" Version="4.3.1" />
 		<PackageReference Include="Scalar.AspNetCore" Version="2.18.0" />
 		<PackageReference Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="2.0.0" />

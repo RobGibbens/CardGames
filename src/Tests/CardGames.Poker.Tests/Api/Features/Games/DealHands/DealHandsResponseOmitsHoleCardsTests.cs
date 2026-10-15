@@ -321,7 +321,7 @@ public class DealHandsResponseOmitsHoleCardsTests
 		json.Should().NotContain("Five").And.NotContain("Six").And.NotContain("Seven").And.NotContain("Eight");
 		json.Should().NotContain("Spades");
 		var stored = await context.Games.SingleAsync(candidate => candidate.Id == game.Id);
-		stored.BringInPlayerIndex.Should().Be(1);
+		stored.BringInPlayerIndex.Should().Be(0);
 
 		await using var fourContext = CreateContext();
 		var fourGame = await SeedStreetGameAsync(fourContext, nameof(Phases.ThirdStreet), deck:
