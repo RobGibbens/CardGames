@@ -157,7 +157,7 @@
 
 <main class="table-play-main">
 <!-- Leave Table / Controls Strip -->
-<div class="table-controls-strip">
+<div class="table-controls-strip table-controls-desktop">
 	<button class="btn btn-secondary btn-sm leave-table-btn" @onclick="LeaveTableAsync">
 		<i class="fa-regular fa-arrow-left"></i>
 		Leave Table
@@ -210,22 +210,15 @@
 			if (_isHost)
 			{
 				<div class="host-controls">
-					@if
-						(_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse?.CurrentPhase ==
-						 GamePhase.WaitingToStart.ToString())
+					@if (ShowHostPreStartControls)
 					{
 						<a href="/table/@GameId/edit" class="btn btn-secondary btn-sm" data-enhance-nav="false">
 							<i class="fa-regular fa-pen-to-square"></i>
 							Edit Table
 						</a>
-						<button class="btn btn-primary btn-sm" data-testid="start-game" @onclick="StartGameAsync" disabled="@(!_canStartGame || IsDealersChoiceWaitingForSelectedGameStart)">
+						<button class="btn btn-primary btn-sm" data-testid="start-game" @onclick="StartGameAsync" disabled="@(!CanStartGameFromControls)">
 							<i class="fa-regular fa-play"></i>
-							@(IsDealersChoiceWaitingForSelectedGameStart
-								? "Starting..."
-								: (_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() ||
-								   _gameResponse?.CurrentPhase == GamePhase.WaitingToStart.ToString()) && !_canStartGame
-									? "Waiting for more players"
-									: "Start Game")
+							@StartGameButtonLabel
 						</button>
 					}
 					else if (_gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
@@ -257,6 +250,18 @@
 			<span class="connection-dot"></span>
 		</div>
 	</div>
+</div>
+
+<div class="table-controls-mobile">
+	<button type="button"
+	        class="table-menu-trigger"
+	        aria-label="Table options"
+	        aria-expanded="@_tableMenuOpen"
+	        aria-haspopup="dialog"
+	        title="Table options"
+	        @onclick="OpenTableMenu">
+		<i class="fa-solid fa-gear" aria-hidden="true"></i>
+	</button>
 </div>
 
 @if (_showGameInfoOverlay)
@@ -637,6 +642,88 @@
 	}
 }
 </main>
+
+<BbDrawer @bind-Open="_tableMenuOpen" Direction="DrawerDirection.Bottom">
+	<BbDrawerContent Class="table-options-drawer" ShowHandle="false" aria-label="Table options">
+		<BbDrawerHeader>
+			<BbDrawerTitle>Table options</BbDrawerTitle>
+			@if (!_isLoading && !string.IsNullOrWhiteSpace(_gameTypeCode))
+			{
+				<BbDrawerDescription>
+					@GetGameInfoTypeContext()@(IsLeagueTournament ? " · Tournament" : "")
+				</BbDrawerDescription>
+			}
+		</BbDrawerHeader>
+
+		<div class="table-options-status">
+			<span class="connection-indicator @(_isConnected ? "connected" : "disconnected")"
+			      title="@(_isConnected ? "Connected" : "Disconnected")">
+				<span class="connection-dot"></span>
+			</span>
+			<span>@(_isConnected ? "Connected" : "Disconnected")</span>
+		</div>
+
+		<BbDrawerItem OnClick="LeaveTableAsync">
+			<Icon><i class="fa-regular fa-arrow-left" aria-hidden="true"></i></Icon>
+			<ChildContent>Leave Table</ChildContent>
+		</BbDrawerItem>
+
+		@if (_isSeated)
+		{
+			<BbDrawerItem OnClick="ToggleSitOutAsync">
+				<Icon><i class="fa-solid @(IsSittingOut ? "fa-user-check" : "fa-user-clock")" aria-hidden="true"></i></Icon>
+				<ChildContent>@(IsSittingOut ? "I'm Back" : "Sit out next hand")</ChildContent>
+			</BbDrawerItem>
+		}
+
+		<BbDrawerItem OnClick="ToggleDealSoundMuteAsync">
+			<Icon><i class="fa-solid @(_isDealSoundMuted ? "fa-volume-xmark" : "fa-volume-high")" aria-hidden="true"></i></Icon>
+			<ChildContent>@(_isDealSoundMuted ? "Unmute table sounds" : "Mute table sounds")</ChildContent>
+		</BbDrawerItem>
+
+		<BbDrawerItem OnClick="ToggleGameInfoOverlay">
+			<Icon><i class="fa-solid fa-circle-info" aria-hidden="true"></i></Icon>
+			<ChildContent>@(_showGameInfoOverlay ? "Hide game information" : "Show game information")</ChildContent>
+		</BbDrawerItem>
+
+		@if (!_isLoading && _isHost)
+		{
+			@if (ShowHostPreStartControls)
+			{
+				<BbDrawerItem OnClick="OpenEditTable">
+					<Icon><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i></Icon>
+					<ChildContent>Edit Table</ChildContent>
+				</BbDrawerItem>
+				<BbDrawerItem OnClick="StartGameAsync" Disabled="@(!CanStartGameFromControls)">
+					<Icon><i class="fa-regular fa-play" aria-hidden="true"></i></Icon>
+					<ChildContent>@StartGameButtonLabel</ChildContent>
+				</BbDrawerItem>
+			}
+			else if (_gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+			{
+				@if (_isPaused)
+				{
+					<BbDrawerItem OnClick="ResumeGameAsync">
+						<Icon><i class="fa-regular fa-play" aria-hidden="true"></i></Icon>
+						<ChildContent>Resume game</ChildContent>
+					</BbDrawerItem>
+				}
+				else
+				{
+					<BbDrawerItem OnClick="PauseGameAsync">
+						<Icon><i class="fa-regular fa-pause" aria-hidden="true"></i></Icon>
+						<ChildContent>Pause game</ChildContent>
+					</BbDrawerItem>
+				}
+
+				<BbDrawerItem Class="table-options-end-game" OnClick="EndGameAsync">
+					<Icon><i class="fa-solid fa-octagon" aria-hidden="true"></i></Icon>
+					<ChildContent>End game</ChildContent>
+				</BbDrawerItem>
+			}
+		}
+	</BbDrawerContent>
+</BbDrawer>
 
 @code {
 	[Parameter] public Guid GameId { get; set; }
@@ -1280,8 +1367,8 @@
 	}
 
 	/// <summary>
-	///     Hub JoinGame rejects a caller who is not seated yet. Auto-join confirms the seat after that
-	///     first attempt, so take the seat in the group once the buy-in succeeds.
+	///     The first hub join happens before buy-in, so it only carries public table state.
+	///     Join again after the seat is confirmed so this connection receives private cards.
 	/// </summary>
 	private async Task JoinHubAfterTakingSeatAsync()
 	{
@@ -2777,6 +2864,27 @@
 
 	private bool _isLeavingTable;
 	private bool _showNoChipsModal;
+
+	private bool _tableMenuOpen;
+
+	private void OpenTableMenu() => _tableMenuOpen = true;
+
+	private bool ShowHostPreStartControls =>
+		_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString()
+		|| _gameResponse?.CurrentPhase == GamePhase.WaitingToStart.ToString();
+
+	private bool CanStartGameFromControls =>
+		_canStartGame && !IsDealersChoiceWaitingForSelectedGameStart;
+
+	private string StartGameButtonLabel =>
+		IsDealersChoiceWaitingForSelectedGameStart
+			? "Starting..."
+			: ShowHostPreStartControls && !_canStartGame
+				? "Waiting for more players"
+				: "Start Game";
+
+	private void OpenEditTable() =>
+		NavigationManager.NavigateTo($"/table/{GameId}/edit", forceLoad: true);
 
 	private void HandleNoChipsModalClose()
 	{

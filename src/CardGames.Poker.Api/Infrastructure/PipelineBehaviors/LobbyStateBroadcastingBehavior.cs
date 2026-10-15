@@ -1,5 +1,6 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Api.Extensions;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
@@ -127,6 +128,11 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
 			description = metadata.Description;
 			imageName = metadata.ImageName;
 		}
+		else if (game.IsDealersChoice)
+		{
+			metadataName = "Dealer's Choice";
+			imageName = "dealerschoice.png";
+		}
 
 		return new GameCreatedDto
 		{
@@ -141,7 +147,9 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
 			CurrentPhase = game.CurrentPhase,
 			CurrentPhaseDescription = PokerGamePhaseRegistry.TryResolve(gameTypeCode, game.CurrentPhase, out var phase)
 				? phase!.GetDescriptionOrName()
-				: game.CurrentPhase,
+				: Enum.TryParse<Phases>(game.CurrentPhase, true, out var sharedPhase)
+					? sharedPhase.GetDescriptionOrName()
+					: game.CurrentPhase,
 			Status = game.Status.ToString(),
 			CreatedAt = game.CreatedAt,
 			Ante = game.Ante ?? 0,

@@ -13,9 +13,9 @@
 			</button>
 		}
 		<div class="variant-icon">
-			@if (!string.IsNullOrWhiteSpace(Table.GameTypeImageName))
+			@if (!string.IsNullOrWhiteSpace(Table.LobbyImageName))
 			{
-				<img class="variant-icon" src="/images/games/@Table.GameTypeImageName" alt="@Table.GameTypeName"/>
+				<img class="variant-icon" src="/images/games/@Table.LobbyImageName" alt="@Table.LobbyGameTypeName"/>
 			}
 			else
 			{
@@ -25,7 +25,7 @@
 			}
 		</div>
 		<h3 class="variant-name">@Table.Name</h3>
-		<h4 class="variant-name">@FormatGameTypeName()</h4>
+		<h4 class="variant-name">@Table.LobbyGameTypeName</h4>
 		<p class="variant-description">@Table.GameTypeDescription</p>
 		@* <span class="variant-badge">@($"{game.MinimumNumberOfPlayers}-{game.MaximumNumberOfPlayers} players")</span> *@
 
@@ -95,18 +95,6 @@
 		return string.IsNullOrWhiteSpace(Table.CurrentPhaseDescription)
 			? $"{Table.CurrentPhase}"
 			: $"{Table.CurrentPhaseDescription}";
-	}
-
-	private string? FormatGameTypeName()
-	{
-		var name = Table.GameTypeMetadataName ?? Table.GameTypeName;
-		if (Table.IsDealersChoice &&
-		    !string.Equals(name, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
-		{
-			return $"Dealer's Choice ({name})";
-		}
-
-		return name;
 	}
 
 }

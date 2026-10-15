@@ -153,7 +153,7 @@ public class TrustedIdentityAuthTests : IClassFixture<StrictIdentityApiFactory>,
 	}
 
 	[Fact]
-	public async Task JoinGame_WhenCallerIsNotSeated_RejectsWithoutPrivateState()
+	public async Task JoinGame_WhenCallerIsNotSeated_AdmitsThemWithoutPrivateState()
 	{
 		var token = InternalUserToken.Issue(
 			TrustedIdentityTestKey.Value,
@@ -175,7 +175,7 @@ public class TrustedIdentityAuthTests : IClassFixture<StrictIdentityApiFactory>,
 		await connection.StartAsync();
 		var act = () => connection.InvokeAsync("JoinGame", Guid.NewGuid());
 
-		await act.Should().ThrowAsync<HubException>().WithMessage("*Not seated*");
+		await act.Should().NotThrowAsync();
 		PrivateStateReceived.Should().BeFalse();
 	}
 

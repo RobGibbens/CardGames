@@ -42,7 +42,9 @@ public sealed class GameHub : Hub
 	}
 
 	/// <summary>
-	///     Joins the caller to the specified game group and sends initial state snapshot.
+	///     Joins the caller to the specified game group and sends the initial public snapshot.
+	///     A seat is not required: lobby Join opens the table before buy-in. Private cards are
+	///     sent only when this connection already belongs to a seated player.
 	/// </summary>
 	/// <param name="gameId">The unique identifier of the game to join.</param>
 	public async Task JoinGame(Guid gameId)
@@ -57,18 +59,15 @@ public sealed class GameHub : Hub
 
 		var seated = await _gamePlayerResolver.ResolveSeatedPlayerAsync(gameId, Context.User ?? new ClaimsPrincipal(),
 			Context.ConnectionAborted);
-		if (seated is null)
+		if (seated is not null)
 		{
-			_logger.LogWarning("User {UserId} attempted to join game {GameId} without a seat", userId, gameId);
-			throw new HubException("Not seated at this table");
-		}
-
-		var routingKey = Context.UserIdentifier ?? SignalRUserId.ForConnection(Context.User);
-		if (!string.IsNullOrWhiteSpace(routingKey) &&
-		    !string.Equals(routingKey, seated.Player.SignalRUserId, StringComparison.Ordinal))
-		{
-			seated.Player.SignalRUserId = routingKey;
-			await _context.SaveChangesAsync(Context.ConnectionAborted);
+			var routingKey = Context.UserIdentifier ?? SignalRUserId.ForConnection(Context.User);
+			if (!string.IsNullOrWhiteSpace(routingKey) &&
+			    !string.Equals(routingKey, seated.Player.SignalRUserId, StringComparison.Ordinal))
+			{
+				seated.Player.SignalRUserId = routingKey;
+				await _context.SaveChangesAsync(Context.ConnectionAborted);
+			}
 		}
 
 		var groupName = GetGroupName(gameId);
@@ -77,21 +76,22 @@ public sealed class GameHub : Hub
 			.AsNoTracking()
 			.FirstOrDefaultAsync(g => g.Id == gameId);
 
-		// Add the caller to the game group
 		await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-		_connectionRegistry.Add(gameId, seated.Player.Id, Context.ConnectionId);
-		if (game is not null)
+		if (seated is not null)
 		{
-			_telemetry.RecordPlayerEvent(GameEventsTelemetry.ResolveGameType(game),
-				GameEventsTelemetry.ResolveTableKind(game), "reconnected");
+			_connectionRegistry.Add(gameId, seated.Player.Id, Context.ConnectionId);
+			if (game is not null)
+			{
+				_telemetry.RecordPlayerEvent(GameEventsTelemetry.ResolveGameType(game),
+					GameEventsTelemetry.ResolveTableKind(game), "reconnected");
+			}
 		}
 
 		_logger.LogInformation(
-			"User {UserId} (connection {ConnectionId}) joined game group {GroupName}",
-			userId, Context.ConnectionId, groupName);
+			"User {UserId} (connection {ConnectionId}) joined game group {GroupName}{Seat}",
+			userId, Context.ConnectionId, groupName, seated is null ? " as a spectator" : "");
 
-		// Send initial state snapshot to the caller. Private cards are this seated player's row.
-		await SendStateSnapshotToCallerAsync(gameId, seated.PlayerId);
+		await SendStateSnapshotToCallerAsync(gameId, seated?.PlayerId);
 	}
 
 	/// <summary>
@@ -145,8 +145,9 @@ public sealed class GameHub : Hub
 
 	/// <summary>
 	///     Sends the current state snapshot to the calling client.
+	///     Private cards are omitted when <paramref name="playerId" /> is null.
 	/// </summary>
-	private async Task SendStateSnapshotToCallerAsync(Guid gameId, Guid playerId)
+	private async Task SendStateSnapshotToCallerAsync(Guid gameId, Guid? playerId)
 	{
 		try
 		{
@@ -154,11 +155,13 @@ public sealed class GameHub : Hub
 				"Sending state snapshot for game {GameId} to caller player {PlayerId} (connection {ConnectionId})",
 				gameId, playerId, Context.ConnectionId);
 
-			// Build and send public state
 			var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId);
 			if (publicState is not null) await Clients.Caller.SendAsync("TableStateUpdated", publicState);
 
-			var privateState = await _tableStateBuilder.BuildPrivateStateForPlayerAsync(gameId, playerId);
+			if (playerId is null)
+				return;
+
+			var privateState = await _tableStateBuilder.BuildPrivateStateForPlayerAsync(gameId, playerId.Value);
 			if (privateState is not null) await Clients.Caller.SendAsync("PrivateStateUpdated", privateState);
 		}
 		catch (Exception ex)

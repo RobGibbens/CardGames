@@ -9,6 +9,7 @@
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Services
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
 @implements IAsyncDisposable
 
 <PageTitle>Lobby - Dealer's Choice Poker</PageTitle>
@@ -107,7 +108,7 @@
 				<BbButton Variant="ButtonVariant.Outline"
 				          Size="ButtonSize.Icon"
 				          Class='@GetViewToggleButtonClass("grid")'
-				          OnClick='@(() => SetViewMode("grid"))'
+				          OnClick='@(() => SetViewModeAsync("grid"))'
 				          AriaLabel="Grid view"
 				          title="Grid View">
 					<i class="fa-solid fa-th-large"></i>
@@ -115,7 +116,7 @@
 				<BbButton Variant="ButtonVariant.Outline"
 				          Size="ButtonSize.Icon"
 				          Class='@GetViewToggleButtonClass("list")'
-				          OnClick='@(() => SetViewMode("list"))'
+				          OnClick='@(() => SetViewModeAsync("list"))'
 				          AriaLabel="List view"
 				          title="List View">
 					<i class="fa-solid fa-list"></i>
@@ -298,6 +299,10 @@
 
 	[Inject] private NavigationManager NavigationManager { get; set; } = null!;
 
+	[Inject] private IJSRuntime JSRuntime { get; set; } = null!;
+
+	private const string ViewModeStorageKey = "lobby.viewMode";
+
 	private bool _isLoading = true;
 	private bool _showNoChipsModal;
 	private string _viewMode = "list";
@@ -342,6 +347,21 @@
 		var loadAvailableGamesTask = LoadAvailableGamesAsync();
 		await Task.WhenAll(loadTablesTask, loadAvailableGamesTask);
 		await ConnectToLobbyHubAsync();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender)
+		{
+			return;
+		}
+
+		var stored = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", ViewModeStorageKey);
+		if (stored is "grid" or "list" && stored != _viewMode)
+		{
+			_viewMode = stored;
+			StateHasChanged();
+		}
 	}
 
 	private async Task LoadCurrentUserAsync()
@@ -542,9 +562,10 @@
 		await LoadAvailableGamesAsync();
 	}
 
-	private void SetViewMode(string viewMode)
+	private async Task SetViewModeAsync(string viewMode)
 	{
 		_viewMode = viewMode;
+		await JSRuntime.InvokeVoidAsync("localStorage.setItem", ViewModeStorageKey, viewMode);
 	}
 
 	private string GetViewToggleButtonClass(string viewMode)
@@ -667,27 +688,12 @@
 
 	private static string GetGroupSectionClass(int _)
 	{
-		return "lobby-group-section border rounded-3 p-3";
+		return "lobby-group-section";
 	}
 
-	private string FormatGameTypeName(GetActiveGamesResponse table)
+	private static string FormatGameTypeName(GetActiveGamesResponse table)
 	{
-		if (table.IsDealersChoice)
-		{
-			if (string.IsNullOrWhiteSpace(table.GameTypeName))
-			{
-				return "Dealer's Choice";
-			}
-
-			if (!string.Equals(table.GameTypeName, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
-			{
-				return $"Dealer's Choice ({table.GameTypeName})";
-			}
-
-			return "Dealer's Choice";
-		}
-
-		return table.GameTypeName;
+		return table.LobbyGameTypeName;
 	}
 
 	private sealed record LobbyTableGroup(string DisplayName, List<GetActiveGamesResponse> Tables);

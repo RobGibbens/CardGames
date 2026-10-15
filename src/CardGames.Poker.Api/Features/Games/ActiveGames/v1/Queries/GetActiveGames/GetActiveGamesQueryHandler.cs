@@ -73,11 +73,26 @@ public class GetActiveGamesQueryHandler(
 							: (Guid?)null;
 
 						if (!PokerGameMetadataRegistry.TryGet(r.GameTypeCode, out var metadata) || metadata is null)
+						{
+							if (!r.IsDealersChoice)
+								return r with
+								{
+									CurrentPhaseDescription = phaseDescription,
+									LeagueId = leagueId
+								};
+
 							return r with
 							{
+								GameTypeCode = string.IsNullOrWhiteSpace(r.GameTypeCode)
+									? "DEALERSCHOICE"
+									: r.GameTypeCode,
+								GameTypeName = "Dealer's Choice",
+								GameTypeMetadataName = "Dealer's Choice",
+								GameTypeImageName = "dealerschoice.png",
 								CurrentPhaseDescription = phaseDescription,
 								LeagueId = leagueId
 							};
+						}
 
 						return r with
 						{

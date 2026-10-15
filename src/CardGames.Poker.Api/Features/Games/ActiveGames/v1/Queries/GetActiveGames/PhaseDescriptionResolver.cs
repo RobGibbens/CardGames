@@ -9,7 +9,7 @@ internal static class PhaseDescriptionResolver
 	{
 		if (string.IsNullOrWhiteSpace(currentPhase)) return null;
 
-		if (string.IsNullOrWhiteSpace(gameTypeCode)) return null;
+		_ = gameTypeCode;
 
 		return TryResolveEnumDescription<Phases>(currentPhase);
 	}

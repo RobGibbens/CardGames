@@ -2909,7 +2909,9 @@ a:hover {
 
 .lobby-group-section {
     background: var(--bg-secondary);
-    border-color: var(--border-color) !important;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.75rem;
 }
 
 .lobby-group-section + .lobby-group-section {
@@ -3336,10 +3338,13 @@ a:hover {
 
     .lobby-filters {
         flex-direction: column;
+        align-items: stretch;
     }
 
     .filter-group {
         width: 100%;
+        flex: 0 0 auto;
+        min-width: 0;
     }
 
     .tables-grid {
@@ -3946,6 +3951,62 @@ a:hover {
     align-items: center;
     gap: 1rem;
     margin-left: auto;
+}
+
+.table-controls-mobile {
+    display: none;
+}
+
+.table-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 1.15rem;
+    cursor: pointer;
+}
+
+.table-menu-trigger:hover,
+.table-menu-trigger[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.table-options-drawer {
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    max-height: 85dvh;
+    overflow-y: auto;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    border-top-left-radius: 1.25rem;
+    border-top-right-radius: 1.25rem;
+    z-index: 400;
+}
+
+.table-options-status {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.15rem 1rem 0.85rem;
+    font-size: 0.95rem;
+}
+
+.table-options-drawer button {
+    min-height: 3rem;
+    font-size: 1rem;
+}
+
+.table-options-end-game {
+    color: #dc2626;
 }
 
 .host-controls {
@@ -5675,7 +5736,21 @@ playing-card.card-wild-highlight {
 
 @media (max-width: 768px) {
     .table-play-main {
-        --wild-cards-panel-top-offset: 118px;
+        --wild-cards-panel-top-offset: 56px;
+    }
+
+    .table-controls-desktop {
+        display: none;
+    }
+
+    .table-controls-mobile {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        background: rgba(0, 0, 0, 0.5);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 100;
     }
 
     .table-controls-strip {
@@ -5780,7 +5855,7 @@ playing-card.card-wild-highlight {
 
 @media (max-width: 480px) {
     .table-play-main {
-        --wild-cards-panel-top-offset: 132px;
+        --wild-cards-panel-top-offset: 56px;
     }
 
     .table-controls-strip {

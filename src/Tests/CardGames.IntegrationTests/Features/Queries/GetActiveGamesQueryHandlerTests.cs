@@ -39,6 +39,39 @@ public class GetActiveGamesQueryHandlerTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task Handle_DealersChoiceWithoutVariant_ReturnsDealersChoiceImageAndName()
+	{
+		var game = await DatabaseSeeder.CreateDealersChoiceGameAsync(DbContext, "Test");
+
+		var result = await Mediator.Send(new GetActiveGamesQuery());
+
+		var table = result.Should().ContainSingle(x => x.Id == game.Id).Subject;
+		table.IsDealersChoice.Should().BeTrue();
+		table.GameTypeCode.Should().Be("DEALERSCHOICE");
+		table.GameTypeName.Should().Be("Dealer's Choice");
+		table.GameTypeMetadataName.Should().Be("Dealer's Choice");
+		table.GameTypeImageName.Should().Be("dealerschoice.png");
+		table.CurrentPhaseDescription.Should().Be("Waiting to Start");
+	}
+
+	[Fact]
+	public async Task Handle_DealersChoiceWithChosenVariant_ReturnsVariantImageAndName()
+	{
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, PokerGameMetadataRegistry.HoldEmCode,
+			name: "Chosen Variant Table");
+		game.IsDealersChoice = true;
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new GetActiveGamesQuery());
+
+		var table = result.Should().ContainSingle(x => x.Id == game.Id).Subject;
+		table.IsDealersChoice.Should().BeTrue();
+		table.GameTypeImageName.Should().Be("holdem.png");
+		table.GameTypeMetadataName.Should().Be("Texas Hold 'Em");
+		table.GameTypeName.Should().Be(game.GameType!.Name);
+	}
+
+	[Fact]
 	public async Task Handle_MissingMetadata_FallsBackToMappedGameTypeData()
 	{
 		var customGameType = new GameType
