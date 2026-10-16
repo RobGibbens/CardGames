@@ -1,0 +1,19 @@
+<input class="face-cards-file"
+       @ref="_input"
+       type="file"
+       accept="image/png,image/jpeg,image/webp"
+       aria-label="@AriaLabel"
+       disabled="@Disabled"
+       @onchange="Chosen"/>
+
+@code {
+	private ElementReference _input;
+
+	[Parameter] public string AriaLabel { get; set; } = "Upload card image";
+
+	[Parameter] public bool Disabled { get; set; }
+
+	[Parameter] public EventCallback<ElementReference> OnChosen { get; set; }
+
+	private Task Chosen(ChangeEventArgs _) => OnChosen.InvokeAsync(_input);
+}

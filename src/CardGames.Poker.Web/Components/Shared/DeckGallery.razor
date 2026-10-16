@@ -1,0 +1,278 @@
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Services
+
+<section class="face-cards-gallery @(Embedded ? "is-embedded" : null)" aria-labelledby="@HeadingId">
+	@if (ShowHeader)
+	{
+		<div class="face-cards-gallery-header">
+			@if (!string.IsNullOrWhiteSpace(Kicker))
+			{
+				<p class="face-cards-kicker">@Kicker</p>
+			}
+			<h2 id="@HeadingId" class="face-cards-gallery-title">@Title</h2>
+		</div>
+	}
+
+	@if (ShowBack)
+	{
+		<div class="face-cards-back-row">
+			<div class="face-cards-back-copy">
+				<p class="face-cards-kicker">Back</p>
+				<p class="face-cards-slot-status">@(string.IsNullOrWhiteSpace(BackUrl) ? "Not uploaded" : "Uploaded")</p>
+				@if (UploadEnabled)
+				{
+					<label class="face-cards-upload-label">
+						<span>@(string.IsNullOrWhiteSpace(BackUrl) ? "Upload back" : "Replace back")</span>
+						<DeckSlotInput AriaLabel="Upload card back" Disabled="IsBackUploading" OnChosen="OnBackChosen"/>
+					</label>
+				}
+				@if (!string.IsNullOrWhiteSpace(BackError))
+				{
+					<p class="face-cards-slot-error" role="alert">@BackError</p>
+				}
+			</div>
+			@if (!string.IsNullOrWhiteSpace(BackUrl))
+			{
+				<img class="face-cards-back"
+				     src="@BackUrl"
+				     alt="Card back"
+				     width="72"
+				     height="103"/>
+			}
+			else
+			{
+				<div class="face-cards-card-empty face-cards-back-empty">Back</div>
+			}
+		</div>
+	}
+
+	<div class="face-cards-suits">
+		@foreach (var suit in Suits)
+		{
+			<section class="face-cards-suit" aria-labelledby="@GetSuitHeadingId(suit)">
+				<header class="face-cards-suit-header">
+					<div class="face-cards-suit-badge @GetSuitAccentClass(suit)">
+						<span class="face-cards-suit-symbol" aria-hidden="true">@suit.Symbol</span>
+						<h3 id="@GetSuitHeadingId(suit)" class="face-cards-suit-title">@suit.Label</h3>
+					</div>
+				</header>
+
+				<div class="face-cards-grid">
+					@foreach (var rank in Ranks)
+					{
+						var card = CreatePreview(suit, rank);
+						var error = SlotError(card.Key);
+						var uploading = UploadingSlot == card.Key;
+						@if (UploadEnabled)
+						{
+							<div class="face-cards-card" @key="card.Key">
+								@if (card.Src is not null)
+								{
+									<button type="button"
+									        class="face-cards-enlarge"
+									        aria-label="@($"Enlarge {card.Alt}")"
+									        @onclick="() => OpenCard(card)">
+										<img class="face-cards-card-image" src="@card.Src" alt="" loading="lazy"/>
+									</button>
+								}
+								else
+								{
+									<div class="face-cards-card-empty">@rank.Label</div>
+								}
+								<label class="face-cards-upload-label">
+									<span>@(card.Src is null ? "Upload" : "Replace")</span>
+									<DeckSlotInput AriaLabel="@($"Upload {card.Alt}")"
+									               Disabled="uploading"
+									               OnChosen="input => OnFaceChosen(suit, rank, input)"/>
+								</label>
+								@if (!string.IsNullOrWhiteSpace(error))
+								{
+									<p class="face-cards-slot-error" role="alert">@error</p>
+								}
+							</div>
+						}
+						else if (card.Src is not null)
+						{
+							<button type="button"
+							        class="face-cards-card"
+							        @key="card.Key"
+							        aria-label="@($"Enlarge {card.Alt}")"
+							        @onclick="() => OpenCard(card)">
+								<img class="face-cards-card-image" src="@card.Src" alt="" loading="lazy"/>
+							</button>
+						}
+					}
+				</div>
+			</section>
+		}
+	</div>
+</section>
+
+@if (_selectedCard is not null)
+{
+	<div class="face-cards-lightbox"
+	     role="dialog"
+	     aria-modal="true"
+	     aria-label="@_selectedCard.Alt"
+	     tabindex="-1"
+	     @ref="_lightboxRef"
+	     @onkeydown="HandleLightboxKeyDown"
+	     @onclick="CloseCard">
+		<button type="button"
+		        class="league-modal-close-btn face-cards-lightbox-close"
+		        aria-label="Close card preview"
+		        @onclick="CloseCard"
+		        @onclick:stopPropagation="true">
+			<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+		</button>
+		<div class="face-cards-lightbox-panel" @onclick:stopPropagation>
+			<img class="face-cards-lightbox-image" src="@_selectedCard.Src" alt="@_selectedCard.Alt"/>
+			<p class="face-cards-lightbox-caption">@_selectedCard.Alt</p>
+		</div>
+	</div>
+}
+
+@code {
+	private const string HeadingId = "face-cards-gallery-title";
+
+	private CardPreview? _selectedCard;
+	private ElementReference _lightboxRef;
+	private bool _focusLightbox;
+
+	[Parameter] public string Title { get; set; } = "All Cards";
+
+	[Parameter] public string? Kicker { get; set; } = "Gallery";
+
+	[Parameter] public bool ShowHeader { get; set; } = true;
+
+	[Parameter] public bool ShowBack { get; set; }
+
+	[Parameter] public bool Embedded { get; set; }
+
+	[Parameter] public bool UseBuiltInFallback { get; set; } = true;
+
+	[Parameter] public string? BackUrl { get; set; }
+
+	[Parameter] public IReadOnlyDictionary<string, string>? FaceUrls { get; set; }
+
+	[Parameter] public bool UploadEnabled { get; set; }
+
+	[Parameter] public IReadOnlyDictionary<string, string>? SlotErrors { get; set; }
+
+	[Parameter] public string? UploadingSlot { get; set; }
+
+	[Parameter] public bool IsBackUploading { get; set; }
+
+	[Parameter] public string? BackError { get; set; }
+
+	[Parameter] public EventCallback<DeckSlotFile> OnFileSelected { get; set; }
+
+	private static readonly SuitDefinition[] Suits =
+	[
+		new("Spades", "spades", "♠"),
+		new("Hearts", "hearts", "♥"),
+		new("Diamonds", "diamonds", "♦"),
+		new("Clubs", "clubs", "♣")
+	];
+
+	private static readonly RankDefinition[] Ranks =
+	[
+		new("ace", "Ace"),
+		new("two", "Two"),
+		new("three", "Three"),
+		new("four", "Four"),
+		new("five", "Five"),
+		new("six", "Six"),
+		new("seven", "Seven"),
+		new("eight", "Eight"),
+		new("nine", "Nine"),
+		new("ten", "Ten"),
+		new("jack", "Jack"),
+		new("queen", "Queen"),
+		new("king", "King")
+	];
+
+	private CardPreview CreatePreview(SuitDefinition suit, RankDefinition rank)
+	{
+		var key = CardDeckSlots.FaceKey(suit.Slug, rank.Slug);
+		string? src = null;
+		if (FaceUrls is not null && FaceUrls.TryGetValue(key, out var url) && !string.IsNullOrWhiteSpace(url))
+		{
+			src = url;
+		}
+		else if (UseBuiltInFallback && !UploadEnabled)
+		{
+			src = CardDeckSlots.BuiltInFaceUrl(suit.Slug, rank.Slug);
+		}
+
+		return new CardPreview(key, src, $"{rank.Label} of {suit.Label}");
+	}
+
+	private string? SlotError(string key)
+	{
+		if (SlotErrors is null || !SlotErrors.TryGetValue(key, out var error))
+		{
+			return null;
+		}
+
+		return error;
+	}
+
+	private async Task OnBackChosen(ElementReference input)
+	{
+		await OnFileSelected.InvokeAsync(new DeckSlotFile(CardDeckSlots.BackSlotKey, true, null, null, input));
+	}
+
+	private async Task OnFaceChosen(SuitDefinition suit, RankDefinition rank, ElementReference input)
+	{
+		await OnFileSelected.InvokeAsync(new DeckSlotFile(
+			CardDeckSlots.FaceKey(suit.Slug, rank.Slug),
+			false,
+			suit.Slug,
+			rank.Slug,
+			input));
+	}
+
+	private static string GetSuitHeadingId(SuitDefinition suit) => $"face-cards-{suit.Slug}";
+
+	private static string GetSuitAccentClass(SuitDefinition suit) =>
+		suit.Slug is "hearts" or "diamonds" ? "is-red" : "is-dark";
+
+	private void OpenCard(CardPreview card)
+	{
+		if (card.Src is null)
+		{
+			return;
+		}
+
+		_selectedCard = card;
+		_focusLightbox = true;
+	}
+
+	private void CloseCard() => _selectedCard = null;
+
+	private void HandleLightboxKeyDown(KeyboardEventArgs args)
+	{
+		if (args.Key == "Escape")
+		{
+			CloseCard();
+		}
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!_focusLightbox || _selectedCard is null)
+		{
+			return;
+		}
+
+		_focusLightbox = false;
+		await _lightboxRef.FocusAsync();
+	}
+
+	private sealed record SuitDefinition(string Label, string Slug, string Symbol);
+
+	private sealed record RankDefinition(string Slug, string Label);
+
+	private sealed record CardPreview(string Key, string? Src, string Alt);
+}

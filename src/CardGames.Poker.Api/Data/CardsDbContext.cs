@@ -138,6 +138,16 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	public DbSet<UserGamePreferences> UserGamePreferences => Set<UserGamePreferences>();
 
 	/// <summary>
+	///     Gets the set of user-uploaded card decks.
+	/// </summary>
+	public DbSet<UserCardDeck> UserCardDecks => Set<UserCardDeck>();
+
+	/// <summary>
+	///     Gets the set of images that belong to user-uploaded card decks.
+	/// </summary>
+	public DbSet<UserCardDeckImage> UserCardDeckImages => Set<UserCardDeckImage>();
+
+	/// <summary>
 	///     Gets the set of league invites.
 	/// </summary>
 	public DbSet<LeagueInvite> LeagueInvites => Set<LeagueInvite>();

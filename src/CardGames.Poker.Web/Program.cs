@@ -220,6 +220,12 @@ builder.Services
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
+builder.Services.AddHttpClient(CardDeckImageProxy.HttpClientName, client =>
+	{
+		client.BaseAddress = new Uri("https+http://api");
+	})
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
 builder.Services
 	.AddRefitClient<ILeaguesApi>(
 		_ => new RefitSettings
@@ -382,6 +388,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+CardDeckImageProxy.Map(app);
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
 	.AddInteractiveServerRenderMode();

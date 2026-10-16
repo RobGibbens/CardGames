@@ -7983,6 +7983,17 @@ playing-card.card-wild-highlight {
     padding: 1.25rem;
 }
 
+.account-manage-nav-card::before,
+.account-manage-content-card::before {
+    display: none;
+}
+
+.account-manage-nav-card:hover,
+.account-manage-content-card:hover {
+    transform: none;
+    box-shadow: none;
+}
+
 .account-manage-nav-description {
     margin: -0.25rem 0 1rem;
     color: var(--text-muted);
@@ -8018,6 +8029,10 @@ playing-card.card-wild-highlight {
 .account-manage-nav-link.active {
     color: white;
     background: var(--gradient-button);
+}
+
+.account-manage-nav-picker {
+    display: none;
 }
 
 .account-profile-title-row {
@@ -8123,6 +8138,22 @@ playing-card.card-wild-highlight {
 
     .account-avatar-panel {
         max-width: 420px;
+    }
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+    .account-manage-nav-card {
+        display: flex;
+        flex-direction: column;
+        overflow: visible;
+    }
+
+    .account-manage-nav {
+        display: none;
+    }
+
+    .account-manage-nav-picker {
+        display: block;
     }
 }
 

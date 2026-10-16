@@ -21,6 +21,17 @@
     const CARD_IMAGE_BASE = "/images/cards/";
     const BACK_IMAGE = CARD_IMAGE_BASE + "back-blue-white.png";
     const UNKNOWN_IMAGE = CARD_IMAGE_BASE + "unknown.png";
+    let selectedDeck = null;
+
+    function selectedFaceUrl(suit, rank) {
+        if (!selectedDeck || !selectedDeck.faces) return null;
+        var key = suit + "-" + rank;
+        return selectedDeck.faces[key] || null;
+    }
+
+    function selectedBackUrl() {
+        return selectedDeck && selectedDeck.backUrl ? selectedDeck.backUrl : null;
+    }
 
     /**
      * Normalize a rank value (from any of the formats used across the app)
@@ -110,15 +121,15 @@
      */
     function resolveImageUrl(rankAttr, suitAttr) {
         // rank="0" is the Cardmeister convention for face-down
-        if (rankAttr === "0" || rankAttr === 0) return BACK_IMAGE;
+        if (rankAttr === "0" || rankAttr === 0) return selectedBackUrl() || BACK_IMAGE;
 
         var rank = normalizeRank(rankAttr);
         var suit = normalizeSuit(suitAttr);
 
         if (rank && suit) {
-            return CARD_IMAGE_BASE + suit + "-" + rank + ".png";
+            return selectedFaceUrl(suit, rank) || (CARD_IMAGE_BASE + suit + "-" + rank + ".png");
         }
-        return BACK_IMAGE;
+        return selectedBackUrl() || BACK_IMAGE;
     }
 
     /**
@@ -184,20 +195,21 @@
                     this._img.draggable = false;
                     this._img.setAttribute("alt", "");
                     this._img.addEventListener("error", function () {
-                        if (
-                            this.dataset.imageKind !== "front" ||
-                            this.dataset.fallbackApplied === "true"
-                        ) {
+                        if (this.dataset.fallbackApplied === "true") {
                             return;
                         }
 
                         this.dataset.fallbackApplied = "true";
-                        this.setAttribute("src", UNKNOWN_IMAGE);
+                        this.setAttribute(
+                            "src",
+                            this.dataset.imageKind === "back" ? BACK_IMAGE : UNKNOWN_IMAGE
+                        );
                     });
                     this.appendChild(this._img);
                 }
 
-                this._img.dataset.imageKind = src === BACK_IMAGE ? "back" : "front";
+                var isBack = !normalizeRank(rank) || !normalizeSuit(suit) || rank === "0";
+                this._img.dataset.imageKind = isBack ? "back" : "front";
                 this._img.dataset.fallbackApplied = "false";
 
                 if (this._img.getAttribute("src") !== src) {
@@ -219,4 +231,15 @@
             }
         }
     );
+
+    window.cardDeckImages = {
+        apply: function (map) {
+            selectedDeck = map || null;
+            document.querySelectorAll("playing-card").forEach(function (card) {
+                if (typeof card._render === "function") {
+                    card._render();
+                }
+            });
+        }
+    };
 })();

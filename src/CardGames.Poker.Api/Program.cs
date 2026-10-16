@@ -274,6 +274,10 @@ public class Program
 			.AddOptions<AvatarStorageOptions>()
 			.Bind(builder.Configuration.GetSection(AvatarStorageOptions.SectionName));
 		builder.Services.AddSingleton<IAvatarStorageService, AvatarStorageService>();
+		builder.Services
+			.AddOptions<CardDeckStorageOptions>()
+			.Bind(builder.Configuration.GetSection(CardDeckStorageOptions.SectionName));
+		builder.Services.AddSingleton<ICardDeckStorageService, CardDeckStorageService>();
 		// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 		builder.Services.AddOpenApi(options =>
 		{

@@ -1,0 +1,319 @@
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Web.Components.Shared
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Services
+@using Refit
+@implements IAsyncDisposable
+@inject IProfileApi ProfileApi
+@inject IJSRuntime Js
+@inject NavigationManager Navigation
+
+@if (_pageError is not null)
+{
+	<p class="text-danger" role="alert">@_pageError</p>
+}
+
+@if (DeckId == Guid.Empty)
+{
+	<EditForm Model="_create" OnValidSubmit="CreateAsync" FormName="create-deck" class="auth-form">
+		<DataAnnotationsValidator/>
+		<div class="form-floating mb-3" data-label="Deck name">
+			<InputText @bind-Value="_create.Name" class="form-control" placeholder="Deck name"/>
+		</div>
+		<ValidationMessage For="() => _create.Name" class="text-danger"/>
+		<button type="submit" class="btn btn-primary" disabled="@_busy">Create deck</button>
+	</EditForm>
+}
+else if (_detail is null)
+{
+	<p>Loading deck…</p>
+}
+else
+{
+	<p class="deck-upload-progress">
+		@_detail.UploadedFaceCount of @CardDeckSlots.RequiredFaceCount fronts.
+		@(_detail.HasBack ? "Back uploaded." : "Back still needed.")
+		@(_detail.IsComplete
+			? "This deck is complete. Choose it on the Decks page to use it in games."
+			: "This deck cannot be used in games until the back and all 52 fronts are uploaded.")
+	</p>
+
+	<EditForm Model="_rename" OnValidSubmit="RenameAsync" FormName="rename-deck" class="deck-upload-name auth-form">
+		<DataAnnotationsValidator/>
+		<div class="form-floating mb-3" data-label="Deck name">
+			<InputText @bind-Value="_rename.Name" class="form-control" placeholder="Deck name"/>
+		</div>
+		<div class="deck-upload-actions">
+			<button type="submit" class="btn btn-primary" disabled="@_busy">Save name</button>
+			<a class="btn btn-outline" href="/Account/Manage/Decks">Back to decks</a>
+			<button type="button" class="btn btn-outline" @onclick="DeleteAsync" disabled="@_busy">
+				@(_confirmDelete ? "Confirm delete" : "Delete deck")
+			</button>
+		</div>
+	</EditForm>
+
+	<DeckGallery Title="@_detail.Name"
+	             Kicker="Upload"
+	             Embedded="true"
+	             ShowHeader="false"
+	             ShowBack="true"
+	             UploadEnabled="true"
+	             UseBuiltInFallback="false"
+	             BackUrl="@_backUrl"
+	             FaceUrls="@_faces"
+	             SlotErrors="@_errors"
+	             BackError="@_backError"
+	             UploadingSlot="@_uploadingSlot"
+	             IsBackUploading="@(_uploadingSlot == CardDeckSlots.BackSlotKey)"
+	             OnFileSelected="UploadAsync"/>
+}
+
+@code {
+	private readonly DeckNameModel _create = new();
+	private readonly DeckNameModel _rename = new();
+	private readonly Dictionary<string, string> _errors = new(StringComparer.Ordinal);
+
+	private CardDeckDetailDto? _detail;
+	private IReadOnlyDictionary<string, string> _faces = new Dictionary<string, string>();
+	private string? _backUrl;
+	private string? _backError;
+	private string? _pageError;
+	private string? _uploadingSlot;
+	private bool _busy;
+	private bool _confirmDelete;
+	private Guid _loadedDeckId;
+	private IJSObjectReference? _module;
+
+	[Parameter] public Guid DeckId { get; set; }
+
+	protected override async Task OnParametersSetAsync()
+	{
+		if (DeckId == Guid.Empty || DeckId == _loadedDeckId)
+		{
+			return;
+		}
+
+		_loadedDeckId = DeckId;
+		await LoadAsync();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender || _module is not null)
+		{
+			return;
+		}
+
+		_module = await Js.InvokeAsync<IJSObjectReference>("import", "/cardDeckUpload.js");
+	}
+
+	private async Task LoadAsync()
+	{
+		var response = await ProfileApi.GetCardDeckAsync(DeckId);
+		if (!response.IsSuccessStatusCode || response.Content is null)
+		{
+			_pageError = "Unable to open that deck.";
+			_detail = null;
+			return;
+		}
+
+		ApplyDetail(response.Content);
+	}
+
+	private async Task CreateAsync()
+	{
+		_busy = true;
+		_pageError = null;
+		try
+		{
+			var response = await ProfileApi.CreateCardDeckAsync(new CreateCardDeckRequest { Name = _create.Name });
+			if (!response.IsSuccessStatusCode || response.Content is null)
+			{
+				_pageError = CardDeckImages.ReadRefitError(response) ?? "Unable to create that deck.";
+				return;
+			}
+
+			Navigation.NavigateTo($"/Account/Manage/Decks/{response.Content.Id}/Edit");
+		}
+		finally
+		{
+			_busy = false;
+		}
+	}
+
+	private async Task RenameAsync()
+	{
+		if (_detail is null)
+		{
+			return;
+		}
+
+		_busy = true;
+		_pageError = null;
+		try
+		{
+			var response = await ProfileApi.RenameCardDeckAsync(_detail.Id, new RenameCardDeckRequest { Name = _rename.Name });
+			if (!response.IsSuccessStatusCode || response.Content is null)
+			{
+				_pageError = CardDeckImages.ReadRefitError(response) ?? "Unable to rename that deck.";
+				return;
+			}
+
+			ApplyDetail(response.Content);
+		}
+		finally
+		{
+			_busy = false;
+		}
+	}
+
+	private async Task DeleteAsync()
+	{
+		if (_detail is null)
+		{
+			return;
+		}
+
+		if (!_confirmDelete)
+		{
+			_confirmDelete = true;
+			return;
+		}
+
+		_busy = true;
+		var response = await ProfileApi.DeleteCardDeckAsync(_detail.Id);
+		_busy = false;
+		if (!response.IsSuccessStatusCode)
+		{
+			_pageError = "Unable to delete that deck.";
+			return;
+		}
+
+		Navigation.NavigateTo("/Account/Manage/Decks");
+	}
+
+	private async Task UploadAsync(DeckSlotFile slot)
+	{
+		if (_detail is null || _module is null)
+		{
+			_pageError = "The uploader is still starting. Try that image again.";
+			return;
+		}
+
+		var measured = await _module.InvokeAsync<ImageMeasure?>("measure", slot.Input);
+		if (measured is null)
+		{
+			return;
+		}
+
+		var validationError = Validate(measured);
+		if (validationError is not null)
+		{
+			SetSlotError(slot, validationError);
+			await _module.InvokeVoidAsync("clear", slot.Input);
+			return;
+		}
+
+		_uploadingSlot = slot.SlotKey;
+		SetSlotError(slot, null);
+		try
+		{
+			await using var streamRef = await _module.InvokeAsync<IJSStreamReference>("stream", slot.Input);
+			await using var stream = await streamRef.OpenReadStreamAsync(CardDeckSlots.MaxUploadBytes);
+			var file = new StreamPart(stream, measured.Name, string.IsNullOrWhiteSpace(measured.Type) ? "application/octet-stream" : measured.Type);
+			var response = await ProfileApi.UploadCardDeckImageAsync(_detail.Id, file, slot.IsBack, slot.Suit, slot.Rank);
+			if (!response.IsSuccessStatusCode || response.Content is null)
+			{
+				SetSlotError(slot, CardDeckImages.ReadRefitError(response) ?? "Unable to save that image.");
+				return;
+			}
+
+			ApplyDetail(response.Content);
+		}
+		finally
+		{
+			_uploadingSlot = null;
+			await _module.InvokeVoidAsync("clear", slot.Input);
+		}
+	}
+
+	private static string? Validate(ImageMeasure measured)
+	{
+		if (measured.Size > CardDeckSlots.MaxUploadBytes)
+		{
+			return "Image must be 5 MB or smaller.";
+		}
+
+		if (measured.Unreadable ||
+		    measured.Height != CardDeckSlots.RequiredHeight ||
+		    measured.Width < CardDeckSlots.MinimumWidth ||
+		    measured.Width > CardDeckSlots.MaximumWidth)
+		{
+			return "Image must be 1259 pixels high and between 750 and 920 pixels wide.";
+		}
+
+		if (!string.IsNullOrWhiteSpace(measured.Type) &&
+		    measured.Type is not ("image/png" or "image/jpeg" or "image/webp"))
+		{
+			return "Use a PNG, JPEG, or WebP image.";
+		}
+
+		return null;
+	}
+
+	private void SetSlotError(DeckSlotFile slot, string? error)
+	{
+		if (slot.IsBack)
+		{
+			_backError = error;
+			return;
+		}
+
+		if (error is null)
+		{
+			_errors.Remove(slot.SlotKey);
+		}
+		else
+		{
+			_errors[slot.SlotKey] = error;
+		}
+	}
+
+	private void ApplyDetail(CardDeckDetailDto detail)
+	{
+		_detail = detail;
+		_rename.Name = detail.Name;
+		_pageError = null;
+		_confirmDelete = false;
+		var back = detail.Slots.FirstOrDefault(slot => slot.IsBack);
+		_backUrl = string.IsNullOrWhiteSpace(back?.ImageUrl) ? null : CardDeckImages.Rewrite(back.ImageUrl, Navigation);
+		_faces = detail.Slots
+			.Where(slot => !slot.IsBack && !string.IsNullOrWhiteSpace(slot.ImageUrl))
+			.ToDictionary(slot => slot.SlotKey, slot => CardDeckImages.Rewrite(slot.ImageUrl!, Navigation), StringComparer.Ordinal);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_module is not null)
+		{
+			await _module.DisposeAsync();
+		}
+	}
+
+	private sealed class DeckNameModel
+	{
+		[System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter a deck name.")]
+		[System.ComponentModel.DataAnnotations.StringLength(CardDeckSlots.MaxNameLength, ErrorMessage = "Deck name must be 60 characters or fewer.")]
+		public string Name { get; set; } = string.Empty;
+	}
+
+	private sealed class ImageMeasure
+	{
+		public int Width { get; set; }
+		public int Height { get; set; }
+		public long Size { get; set; }
+		public string Type { get; set; } = string.Empty;
+		public string Name { get; set; } = string.Empty;
+		public bool Unreadable { get; set; }
+	}
+}

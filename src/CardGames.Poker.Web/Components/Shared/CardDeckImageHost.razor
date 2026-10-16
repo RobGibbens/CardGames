@@ -1,0 +1,32 @@
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IProfileApi ProfileApi
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime Js
+@inject NavigationManager Navigation
+
+@code {
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!firstRender)
+		{
+			return;
+		}
+
+		var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		if (auth.User.Identity?.IsAuthenticated != true)
+		{
+			return;
+		}
+
+		var response = await ProfileApi.GetSelectedCardDeckImagesAsync();
+		if (!response.IsSuccessStatusCode || response.Content is null)
+		{
+			return;
+		}
+
+		var map = CardDeckImages.ToClientMap(response.Content, Navigation);
+		await Js.InvokeVoidAsync("cardDeckImages.apply", map);
+	}
+}

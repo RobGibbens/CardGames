@@ -1,0 +1,166 @@
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Services
+@using BlazorBlueprint.Primitives
+@using CardGames.Poker.Web.Components.Shared
+@inject IProfileApi ProfileApi
+@inject IJSRuntime Js
+@inject NavigationManager Navigation
+
+<div class="deck-settings">
+	@if (_error is not null)
+	{
+		<p class="text-danger" role="alert">@_error</p>
+	}
+
+	@if (_decks is null)
+	{
+		<p>Loading decks…</p>
+	}
+	else
+	{
+		<label class="form-label" for="deck-picker">Card deck</label>
+		<div class="app-combobox">
+			<BbCombobox TValue="string"
+			            Options="_options"
+			            Value="_selection"
+			            ValueChanged="OnDeckChangedAsync"
+			            Placeholder="Default"
+			            SearchPlaceholder="Search decks..."
+			            EmptyMessage="No decks found."
+			            MatchTriggerWidth="true"
+			            PopoverWidth="w-full"
+			            Class="bb:w-full"
+			            AriaLabel="Card deck"/>
+		</div>
+		<p class="account-avatar-help">Partial decks stay in this list so you can come back and finish them. Games use a deck only after the back and all 52 fronts are uploaded.</p>
+
+		<div class="deck-settings-actions">
+			<a class="btn btn-primary" href="/Account/Manage/Decks/Upload">Upload custom deck</a>
+		</div>
+
+		@if (_images is not null)
+		{
+			<DeckGallery Title="@(_images.Name)"
+			             Kicker="Selected deck"
+			             Embedded="true"
+			             ShowBack="true"
+			             BackUrl="@CardDeckImages.Back(_images, Navigation)"
+			             FaceUrls="@_faceUrls"
+			             UseBuiltInFallback="true"/>
+		}
+	}
+</div>
+
+@code {
+	private const string DefaultKey = "default";
+
+	private CardDeckListDto? _decks;
+	private SelectedCardDeckImagesDto? _images;
+	private IReadOnlyDictionary<string, string> _faceUrls = new Dictionary<string, string>();
+	private IReadOnlyList<SelectOption<string>> _options = [];
+	private string _selection = DefaultKey;
+	private string? _error;
+	private bool _pendingApply;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadAsync();
+	}
+
+	private async Task LoadAsync()
+	{
+		var listResponse = await ProfileApi.ListCardDecksAsync();
+		if (!listResponse.IsSuccessStatusCode || listResponse.Content is null)
+		{
+			_error = "Unable to load decks right now.";
+			return;
+		}
+
+		_decks = listResponse.Content;
+		_options = _decks.Decks.Select(deck => new SelectOption<string>(Key(deck), Label(deck))).ToList();
+		var selected = _decks.Decks.FirstOrDefault(deck => deck.IsSelected) ?? _decks.Decks.First();
+		_selection = Key(selected);
+		await LoadImagesAsync();
+	}
+
+	private async Task LoadImagesAsync()
+	{
+		var response = await ProfileApi.GetSelectedCardDeckImagesAsync();
+		_images = response.IsSuccessStatusCode && response.Content is not null
+			? response.Content
+			: CardDeckImages.BuiltIn();
+		_faceUrls = _images.Faces.ToDictionary(
+			pair => pair.Key,
+			pair => CardDeckImages.FaceOrBuiltIn(_images.Faces, SuitOf(pair.Key), RankOf(pair.Key), Navigation),
+			StringComparer.Ordinal);
+		_pendingApply = true;
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!_pendingApply || _images is null)
+		{
+			return;
+		}
+
+		_pendingApply = false;
+		try
+		{
+			await Js.InvokeVoidAsync("cardDeckImages.apply", CardDeckImages.ToClientMap(_images, Navigation));
+		}
+		catch (InvalidOperationException)
+		{
+			_pendingApply = true;
+		}
+	}
+
+	private async Task OnDeckChangedAsync(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value) || _decks is null)
+		{
+			return;
+		}
+
+		var deck = _decks.Decks.FirstOrDefault(candidate => Key(candidate) == value);
+		if (deck is null)
+		{
+			return;
+		}
+
+		if (!deck.IsBuiltIn && !deck.IsComplete && deck.Id is Guid deckId)
+		{
+			Navigation.NavigateTo($"/Account/Manage/Decks/{deckId}/Edit");
+			return;
+		}
+
+		_selection = value;
+		var response = await ProfileApi.SelectCardDeckAsync(new SelectCardDeckRequest { DeckId = deck.Id });
+		if (!response.IsSuccessStatusCode || response.Content is null)
+		{
+			_error = CardDeckImages.ReadRefitError(response) ?? "Unable to use that deck.";
+			return;
+		}
+
+		_error = null;
+		_decks = response.Content;
+		_options = _decks.Decks.Select(candidate => new SelectOption<string>(Key(candidate), Label(candidate))).ToList();
+		await LoadImagesAsync();
+	}
+
+	private static string Key(CardDeckSummaryDto deck) => deck.Id?.ToString() ?? DefaultKey;
+
+	private static string Label(CardDeckSummaryDto deck)
+	{
+		if (deck.IsBuiltIn || deck.IsComplete)
+		{
+			return deck.Name;
+		}
+
+		return $"{deck.Name} ({deck.UploadedFaceCount}/{CardDeckSlots.RequiredFaceCount})";
+	}
+
+	private static string SuitOf(string key) => key.Split('-')[0];
+
+	private static string RankOf(string key) => key.Split('-')[1];
+}

@@ -1,0 +1,17 @@
+@page "/Account/Manage/Decks/Upload"
+@page "/Account/Manage/Decks/{DeckId:guid}/Edit"
+
+<PageTitle>Upload deck</PageTitle>
+
+<div class="account-profile">
+	<div class="account-profile-title-row">
+		<h3 class="account-profile-title">@(DeckId == Guid.Empty ? "Upload custom deck" : "Continue deck")</h3>
+		<p class="account-profile-subtitle">Upload the back and each card front. You can leave and come back to a partial deck.</p>
+	</div>
+
+	<DeckUploader DeckId="DeckId" @rendermode="InteractiveServer"/>
+</div>
+
+@code {
+	[Parameter] public Guid DeckId { get; set; }
+}

@@ -1,12 +1,15 @@
 ﻿@using CardGames.Poker.Web.Data
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <nav class="account-manage-nav" aria-label="Account settings">
 	<NavLink class="account-manage-nav-link" href="Account/Manage" Match="NavLinkMatch.All">Profile</NavLink>
 	<NavLink class="account-manage-nav-link" href="Account/Manage/Email">Email</NavLink>
 	<NavLink class="account-manage-nav-link" href="Account/Manage/ChangePassword">Password</NavLink>
 	<NavLink class="account-manage-nav-link" href="Account/Manage/GamePreferences">Game Preferences</NavLink>
+	<NavLink class="account-manage-nav-link" href="Account/Manage/Decks">Decks</NavLink>
 	@if (hasExternalLogins)
 	{
 		<NavLink class="account-manage-nav-link" href="Account/Manage/ExternalLogins">External logins</NavLink>
@@ -16,12 +19,107 @@
 	<NavLink class="account-manage-nav-link" href="Account/Manage/PersonalData">Personal data</NavLink>
 </nav>
 
+<div class="account-manage-nav-picker">
+	<div class="app-combobox">
+		<BbCombobox TValue="string"
+		            Options="_options"
+		            Value="_section"
+		            ValueChanged="OnSectionChanged"
+		            Placeholder="Choose a section"
+		            SearchPlaceholder="Search settings..."
+		            EmptyMessage="No sections found."
+		            MatchTriggerWidth="true"
+		            PopoverWidth="w-full"
+		            Class="bb:w-full"
+		            AriaLabel="Settings"/>
+	</div>
+</div>
+
 @code {
+	private static readonly (string Href, string Label)[] Sections =
+	[
+		("Account/Manage", "Profile"),
+		("Account/Manage/Email", "Email"),
+		("Account/Manage/ChangePassword", "Password"),
+		("Account/Manage/GamePreferences", "Game Preferences"),
+		("Account/Manage/Decks", "Decks"),
+		("Account/Manage/ExternalLogins", "External logins"),
+		("Account/Manage/TwoFactorAuthentication", "Two-factor authentication"),
+		("Account/Manage/Passkeys", "Passkeys"),
+		("Account/Manage/PersonalData", "Personal data")
+	];
+
 	private bool hasExternalLogins;
+	private string _section = "Account/Manage";
+	private IReadOnlyList<SelectOption<string>> _options = [];
 
 	protected override async Task OnInitializedAsync()
 	{
 		hasExternalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
+		BuildOptions();
+		SyncSection();
+		Navigation.LocationChanged += OnLocationChanged;
 	}
 
+	private void BuildOptions()
+	{
+		_options = Sections
+			.Where(section => hasExternalLogins || section.Href != "Account/Manage/ExternalLogins")
+			.Select(section => new SelectOption<string>(section.Href, section.Label))
+			.ToList();
+	}
+
+	private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+	{
+		try
+		{
+			SyncSection();
+			await InvokeAsync(StateHasChanged);
+		}
+		catch (Exception ex)
+		{
+			await DispatchExceptionAsync(ex);
+		}
+	}
+
+	private void SyncSection()
+	{
+		var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0].Trim('/');
+		string? match = null;
+		foreach (var option in _options.OrderByDescending(option => option.Value.Length))
+		{
+			var href = option.Value.Trim('/');
+			if (path.Equals(href, StringComparison.OrdinalIgnoreCase))
+			{
+				match = option.Value;
+				break;
+			}
+
+			if (!href.Equals("Account/Manage", StringComparison.OrdinalIgnoreCase)
+			    && path.StartsWith(href + "/", StringComparison.OrdinalIgnoreCase))
+			{
+				match = option.Value;
+				break;
+			}
+		}
+
+		_section = match ?? "Account/Manage";
+	}
+
+	private void OnSectionChanged(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value)
+		    || string.Equals(value, _section, StringComparison.OrdinalIgnoreCase))
+		{
+			return;
+		}
+
+		_section = value;
+		Navigation.NavigateTo(value);
+	}
+
+	public void Dispose()
+	{
+		Navigation.LocationChanged -= OnLocationChanged;
+	}
 }
