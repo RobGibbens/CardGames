@@ -1,7 +1,7 @@
-@page "/face-cards"
+@page "/decks"
 @rendermode InteractiveServer
 
-<PageTitle>Face Cards Gallery - Dealer's Choice Poker</PageTitle>
+<PageTitle>Custom Cards Gallery - Dealer's Choice Poker</PageTitle>
 
 <CardGames.Poker.Web.Components.Shared.SiteNavBar/>
 
@@ -9,25 +9,13 @@
 	<section class="face-cards-hero">
 		<div class="face-cards-hero-copy">
 			<p class="face-cards-kicker">Card Art Archive</p>
-			<h1 class="face-cards-title">Face Cards, Suit by Suit</h1>
-			<p class="face-cards-subtitle">
-				A clean gallery of the jack, queen, and king artwork already bundled with the web app.
-				Each image is loaded from the existing cards folder with no duplicate assets.
-			</p>
-		</div>
-
-		<div class="face-cards-summary" aria-label="Gallery summary">
-			<div class="face-cards-summary-item">
-				<span class="face-cards-summary-value">12</span>
-				<span class="face-cards-summary-label">Images</span>
-			</div>
-			<div class="face-cards-summary-item">
-				<span class="face-cards-summary-value">4</span>
-				<span class="face-cards-summary-label">Suits</span>
-			</div>
-			<div class="face-cards-summary-item">
-				<span class="face-cards-summary-value">3</span>
-				<span class="face-cards-summary-label">Ranks</span>
+			<div class="face-cards-title-row">
+				<h1 class="face-cards-title">Your custom deck</h1>
+				<img class="face-cards-back"
+				     src="@CardBackImagePath"
+				     alt="Card back"
+				     width="72"
+				     height="103"/>
 			</div>
 		</div>
 	</section>
@@ -35,7 +23,7 @@
 	<section class="face-cards-gallery" aria-labelledby="face-cards-gallery-title">
 		<div class="face-cards-gallery-header">
 			<p class="face-cards-kicker">Gallery</p>
-			<h2 id="face-cards-gallery-title" class="face-cards-gallery-title">All Face Cards</h2>
+			<h2 id="face-cards-gallery-title" class="face-cards-gallery-title">All Cards</h2>
 		</div>
 
 		<div class="face-cards-suits">
@@ -50,17 +38,18 @@
 					</header>
 
 					<div class="face-cards-grid">
-						@foreach (var rank in FaceRanks)
+						@foreach (var rank in Ranks)
 						{
-							var cardName = $"{rank.Label} of {suit.Label}";
-
-							<figure class="face-cards-card">
+							var card = new CardPreview(suit, rank);
+							<button type="button"
+							        class="face-cards-card"
+							        aria-label="@($"Enlarge {card.Alt}")"
+							        @onclick="() => OpenCard(card)">
 								<img class="face-cards-card-image"
-								     src="@GetCardImagePath(suit, rank)"
-								     alt="@cardName"
+								     src="@card.Src"
+								     alt=""
 								     loading="lazy"/>
-								<figcaption class="face-cards-card-caption">@cardName</figcaption>
-							</figure>
+							</button>
 						}
 					</div>
 				</section>
@@ -69,7 +58,39 @@
 	</section>
 </main>
 
+@if (_selectedCard is not null)
+{
+	<div class="face-cards-lightbox"
+	     role="dialog"
+	     aria-modal="true"
+	     aria-label="@_selectedCard.Alt"
+	     tabindex="-1"
+	     @ref="_lightboxRef"
+	     @onkeydown="HandleLightboxKeyDown"
+	     @onclick="CloseCard">
+		<button type="button"
+		        class="league-modal-close-btn face-cards-lightbox-close"
+		        aria-label="Close card preview"
+		        @onclick="CloseCard"
+		        @onclick:stopPropagation="true">
+			<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+		</button>
+		<div class="face-cards-lightbox-panel" @onclick:stopPropagation>
+			<img class="face-cards-lightbox-image"
+			     src="@_selectedCard.Src"
+			     alt="@_selectedCard.Alt"/>
+			<p class="face-cards-lightbox-caption">@_selectedCard.Alt</p>
+		</div>
+	</div>
+}
+
 @code {
+
+	private const string CardBackImagePath = "/images/cards/back-blue-white.png";
+
+	private CardPreview? _selectedCard;
+	private ElementReference _lightboxRef;
+	private bool _focusLightbox;
 
 	private static readonly SuitDefinition[] Suits =
 	[
@@ -79,8 +100,18 @@
 		new("Clubs", "clubs", "♣")
 	];
 
-	private static readonly RankDefinition[] FaceRanks =
+	private static readonly RankDefinition[] Ranks =
 	[
+		new("ace", "Ace"),
+		new("two", "Two"),
+		new("three", "Three"),
+		new("four", "Four"),
+		new("five", "Five"),
+		new("six", "Six"),
+		new("seven", "Seven"),
+		new("eight", "Eight"),
+		new("nine", "Nine"),
+		new("ten", "Ten"),
 		new("jack", "Jack"),
 		new("queen", "Queen"),
 		new("king", "King")
@@ -101,8 +132,46 @@
 		return suit.Slug is "hearts" or "diamonds" ? "is-red" : "is-dark";
 	}
 
+	private void OpenCard(CardPreview card)
+	{
+		_selectedCard = card;
+		_focusLightbox = true;
+	}
+
+	private void CloseCard()
+	{
+		_selectedCard = null;
+	}
+
+	private void HandleLightboxKeyDown(KeyboardEventArgs args)
+	{
+		if (args.Key == "Escape")
+		{
+			CloseCard();
+		}
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!_focusLightbox || _selectedCard is null)
+		{
+			return;
+		}
+
+		_focusLightbox = false;
+		await _lightboxRef.FocusAsync();
+	}
+
 	private sealed record SuitDefinition(string Label, string Slug, string Symbol);
 
 	private sealed record RankDefinition(string Slug, string Label);
+
+	private sealed record CardPreview(string Src, string Alt)
+	{
+		public CardPreview(SuitDefinition suit, RankDefinition rank)
+			: this(GetCardImagePath(suit, rank), $"{rank.Label} of {suit.Label}")
+		{
+		}
+	}
 
 }
