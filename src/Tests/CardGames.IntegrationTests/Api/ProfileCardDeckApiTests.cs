@@ -147,6 +147,45 @@ public class ProfileCardDeckApiTests(CardDeckApiFactory factory)
 	}
 
 	[Fact]
+	public async Task List_OffersBothBuiltInDecks_WithFridayNightPokerSelected()
+	{
+		await SeedUserAsync("deck-user-builtins");
+		SetUser("deck-user-builtins");
+
+		var listed = await GetAsync<CardDeckListDto>("/api/v1/profile/decks");
+		listed!.Decks.Where(deck => deck.IsBuiltIn).Select(deck => deck.Name)
+			.Should().Equal(CardDeckSlots.FridayNightPoker.Name, CardDeckSlots.Basic.Name);
+		listed.Decks.Single(deck => deck.IsSelected).Name.Should().Be(CardDeckSlots.FridayNightPoker.Name);
+
+		var images = await GetAsync<SelectedCardDeckImagesDto>("/api/v1/profile/decks/selected-images");
+		images!.Name.Should().Be(CardDeckSlots.FridayNightPoker.Name);
+		images.BackUrl.Should().Be(CardDeckSlots.FridayNightPoker.BackUrl);
+		images.Faces["spades-ace"].Should().StartWith(CardDeckSlots.FridayNightPoker.ImageBase);
+	}
+
+	[Fact]
+	public async Task Select_BasicBuiltIn_UsesBasicImages()
+	{
+		await SeedUserAsync("deck-user-basic");
+		SetUser("deck-user-basic");
+
+		var selected = await SelectAsync(CardDeckSlots.Basic.Id!.Value);
+		selected.StatusCode.Should().Be(HttpStatusCode.OK);
+		var list = await selected.Content.ReadFromJsonAsync<CardDeckListDto>(JsonOptions);
+		list!.Decks.Single(deck => deck.IsSelected).Name.Should().Be(CardDeckSlots.Basic.Name);
+
+		var images = await GetAsync<SelectedCardDeckImagesDto>("/api/v1/profile/decks/selected-images");
+		images!.DeckId.Should().Be(CardDeckSlots.Basic.Id);
+		images.BackUrl.Should().Be(CardDeckSlots.Basic.BackUrl);
+		images.Faces["hearts-king"].Should().StartWith(CardDeckSlots.Basic.ImageBase);
+
+		(await SelectAsync(null)).EnsureSuccessStatusCode();
+		var restored = await GetAsync<SelectedCardDeckImagesDto>("/api/v1/profile/decks/selected-images");
+		restored!.Name.Should().Be(CardDeckSlots.FridayNightPoker.Name);
+		restored.Faces["hearts-king"].Should().StartWith(CardDeckSlots.FridayNightPoker.ImageBase);
+	}
+
+	[Fact]
 	public async Task Delete_SelectedDeck_ReturnsBuiltInImages()
 	{
 		await SeedUserAsync("deck-user-delete");
@@ -195,7 +234,7 @@ public class ProfileCardDeckApiTests(CardDeckApiFactory factory)
 		return (await GetAsync<CardDeckDetailDto>($"/api/v1/profile/decks/{deckId}"))!;
 	}
 
-	private Task<HttpResponseMessage> SelectAsync(Guid deckId)
+	private Task<HttpResponseMessage> SelectAsync(Guid? deckId)
 	{
 		return Client.PutAsJsonAsync("/api/v1/profile/decks/selected", new SelectCardDeckRequest { DeckId = deckId },
 			JsonOptions);

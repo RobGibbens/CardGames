@@ -30,9 +30,9 @@ public sealed class SelectCardDeckCommandHandler(
 			return new CardDeckError(CardDeckErrorCode.Unauthorized, "User is not authenticated.");
 		}
 
-		if (request.DeckId is null)
+		if (request.DeckId is null || CardDeckSlots.TryGetBuiltIn(request.DeckId.Value, out _))
 		{
-			user.SelectedCardDeckId = null;
+			user.SelectedCardDeckId = request.DeckId;
 			await context.SaveChangesAsync(cancellationToken);
 			return await mediator.Send(new ListCardDecksQuery(), cancellationToken);
 		}

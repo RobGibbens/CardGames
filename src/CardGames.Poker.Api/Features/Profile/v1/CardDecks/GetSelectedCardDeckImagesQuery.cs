@@ -34,6 +34,11 @@ public sealed class GetSelectedCardDeckImagesQueryHandler(
 			return CardDeckSupport.BuiltInImages();
 		}
 
+		if (CardDeckSlots.TryGetBuiltIn(selectedId.Value, out var builtIn))
+		{
+			return CardDeckSupport.BuiltInImages(builtIn);
+		}
+
 		var deck = await context.UserCardDecks.AsNoTracking()
 			.Include(candidate => candidate.Images)
 			.FirstOrDefaultAsync(candidate => candidate.Id == selectedId && candidate.UserId == userId,

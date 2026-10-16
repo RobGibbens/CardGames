@@ -16,7 +16,7 @@ public sealed class ListCardDecksQueryHandler(CardsDbContext context, ICurrentUs
 		var userId = await CardDeckSupport.GetUserIdAsync(context, currentUser, cancellationToken);
 		if (userId is null)
 		{
-			return new CardDeckListDto { Decks = [CardDeckSupport.BuiltInSummary(true)] };
+			return new CardDeckListDto { Decks = BuiltInSummaries(null, customDeckSelected: false) };
 		}
 
 		var user = await context.Users.AsNoTracking()
@@ -34,13 +34,18 @@ public sealed class ListCardDecksQueryHandler(CardsDbContext context, ICurrentUs
 		var selectedStillValid = selectedId is not null &&
 		                         decks.Any(deck => deck.Id == selectedId && CardDeckSupport.IsComplete(deck.Images));
 
-		var summaries = new List<CardDeckSummaryDto>
-		{
-			CardDeckSupport.BuiltInSummary(!selectedStillValid)
-		};
+		var summaries = BuiltInSummaries(selectedId, selectedStillValid);
 		summaries.AddRange(decks.Select(deck =>
 			CardDeckSupport.ToSummary(deck, selectedStillValid && deck.Id == selectedId)));
 
 		return new CardDeckListDto { Decks = summaries };
+	}
+
+	private static List<CardDeckSummaryDto> BuiltInSummaries(Guid? selectedId, bool customDeckSelected)
+	{
+		var active = customDeckSelected ? null : CardDeckSlots.ResolveBuiltIn(selectedId);
+		return CardDeckSlots.BuiltIns
+			.Select(deck => CardDeckSupport.BuiltInSummary(deck, active is not null && deck.Key == active.Key))
+			.ToList();
 	}
 }

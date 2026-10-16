@@ -81,9 +81,9 @@ public static class CardDeckSupport
 			return false;
 		}
 
-		if (string.Equals(normalized, CardDeckSlots.BuiltInName, StringComparison.OrdinalIgnoreCase))
+		if (CardDeckSlots.IsReservedName(normalized))
 		{
-			error = "That name is reserved for the built-in deck.";
+			error = "That name is reserved for a built-in deck.";
 			return false;
 		}
 
@@ -104,10 +104,10 @@ public static class CardDeckSupport
 
 	public static bool HasBack(IEnumerable<UserCardDeckImage> images) => images.Any(image => image.IsBack);
 
-	public static CardDeckSummaryDto BuiltInSummary(bool isSelected) => new()
+	public static CardDeckSummaryDto BuiltInSummary(BuiltInCardDeck deck, bool isSelected) => new()
 	{
-		Id = null,
-		Name = CardDeckSlots.BuiltInName,
+		Id = deck.Id,
+		Name = deck.Name,
 		IsBuiltIn = true,
 		IsComplete = true,
 		IsSelected = isSelected,
@@ -155,16 +155,20 @@ public static class CardDeckSupport
 		};
 	}
 
-	public static SelectedCardDeckImagesDto BuiltInImages() => new()
+	public static SelectedCardDeckImagesDto BuiltInImages(BuiltInCardDeck? deck = null)
 	{
-		DeckId = null,
-		Name = CardDeckSlots.BuiltInName,
-		BackUrl = CardDeckSlots.BuiltInBackUrl,
-		Faces = CardDeckSlots.Faces().ToDictionary(
-			face => CardDeckSlots.FaceKey(face.Suit, face.Rank),
-			face => CardDeckSlots.BuiltInFaceUrl(face.Suit, face.Rank),
-			StringComparer.Ordinal)
-	};
+		deck ??= CardDeckSlots.DefaultBuiltIn;
+		return new SelectedCardDeckImagesDto
+		{
+			DeckId = deck.Id,
+			Name = deck.Name,
+			BackUrl = deck.BackUrl,
+			Faces = CardDeckSlots.Faces().ToDictionary(
+				face => CardDeckSlots.FaceKey(face.Suit, face.Rank),
+				face => deck.FaceUrl(face.Suit, face.Rank),
+				StringComparer.Ordinal)
+		};
+	}
 
 	public static SelectedCardDeckImagesDto ToSelectedImages(UserCardDeck deck, ICardDeckStorageService storage)
 	{

@@ -10,13 +10,15 @@ public static class CardDeckImages
 {
 	public static SelectedCardDeckImagesDto BuiltIn()
 	{
+		var deck = CardDeckSlots.DefaultBuiltIn;
 		return new SelectedCardDeckImagesDto
 		{
-			Name = CardDeckSlots.BuiltInName,
-			BackUrl = CardDeckSlots.BuiltInBackUrl,
+			DeckId = deck.Id,
+			Name = deck.Name,
+			BackUrl = deck.BackUrl,
 			Faces = CardDeckSlots.Faces().ToDictionary(
 				face => CardDeckSlots.FaceKey(face.Suit, face.Rank),
-				face => CardDeckSlots.BuiltInFaceUrl(face.Suit, face.Rank),
+				face => deck.FaceUrl(face.Suit, face.Rank),
 				StringComparer.Ordinal)
 		};
 	}

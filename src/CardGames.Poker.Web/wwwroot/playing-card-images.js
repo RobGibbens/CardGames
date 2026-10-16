@@ -2,9 +2,9 @@
  * playing-card-images.js
  *
  * Drop-in replacement for the Cardmeister <playing-card> custom element.
- * Renders PNG card images from /images/cards/ instead of generated SVG.
+ * Renders PNG card images from /images/cards/fridaynightpoker/ instead of generated SVG.
  *
- * Face-down: rank="0" or missing rank/suit  →  back-blue-white.png
+ * Face-down: rank="0" or missing rank/suit  →  card-back.png
  * Face-up:   rank + suit present            →  {suit}-{rank}.png
  *
  * Observed attributes (same contract as Cardmeister):
@@ -18,8 +18,8 @@
 (function () {
     "use strict";
 
-    const CARD_IMAGE_BASE = "/images/cards/";
-    const BACK_IMAGE = CARD_IMAGE_BASE + "back-blue-white.png";
+    const CARD_IMAGE_BASE = "/images/cards/fridaynightpoker/";
+    const BACK_IMAGE = CARD_IMAGE_BASE + "card-back.png";
     const UNKNOWN_IMAGE = CARD_IMAGE_BASE + "unknown.png";
     let selectedDeck = null;
 
