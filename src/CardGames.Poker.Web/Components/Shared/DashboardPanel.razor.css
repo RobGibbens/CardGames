@@ -189,6 +189,34 @@
     }
 }
 
+/* Phone landscape is often wider than 768px once the page draws under the notch.
+   The tab is absolute, so parent padding does not move it. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+    .dashboard-panel {
+        top: 0.35rem;
+        bottom: auto;
+        left: var(--landscape-inset-left, max(env(safe-area-inset-left, 0px), 47px));
+        height: auto;
+        align-items: flex-start;
+    }
+
+    .dashboard-panel.collapsed {
+        transform: translateX(calc(-100% + 36px));
+    }
+
+    .dashboard-content {
+        min-width: 280px;
+        max-width: min(560px, 70vw);
+        max-height: min(78dvh, 320px);
+        height: auto;
+        width: auto !important;
+    }
+
+    .resize-handle {
+        display: none;
+    }
+}
+
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
     .dashboard-panel {

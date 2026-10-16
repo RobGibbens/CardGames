@@ -577,6 +577,62 @@
     left: 28px;
 }
 
+/* Phone landscape rail: the pill is short, so a button parked on its bottom
+   edge covers the stack and the hand label. Park the buttons in the open
+   space beside or under the pill instead. Card positions stay as they are. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+    .seat-dealer-button,
+    .seat-blind-button {
+        width: 22px;
+        height: 22px;
+        font-size: 0.58rem;
+        line-height: 1;
+    }
+
+    /* Current player: a vertical pair in the sticky seat's right padding,
+       level with the pill, clear of the chips and the hand label below. */
+    .current-player-layout .seat-dealer-button,
+    .current-player-layout .seat-blind-button {
+        bottom: auto;
+        top: 50%;
+        right: -26px;
+        transform: translateY(-50%);
+    }
+
+    .current-player-layout .info-pill-container:has(.seat-dealer-button):has(.seat-blind-button) .seat-dealer-button {
+        top: 0;
+        transform: none;
+    }
+
+    .current-player-layout .info-pill-container:has(.seat-dealer-button):has(.seat-blind-button) .seat-sb-button,
+    .current-player-layout .info-pill-container:has(.seat-dealer-button):has(.seat-blind-button) .seat-bb-button {
+        top: auto;
+        bottom: 0;
+        transform: none;
+    }
+
+    /* Remote player: cards sit on the left and the avatar on the right, so
+       the open strip is under the pill. Keep a bet chip to the right of them. */
+    .remote-player-layout .seat-dealer-button,
+    .remote-player-layout .seat-blind-button {
+        bottom: auto;
+        top: calc(100% + 2px);
+        left: 0;
+    }
+
+    .remote-player-layout .info-pill-container:has(.seat-dealer-button) .seat-sb-button,
+    .remote-player-layout .info-pill-container:has(.seat-dealer-button) .seat-bb-button {
+        left: 24px;
+    }
+
+    .remote-player-layout .info-pill-container:has(.seat-dealer-button, .seat-blind-button) .seat-meta-row {
+        left: auto;
+        right: 0;
+        transform: none;
+        justify-content: flex-end;
+    }
+}
+
 /* --- Screw Your Neighbor Chip Stacks --- */
 .syn-stacks {
     display: flex;

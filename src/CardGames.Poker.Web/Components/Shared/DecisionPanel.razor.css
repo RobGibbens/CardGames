@@ -134,3 +134,34 @@
         transform: rotate(360deg);
     }
 }
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+    .decision-panel-header {
+        gap: 0.4rem;
+        font-size: 0.95rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .decision-panel-subtitle {
+        font-size: 0.75rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .decision-buttons {
+        flex-wrap: nowrap;
+        gap: 0.45rem;
+    }
+
+    .decision-btn {
+        flex-direction: row;
+        gap: 0.35rem;
+        padding: 0.4rem 0.7rem;
+        min-width: 0;
+        font-size: 0.85rem;
+        border-radius: 10px;
+    }
+
+    .decision-btn i {
+        font-size: 1rem;
+    }
+}

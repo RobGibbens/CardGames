@@ -64,6 +64,8 @@
 
 html {
     scroll-behavior: smooth;
+    /* Canvas color for the areas outside the layout box (notch gutters, overscroll). */
+    background-color: var(--bg-primary);
 }
 
 body {
@@ -73,6 +75,9 @@ body {
     line-height: 1.6;
     margin: 0;
     padding: 0;
+    /* Keep page content off the notch. These are 0 on desktop and in portrait. */
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
     transition: background-color var(--transition-normal), color var(--transition-normal);
     overflow-x: hidden;
 }
@@ -4630,7 +4635,14 @@ a:hover {
     z-index: 20;
 }
 
-/* Seat positioning around the table */
+/* Seat positioning around the table.
+   The rail fills the table so percentage seat positions match the oval. */
+.table-seat-rail {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
 .table-seat {
     position: absolute;
     width: 140px;
@@ -4638,6 +4650,7 @@ a:hover {
     z-index: 15;
     cursor: pointer;
     transition: transform var(--transition-fast);
+    pointer-events: auto;
 }
 
 .table-seat:hover {
@@ -5452,7 +5465,7 @@ playing-card.card-wild-highlight {
     left: 0;
     right: 0;
     z-index: 1000;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem max(1rem, env(safe-area-inset-right, 0px)) 0.75rem max(1rem, env(safe-area-inset-left, 0px));
     animation: fadeInDown 0.3s ease-out;
 }
 
@@ -5900,6 +5913,649 @@ playing-card.card-wild-highlight {
     .quick-bet-btn {
         padding: 0.375rem 0.5rem;
         font-size: 0.625rem;
+    }
+}
+
+/* Phone landscape: a seat rail over a short board, instead of the oval.
+   Match the viewport, not the pointer. Safari's responsive mode and a Mac
+   trackpad still report a fine pointer while the window is phone-sized.
+   Tablets and desktops stay on the oval because they are taller than 500px. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+    .table-play-main {
+        position: relative;
+        /* Body padding insets every page. Pull the table back out so its
+           background paints the gutters. Each side uses its own safe-area
+           inset. Phone previews often draw the notch and still report 0,
+           so 47px (the landscape cutout) is the floor on both sides. */
+        --landscape-inset-left: max(env(safe-area-inset-left, 0px), 47px);
+        --landscape-inset-right: max(env(safe-area-inset-right, 0px), 47px);
+        margin-left: calc(-1 * env(safe-area-inset-left, 0px));
+        margin-right: calc(-1 * env(safe-area-inset-right, 0px));
+        height: 100dvh;
+        max-height: 100dvh;
+        min-height: 100dvh;
+        overflow: hidden;
+    }
+
+    /* The tab is absolute, so the play-area padding does not move it.
+       Scoped styles also set left: 0, which would leave it under the cutout. */
+    .dashboard-panel {
+        left: var(--landscape-inset-left) !important;
+    }
+
+    /* viewport-fit=cover makes the layout width the full screen, which is
+       wider than 768px on most phones. Keep the compact gear, not the desktop strip. */
+    .table-controls-desktop {
+        display: none;
+    }
+
+    .table-controls-mobile {
+        display: flex;
+        position: absolute;
+        top: max(0.35rem, env(safe-area-inset-top, 0px));
+        right: var(--landscape-inset-right);
+        left: auto;
+        width: auto;
+        padding: 0;
+        background: transparent;
+        border-bottom: none;
+        z-index: 120;
+    }
+
+    .wild-cards-panel {
+        right: var(--landscape-inset-right);
+    }
+
+    .table-play-area {
+        flex: 1 1 auto;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        min-height: 0;
+        width: 100%;
+        padding-top: 0.3rem;
+        padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+        padding-left: var(--landscape-inset-left);
+        padding-right: var(--landscape-inset-right);
+    }
+
+    /* A docked action bar covers the bottom of the felt. Shrink the table
+       so the board stays fully above it. Card-heavy panels need more room. */
+    .table-play-main:has(.play-panel) .table-play-area {
+        padding-bottom: 5.6rem;
+    }
+
+    .table-play-main:has(.play-panel.draw-panel) .table-play-area,
+    .table-play-main:has(.play-panel.drop-or-stay-panel) .table-play-area,
+    .table-play-main:has(.play-panel.keep-or-trade-panel) .table-play-area,
+    .table-play-main:has(.play-panel.buy-card-panel) .table-play-area,
+    .table-play-main:has(.play-panel.tollbooth-offer-panel) .table-play-area {
+        padding-bottom: 8.75rem;
+    }
+
+    .table-canvas {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        align-self: stretch;
+        width: 100%;
+        max-width: none;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        aspect-ratio: auto;
+        box-sizing: border-box;
+        padding: 0;
+    }
+
+    .poker-table {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
+        gap: 0.4rem;
+    }
+
+    .table-seat-rail {
+        position: relative;
+        inset: auto;
+        order: 1;
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        /* Negative card overlap eats a small gap, so hands sit on top of
+           each other. Keep a clear horizontal gap between every hand. */
+        gap: 2rem;
+        flex: 0 0 auto;
+        min-height: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        pointer-events: auto;
+        /* Top inset keeps a rotated showcase corner on screen. Right inset
+           clears the gear button. Bottom inset keeps the bet, blinds, and
+           dealer button above the felt. Left inset keeps a fanned hole card
+           inside the safe area. */
+        padding: 0.75rem 3.4rem 3rem 0;
+        /* Left inset sits outside the scroller so a hand that passes mine
+           is clipped instead of showing again on the left. */
+        margin-left: 0.85rem;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .table-seat-rail::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* The stats tab shares the rail's left edge. Keep the seats where they
+       were, but put that inset outside the scrollport. Padding is inside
+       the scroller, so a hand that slid past mine stayed visible there,
+       under the tab and to the left of my cards. */
+    .table-play-area:has(.dashboard-panel) .table-seat-rail {
+        padding-left: 0;
+        margin-left: 3.6rem;
+    }
+
+    .table-seat-rail .table-seat {
+        position: static;
+        width: auto;
+        flex: 0 0 auto;
+        transform: none;
+    }
+
+    .table-seat-rail .table-seat:hover {
+        transform: none;
+    }
+
+    .table-seat-rail .table-seat:has(.current-player-layout) {
+        position: sticky;
+        left: 0;
+        order: -1;
+        align-self: flex-start;
+        /* Above every other seat, including an active-turn seat (z-index 25).
+           Those seats stay underneath so their hands can slide behind this one. */
+        z-index: 30;
+        /* Padding is the opaque cover. Matching negative margins keep the
+           cards on the same line as the other hands. A ::before that hangs
+           outside this sticky seat shifts it down onto the felt in Safari. */
+        margin-top: -1.5rem;
+        margin-bottom: -3rem;
+        margin-left: -1rem;
+        /* Position buttons hang past the pill into the right padding, so the
+           rail gap no longer separates the next hand. This margin restores
+           that horizontal gap without moving anything vertically. */
+        margin-right: 1rem;
+        padding-top: 1.5rem;
+        padding-bottom: 3rem;
+        padding-left: 1rem;
+        padding-right: 1.75rem;
+        background: #1a1a1a;
+    }
+
+    .table-seat-rail .seat-container {
+        width: auto;
+        height: auto;
+        margin: 0;
+    }
+
+    /* Hole cards sit beside the name so the rail stays one row high
+       and the felt below can use the rest of the screen. */
+    .table-seat-rail .seat-container.occupied {
+        flex-direction: row;
+        align-items: flex-end;
+        gap: 0.2rem;
+    }
+
+    .table-seat-rail .seat-cards-container {
+        position: static;
+        top: auto;
+    }
+
+    /* The desktop layout lifts face-up cards out of the box. In this rail
+       that lift is clipped, and it drops the hand onto the felt. Keep the
+       card inside its own height so the whole hand stays visible. */
+    .table-seat-rail .current-player-layout .card-shell.face-up {
+        top: 0;
+    }
+
+    .table-seat-rail .avatar-circle {
+        width: 42px;
+        height: 42px;
+    }
+
+    .table-seat-rail .avatar-initials {
+        font-size: 0.85rem;
+    }
+
+    .table-seat-rail .remote-player-layout .avatar-circle {
+        margin-left: -12px;
+    }
+
+    .table-seat-rail .current-player-layout .avatar-circle {
+        margin-right: -12px;
+    }
+
+    .table-seat-rail .info-pill {
+        width: 118px;
+        height: 46px;
+    }
+
+    .table-seat-rail .player-name,
+    .table-seat-rail .chip-count,
+    .table-seat-rail .action-text,
+    .table-seat-rail .status-text {
+        font-size: 0.8rem;
+    }
+
+    .table-seat-rail .chip-count {
+        font-size: 0.9rem;
+    }
+
+    .table-seat-rail .empty-seat-button {
+        width: 68px;
+        height: 68px;
+        padding: 0.2rem;
+        font-size: 0.72rem;
+        line-height: 1.1;
+    }
+
+    .table-seat-rail .seat-meta-row {
+        top: calc(100% + 3px);
+    }
+
+    .table-seat-rail .seat-bet-bubble,
+    .table-seat-rail .hand-eval-tooltip {
+        font-size: 0.72rem;
+        padding: 2px 7px;
+    }
+
+    .table-seat-rail .remote-player-layout playing-card.poker-card,
+    .table-seat-rail .remote-player-layout playing-card.small {
+        width: 32px !important;
+        height: 46px !important;
+        margin: 0 -10px;
+    }
+
+    .table-seat-rail .current-player-layout playing-card.poker-card {
+        width: 50px !important;
+        height: 70px !important;
+    }
+
+    .table-seat-rail .current-player-layout .card-shell {
+        margin: 0 -14px;
+    }
+
+    .poker-table-felt {
+        position: relative;
+        order: 2;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        left: auto;
+        flex: 1 1 auto;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        border-radius: 20px;
+        border-width: 8px;
+        container-type: size;
+        container-name: landscape-board;
+        /* Width keeps five community cards, the deck, and the pot on one
+           line. Height tracks the felt, which now fills the screen. */
+        --board-card-h: clamp(92px, 28dvh, 132px);
+        box-shadow:
+            0 0 0 2px #5a3520,
+            0 0 0 5px #2a1a0f,
+            inset 0 0 36px rgba(0, 0, 0, 0.45);
+    }
+
+    @supports (height: 1cqh) {
+        .poker-table-felt {
+            --board-card-h: min(70cqh, 15.2cqw, 158px);
+        }
+
+        .poker-table-felt:has(.table-center-row-compact-board) {
+            --board-card-h: min(66cqh, 11cqw, 136px);
+        }
+
+        .poker-table-felt:has(.klondike-card-slot):not(:has(.table-center-row-compact-board)) {
+            --board-card-h: min(66cqh, 12.4cqw, 146px);
+        }
+
+        .poker-table-felt:has(.table-center-row-inbetween) {
+            --board-card-h: min(74cqh, 20cqw, 170px);
+        }
+    }
+
+    .poker-table-felt::before {
+        border-radius: 14px;
+        inset: 6px;
+    }
+
+    .poker-table-felt .table-center {
+        position: relative;
+        top: auto;
+        left: auto;
+        transform: none;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.45rem 0.55rem;
+        box-sizing: border-box;
+    }
+
+    .poker-table-felt .table-center-row {
+        gap: clamp(0.4rem, 1.4cqw, 0.85rem);
+        min-width: 0;
+        max-width: 100%;
+        justify-content: center;
+    }
+
+    .poker-table-felt .deck-stack,
+    .poker-table-felt .deck-stack .deck-card,
+    .poker-table-felt .community-card-element {
+        width: calc(var(--board-card-h) * 5 / 7);
+        height: var(--board-card-h);
+        font-size: var(--board-card-h);
+        flex-shrink: 0;
+    }
+
+    .poker-table-felt .community-cards {
+        gap: clamp(0.28rem, 0.9cqw, 0.55rem);
+        padding: 0.35rem 0.5rem;
+    }
+
+    .poker-table-felt .community-card-slot.revealed,
+    .poker-table-felt .inbetween-card-slot .community-card-slot.revealed,
+    .poker-table-felt .klondike-card-slot.revealed {
+        transform: none;
+    }
+
+    .poker-table-felt .inbetween-card-slot {
+        min-width: 0;
+        min-height: 0;
+        padding: 0.3rem;
+    }
+
+    .poker-table-felt .community-card-label {
+        font-size: 0.68rem;
+    }
+
+    .poker-table-felt .pot-display {
+        padding: 0.45rem 0.85rem;
+        flex-shrink: 0;
+    }
+
+    .poker-table-felt .pot-amount {
+        font-size: clamp(1.35rem, 18cqh, 2rem);
+    }
+
+    .poker-table-felt .pot-icon {
+        font-size: clamp(1.1rem, 12cqh, 1.6rem);
+    }
+
+    /* Oval fly-to coordinates would land off the rail. Cards still render on the seats. */
+    .flying-card-container {
+        display: none;
+    }
+
+    /* Action, draw, discard, and the other play panels dock to the bottom of the
+       short landscape viewport. A saved drag position cannot push them off screen. */
+    .play-panel {
+        top: auto !important;
+        right: var(--landscape-inset-right) !important;
+        bottom: max(0.3rem, env(safe-area-inset-bottom, 0px)) !important;
+        left: var(--landscape-inset-left) !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        max-height: calc(100vh - 4.5rem);
+        max-height: calc(100svh - 0.65rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        transform: none !important;
+        padding: 0.4rem 0.65rem 0.45rem !important;
+        border-radius: 14px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .action-panel > .drag-handle,
+    .in-between-panel > .drag-handle {
+        display: none;
+    }
+
+    .play-panel .hand-eval-text {
+        margin: 0 0 0.2rem;
+        font-size: 0.8rem;
+    }
+
+    .play-panel .action-panel-hand-separator {
+        margin-bottom: 0.28rem;
+    }
+
+    .play-panel .action-buttons,
+    .play-panel .ib-action-buttons,
+    .play-panel .draw-actions,
+    .play-panel .decision-buttons {
+        flex-wrap: nowrap;
+        gap: 0.4rem;
+        margin: 0 0 0.35rem;
+    }
+
+    .play-panel .action-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        gap: 0.08rem;
+        padding: 0.3rem 0.3rem 0.26rem;
+        border-radius: 10px;
+    }
+
+    .play-panel .action-icon {
+        font-size: 0.95rem;
+    }
+
+    .play-panel .action-label {
+        font-size: 0.68rem;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    .play-panel .bet-controls {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem 0.5rem;
+        padding-top: 0.3rem;
+        margin: 0;
+    }
+
+    .play-panel .bet-slider-container {
+        flex: 1 1 140px;
+        min-width: 110px;
+        max-width: none;
+    }
+
+    .play-panel .bet-slider {
+        height: 6px;
+    }
+
+    .play-panel .bet-slider::-webkit-slider-thumb {
+        width: 18px;
+        height: 18px;
+    }
+
+    .play-panel .bet-slider::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+    }
+
+    .play-panel .bet-slider-labels {
+        margin-top: 0.1rem;
+        font-size: 0.68rem;
+    }
+
+    .play-panel .bet-input {
+        width: 64px;
+        padding: 0.28rem 0.3rem;
+        font-size: 0.9rem;
+    }
+
+    .play-panel .bet-quick-buttons {
+        gap: 0.3rem;
+    }
+
+    .play-panel .quick-bet-btn {
+        padding: 0.32rem 0.45rem;
+        font-size: 0.68rem;
+    }
+
+    .play-panel .action-panel-timer,
+    .play-panel .turn-timer,
+    .play-panel .draw-turn-timer,
+    .play-panel .buy-card-timer,
+    .play-panel .tollbooth-offer-timer,
+    .play-panel .keep-or-trade-timer,
+    .play-panel .drop-or-stay-timer {
+        margin: 0.28rem 0 0;
+        gap: 0.45rem;
+    }
+
+    .play-panel .draw-panel-header,
+    .play-panel .drop-or-stay-header,
+    .play-panel .keep-or-trade-header,
+    .play-panel .buy-card-header,
+    .play-panel .tollbooth-offer-header,
+    .play-panel .decision-panel-header {
+        margin-bottom: 0.2rem;
+    }
+
+    .play-panel .draw-panel-title,
+    .play-panel .drop-or-stay-title,
+    .play-panel .keep-or-trade-title,
+    .play-panel .buy-card-title,
+    .play-panel .tollbooth-offer-title,
+    .play-panel .decision-panel-header {
+        gap: 0.4rem;
+        font-size: 0.95rem;
+        margin-bottom: 0;
+    }
+
+    .play-panel .draw-panel-title i,
+    .play-panel .drop-or-stay-title i,
+    .play-panel .keep-or-trade-title i {
+        font-size: 1rem;
+    }
+
+    .play-panel .draw-panel-subtitle,
+    .play-panel .drop-or-stay-subtitle,
+    .play-panel .keep-or-trade-subtitle,
+    .play-panel .buy-card-subtitle,
+    .play-panel .tollbooth-offer-subtitle,
+    .play-panel .decision-panel-subtitle,
+    .play-panel .ib-subtext {
+        font-size: 0.75rem;
+        line-height: 1.25;
+        margin-bottom: 0;
+    }
+
+    .play-panel .ib-heading {
+        margin-bottom: 0.15rem;
+        font-size: 0.95rem;
+    }
+
+    .play-panel .ib-action-buttons {
+        margin-top: 0.35rem;
+    }
+
+    .play-panel.draw-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: 0.75rem;
+        row-gap: 0.28rem;
+    }
+
+    .play-panel .draw-panel-header,
+    .play-panel .draw-turn-timer,
+    .play-panel .draw-cards-container,
+    .play-panel .draw-warning,
+    .play-panel .draw-submitting {
+        grid-column: 1 / -1;
+        margin: 0;
+    }
+
+    .play-panel .draw-selection-info {
+        grid-column: 1;
+        margin: 0;
+        min-height: 0;
+        text-align: left;
+    }
+
+    .play-panel .draw-actions {
+        grid-column: 2;
+        margin: 0;
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+
+    .play-panel .draw-cards-container {
+        --draw-card-gap: 0.35rem;
+        --draw-card-width: 52px;
+        padding: 0.45rem 0.15rem 0.2rem;
+    }
+
+    .play-panel .draw-card,
+    .play-panel playing-card {
+        width: 52px !important;
+        height: 74px !important;
+    }
+
+    .play-panel .draw-card-wrapper:hover:not(.selected) {
+        transform: translateY(-4px);
+    }
+
+    .play-panel .draw-card-wrapper.selected {
+        transform: translateY(-6px) scale(1.02);
+    }
+
+    .play-panel .draw-cards-container.bob-barker-layout .draw-card-wrapper.showcase-card:hover:not(.selected) {
+        transform: rotate(24deg) translateY(-4px);
+    }
+
+    .play-panel .draw-cards-container.bob-barker-layout .draw-card-wrapper.showcase-card.selected {
+        transform: rotate(24deg) translateY(-6px) scale(1.02);
+    }
+
+    .play-panel .selection-hint,
+    .play-panel .selection-count,
+    .play-panel .decision-hint {
+        font-size: 0.75rem;
+    }
+
+    .play-panel .draw-btn,
+    .play-panel .drop-or-stay-btn,
+    .play-panel .keep-or-trade-btn,
+    .play-panel .buy-card-btn,
+    .play-panel .decision-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+        border-radius: 10px;
+        min-width: 0;
+    }
+
+    .play-panel .draw-cards-container,
+    .play-panel .drop-or-stay-cards-container,
+    .play-panel .keep-or-trade-cards-container,
+    .play-panel .buy-card-card {
+        margin-bottom: 0.25rem;
     }
 }
 

@@ -179,24 +179,27 @@
 			</div>
 		</div>
 
-		<!-- Seats around the table -->
-		@foreach (var seat in Seats.ToList())
-		{
-			<div class="table-seat @GetSeatPositionClass(seat.SeatIndex) @GetSeatStateClass(seat)"
-			     @onclick="() => HandleSeatClick(seat)">
+		<!-- Seats around the table. The rail is a positioning box on larger screens
+		     and a horizontal row on landscape phones. -->
+		<div class="table-seat-rail">
+			@foreach (var seat in Seats.ToList())
+			{
+				<div class="table-seat @GetSeatPositionClass(seat.SeatIndex) @GetSeatStateClass(seat)"
+				     @onclick="() => HandleSeatClick(seat)">
 
-				<TableSeat Seat="seat"
-				           IsDealer="@(seat.SeatIndex == DealerSeatIndex && CurrentPhase != GamePhase.WaitingForPlayers.ToString())"
-				           IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
-				           IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
-				           IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
-				           ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
-				           GameTypeCode="@GameTypeCode" WildCards="@WildCards"
-				           IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
-				           IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())" Ante="@Ante"
-				           SynBonusChips="@(SynBonusChipsBySeat != null && SynBonusChipsBySeat.TryGetValue(seat.SeatIndex, out var bonus) ? bonus : 0)"/>
-			</div>
-		}
+					<TableSeat Seat="seat"
+					           IsDealer="@(seat.SeatIndex == DealerSeatIndex && CurrentPhase != GamePhase.WaitingForPlayers.ToString())"
+					           IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
+					           IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
+					           IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
+					           ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
+					           GameTypeCode="@GameTypeCode" WildCards="@WildCards"
+					           IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
+					           IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())" Ante="@Ante"
+					           SynBonusChips="@(SynBonusChipsBySeat != null && SynBonusChipsBySeat.TryGetValue(seat.SeatIndex, out var bonus) ? bonus : 0)"/>
+				</div>
+			}
+		</div>
 
 		<!-- Flying card animation overlay -->
 		@if (FlyingCard is not null)

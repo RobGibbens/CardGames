@@ -1,7 +1,7 @@
 @using CardGames.Contracts.SignalR
 @inject IJSRuntime JSRuntime
 
-<div @ref="_panelRef" class="in-between-panel @(IsSubmitting ? "submitting" : "")">
+<div @ref="_panelRef" class="play-panel in-between-panel @(IsSubmitting ? "submitting" : "")">
 	<div @ref="_handleRef" class="drag-handle" title="Drag to move">
 		<i class="fa-thin fa-grip-dots"></i>
 	</div>

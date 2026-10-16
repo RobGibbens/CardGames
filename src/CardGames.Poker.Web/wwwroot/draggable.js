@@ -62,24 +62,54 @@ window.draggablePanel = {
             panel.style.bottom = 'auto';
         }
 
+        // Phone landscape docks these panels in CSS. A saved drag position
+        // from a taller layout would push them off the short viewport.
+        const compactLandscapeQuery = window.matchMedia(
+            "(orientation: landscape) and (max-height: 500px) and (max-width: 1024px)"
+        );
+
+        function isCompactLandscape() {
+            return compactLandscapeQuery.matches;
+        }
+
+        function clearInlinePosition() {
+            panel.style.left = "";
+            panel.style.top = "";
+            panel.style.right = "";
+            panel.style.bottom = "";
+        }
+
+        function syncPosition() {
+            if (isCompactLandscape()) {
+                clearInlinePosition();
+                return;
+            }
+
+            if (!restoreSavedPosition()) {
+                clearInlinePosition();
+            }
+        }
+
         function clamp(panel) {
             const rect = panel.getBoundingClientRect();
             const vw = window.innerWidth;
             const vh = window.innerHeight;
 
             let left = rect.left;
-            let top  = rect.top;
+            let top = rect.top;
 
             if (left < 0) left = 0;
-            if (top  < 0) top  = 0;
-            if (left + rect.width  > vw) left = vw - rect.width;
-            if (top  + rect.height > vh) top  = vh - rect.height;
+            if (top < 0) top = 0;
+            if (left + rect.width > vw) left = Math.max(0, vw - rect.width);
+            if (top + rect.height > vh) top = Math.max(0, vh - rect.height);
 
-            panel.style.left = left + 'px';
-            panel.style.top  = top  + 'px';
+            panel.style.left = left + "px";
+            panel.style.top = top + "px";
         }
 
         function onPointerDown(e) {
+            if (isCompactLandscape()) return;
+
             // Only primary button
             if (e.button !== 0) return;
 
@@ -127,16 +157,23 @@ window.draggablePanel = {
 
         // Ensure the panel stays within bounds on resize.
         window.addEventListener('resize', () => {
+            if (isCompactLandscape()) {
+                syncPosition();
+                return;
+            }
+
             if (panel.style.left && panel.style.left !== 'auto') {
                 clamp(panel);
                 savePosition();
             }
         });
 
+        compactLandscapeQuery.addEventListener("change", syncPosition);
+
         // Also handle touch events to prevent page scroll while dragging
         handle.style.touchAction = 'none';
 
-        // Restore saved position (shared across all panel types).
-        restoreSavedPosition();
+        // Restore saved position, unless landscape CSS is docking the panel.
+        syncPosition();
     }
 };

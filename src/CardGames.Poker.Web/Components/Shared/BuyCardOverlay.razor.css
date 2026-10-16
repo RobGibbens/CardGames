@@ -129,3 +129,32 @@
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.8);
 }
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+    .buy-card-header,
+    .buy-card-card,
+    .buy-card-timer {
+        margin-bottom: 0.25rem;
+    }
+
+    .buy-card-title {
+        font-size: 0.95rem;
+        gap: 0.4rem;
+    }
+
+    .buy-card-subtitle,
+    .buy-card-pending {
+        font-size: 0.75rem;
+        margin-top: 0.1rem;
+    }
+
+    .buy-card-actions {
+        gap: 0.45rem;
+    }
+
+    .buy-card-btn {
+        min-width: 0;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+    }
+}

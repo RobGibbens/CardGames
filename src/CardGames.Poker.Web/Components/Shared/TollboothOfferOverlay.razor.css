@@ -172,3 +172,34 @@
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.8);
 }
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+    .tollbooth-offer-header,
+    .tollbooth-offer-timer {
+        margin-bottom: 0.25rem;
+    }
+
+    .tollbooth-offer-title {
+        font-size: 0.95rem;
+        gap: 0.4rem;
+    }
+
+    .tollbooth-offer-subtitle {
+        font-size: 0.75rem;
+    }
+
+    .tollbooth-offer-actions {
+        gap: 0.4rem;
+    }
+
+    .tollbooth-offer-btn {
+        min-width: 0;
+        padding: 0.35rem 0.4rem;
+        font-size: 0.75rem;
+        border-radius: 10px;
+    }
+
+    .tollbooth-display-card {
+        margin-bottom: 0.25rem;
+    }
+}

@@ -351,3 +351,74 @@
 		height: 2rem;
 	}
 }
+
+/* Phone landscape: the stacked icon eats the short viewport. Sit it beside
+   the title so the search field and variant list start on the first screen. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+	.dealer-choice-modal {
+		padding: 0.55rem 0.75rem;
+		max-height: calc(100dvh - 0.5rem);
+	}
+
+	.dealer-choice-header {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: flex-start;
+		gap: 0.45rem;
+		margin-bottom: 0.75rem;
+		text-align: left;
+	}
+
+	.dealer-choice-header .dealer-choice-icon {
+		flex: 0 0 auto;
+		font-size: 1.05rem;
+		line-height: 1;
+		margin-bottom: 0;
+	}
+
+	.dealer-choice-heading {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		column-gap: 0.4rem;
+		row-gap: 0;
+		min-width: 0;
+	}
+
+	.dealer-choice-header h2,
+	.dealer-choice-heading h2 {
+		margin: 0;
+		font-size: 0.95rem;
+		line-height: 1.15;
+		white-space: nowrap;
+	}
+
+	.dealer-choice-header p {
+		margin: 0;
+		font-size: 0.72rem;
+		line-height: 1.2;
+	}
+
+	.dealer-choice-search {
+		margin-bottom: 0.85rem;
+	}
+
+	.dealer-choice-modal .dc-setting {
+		gap: 0.1rem;
+	}
+
+	.dealer-choice-modal .dc-setting label {
+		font-size: 0.75rem;
+		line-height: 1.1;
+	}
+
+	.dealer-choice-modal .dc-setting input {
+		padding: 0.35rem 0.65rem;
+	}
+
+	.dealer-choice-variants {
+		gap: 0.4rem;
+		margin-bottom: 0.6rem;
+	}
+}

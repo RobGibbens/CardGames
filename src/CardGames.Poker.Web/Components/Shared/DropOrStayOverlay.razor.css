@@ -254,3 +254,51 @@
         width: 100%;
     }
 }
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+    .drop-or-stay-header,
+    .drop-or-stay-cards-container,
+    .drop-or-stay-info,
+    .drop-or-stay-actions {
+        margin-bottom: 0.25rem;
+    }
+
+    .drop-or-stay-title {
+        font-size: 0.95rem;
+        gap: 0.4rem;
+        margin-bottom: 0;
+    }
+
+    .drop-or-stay-title i {
+        font-size: 1rem;
+    }
+
+    .drop-or-stay-subtitle,
+    .decision-hint,
+    .decision-made {
+        font-size: 0.75rem;
+    }
+
+    .drop-or-stay-info {
+        min-height: 0;
+    }
+
+    .drop-or-stay-actions {
+        flex-direction: row;
+        gap: 0.45rem;
+    }
+
+    .drop-or-stay-btn {
+        width: auto;
+        flex: 1 1 0;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+        min-width: 0;
+    }
+
+    .drop-or-stay-timer,
+    .turn-timer {
+        margin-top: 0.25rem;
+        margin-bottom: 0;
+    }
+}

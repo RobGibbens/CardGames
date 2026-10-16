@@ -215,3 +215,46 @@
         min-width: unset;
     }
 }
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 1024px) {
+    .keep-or-trade-header,
+    .keep-or-trade-cards-container,
+    .keep-or-trade-info,
+    .keep-or-trade-actions {
+        margin-bottom: 0.25rem;
+    }
+
+    .keep-or-trade-title {
+        font-size: 0.95rem;
+        gap: 0.4rem;
+        margin-bottom: 0;
+    }
+
+    .keep-or-trade-title i {
+        font-size: 1rem;
+    }
+
+    .keep-or-trade-subtitle,
+    .keep-or-trade-info .decision-hint {
+        font-size: 0.75rem;
+    }
+
+    .keep-or-trade-info {
+        min-height: 0;
+    }
+
+    .keep-or-trade-actions {
+        flex-direction: row;
+        gap: 0.45rem;
+    }
+
+    .keep-or-trade-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.85rem;
+        min-width: 0;
+    }
+
+    .keep-or-trade-timer {
+        margin-top: 0.25rem;
+    }
+}
