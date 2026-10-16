@@ -136,7 +136,7 @@
 		// Prefer the app's stored profile fields.
 		var user = await UserManager.GetUserAsync(principal);
 		CurrentUserName = UserProfileDisplayHelpers.PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
-		CurrentUserAvatarUrl = UserProfileDisplayHelpers.BuildAvatarApiPath(userId);
+		CurrentUserAvatarUrl = UserProfileDisplayHelpers.BuildPreferredAvatarUrl(userId, user?.AvatarUrl);
 	}
 
 	private void ToggleMobileMenu()

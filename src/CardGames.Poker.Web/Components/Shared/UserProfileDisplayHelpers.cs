@@ -96,7 +96,18 @@ internal static class UserProfileDisplayHelpers
 			return new Uri(new Uri(normalizedBaseUrl, UriKind.Absolute), normalizedAvatarUrl.TrimStart('/')).ToString();
 		}
 
+		if (IsPublicHttpsAvatarUrl(normalizedAvatarUrl)) return normalizedAvatarUrl;
+
 		return BuildAvatarApiPath(userId);
+	}
+
+	private static bool IsPublicHttpsAvatarUrl(string url)
+	{
+		if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+
+		var isLocalHost = uri.IsLoopback || string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
+		return !isLocalHost
+		       && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static string? ResolveApiBaseUrl()

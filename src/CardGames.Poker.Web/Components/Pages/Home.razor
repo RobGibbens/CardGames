@@ -5,6 +5,7 @@
 @using Refit
 @rendermode InteractiveServer
 @inject IAvailablePokerGamesApi AvailablePokerGamesApi
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Dealer's Choice Poker - Play Online Poker with Friends</PageTitle>
 <CardGames.Poker.Web.Components.Shared.SiteNavBar/>
@@ -45,7 +46,7 @@
 		</p>
 
 		<div class="hero-actions">
-			<a href="/Account/Register" class="btn btn-primary btn-lg">
+			<a href="@_startPlayingHref" class="btn btn-primary btn-lg">
 				<span>
 					<i class="fa-thin fa-slot-machine"></i>
 				</span> Start Playing Free
@@ -59,8 +60,8 @@
 
 		<div class="hero-stats">
 			<div class="hero-stat">
-				<span class="hero-stat-value">4+</span>
-				<span class="hero-stat-label">Game Variants</span>
+				<span class="hero-stat-value">@GameCountDisplay</span>
+				<span class="hero-stat-label">Games</span>
 			</div>
 			<div class="hero-stat">
 				<span class="hero-stat-value">Real-time</span>
@@ -102,7 +103,7 @@
 			<div class="feature-card animate-fade-in-up animate-delay-1">
 				<div class="feature-icon">
 					<span>
-						<i class="fa-thin fa-lightning"></i>
+						<i class="fa-thin fa-bolt"></i>
 					</span>
 				</div>
 				<h3 class="feature-title">Real-Time Gameplay</h3>
@@ -404,9 +405,14 @@
 @code {
 	private bool isMobileMenuOpen;
 
+	private string _startPlayingHref = "/Account/Register";
+
 	private ICollection<GetAvailablePokerGamesResponse>? _availableGames;
 	private bool _isLoadingAvailableGames;
 	private string? _availableGamesErrorMessage;
+
+	private string GameCountDisplay =>
+		_isLoadingAvailableGames ? "…" : (_availableGames?.Count ?? 0).ToString();
 
 	[CascadingParameter] private HttpContext? HttpContext { get; set; }
 
@@ -418,6 +424,12 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		if (authState.User.Identity?.IsAuthenticated == true)
+		{
+			_startPlayingHref = "/lobby";
+		}
+
 		_isLoadingAvailableGames = true;
 		try
 		{
