@@ -3976,6 +3976,40 @@ a:hover {
 }
 
 /* Responsive Create Table */
+@media (max-width: 768px) and (orientation: portrait) {
+    .create-table-page-header {
+        margin-bottom: 1rem;
+    }
+
+    .create-table-page-header .back-link {
+        margin-bottom: 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .create-table-page-header .create-table-header-content {
+        padding: 0.75rem 1rem;
+        text-align: left;
+    }
+
+    .create-table-page-header .create-table-title {
+        justify-content: flex-start;
+        font-size: 1.25rem;
+        margin-bottom: 0.125rem;
+        gap: 0.4rem;
+    }
+
+    .create-table-page-header .create-table-subtitle {
+        font-size: 0.8125rem;
+        line-height: 1.3;
+    }
+
+    .step-header {
+        flex-direction: row;
+        align-items: flex-start;
+        text-align: left;
+    }
+}
+
 @media (max-width: 768px) {
     .create-table-header-content {
         padding: 1.5rem;
@@ -3988,13 +4022,14 @@ a:hover {
     }
 
     .create-step {
-        padding: 1.5rem;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 0;
     }
 
-    .step-header {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
+    .create-step .variant-card:hover {
+        transform: translateY(-2px);
     }
 
     .form-row.two-columns {
