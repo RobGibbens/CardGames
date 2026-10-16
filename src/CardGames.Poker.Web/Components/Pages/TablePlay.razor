@@ -338,12 +338,12 @@
 	</div>
 
 	<!-- Action Panel (only shown when it's player's turn during betting phase and player has cards) -->
-	@if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !IsCardDealingVisualInProgress)
+	@if (IsActionPanelVisible)
 	{
 		<ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
 		             CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
 		             MinRaise="@(_availableActions?.MinRaise ?? _currentMinBet)" OnAction="HandlePlayerActionAsync"
-		             IsSubmitting="@_isSubmittingAction" ActionTimer="@_actionTimerState"
+		             IsSubmitting="@_bettingActionSubmission.IsLocked" ActionTimer="@_actionTimerState"
 		             HandDescription="@currentPlayerHandEvaluationDescription"
 		             TotalPot="@_pot"/>
 	}
@@ -769,6 +769,7 @@
 	private int? _joinBuyInBalanceCap;
 	private bool _isPlayerTurn;
 	private bool _isSubmittingAction;
+	private readonly BettingActionSubmission _bettingActionSubmission = new();
 
 	private string? _currentPlayerName; // TODO: Get from auth
 	private Guid? _currentPlayerId; // Player ID for API calls (hand history, etc.)
@@ -1006,6 +1007,10 @@
 	// Phase category helper properties - driven by SignalR state
 	private bool IsBettingPhase =>
 		_tableState?.CurrentPhaseCategory?.Equals("Betting", StringComparison.OrdinalIgnoreCase) == true;
+
+	private bool IsActionPanelVisible =>
+		_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !IsCardDealingVisualInProgress
+		&& (_currentActorSeatIndex < 0 || _currentActorSeatIndex == _currentPlayerSeatIndex);
 
 	private bool IsDrawingPhase =>
 		_tableState?.CurrentPhaseCategory?.Equals("Drawing", StringComparison.OrdinalIgnoreCase) == true
@@ -1907,6 +1912,7 @@
 		}
 
 		await ApplyPrivateStateWaitingForHandAsync(state);
+		ReconcileBettingActionLock(state.StateVersion);
 
 		// Redirect if the player requested to leave and is no longer seated (hand completed)
 		if (_hasRequestedLeave && !_isSeated)
@@ -2203,6 +2209,7 @@
 		}
 
 		ApplyPendingCurrentPlayerDrawCardsIfReady();
+		ReconcileBettingActionLock(state.StateVersion);
 
 		await InvokeStateHasChangedAsync();
 	}
@@ -3466,6 +3473,7 @@
 		}
 
 		_isSubmittingAction = false;
+		_bettingActionSubmission.Reset();
 		_isPlayerTurn = false;
 
 		// Dealer's Choice: call the generic StartHand endpoint.
@@ -5214,10 +5222,8 @@
 
 	private async Task HandlePlayerActionAsync(PlayerActionRequest action)
 	{
-		if (!_isPlayerTurn || _isSubmittingAction)
+		if (!_isPlayerTurn || !_bettingActionSubmission.TryBegin(_appliedStateVersion))
 			return;
-
-		_isSubmittingAction = true;
 
 		try
 		{
@@ -5226,6 +5232,9 @@
 
 			if (!response.IsSuccess)
 			{
+				// The action did not happen. Release the lock so the player can choose again.
+				_bettingActionSubmission.Reject();
+
 				// When the server-side auto-action timer fires at the same time the client
 				// submits an action, the server may have already advanced the game to a
 				// resolution phase (Showdown/Complete/Ended). In that case the betting
@@ -5245,14 +5254,27 @@
 
 				var errorMessage = ExtractJsonErrorMessage(response.Error) ?? "An unknown error occurred.";
 				await ShowToastAsync(errorMessage, "error");
+				return;
 			}
 
-			// SignalR will broadcast the updated state - no need to refresh manually
+			// Keep the panel locked until the accepted action shows up in table state.
+			_bettingActionSubmission.Accept(response.Content?.NextPlayerIndex);
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Betting action failed before the server accepted it");
+			_bettingActionSubmission.Reject();
+			await ShowToastAsync("Unable to submit your action. Please try again.", "error");
 		}
 		finally
 		{
-			_isSubmittingAction = false;
+			ReconcileBettingActionLock(_appliedStateVersion);
 		}
+	}
+
+	private void ReconcileBettingActionLock(ulong stateVersion)
+	{
+		_bettingActionSubmission.Observe(stateVersion, IsActionPanelVisible, _currentActorSeatIndex);
 	}
 
 	/// <summary>

@@ -242,11 +242,44 @@
 
 .face-cards-lightbox-close {
     position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 1;
-    width: 2.25rem;
-    height: 2.25rem;
+    top: max(0.75rem, env(safe-area-inset-top, 0px));
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.88);
+    color: #f8fafc;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.face-cards-lightbox-close:hover {
+    background: rgba(15, 23, 42, 0.96);
+    border-color: rgba(255, 255, 255, 0.65);
+}
+
+.face-cards-lightbox-close:active {
+    transform: scale(0.96);
+}
+
+.face-cards-lightbox-close:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.face-cards-lightbox-close i {
+    font-size: 1.35rem;
+    line-height: 1;
 }
 
 .face-cards-lightbox-image {
@@ -281,6 +314,17 @@
 
     .face-cards-lightbox {
         padding: 0.75rem;
+    }
+
+    .face-cards-lightbox-close {
+        top: max(0.5rem, env(safe-area-inset-top, 0px));
+        right: max(0.5rem, env(safe-area-inset-right, 0px));
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .face-cards-lightbox-close i {
+        font-size: 1.5rem;
     }
 
     .face-cards-lightbox-panel {

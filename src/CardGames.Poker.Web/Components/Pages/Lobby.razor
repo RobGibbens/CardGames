@@ -22,7 +22,7 @@
 <main class="lobby-main">
 	<div class="lobby-container">
 		<!-- Lobby Header -->
-		<div class="lobby-header">
+		<div class="lobby-header lobby-page-header">
 			<div class="lobby-header-content">
 				<h1 class="lobby-title">
 					<i class="fa-regular fa-house"></i>
@@ -31,7 +31,11 @@
 				<p class="lobby-subtitle">Find a table or create your own private game</p>
 			</div>
 			<a href="/table/create" class="btn btn-primary btn-lg lobby-create-btn">
-				<img src="/images/createtable.png" alt="Create New Table"/>
+				<img src="/images/createtable.png" alt="Create Table" class="lobby-create-graphic"/>
+				<span class="lobby-create-label">
+					<i class="fa-thin fa-plus"></i>
+					Create Table
+				</span>
 			</a>
 		</div>
 
@@ -161,7 +165,7 @@
 					{
 						var group = groupedTables[groupIndex];
 
-						<section class="@GetGroupSectionClass(groupIndex)">
+						<section class="@GetGroupSectionClass(groupIndex) lobby-group-section-grid">
 							<div
 								class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
 								<div>

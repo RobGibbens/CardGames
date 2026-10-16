@@ -1603,6 +1603,16 @@ a:hover {
     }
 }
 
+@media (max-width: 768px) and (orientation: portrait) {
+    .nav-logo-text {
+        display: none;
+    }
+
+    .nav-logo {
+        flex: 0 0 auto;
+    }
+}
+
 @media (max-width: 480px) {
     .nav-logo-suffix {
         display: none;
@@ -1872,6 +1882,12 @@ a:hover {
     width: clamp(180px, 18vw, 260px);
     max-width: 100%;
     height: auto;
+}
+
+.lobby-create-label {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .cashier-panel {
@@ -3096,6 +3112,25 @@ a:hover {
     overflow: hidden;
 }
 
+/* Lobby cards reuse the variant-picker card markup for their contents.
+   That picker frame must not draw a second border and padding inside the table card. */
+.table-card > .variant-card {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    cursor: default;
+    height: auto;
+    position: static;
+}
+
+.table-card > .variant-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: transparent;
+}
+
 .table-card::before {
     content: '';
     position: absolute;
@@ -3389,8 +3424,67 @@ a:hover {
         min-width: 0;
     }
 
+    .lobby-group-section-grid {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+    }
+
     .tables-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+    .lobby-page-header {
+        flex-direction: row;
+        align-items: center;
+        text-align: left;
+        padding: 0.75rem 1rem;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .lobby-page-header .lobby-title {
+        justify-content: flex-start;
+        font-size: 1.25rem;
+        margin-bottom: 0.125rem;
+        gap: 0.4rem;
+    }
+
+    .lobby-page-header .lobby-subtitle {
+        font-size: 0.8125rem;
+        line-height: 1.3;
+    }
+
+    .lobby-page-header .lobby-create-graphic {
+        display: none;
+    }
+
+    .lobby-page-header .lobby-create-label {
+        display: inline-flex;
+    }
+
+    .lobby-page-header .lobby-create-btn {
+        margin-left: auto;
+        align-self: center;
+        width: auto;
+        min-height: 2.75rem;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.875rem;
+        background: var(--gradient-button);
+        color: white;
+        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+        border-radius: 10px;
+        white-space: nowrap;
+    }
+
+    .lobby-page-header .lobby-create-btn:hover {
+        background: var(--gradient-button-hover);
+        color: white;
+        box-shadow: 0 6px 25px rgba(220, 38, 38, 0.4);
+        transform: translateY(-2px);
     }
 }
 

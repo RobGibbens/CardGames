@@ -19,7 +19,7 @@
 	<div class="action-buttons">
 		@if (LegalActions.Contains(BettingActionType.Fold))
 		{
-			<button class="action-btn fold-btn" data-testid="action-fold" @onclick="() => SubmitAction(BettingActionType.Fold)" disabled="@IsSubmitting">
+			<button type="button" class="action-btn fold-btn" data-testid="action-fold" @onclick="() => SubmitAction(BettingActionType.Fold)" disabled="@IsSubmitting">
 				<i class="action-icon fa-thin fa-circle-down"></i>
 				<span class="action-label">Fold</span>
 			</button>
@@ -27,7 +27,7 @@
 
 		@if (LegalActions.Contains(BettingActionType.Check))
 		{
-			<button class="action-btn check-btn" data-testid="action-check" @onclick="() => SubmitAction(BettingActionType.Check)" disabled="@IsSubmitting">
+			<button type="button" class="action-btn check-btn" data-testid="action-check" @onclick="() => SubmitAction(BettingActionType.Check)" disabled="@IsSubmitting">
 				<i class="action-icon fa-thin fa-circle-check"></i>
 				<span class="action-label">Check</span>
 			</button>
@@ -35,7 +35,7 @@
 
 		@if (LegalActions.Contains(BettingActionType.Call))
 		{
-			<button class="action-btn call-btn" data-testid="action-call" @onclick="() => SubmitAction(BettingActionType.Call)" disabled="@IsSubmitting">
+			<button type="button" class="action-btn call-btn" data-testid="action-call" @onclick="() => SubmitAction(BettingActionType.Call)" disabled="@IsSubmitting">
 				<i class="action-icon fa-thin fa-circle-phone"></i>
 				<span class="action-label">Call @CurrentBetToCall</span>
 			</button>
@@ -43,7 +43,7 @@
 
 		@if (LegalActions.Contains(BettingActionType.Bet))
 		{
-			<button class="action-btn bet-btn" data-testid="action-bet" @onclick="() => SubmitAction(BettingActionType.Bet, betAmount)" disabled="@IsSubmitting">
+			<button type="button" class="action-btn bet-btn" data-testid="action-bet" @onclick="() => SubmitAction(BettingActionType.Bet, betAmount)" disabled="@IsSubmitting">
 				<i class="action-icon fa-thin fa-circle-dollar"></i>
 				<span class="action-label">Bet @betAmount</span>
 			</button>
@@ -51,7 +51,7 @@
 
 		@if (LegalActions.Contains(BettingActionType.Raise))
 		{
-			<button class="action-btn raise-btn" data-testid="action-raise" @onclick="() => SubmitAction(BettingActionType.Raise, betAmount)" disabled="@IsSubmitting">
+			<button type="button" class="action-btn raise-btn" data-testid="action-raise" @onclick="() => SubmitAction(BettingActionType.Raise, betAmount)" disabled="@IsSubmitting">
 				<i class="action-icon fa-thin fa-circle-plus"></i>
 				<span class="action-label">Raise to @betAmount</span>
 			</button>
@@ -59,7 +59,7 @@
 
 		@if (LegalActions.Contains(BettingActionType.AllIn))
 		{
-			<button class="action-btn allin-btn" data-testid="action-all-in" @onclick="() => SubmitAction(BettingActionType.AllIn)" disabled="@IsSubmitting">
+			<button type="button" class="action-btn allin-btn" data-testid="action-all-in" @onclick="() => SubmitAction(BettingActionType.AllIn)" disabled="@IsSubmitting">
 				<i class="action-icon fa-thin fa-circle-a"></i>
 				<span class="action-label">All In!</span>
 			</button>
@@ -77,7 +77,8 @@
 				       max="@MaxBet"
 				       step="@GetBetStep()"
 				       @bind="betAmount"
-				       @bind:event="oninput"/>
+				       @bind:event="oninput"
+				       disabled="@IsSubmitting"/>
 				<div class="bet-slider-labels">
 					<span>@GetEffectiveMinBet()</span>
 					<span>@MaxBet</span>
@@ -90,14 +91,15 @@
 				       data-testid="bet-amount"
 				       min="@GetEffectiveMinBet()"
 				       max="@MaxBet"
-				       @bind="betAmount"/>
+				       @bind="betAmount"
+				       disabled="@IsSubmitting"/>
 			</div>
 
 			<div class="bet-quick-buttons">
-				<button class="quick-bet-btn" @onclick="() => SetBetAmount(GetEffectiveMinBet())">Min</button>
-				<button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))">½ Pot</button>
-				<button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(1.0))">Pot</button>
-				<button class="quick-bet-btn" @onclick="() => SetBetAmount(MaxBet)">Max</button>
+				<button type="button" class="quick-bet-btn" @onclick="() => SetBetAmount(GetEffectiveMinBet())" disabled="@IsSubmitting">Min</button>
+				<button type="button" class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))" disabled="@IsSubmitting">½ Pot</button>
+				<button type="button" class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(1.0))" disabled="@IsSubmitting">Pot</button>
+				<button type="button" class="quick-bet-btn" @onclick="() => SetBetAmount(MaxBet)" disabled="@IsSubmitting">Max</button>
 			</div>
 		</div>
 	}
@@ -110,13 +112,15 @@
 		</div>
 	}
 
-	<!-- Turn timer -->
-	<div class="turn-timer action-panel-timer">
-		<div class="timer-bar">
-			<div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+	@if (!IsSubmitting)
+	{
+		<div class="turn-timer action-panel-timer">
+			<div class="timer-bar">
+				<div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+			</div>
+			<span class="timer-text">@GetSecondsRemaining() s</span>
 		</div>
-		<span class="timer-text">@GetSecondsRemaining() s</span>
-	</div>
+	}
 </div>
 
 @code {
