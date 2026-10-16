@@ -1,0 +1,210 @@
+name: cardgames-prod
+
+# Public site for dealerschoicepoker.net. Does not publish host ports 80/443.
+# HTTPS is the shared edge Caddy at C:\dev\DraftIQ\deploy\edge. That stack is the
+# only Compose project on ports 80/443, and it joins this project's network
+# (cardgames-prod_default) to proxy dealerschoicepoker.net -> cardgames-web:8080
+# and api.dealerschoicepoker.net -> cardgames-api:8080. Keep the project name
+# cardgames-prod and the aliases cardgames-web, cardgames-api, and cardgames-azurite.
+# Aspire dashboard (anonymous, loopback-only): http://localhost:19888
+# From this directory: copy .env.example to .env, then: docker compose up --build
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA}
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD}
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+
+  cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    restart: unless-stopped
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--blobPort", "10000", "--location", "/data", "--loose", "--skipApiVersionCheck"]
+    volumes:
+      - azurite_data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:10000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    networks:
+      default:
+        aliases:
+          - cardgames-azurite
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA}
+      MSSQL_SA_PASSWORD: ${EMULATOR_MSSQL_SA_PASSWORD}
+    volumes:
+      - mssql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+
+  servicebus:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    platform: linux/amd64
+    restart: unless-stopped
+    volumes:
+      - ./servicebus/Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
+    environment:
+      SQL_SERVER: mssql
+      MSSQL_SA_PASSWORD: ${EMULATOR_MSSQL_SA_PASSWORD}
+      ACCEPT_EULA: ${ACCEPT_EULA}
+      SQL_WAIT_INTERVAL: 15
+      EMULATOR_HTTP_PORT: 5300
+    depends_on:
+      mssql:
+        condition: service_healthy
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:19888:18888"
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:18888
+      ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL: http://0.0.0.0:18889
+      ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL: http://0.0.0.0:18890
+      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+
+  migrations:
+    build:
+      context: ..
+      dockerfile: src/CardGames.MigrationService/Dockerfile
+    restart: "no"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ConnectionStrings__cardsdb: "Server=sqlserver,1433;Database=${SQL_DATABASE};User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=True"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: cardgames-migrations
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      aspire-dashboard:
+        condition: service_started
+
+  api:
+    build:
+      context: ..
+      dockerfile: src/CardGames.Poker.Api/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: ${ASPNETCORE_FORWARDEDHEADERS_ENABLED}
+      ConnectionStrings__cardsdb: "Server=sqlserver,1433;Database=${SQL_DATABASE};User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=True"
+      ConnectionStrings__cache: cache:6379
+      ConnectionStrings__messaging: Endpoint=sb://servicebus;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
+      ConnectionStrings__blobs: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      AvatarStorage__PublicBaseUrl: https://${PUBLIC_API_HOST}
+      ServiceBus__TransportType: ${ServiceBus__TransportType:-AmqpTcp}
+      InternalIdentity__SigningKey: ${InternalIdentity__SigningKey}
+      Cors__AllowedOrigins__0: https://${PUBLIC_WEB_HOST}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: cardgames-api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      cache:
+        condition: service_healthy
+      azurite:
+        condition: service_healthy
+      servicebus:
+        condition: service_started
+      aspire-dashboard:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+          - cardgames-api
+
+  web:
+    build:
+      context: ..
+      dockerfile: src/CardGames.Poker.Web/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: ${ASPNETCORE_FORWARDEDHEADERS_ENABLED}
+      ConnectionStrings__cardsdb: "Server=sqlserver,1433;Database=${SQL_DATABASE};User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=True"
+      Services__api__http__0: http://api:8080
+      InternalIdentity__SigningKey: ${InternalIdentity__SigningKey}
+      DataProtection__KeysPath: /keys
+      Email__Enabled: ${Email__Enabled:-true}
+      Resend__ApiKey: ${Resend__ApiKey:-}
+      Resend__From: ${Resend__From}
+      Authentication__Google__ClientId: ${Authentication__Google__ClientId:-}
+      Authentication__Google__ClientSecret: ${Authentication__Google__ClientSecret:-}
+      Authentication__Microsoft__ClientId: ${Authentication__Microsoft__ClientId:-}
+      Authentication__Microsoft__ClientSecret: ${Authentication__Microsoft__ClientSecret:-}
+      Authentication__Yahoo__ClientId: ${Authentication__Yahoo__ClientId:-}
+      Authentication__Yahoo__ClientSecret: ${Authentication__Yahoo__ClientSecret:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_SERVICE_NAME: cardgames-web
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    depends_on:
+      api:
+        condition: service_healthy
+      aspire-dashboard:
+        condition: service_started
+    volumes:
+      - dataprotection_keys:/keys
+    networks:
+      default:
+        aliases:
+          - cardgames-web
+
+volumes:
+  sqlserver_data:
+  mssql_data:
+  azurite_data:
+  dataprotection_keys:
+

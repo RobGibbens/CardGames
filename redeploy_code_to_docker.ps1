@@ -1,4 +1,5 @@
 # Rebuild and redeploy CardGames migrations, api, and web (existing volumes; no docker compose down -v).
+# Does not touch the shared Caddy edge in C:\dev\DraftIQ\deploy\edge (ports 80/443).
 # Usage: from repo root, after Docker Desktop is running: .\redeploy_code_to_docker.ps1
 
 $ErrorActionPreference = "Stop"
