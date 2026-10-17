@@ -32,7 +32,7 @@
 								<span class="split-indicator">(Split @entry.WinnerCount-way)</span>
 							}
 						</span>
-						<span class="amount-won">+@entry.AmountWon.ToString("N0")</span>
+						<span class="amount-won">@FormatWon(entry.AmountWon)</span>
 					</button>
 
 					@if (isExpanded && entry.PlayerResults.Any())
@@ -80,6 +80,9 @@
 	[Parameter]
 	public string? GameTypeCode { get; set; }
 
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
 	/// <summary>
 	///     Set of hand numbers that are currently expanded.
 	/// </summary>
@@ -119,15 +122,12 @@
 		};
 	}
 
-	private static string FormatNetAmount(int netAmount)
-	{
-		return netAmount switch
-		{
-			> 0 => $"+{netAmount:N0}",
-			< 0 => netAmount.ToString("N0"),
-			_ => "0"
-		};
-	}
+	private string FormatWon(int amount) =>
+		DisplayChipsAsCurrency
+			? $"+{ChipAmountFormat.Format(amount, true)}"
+			: $"+{amount:N0}";
+
+	private string FormatNetAmount(int netAmount) => ChipAmountFormat.FormatSigned(netAmount, DisplayChipsAsCurrency);
 
 	private static MarkupString FormatHand(IReadOnlyList<string>? visibleCards, string? handDescription)
 	{

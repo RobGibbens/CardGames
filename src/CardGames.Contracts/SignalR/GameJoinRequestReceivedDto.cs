@@ -11,6 +11,7 @@ public sealed record GameJoinRequestReceivedDto
 	public string? PlayerFirstName { get; init; }
 	public required int RequestedBuyIn { get; init; }
 	public int? MaxBuyIn { get; init; }
+	public bool DisplayChipsAsCurrency { get; init; }
 	public required DateTimeOffset RequestedAtUtc { get; init; }
 	public required DateTimeOffset ExpiresAtUtc { get; init; }
 }

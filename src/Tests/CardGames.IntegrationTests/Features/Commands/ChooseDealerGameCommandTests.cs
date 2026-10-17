@@ -248,6 +248,35 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task Handle_ValidChoice_DoesNotOverwriteTableDefaultStakes()
+	{
+		var setup = await CreateDealersChoiceSetupWithTestUser(0);
+		setup.Game.DefaultSmallBlind = 5;
+		setup.Game.DefaultBigBlind = 10;
+		setup.Game.DefaultAnte = 2;
+		await DbContext.SaveChangesAsync();
+
+		var command = new ChooseDealerGameCommand(
+			setup.Game.Id,
+			PokerGameMetadataRegistry.HoldEmCode,
+			0,
+			25,
+			15,
+			25);
+
+		var result = await Mediator.Send(command);
+
+		result.IsT0.Should().BeTrue();
+		var game = await DbContext.Games.FirstAsync(g => g.Id == setup.Game.Id);
+		game.SmallBlind.Should().Be(15);
+		game.BigBlind.Should().Be(25);
+		game.Ante.Should().Be(0);
+		game.DefaultSmallBlind.Should().Be(5);
+		game.DefaultBigBlind.Should().Be(10);
+		game.DefaultAnte.Should().Be(2);
+	}
+
+	[Fact]
 	public async Task Handle_CreatesDealersChoiceHandLog()
 	{
 		var setup = await CreateDealersChoiceSetupWithTestUser(0);

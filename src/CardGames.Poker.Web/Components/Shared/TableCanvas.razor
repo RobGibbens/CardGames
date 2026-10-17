@@ -173,7 +173,7 @@
 						<span class="pot-icon">
 							<i class="fa-regular fa-coins"></i>
 						</span>
-						<span class="pot-amount" data-testid="pot-amount">@Pot.ToString("N0")</span>
+						<span class="pot-amount" data-testid="pot-amount">@ChipAmountFormat.Format(Pot, DisplayChipsAsCurrency)</span>
 					</div>
 				</div>
 			</div>
@@ -258,6 +258,9 @@
 	[Parameter] public List<SeatInfo> Seats { get; set; } = [];
 
 	[Parameter] public int Pot { get; set; }
+
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
 
 	[Parameter] public string? CurrentPhase { get; set; }
 

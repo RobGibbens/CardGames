@@ -49,6 +49,7 @@
 @inject IAvailablePokerGamesApi AvailablePokerGamesApi
 @inject NotificationHubClient NotificationHubClient
 
+<CascadingValue Name="DisplayChipsAsCurrency" Value="DisplayChipsAsCurrency">
 <PageTitle>Table - Dealer's Choice Poker</PageTitle>
 
 <!-- Connection Banner -->
@@ -68,7 +69,7 @@
 			</div>
 			<div class="confirm-dialog-body league-form-modal-body text-start">
 				<p class="confirm-dialog-message mb-2 text-start">
-					Account balance: <strong>@_joinBuyInBalance.ToString("N0")</strong>
+					Account balance: <strong>@ChipAmountFormat.Format(_joinBuyInBalance, DisplayChipsAsCurrency)</strong>
 				</p>
 
 				<div class="join-buy-in-modal-controls">
@@ -77,27 +78,44 @@
 					       type="range"
 					       class="bet-slider"
 					       style="@GetJoinBuyInSliderStyle()"
-					       min="@GetJoinBuyInMin()"
+					       min="@GetJoinBuyInSliderMin()"
 					       max="@GetJoinBuyInMax()"
 					       step="@GetJoinBuyInStep()"
-					       @bind="_joinBuyInAmount"
-					       @bind:event="oninput"
-					       @bind:after="NormalizeJoinBuyIn"
+					       value="@GetJoinBuyInSliderValue()"
+					       @oninput="OnJoinBuyInSliderInput"
 					       disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)"/>
 					<div class="bet-slider-labels">
-						<span>Min @GetJoinBuyInMin().ToString("N0")</span>
-						<span>Max @GetJoinBuyInMax().ToString("N0")</span>
+						<span>Min @ChipAmountFormat.Format(GetJoinBuyInMin(), DisplayChipsAsCurrency)</span>
+						<span>Max @ChipAmountFormat.Format(GetJoinBuyInMax(), DisplayChipsAsCurrency)</span>
 					</div>
 
-					<input id="join-buy-in-input"
-					       class="form-input join-buy-in-input"
-					       type="number"
-					       min="@GetJoinBuyInMin()"
-					       max="@GetJoinBuyInMax()"
-					       step="1"
-					       @bind="_joinBuyInAmount"
-					       @bind:after="ClampJoinBuyIn"
-					       disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)"/>
+					@if (DisplayChipsAsCurrency)
+					{
+						<div class="d-flex align-items-center gap-2">
+							<span aria-hidden="true">$</span>
+							<input id="join-buy-in-input"
+							       class="form-input join-buy-in-input flex-grow-1"
+							       type="number"
+							       min="@ChipAmountFormat.ToDollars(GetJoinBuyInMin())"
+							       max="@ChipAmountFormat.ToDollars(GetJoinBuyInMax())"
+							       step="0.01"
+							       value="@ChipAmountFormat.InputValue(_joinBuyInAmount, true)"
+							       @onchange="OnJoinBuyInInputChanged"
+							       disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)"/>
+						</div>
+					}
+					else
+					{
+						<input id="join-buy-in-input"
+						       class="form-input join-buy-in-input"
+						       type="number"
+						       min="@GetJoinBuyInMin()"
+						       max="@GetJoinBuyInMax()"
+						       step="1"
+						       @bind="_joinBuyInAmount"
+						       @bind:after="ClampJoinBuyIn"
+						       disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)"/>
+					}
 
 				</div>
 			</div>
@@ -129,7 +147,7 @@
 					Your request to join is pending approval from <strong>@_joinApprovalHostName</strong>.
 				</p>
 				<p class="confirm-dialog-message mb-0 text-start">
-					Requested buy-in: <strong>@_pendingApprovalBuyIn.ToString("N0")</strong>
+					Requested buy-in: <strong>@ChipAmountFormat.Format(_pendingApprovalBuyIn, DisplayChipsAsCurrency)</strong>
 				</p>
 			</div>
 			<div class="confirm-dialog-footer join-buy-in-modal-footer">
@@ -523,6 +541,9 @@
 			                   IsLoading="@_dcGamesLoading"
 			                   CurrentActivePlayerCount="@_seats.Count(s => s.IsOccupied && !s.IsSittingOut)"
 			                   AllowedGameCodes="@_allowedDealerChoiceGameCodes"
+			                   DefaultSmallBlind="@_defaultSmallBlind"
+			                   DefaultBigBlind="@_defaultBigBlind"
+			                   DefaultAnte="@_defaultAnte"
 			                   OnGameChosen="@HandleDealerChoiceAsync"/>
 		}
 		else
@@ -724,6 +745,7 @@
 		}
 	</BbDrawerContent>
 </BbDrawer>
+</CascadingValue>
 
 @code {
 	[Parameter] public Guid GameId { get; set; }
@@ -956,6 +978,7 @@
 	private Guid? _leagueId;
 
 	private bool HasFixedTournamentBuyIn => (_gameResponse?.TournamentBuyIn ?? 0) > 0;
+	private bool DisplayChipsAsCurrency => _gameResponse?.DisplayChipsAsCurrency == true;
 	private bool IsLeagueTournament => HasFixedTournamentBuyIn;
 
 	private string? _loggedInUserEmail;
@@ -1519,7 +1542,7 @@
 			};
 
 			_ante = state.Ante;
-			NormalizeJoinBuyIn();
+			ClampJoinBuyIn();
 			_pot = state.TotalPot;
 			_dealerSeatIndex = state.DealerSeatIndex;
 			_currentActorSeatIndex = state.CurrentActorSeatIndex;
@@ -1856,7 +1879,7 @@
 			Logger.LogDebug("Received SignalR update before initial data loaded, applying minimal public state update");
 
 			_ante = state.Ante;
-			NormalizeJoinBuyIn();
+			ClampJoinBuyIn();
 			_pot = state.TotalPot;
 			_dealerSeatIndex = state.DealerSeatIndex;
 			_currentActorSeatIndex = state.CurrentActorSeatIndex;
@@ -2680,6 +2703,9 @@
 
 	private GetGameResponse? _gameResponse;
 	private IReadOnlyList<string>? _allowedDealerChoiceGameCodes;
+	private int? _defaultSmallBlind;
+	private int? _defaultBigBlind;
+	private int? _defaultAnte;
 
 	private async Task LoadDataAsync()
 	{
@@ -2697,6 +2723,9 @@
 
 				_gameResponse = CreateLocalGameResponse(gamesResponse);
 				_allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
+				_defaultSmallBlind = gamesResponse.DefaultSmallBlind;
+				_defaultBigBlind = gamesResponse.DefaultBigBlind;
+				_defaultAnte = gamesResponse.DefaultAnte;
 
 				_currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
 				_dealerSeatIndex = _gameResponse.DealerPosition;
@@ -2794,6 +2823,7 @@
 			gamesResponse.UpdatedAt)
 		{
 			AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
+			DisplayChipsAsCurrency = gamesResponse.DisplayChipsAsCurrency,
 			LeagueId = gamesResponse.LeagueId,
 			MaxBuyIn = gamesResponse.MaxBuyIn,
 			RequiresJoinApproval = gamesResponse.RequiresJoinApproval,
@@ -3148,7 +3178,7 @@
 
 		try
 		{
-			NormalizeJoinBuyIn();
+			ClampJoinBuyIn();
 
 			if (_joinBuyInAmount <= 0)
 			{
@@ -3159,7 +3189,7 @@
 			if (_joinBuyInBalanceCap.HasValue && _joinBuyInAmount > _joinBuyInBalanceCap.Value)
 			{
 				_joinBuyInAmount = _joinBuyInBalanceCap.Value;
-				NormalizeJoinBuyIn();
+				ClampJoinBuyIn();
 				await ShowToastAsync("Buy-in cannot exceed your account balance.", "error");
 				return;
 			}
@@ -3291,23 +3321,64 @@
 
 	private void NormalizeJoinBuyIn()
 	{
-		var min = GetJoinBuyInMin();
+		_joinBuyInAmount = SnapJoinBuyIn(_joinBuyInAmount, GetJoinBuyInMin(), GetJoinBuyInMax(), GetJoinBuyInStep());
+	}
+
+	private void OnJoinBuyInSliderInput(ChangeEventArgs args)
+	{
+		if (int.TryParse(args.Value?.ToString(), out var amount))
+			_joinBuyInAmount = amount;
+
+		NormalizeJoinBuyIn();
+	}
+
+	private int GetJoinBuyInSliderValue()
+	{
+		var min = GetJoinBuyInSliderMin();
 		var max = GetJoinBuyInMax();
+		return SnapJoinBuyIn(Math.Clamp(_joinBuyInAmount, min, max), min, max, GetJoinBuyInStep());
+	}
+
+	/// <summary>
+	///     Snaps a buy-in onto multiples of <paramref name="step"/> measured from zero.
+	///     Anchoring on <paramref name="min"/> shifts the grid: a 1-cent minimum and a 25-cent
+	///     step turn $50.00 into $49.76.
+	/// </summary>
+	private static int SnapJoinBuyIn(int amount, int min, int max, int step)
+	{
+		if (max < min)
+			max = min;
+
+		var clamped = Math.Clamp(amount, min, max);
+		if (step <= 1)
+			return clamped;
+
+		var snapped = clamped / step * step;
+		return snapped < min ? min : Math.Min(snapped, max);
+	}
+
+	private int GetJoinBuyInSliderMin()
+	{
+		var min = GetJoinBuyInMin();
 		var step = GetJoinBuyInStep();
+		if (step <= 1)
+			return min;
 
-		var clamped = Math.Clamp(_joinBuyInAmount, min, max);
-		if (step > 1)
-		{
-			var snapped = (clamped - min) / step * step + min;
-			clamped = Math.Clamp(snapped, min, max);
-		}
-
-		_joinBuyInAmount = clamped;
+		var aligned = (min + step - 1) / step * step;
+		return aligned > GetJoinBuyInMax() ? min : aligned;
 	}
 
 	private void ClampJoinBuyIn()
 	{
 		_joinBuyInAmount = Math.Clamp(_joinBuyInAmount, GetJoinBuyInMin(), GetJoinBuyInMax());
+	}
+
+	private void OnJoinBuyInInputChanged(ChangeEventArgs args)
+	{
+		if (ChipAmountFormat.TryParseInput(args.Value?.ToString(), asCurrency: true, out var chips))
+			_joinBuyInAmount = chips;
+
+		ClampJoinBuyIn();
 	}
 
 	private int GetRecommendedJoinBuyIn()
@@ -3414,7 +3485,7 @@
 
 	private string GetJoinBuyInSliderStyle()
 	{
-		var min = GetJoinBuyInMin();
+		var min = GetJoinBuyInSliderMin();
 		var max = GetJoinBuyInMax();
 
 		if (max <= min)
@@ -3422,7 +3493,7 @@
 			return "--join-buy-in-progress: 100%;";
 		}
 
-		var clamped = Math.Clamp(_joinBuyInAmount, min, max);
+		var clamped = GetJoinBuyInSliderValue();
 		var percent = (int)Math.Round((double)(clamped - min) * 100 / (max - min));
 		return $"--join-buy-in-progress: {percent}%;";
 	}
@@ -5164,6 +5235,9 @@
 				RowVersion = gameResponse.Content.RowVersion
 			};
 			_allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gameResponse.Content.GameSettings);
+			_defaultSmallBlind = gameResponse.Content.DefaultSmallBlind;
+			_defaultBigBlind = gameResponse.Content.DefaultBigBlind;
+			_defaultAnte = gameResponse.Content.DefaultAnte;
 		}
 	}
 

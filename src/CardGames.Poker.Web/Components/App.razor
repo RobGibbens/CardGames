@@ -19,6 +19,12 @@
                 return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
             }
 
+            function applyDocumentTheme(theme) {
+                document.documentElement.setAttribute("data-theme", theme);
+                // Blueprint components read the dark class, not data-theme.
+                document.documentElement.classList.toggle("dark", theme === "dark");
+            }
+
             function getSiteThemeStylesheet() {
                 var storedStylesheet = localStorage.getItem(siteThemePreferenceKey);
                 return availableSiteThemeStylesheets.indexOf(storedStylesheet) >= 0
@@ -26,15 +32,20 @@
                     : defaultSiteThemeStylesheet;
             }
 
-            document.documentElement.setAttribute("data-theme", getTheme());
+            applyDocumentTheme(getTheme());
             document.documentElement.setAttribute("data-site-theme-stylesheet", getSiteThemeStylesheet());
-            new MutationObserver(function(mutations) {
-                for (var i = 0; i < mutations.length; i++) {
-                    if (!document.documentElement.hasAttribute("data-theme")) {
-                        document.documentElement.setAttribute("data-theme", getTheme());
-                    }
+            new MutationObserver(function() {
+                var theme = document.documentElement.getAttribute("data-theme");
+                if (theme !== "dark" && theme !== "light") {
+                    applyDocumentTheme(getTheme());
+                    return;
                 }
-            }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+                var isDark = theme === "dark";
+                if (document.documentElement.classList.contains("dark") !== isDark) {
+                    document.documentElement.classList.toggle("dark", isDark);
+                }
+            }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
         })();
     </script>
 	<ResourcePreloader/>

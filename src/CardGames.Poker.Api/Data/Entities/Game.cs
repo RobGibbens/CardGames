@@ -88,6 +88,24 @@ public class Game : EntityWithRowVersion
 	public int? BigBlind { get; set; }
 
 	/// <summary>
+	///     Default small blind for blind-based games at a Dealer's Choice table.
+	///     Unchanged when a dealer picks different stakes for a single hand.
+	/// </summary>
+	public int? DefaultSmallBlind { get; set; }
+
+	/// <summary>
+	///     Default big blind for blind-based games at a Dealer's Choice table.
+	///     Unchanged when a dealer picks different stakes for a single hand.
+	/// </summary>
+	public int? DefaultBigBlind { get; set; }
+
+	/// <summary>
+	///     Default ante for ante-based games at a Dealer's Choice table.
+	///     Unchanged when a dealer picks a different ante for a single hand.
+	/// </summary>
+	public int? DefaultAnte { get; set; }
+
+	/// <summary>
 	///     Bring-in amount (for stud games with bring-in).
 	/// </summary>
 	public int? BringIn { get; set; }
@@ -282,6 +300,12 @@ public class Game : EntityWithRowVersion
 	///     Whether hand-odds calculations are visible in the dashboard for all players at this table.
 	/// </summary>
 	public bool AreOddsVisibleToAllPlayers { get; set; } = true;
+
+	/// <summary>
+	///     Whether chip amounts at this table are displayed as U.S. dollars.
+	///     One chip equals one cent. Amounts are still stored as integer chips.
+	/// </summary>
+	public bool DisplayChipsAsCurrency { get; set; }
 
 	/// <summary>
 	///     The game type code chosen by the dealer for the current hand (Dealer's Choice mode only).

@@ -131,7 +131,7 @@
 						{
 							if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
 							{
-								<span class="action-text">@Seat.LastActionDescription</span>
+								<span class="action-text">@ChipAmountFormat.FormatActionDescription(Seat.LastActionDescription, DisplayChipsAsCurrency)</span>
 							}
 							else if (IsCurrentActor)
 							{
@@ -168,7 +168,7 @@
 						}
 						else
 						{
-							<span class="chip-count" data-testid="seat-chips">@Seat.Chips.ToString("N0")</span>
+							<span class="chip-count" data-testid="seat-chips">@ChipAmountFormat.Format(Seat.Chips, DisplayChipsAsCurrency)</span>
 						}
 					</div>
 				</div>
@@ -193,7 +193,7 @@
 						@if (Seat.CurrentBet > 0)
 						{
 							<div class="seat-bet-bubble" data-testid="seat-bet">
-								<i class="fa-solid fa-coins"></i> @Seat.CurrentBet.ToString("N0")
+								<i class="fa-solid fa-coins"></i> @ChipAmountFormat.Format(Seat.CurrentBet, DisplayChipsAsCurrency)
 							</div>
 						}
 
@@ -220,6 +220,9 @@
 
 @code {
 	[Parameter] [EditorRequired] public required SeatInfo Seat { get; set; }
+
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
 
 	[Parameter] public bool IsDealer { get; set; }
 

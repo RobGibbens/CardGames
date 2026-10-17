@@ -68,22 +68,22 @@
 				{
 					<div class="game-info-stat">
 						<span class="game-info-stat-label">Small Blind</span>
-						<span class="game-info-stat-value">@SmallBlind.ToString("N0")</span>
+						<span class="game-info-stat-value">@ChipAmountFormat.Format(SmallBlind, DisplayChipsAsCurrency)</span>
 					</div>
 					<div class="game-info-stat">
 						<span class="game-info-stat-label">Big Blind</span>
-						<span class="game-info-stat-value">@BigBlind.ToString("N0")</span>
+						<span class="game-info-stat-value">@ChipAmountFormat.Format(BigBlind, DisplayChipsAsCurrency)</span>
 					</div>
 				}
 				else
 				{
 					<div class="game-info-stat">
 						<span class="game-info-stat-label">Ante</span>
-						<span class="game-info-stat-value">@Ante.ToString("N0")</span>
+						<span class="game-info-stat-value">@ChipAmountFormat.Format(Ante, DisplayChipsAsCurrency)</span>
 					</div>
 					<div class="game-info-stat">
 						<span class="game-info-stat-label">Min Bet</span>
-						<span class="game-info-stat-value">@MinBet.ToString("N0")</span>
+						<span class="game-info-stat-value">@ChipAmountFormat.Format(MinBet, DisplayChipsAsCurrency)</span>
 					</div>
 				}
 			</div>
@@ -162,6 +162,9 @@
 	[Parameter] public EventCallback OnToggleOddsVisibility { get; set; }
 
 	[Parameter] public EventCallback OnClose { get; set; }
+
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{

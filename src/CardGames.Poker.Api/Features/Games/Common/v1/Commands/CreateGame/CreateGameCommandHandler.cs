@@ -45,6 +45,37 @@ public class CreateGameCommandHandler(
 				Reason = "Big blind must be greater than small blind."
 			};
 
+		if (command.IsDealersChoice)
+		{
+			if (command.DefaultSmallBlind is null or <= 0)
+				return new CreateGameConflict
+				{
+					GameId = command.GameId,
+					Reason = "Default small blind must be greater than zero."
+				};
+
+			if (command.DefaultBigBlind is null or <= 0)
+				return new CreateGameConflict
+				{
+					GameId = command.GameId,
+					Reason = "Default big blind must be greater than zero."
+				};
+
+			if (command.DefaultBigBlind <= command.DefaultSmallBlind)
+				return new CreateGameConflict
+				{
+					GameId = command.GameId,
+					Reason = "Default big blind must be greater than small blind."
+				};
+
+			if (command.DefaultAnte is null or <= 0)
+				return new CreateGameConflict
+				{
+					GameId = command.GameId,
+					Reason = "Default ante must be greater than zero."
+				};
+		}
+
 		if (command.MaxBuyIn.HasValue)
 		{
 			var minimumAllowedBuyIn = GetMinimumAllowedBuyIn(command);
@@ -108,13 +139,17 @@ public class CreateGameCommandHandler(
 			DealerPosition = 0,
 			Ante = command.IsDealersChoice ? null : command.Ante,
 			MinBet = command.IsDealersChoice ? null : command.MinBet,
-			SmallBlind = command.SmallBlind,
-			BigBlind = command.BigBlind,
+			SmallBlind = command.IsDealersChoice ? null : command.SmallBlind,
+			BigBlind = command.IsDealersChoice ? null : command.BigBlind,
+			DefaultSmallBlind = command.IsDealersChoice ? command.DefaultSmallBlind : null,
+			DefaultBigBlind = command.IsDealersChoice ? command.DefaultBigBlind : null,
+			DefaultAnte = command.IsDealersChoice ? command.DefaultAnte : null,
 			MaxBuyIn = command.MaxBuyIn,
 			TournamentBuyIn = command.TournamentBuyIn,
 			RequiresJoinApproval = command.RequiresJoinApproval,
 			IsDealersChoice = command.IsDealersChoice,
 			AreOddsVisibleToAllPlayers = command.AreOddsVisibleToAllPlayers,
+			DisplayChipsAsCurrency = command.DisplayChipsAsCurrency,
 			Status = GameStatus.WaitingForPlayers,
 			CurrentPlayerIndex = -1,
 			CurrentDrawPlayerIndex = -1,

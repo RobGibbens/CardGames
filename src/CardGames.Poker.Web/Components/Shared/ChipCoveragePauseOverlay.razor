@@ -11,17 +11,24 @@
 
 		<div class="pot-info">
 			<span class="pot-label">Pot to cover:</span>
-			<span class="pot-value">@PotAmount.ToString("N0") chips</span>
+			<span class="pot-value">@FormatWithUnit(PotAmount)</span>
 		</div>
 
 		<div class="your-chips-info">
 			<span class="your-chips-label">Your chips:</span>
-			<span class="your-chips-value">@CurrentPlayerChips.ToString("N0") chips</span>
+			<span class="your-chips-value">@FormatWithUnit(CurrentPlayerChips)</span>
 		</div>
 
 		<div class="chips-needed-info">
 			<i class="fa-solid fa-triangle-exclamation"></i>
-			<span>You need <strong>@ChipsNeeded.ToString("N0")</strong> more chips to cover the pot!</span>
+			@if (DisplayChipsAsCurrency)
+			{
+				<span>You need <strong>@FormatAmount(ChipsNeeded)</strong> more to cover the pot!</span>
+			}
+			else
+			{
+				<span>You need <strong>@ChipsNeeded.ToString("N0")</strong> more chips to cover the pot!</span>
+			}
 		</div>
 
 		<div class="timer-section">
@@ -48,13 +55,28 @@
 			<div class="add-chips-form">
 				<label for="chip-amount">Add Chips:</label>
 				<div class="input-group">
-					<input type="number"
-					       id="chip-amount"
-					       class="form-control chip-input"
-					       @bind="_chipAmount"
-					       min="@ChipsNeeded"
-					       step="10"
-					       placeholder="@ChipsNeeded"/>
+					@if (DisplayChipsAsCurrency)
+					{
+						<span class="input-group-text" aria-hidden="true">$</span>
+						<input type="number"
+						       id="chip-amount"
+						       class="form-control chip-input"
+						       min="@ChipAmountFormat.ToDollars(ChipsNeeded)"
+						       step="0.01"
+						       value="@ChipAmountFormat.InputValue(_chipAmount, true)"
+						       @onchange="OnChipAmountChanged"
+						       placeholder="@ChipAmountFormat.ToDollars(ChipsNeeded).ToString("0.00")"/>
+					}
+					else
+					{
+						<input type="number"
+						       id="chip-amount"
+						       class="form-control chip-input"
+						       @bind="_chipAmount"
+						       min="@ChipsNeeded"
+						       step="10"
+						       placeholder="@ChipsNeeded"/>
+					}
 					<button class="btn btn-primary add-chips-btn"
 					        @onclick="AddChipsAsync"
 					        disabled="@(_isSubmitting || _chipAmount < ChipsNeeded)">
@@ -71,10 +93,10 @@
 					</button>
 				</div>
 				<div class="quick-amounts">
-					<button class="quick-amount-btn" @onclick="() => SetAmount(ChipsNeeded)">Min (@ChipsNeeded)</button>
-					<button class="quick-amount-btn" @onclick="() => SetAmount(50)">+50</button>
-					<button class="quick-amount-btn" @onclick="() => SetAmount(100)">+100</button>
-					<button class="quick-amount-btn" @onclick="() => SetAmount(200)">+200</button>
+					<button class="quick-amount-btn" @onclick="() => SetAmount(ChipsNeeded)">Min (@FormatAmount(ChipsNeeded))</button>
+					<button class="quick-amount-btn" @onclick="() => SetAmount(50)">@FormatQuickAmount(50)</button>
+					<button class="quick-amount-btn" @onclick="() => SetAmount(100)">@FormatQuickAmount(100)</button>
+					<button class="quick-amount-btn" @onclick="() => SetAmount(200)">@FormatQuickAmount(200)</button>
 				</div>
 			</div>
 
@@ -145,6 +167,9 @@
 	[Parameter]
 	public bool IsRebuyGrace { get; set; }
 
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
 	[Inject] private IGamesApi GamesApiClient { get; set; } = null!;
 
 	[Inject] private ILogger<ChipCoveragePauseOverlay> Logger { get; set; } = null!;
@@ -158,6 +183,22 @@
 	///     The number of additional chips the current player needs.
 	/// </summary>
 	private int ChipsNeeded => Math.Max(0, PotAmount - CurrentPlayerChips);
+
+	private string FormatAmount(int amount) => ChipAmountFormat.Format(amount, DisplayChipsAsCurrency);
+
+	private string FormatWithUnit(int amount) =>
+		DisplayChipsAsCurrency ? FormatAmount(amount) : $"{amount:N0} chips";
+
+	private string FormatQuickAmount(int amount) =>
+		DisplayChipsAsCurrency ? FormatAmount(amount) : $"+{amount}";
+
+	private void OnChipAmountChanged(ChangeEventArgs args)
+	{
+		if (!ChipAmountFormat.TryParseInput(args.Value?.ToString(), asCurrency: true, out var chips))
+			return;
+
+		_chipAmount = Math.Max(chips, ChipsNeeded);
+	}
 
 	protected override void OnParametersSet()
 	{
@@ -177,7 +218,9 @@
 	{
 		if (_chipAmount < ChipsNeeded)
 		{
-			_message = $"Please add at least {ChipsNeeded} chips to cover the pot.";
+			_message = DisplayChipsAsCurrency
+				? $"Please add at least {FormatAmount(ChipsNeeded)} to cover the pot."
+				: $"Please add at least {ChipsNeeded} chips to cover the pot.";
 			_messageType = "error";
 			return;
 		}
@@ -192,7 +235,9 @@
 
 			if (result.IsSuccessStatusCode && result.Content != null)
 			{
-				_message = $"Added {_chipAmount} chips! You're ready for the next hand.";
+				_message = DisplayChipsAsCurrency
+					? $"Added {FormatAmount(_chipAmount)}! You're ready for the next hand."
+					: $"Added {_chipAmount} chips! You're ready for the next hand.";
 				_messageType = "success";
 
 				// Notify parent component

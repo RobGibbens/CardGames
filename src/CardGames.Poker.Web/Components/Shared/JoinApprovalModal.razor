@@ -20,17 +20,35 @@
 								<div class="join-approval-item-title-row">
 									<strong>@(request.PlayerFirstName ?? request.PlayerName)</strong>
 								</div>
-								<p class="confirm-dialog-message mb-2">Requested buy-in: <strong>@request.RequestedBuyIn.ToString("N0")</strong></p>
+								<p class="confirm-dialog-message mb-2">Requested buy-in: <strong>@ChipAmountFormat.Format(request.RequestedBuyIn, request.DisplayChipsAsCurrency)</strong></p>
 								<label class="form-label mb-1" for="@GetInputId(request.JoinRequestId)">Approved buy-in</label>
-								<input id="@GetInputId(request.JoinRequestId)"
-								       class="form-control join-buy-in-input"
-								       type="number"
-								       min="1"
-								       max="@request.RequestedBuyIn"
-								       step="1"
-								       value="@GetApprovedBuyIn(request.JoinRequestId, request.RequestedBuyIn)"
-								       @oninput="eventArgs => OnApprovedBuyInInput(request.JoinRequestId, request.RequestedBuyIn, eventArgs)"
-								       disabled="@(BusyJoinRequestId == request.JoinRequestId)"/>
+								@if (request.DisplayChipsAsCurrency)
+								{
+									<div class="d-flex align-items-center gap-2">
+										<span aria-hidden="true">$</span>
+										<input id="@GetInputId(request.JoinRequestId)"
+										       class="form-control join-buy-in-input"
+										       type="number"
+										       min="@ChipAmountFormat.ToDollars(1)"
+										       max="@ChipAmountFormat.ToDollars(request.RequestedBuyIn)"
+										       step="0.01"
+										       value="@ChipAmountFormat.InputValue(GetApprovedBuyIn(request.JoinRequestId, request.RequestedBuyIn), true)"
+										       @oninput="eventArgs => OnApprovedBuyInInput(request.JoinRequestId, request.RequestedBuyIn, eventArgs, asCurrency: true)"
+										       disabled="@(BusyJoinRequestId == request.JoinRequestId)"/>
+									</div>
+								}
+								else
+								{
+									<input id="@GetInputId(request.JoinRequestId)"
+									       class="form-control join-buy-in-input"
+									       type="number"
+									       min="1"
+									       max="@request.RequestedBuyIn"
+									       step="1"
+									       value="@GetApprovedBuyIn(request.JoinRequestId, request.RequestedBuyIn)"
+									       @oninput="eventArgs => OnApprovedBuyInInput(request.JoinRequestId, request.RequestedBuyIn, eventArgs, asCurrency: false)"
+									       disabled="@(BusyJoinRequestId == request.JoinRequestId)"/>
+								}
 							</div>
 							<div class="join-approval-item-actions">
 								<button class="btn btn-secondary confirm-dialog-btn"
@@ -91,13 +109,11 @@
 		return _approvedBuyIns.GetValueOrDefault(joinRequestId, requestedBuyIn);
 	}
 
-	private void OnApprovedBuyInInput(Guid joinRequestId, int requestedBuyIn, ChangeEventArgs eventArgs)
+	private void OnApprovedBuyInInput(Guid joinRequestId, int requestedBuyIn, ChangeEventArgs eventArgs, bool asCurrency)
 	{
 		var parsed = requestedBuyIn;
-		if (int.TryParse(eventArgs.Value?.ToString(), out var value))
-		{
+		if (ChipAmountFormat.TryParseInput(eventArgs.Value?.ToString(), asCurrency, out var value))
 			parsed = Math.Clamp(value, 1, requestedBuyIn);
-		}
 
 		_approvedBuyIns[joinRequestId] = parsed;
 	}

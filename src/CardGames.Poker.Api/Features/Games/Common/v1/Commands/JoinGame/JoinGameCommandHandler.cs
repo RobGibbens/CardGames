@@ -287,6 +287,7 @@ public sealed class JoinGameCommandHandler(
 						PlayerFirstName = userProfile?.FirstName,
 						RequestedBuyIn = startingChips,
 						MaxBuyIn = game.MaxBuyIn,
+						DisplayChipsAsCurrency = game.DisplayChipsAsCurrency,
 						RequestedAtUtc = joinRequest.RequestedAt,
 						ExpiresAtUtc = joinRequest.ExpiresAt
 					},

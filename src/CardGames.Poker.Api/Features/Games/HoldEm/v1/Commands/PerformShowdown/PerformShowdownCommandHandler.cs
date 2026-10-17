@@ -10,6 +10,7 @@ using CardGames.Poker.Hands.HandTypes;
 using CardGames.Poker.Hands.Strength;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OneOf;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
@@ -24,13 +25,20 @@ public class PerformShowdownCommandHandler(
 	CardsDbContext context,
 	IHandHistoryRecorder handHistoryRecorder,
 	IHandSettlementService handSettlementService,
+	ILogger<PerformShowdownCommandHandler>? logger = null,
 	GameEventsTelemetry? telemetry = null)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
-	public async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
+	public Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
 		PerformShowdownCommand command,
 		CancellationToken cancellationToken)
+		=> Handle(command, cancellationToken, attempt: 0);
+
+	private async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
+		PerformShowdownCommand command,
+		CancellationToken cancellationToken,
+		int attempt)
 	{
 		var now = DateTimeOffset.UtcNow;
 
@@ -140,7 +148,10 @@ public class PerformShowdownCommandHandler(
 				var foldPayouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } };
 				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
-				await context.SaveChangesAsync(cancellationToken);
+				var recoveredFold = await SaveOrRecoverFromConcurrentShowdownAsync(
+					command, attempt, cancellationToken);
+				if (recoveredFold is not null)
+					return recoveredFold.Value;
 				RecordCompletedHandMetrics(game, currentHandPots, now);
 
 				await RecordHandHistoryAsync(
@@ -269,7 +280,9 @@ public class PerformShowdownCommandHandler(
 		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 		MoveDealer(game);
 
-		await context.SaveChangesAsync(cancellationToken);
+		var recovered = await SaveOrRecoverFromConcurrentShowdownAsync(command, attempt, cancellationToken);
+		if (recovered is not null)
+			return recovered.Value;
 		RecordCompletedHandMetrics(game, currentHandPots, now);
 
 		var winnerInfos = payouts
@@ -294,6 +307,30 @@ public class PerformShowdownCommandHandler(
 			cancellationToken);
 
 		return BuildContestedSuccess(game, playerHandEvaluations, usersByEmail, payouts);
+	}
+
+	/// <summary>
+	///     Every seat loads showdown when the hand ends. The first save wins; the others reload
+	///     the awarded hand instead of failing the request.
+	/// </summary>
+	private async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>?> SaveOrRecoverFromConcurrentShowdownAsync(
+		PerformShowdownCommand command,
+		int attempt,
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await context.SaveChangesAsync(cancellationToken);
+			return null;
+		}
+		catch (DbUpdateConcurrencyException) when (attempt == 0)
+		{
+			logger?.LogInformation(
+				"Showdown for game {GameId} collided with another showdown. Reloading the awarded hand.",
+				command.GameId);
+			context.ChangeTracker.Clear();
+			return await Handle(command, cancellationToken, attempt + 1);
+		}
 	}
 
 	private static Dictionary<string, int> ReadStoredPayouts(IEnumerable<Pot> currentHandPots)

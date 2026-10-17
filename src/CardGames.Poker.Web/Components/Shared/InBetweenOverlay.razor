@@ -45,12 +45,29 @@
 						       disabled="@IsSubmitting"/>
 						<div class="bet-slider-labels">
 							<span>Pass</span>
-							<span>@MaxBet</span>
+							<span>@FormatAmount(MaxBet)</span>
 						</div>
 					</div>
 
 					<div class="bet-input-group">
-						<span class="ib-bet-display">@(_betAmount == 0 ? "" : _betAmount.ToString())</span>
+						@if (DisplayChipsAsCurrency)
+						{
+							<div class="bet-input-group d-flex align-items-center gap-1">
+								<span aria-hidden="true">$</span>
+								<input type="number"
+								       class="bet-input"
+								       min="0"
+								       max="@ChipAmountFormat.ToDollars(MaxBet)"
+								       step="0.01"
+								       value="@ChipAmountFormat.InputValue(_betAmount, true)"
+								       @onchange="OnBetAmountInput"
+								       disabled="@IsSubmitting"/>
+							</div>
+						}
+						else
+						{
+							<span class="ib-bet-display">@(_betAmount == 0 ? "" : _betAmount.ToString())</span>
+						}
 					</div>
 				</div>
 
@@ -63,14 +80,14 @@
 					{
 						<button class="action-btn ib-bet-btn" disabled="@IsSubmitting" @onclick="() => OnPlaceBet.InvokeAsync(_betAmount)">
 							<i class="action-icon fa-thin fa-circle-dollar"></i>
-							<span class="action-label">Bet @_betAmount</span>
+							<span class="action-label">Bet @FormatAmount(_betAmount)</span>
 						</button>
 					}
 					@if (MaxBet > 0 && !IsFirstOrbitFullPotRestricted)
 					{
 						<button class="action-btn ib-pot-btn" disabled="@IsSubmitting" @onclick="() => OnPlaceBet.InvokeAsync(MaxBet)">
 							<i class="action-icon fa-thin fa-sack-dollar"></i>
-							<span class="action-label">Bet Pot (@MaxBet)</span>
+							<span class="action-label">Bet Pot (@FormatAmount(MaxBet))</span>
 						</button>
 					}
 				</div>
@@ -129,6 +146,20 @@
 </div>
 
 @code {
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
+	private string FormatAmount(int amount) =>
+		DisplayChipsAsCurrency ? ChipAmountFormat.Format(amount, true) : amount.ToString();
+
+	private void OnBetAmountInput(ChangeEventArgs args)
+	{
+		if (!ChipAmountFormat.TryParseInput(args.Value?.ToString(), asCurrency: true, out var chips))
+			return;
+
+		_betAmount = Math.Clamp(chips, 0, MaxBet);
+	}
+
 	private const string PanelStorageKey = "cardGames.panelPosition.inBetweenPanel";
 
 	private ElementReference _panelRef;

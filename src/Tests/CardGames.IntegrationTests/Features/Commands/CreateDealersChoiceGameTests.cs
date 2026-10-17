@@ -25,7 +25,12 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 				new("Player1", 1000),
 				new("Player2", 1000)
 			},
-			true);
+			true)
+		{
+			DefaultSmallBlind = 5,
+			DefaultBigBlind = 10,
+			DefaultAnte = 5
+		};
 
 		// Act
 		var result = await Mediator.Send(command);
@@ -53,7 +58,12 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			10,
 			20,
 			new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) },
-			true);
+			true)
+		{
+			DefaultSmallBlind = 5,
+			DefaultBigBlind = 10,
+			DefaultAnte = 5
+		};
 
 		await Mediator.Send(command);
 
@@ -78,7 +88,12 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 				new("Player2", 750),
 				new("Player3", 1000)
 			},
-			true);
+			true)
+		{
+			DefaultSmallBlind = 5,
+			DefaultBigBlind = 10,
+			DefaultAnte = 5
+		};
 
 		await Mediator.Send(command);
 
@@ -107,7 +122,12 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			0,
 			0,
 			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
-			true);
+			true)
+		{
+			DefaultSmallBlind = 5,
+			DefaultBigBlind = 10,
+			DefaultAnte = 5
+		};
 
 		await Mediator.Send(command);
 
@@ -127,7 +147,12 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			0,
 			0,
 			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
-			true);
+			true)
+		{
+			DefaultSmallBlind = 5,
+			DefaultBigBlind = 10,
+			DefaultAnte = 5
+		};
 
 		await Mediator.Send(command);
 
@@ -153,6 +178,9 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
 			true)
 		{
+			DefaultSmallBlind = 5,
+			DefaultBigBlind = 10,
+			DefaultAnte = 5,
 			AllowedDealerChoiceGameCodes =
 			[
 				PokerGameMetadataRegistry.FiveCardDrawCode,
@@ -189,6 +217,9 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
 			true)
 		{
+			DefaultSmallBlind = 5,
+			DefaultBigBlind = 10,
+			DefaultAnte = 5,
 			AllowedDealerChoiceGameCodes = []
 		};
 
@@ -219,5 +250,71 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
 		game.GameTypeId.Should().NotBeNull();
 		game.Ante.Should().Be(10);
 		game.MinBet.Should().Be(20);
+		game.DefaultSmallBlind.Should().BeNull();
+		game.DefaultBigBlind.Should().BeNull();
+		game.DefaultAnte.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task Handle_DealersChoice_PersistsDefaultStakesAndLeavesHandStakesUnset()
+	{
+		var gameId = Guid.NewGuid();
+		var command = new CreateGameCommand(
+			gameId,
+			string.Empty,
+			"DC Table",
+			99,
+			99,
+			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
+			true)
+		{
+			SmallBlind = 50,
+			BigBlind = 100,
+			DefaultSmallBlind = 5,
+			DefaultBigBlind = 10,
+			DefaultAnte = 2
+		};
+
+		var result = await Mediator.Send(command);
+
+		result.IsT0.Should().BeTrue();
+		var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+		game.DefaultSmallBlind.Should().Be(5);
+		game.DefaultBigBlind.Should().Be(10);
+		game.DefaultAnte.Should().Be(2);
+		game.Ante.Should().BeNull();
+		game.MinBet.Should().BeNull();
+		game.SmallBlind.Should().BeNull();
+		game.BigBlind.Should().BeNull();
+	}
+
+	[Theory]
+	[InlineData(0, 10, 5, "Default small blind must be greater than zero.")]
+	[InlineData(5, 5, 5, "Default big blind must be greater than small blind.")]
+	[InlineData(5, 10, 0, "Default ante must be greater than zero.")]
+	public async Task Handle_DealersChoice_WithInvalidDefaultStakes_ReturnsConflict(
+		int defaultSmallBlind,
+		int defaultBigBlind,
+		int defaultAnte,
+		string expectedReason)
+	{
+		var command = new CreateGameCommand(
+			Guid.NewGuid(),
+			string.Empty,
+			"DC Table",
+			0,
+			0,
+			new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
+			true)
+		{
+			DefaultSmallBlind = defaultSmallBlind,
+			DefaultBigBlind = defaultBigBlind,
+			DefaultAnte = defaultAnte
+		};
+
+		var result = await Mediator.Send(command);
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Reason.Should().Be(expectedReason);
 	}
 }

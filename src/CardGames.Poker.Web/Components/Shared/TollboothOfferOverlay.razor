@@ -52,7 +52,7 @@
 			        title="Take the card nearest to the deck">
 				<i class="fa-solid fa-arrow-right"></i>
 				<span>Nearest</span>
-				<span class="tollbooth-cost">@NearestCost chips</span>
+				<span class="tollbooth-cost">@FormatCost(NearestCost)</span>
 			</button>
 		</div>
 		<div class="tollbooth-offer-option">
@@ -66,7 +66,7 @@
 			        title="Take the top card from the deck">
 				<i class="fa-solid fa-layer-group"></i>
 				<span>Deck</span>
-				<span class="tollbooth-cost">@DeckCost chips</span>
+				<span class="tollbooth-cost">@FormatCost(DeckCost)</span>
 			</button>
 		</div>
 	</div>
@@ -81,6 +81,12 @@
 </div>
 
 @code {
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
+	private string FormatCost(int amount) =>
+		DisplayChipsAsCurrency ? ChipAmountFormat.Format(amount, true) : $"{amount} chips";
+
 	private const int DefaultTimerDurationSeconds = 30;
 
 	[Parameter] public IReadOnlyList<CardPublicDto>? DisplayCards { get; set; }

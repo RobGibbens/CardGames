@@ -6,7 +6,7 @@
 			<i class="fa-solid fa-coins"></i>
 		</div>
 		<h2>Pot Matching Required</h2>
-		<p class="pot-amount">Pot: @PotAmount.ToString("N0") chips</p>
+		<p class="pot-amount">Pot: @FormatPot(PotAmount)</p>
 
 		@if (LosingPlayers.Count > 0)
 		{
@@ -50,6 +50,12 @@
 </div>
 
 @code {
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
+	private string FormatPot(int amount) =>
+		DisplayChipsAsCurrency ? ChipAmountFormat.Format(amount, true) : $"{amount:N0} chips";
+
 
 	/// <summary>
 	///     The current pot amount to be matched.

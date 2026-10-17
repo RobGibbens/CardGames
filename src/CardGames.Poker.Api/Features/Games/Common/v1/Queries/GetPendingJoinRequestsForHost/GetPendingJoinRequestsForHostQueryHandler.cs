@@ -57,6 +57,7 @@ public sealed class GetPendingJoinRequestsForHostQueryHandler(
 				PlayerFirstName = null,
 				RequestedBuyIn = x.RequestedBuyIn,
 				MaxBuyIn = x.Game.MaxBuyIn,
+				DisplayChipsAsCurrency = x.Game.DisplayChipsAsCurrency,
 				RequestedAtUtc = x.RequestedAt,
 				ExpiresAtUtc = x.ExpiresAt
 			})

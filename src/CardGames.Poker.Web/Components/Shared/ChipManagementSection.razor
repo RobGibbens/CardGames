@@ -13,7 +13,7 @@
 			<i class="fa-solid fa-wallet"></i> Account Balance:
 		</div>
 		<div class="chip-stack-value account-balance-value">
-			@(ChipHistory?.CashierBalance.ToString("N0") ?? "0")
+			@(ChipHistory is null ? "0" : ChipAmountFormat.Format(ChipHistory.CashierBalance, DisplayChipsAsCurrency))
 		</div>
 	</div>
 
@@ -23,10 +23,10 @@
 			<i class="fa-solid fa-coins"></i> Table Stack:
 		</div>
 		<div class="chip-stack-value">
-			@(ChipHistory?.CurrentChips.ToString("N0") ?? "0")
+			@(ChipHistory is null ? "0" : ChipAmountFormat.Format(ChipHistory.CurrentChips, DisplayChipsAsCurrency))
 			@if (ChipHistory?.PendingChipsToAdd > 0)
 			{
-				<span class="pending-chips">(+@ChipHistory.PendingChipsToAdd.ToString("N0") pending)</span>
+				<span class="pending-chips">(+@ChipAmountFormat.Format(ChipHistory.PendingChipsToAdd, DisplayChipsAsCurrency) pending)</span>
 			}
 		</div>
 	</div>
@@ -35,13 +35,30 @@
 	<div class="add-chips-form">
 		<div class="form-group">
 			<label for="chip-amount">Add Chips:</label>
-			<input type="number"
-			       id="chip-amount"
-			       class="form-control"
-			       @bind="_chipAmount"
-			       min="1"
-			       step="100"
-			       placeholder="Enter amount"/>
+			@if (DisplayChipsAsCurrency)
+			{
+				<div class="d-flex align-items-center gap-2">
+					<span aria-hidden="true">$</span>
+					<input type="number"
+					       id="chip-amount"
+					       class="form-control"
+					       min="@ChipAmountFormat.ToDollars(1)"
+					       step="0.01"
+					       value="@ChipAmountFormat.InputValue(_chipAmount, true)"
+					       @onchange="OnChipAmountChanged"
+					       placeholder="0.00"/>
+				</div>
+			}
+			else
+			{
+				<input type="number"
+				       id="chip-amount"
+				       class="form-control"
+				       @bind="_chipAmount"
+				       min="1"
+				       step="100"
+				       placeholder="Enter amount"/>
+			}
 		</div>
 		<button class="btn btn-primary"
 		        @onclick="AddChipsAsync"
@@ -119,6 +136,9 @@
 
 	[Parameter] public EventCallback OnChipsAdded { get; set; }
 
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
 	[Inject] private IGamesApi GamesApiClient { get; set; } = null!;
 
 	[Inject] private ILogger<ChipManagementSection> Logger { get; set; } = null!;
@@ -183,6 +203,7 @@
 	protected override void OnParametersSet()
 	{
 		base.OnParametersSet();
+		ApplyCurrencyAxisFormat();
 
 		// Clear success message when pending chips have been applied
 		if (ChipHistory != null && _previousPendingChips.HasValue && _previousPendingChips.Value > 0 && ChipHistory.PendingChipsToAdd == 0)
@@ -245,11 +266,31 @@
 		return change > 0 ? "positive" : change < 0 ? "negative" : "neutral";
 	}
 
-	private string FormatChange(int change)
+	private string FormatChange(int change) => ChipAmountFormat.FormatSigned(change, DisplayChipsAsCurrency);
+
+	private void OnChipAmountChanged(ChangeEventArgs args)
 	{
-		if (change > 0)
-			return $"+{change:N0}";
-		return change.ToString("N0");
+		if (ChipAmountFormat.TryParseInput(args.Value?.ToString(), asCurrency: true, out var chips))
+			_chipAmount = Math.Max(0, chips);
+	}
+
+	private void ApplyCurrencyAxisFormat()
+	{
+		if (_chartOptions is null)
+			return;
+
+		var formatter = DisplayChipsAsCurrency
+			? "function (val) { var dollars = Number(val) / 100; return '$' + dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }"
+			: null;
+
+		if (_chartOptions.Yaxis is { Count: > 0 } axes)
+		{
+			axes[0].Labels ??= new YAxisLabels();
+			axes[0].Labels.Formatter = formatter;
+		}
+
+		_chartOptions.DataLabels ??= new DataLabels();
+		_chartOptions.DataLabels.Formatter = formatter;
 	}
 
 }

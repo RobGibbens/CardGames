@@ -18,9 +18,19 @@ public record CreateGameCommand(
 	int? MaxBuyIn = null,
 	int? TournamentBuyIn = null,
 	bool RequiresJoinApproval = false,
-	bool AreOddsVisibleToAllPlayers = true) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>,
+	bool AreOddsVisibleToAllPlayers = true,
+	bool DisplayChipsAsCurrency = false) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>,
 	IGameStateChangingCommand, ILobbyStateChangingCommand
 {
 	[JsonPropertyName("allowedDealerChoiceGameCodes")]
 	public IReadOnlyList<string>? AllowedDealerChoiceGameCodes { get; init; }
+
+	[JsonPropertyName("defaultSmallBlind")]
+	public int? DefaultSmallBlind { get; init; }
+
+	[JsonPropertyName("defaultBigBlind")]
+	public int? DefaultBigBlind { get; init; }
+
+	[JsonPropertyName("defaultAnte")]
+	public int? DefaultAnte { get; init; }
 }

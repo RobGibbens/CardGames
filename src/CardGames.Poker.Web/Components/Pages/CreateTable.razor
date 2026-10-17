@@ -456,9 +456,48 @@ else
 				}
 				else
 				{
+					<div class="form-row two-columns">
+						<div class="form-group">
+							<label class="form-label" for="smallBlind">Default Small Blind</label>
+							<input type="number"
+							       id="smallBlind"
+							       class="form-input"
+							       min="1"
+							       max="50000"
+							       value="@_smallBlindInput"
+							       @oninput="OnSmallBlindInput"/>
+							<span class="form-hint">Starting small blind for blind games</span>
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="bigBlind">Default Big Blind</label>
+							<input type="number"
+							       id="bigBlind"
+							       class="form-input @(ShowBigBlindError ? "input-error" : "")"
+							       min="1"
+							       max="100000"
+							       value="@_bigBlindInput"
+							       @oninput="OnBigBlindInput"/>
+							@if (ShowBigBlindError)
+							{
+								<span class="form-hint form-hint-error">Big blind must be greater than small blind.</span>
+							}
+							else
+							{
+								<span class="form-hint">Starting big blind for blind games</span>
+							}
+						</div>
+					</div>
 					<div class="form-row">
 						<div class="form-group">
-							<span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the ante and minimum bet each hand.</span>
+							<label class="form-label" for="ante">Default Ante</label>
+							<input type="number"
+							       id="ante"
+							       class="form-input"
+							       min="1"
+							       max="100"
+							       value="@_anteInput"
+							       @oninput="OnAnteInput"/>
+							<span class="form-hint">Starting ante for ante games. The dealer can change blinds and ante each hand.</span>
 						</div>
 					</div>
 					<div class="form-row">
@@ -546,6 +585,25 @@ else
 								<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
 							</button>
 							<span class="form-hint odds-visibility-hint">Require host approval before players can join this table</span>
+						</div>
+					</div>
+				</div>
+
+				<div class="form-row">
+					<div class="form-group">
+						<label class="form-label" for="displayChipsAsCurrency">Display as currency</label>
+						<div class="create-table-odds-visibility-control">
+							<button class="game-info-odds-toggle-switch @(_displayChipsAsCurrency ? "is-on" : "is-off")"
+							        type="button"
+							        id="displayChipsAsCurrency"
+							        role="switch"
+							        aria-checked="@_displayChipsAsCurrency"
+							        aria-label="Toggle U.S. currency display"
+							        @onclick="ToggleDisplayChipsAsCurrency">
+								<span class="game-info-odds-toggle-text">@(_displayChipsAsCurrency ? "ON" : "OFF")</span>
+								<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
+							</button>
+							<span class="form-hint odds-visibility-hint">Show chip amounts as U.S. dollars. One chip equals $0.01.</span>
 						</div>
 					</div>
 				</div>
@@ -1187,6 +1245,7 @@ else
 	private string _maxBuyInInput = string.Empty;
 	private bool _requiresJoinApproval;
 	private bool _areOddsVisibleToAllPlayers = true;
+	private bool _displayChipsAsCurrency;
 	private bool _canManageFavoriteVariants = true;
 	private readonly HashSet<string> _allowedDealerChoiceGameCodes = new(StringComparer.OrdinalIgnoreCase);
 	private readonly HashSet<string> _favoriteVariantCodes = new(StringComparer.OrdinalIgnoreCase);
@@ -1303,12 +1362,13 @@ else
 		!string.IsNullOrWhiteSpace(_tableName) &&
 		HasValidMaxBuyIn &&
 		(_isDealersChoice
-			? _allowedDealerChoiceGameCodes.Count > 0
+			? _allowedDealerChoiceGameCodes.Count > 0 && _smallBlind > 0 && _bigBlind > _smallBlind && _ante > 0
 			: _hasBlinds
 				? _smallBlind > 0 && _bigBlind > _smallBlind
 				: _ante > 0 && (IsInBetween || IsScrewYourNeighbor || _minBet > 0));
 
-	private bool ShowBigBlindError => _hasBlinds && _bigBlind > 0 && _smallBlind > 0 && _bigBlind <= _smallBlind;
+	private bool ShowBigBlindError =>
+		(_hasBlinds || _isDealersChoice) && _bigBlind > 0 && _smallBlind > 0 && _bigBlind <= _smallBlind;
 
 	private bool IsScrewYourNeighbor =>
 		GameVariantHelper.IsScrewYourNeighbor(_selectedVariant?.Code);
@@ -1714,9 +1774,13 @@ else
 				IsDealersChoice = _isDealersChoice,
 				SmallBlind = _hasBlinds ? _smallBlind : null,
 				BigBlind = _hasBlinds ? _bigBlind : null,
+				DefaultSmallBlind = _isDealersChoice ? _smallBlind : null,
+				DefaultBigBlind = _isDealersChoice ? _bigBlind : null,
+				DefaultAnte = _isDealersChoice ? _ante : null,
 				MaxBuyIn = _maxBuyIn,
 				RequiresJoinApproval = _requiresJoinApproval,
 				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers,
+				DisplayChipsAsCurrency = _displayChipsAsCurrency,
 				AllowedDealerChoiceGameCodes = _isDealersChoice
 					? _allowedDealerChoiceGameCodes.OrderBy(code => code, StringComparer.OrdinalIgnoreCase).ToArray()
 					: null
@@ -1938,6 +2002,11 @@ else
 	private void ToggleJoinApproval()
 	{
 		_requiresJoinApproval = !_requiresJoinApproval;
+	}
+
+	private void ToggleDisplayChipsAsCurrency()
+	{
+		_displayChipsAsCurrency = !_displayChipsAsCurrency;
 	}
 
 	public async ValueTask DisposeAsync()

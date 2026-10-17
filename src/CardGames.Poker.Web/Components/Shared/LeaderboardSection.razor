@@ -16,7 +16,7 @@
 			{
 				<div class="leaderboard-row">
 					<span class="player-name">@(string.IsNullOrWhiteSpace(player.DisplayName) ? "Unknown" : player.DisplayName)</span>
-					<span class="player-chips">@player.Chips.ToString("N0")</span>
+					<span class="player-chips">@ChipAmountFormat.Format(player.Chips, DisplayChipsAsCurrency)</span>
 				</div>
 			}
 		</div>
@@ -37,6 +37,9 @@
 	/// </summary>
 	[Parameter]
 	public IReadOnlyList<LeaderboardPlayer>? Players { get; set; }
+
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
 
 	/// <summary>
 	///     Represents a player entry in the leaderboard.

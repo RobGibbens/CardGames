@@ -151,13 +151,43 @@
 					{
 						<div class="dc-setting">
 							<label for="dc-sb">Small Blind</label>
-							<input type="number" id="dc-sb" min="1" max="500" @bind-value="_smallBlind"
-							       @bind-value:event="oninput"/>
+							@if (DisplayChipsAsCurrency)
+							{
+								<div class="dc-currency-field">
+									<span aria-hidden="true">$</span>
+									<input type="number" id="dc-sb"
+									       min="@ChipAmountFormat.ToDollars(1)"
+									       max="@ChipAmountFormat.ToDollars(500)"
+									       step="0.01"
+									       value="@ChipAmountFormat.InputValue(_smallBlind, true)"
+									       @onchange="OnSmallBlindInput"/>
+								</div>
+							}
+							else
+							{
+								<input type="number" id="dc-sb" min="1" max="500" @bind-value="_smallBlind"
+								       @bind-value:event="oninput"/>
+							}
 						</div>
 						<div class="dc-setting">
 							<label for="dc-bb">Big Blind</label>
-							<input type="number" id="dc-bb" min="1" max="1000" class="@(ShowDcBigBlindError ? "input-error" : "")"
-							       @bind-value="_bigBlind" @bind-value:event="oninput"/>
+							@if (DisplayChipsAsCurrency)
+							{
+								<div class="dc-currency-field @(ShowDcBigBlindError ? "input-error" : "")">
+									<span aria-hidden="true">$</span>
+									<input type="number" id="dc-bb"
+									       min="@ChipAmountFormat.ToDollars(1)"
+									       max="@ChipAmountFormat.ToDollars(1000)"
+									       step="0.01"
+									       value="@ChipAmountFormat.InputValue(_bigBlind, true)"
+									       @onchange="OnBigBlindInput"/>
+								</div>
+							}
+							else
+							{
+								<input type="number" id="dc-bb" min="1" max="1000" class="@(ShowDcBigBlindError ? "input-error" : "")"
+								       @bind-value="_bigBlind" @bind-value:event="oninput"/>
+							}
 							@if (ShowDcBigBlindError)
 							{
 								<span class="form-hint form-hint-error">Big blind must be greater than small blind.</span>
@@ -168,14 +198,44 @@
 					{
 						<div class="dc-setting">
 							<label for="dc-ante">@(IsScrewYourNeighborGame(_selectedCode) ? "Chip stack amount" : "Ante")</label>
-							<input type="number" id="dc-ante" min="0" max="100" @bind-value="_ante" @bind-value:event="oninput"/>
+							@if (DisplayChipsAsCurrency)
+							{
+								<div class="dc-currency-field">
+									<span aria-hidden="true">$</span>
+									<input type="number" id="dc-ante"
+									       min="0"
+									       max="@ChipAmountFormat.ToDollars(100)"
+									       step="0.01"
+									       value="@ChipAmountFormat.InputValue(_ante, true)"
+									       @onchange="OnAnteInput"/>
+								</div>
+							}
+							else
+							{
+								<input type="number" id="dc-ante" min="0" max="100" @bind-value="_ante" @bind-value:event="oninput"/>
+							}
 						</div>
 						@if (ShouldShowMinBet(_selectedCode))
 						{
 							<div class="dc-setting">
 								<label for="dc-minbet">Min Bet</label>
-								<input type="number" id="dc-minbet" min="1" max="1000" @bind-value="_minBet"
-								       @bind-value:event="oninput"/>
+								@if (DisplayChipsAsCurrency)
+								{
+									<div class="dc-currency-field">
+										<span aria-hidden="true">$</span>
+										<input type="number" id="dc-minbet"
+										       min="@ChipAmountFormat.ToDollars(1)"
+										       max="@ChipAmountFormat.ToDollars(1000)"
+										       step="0.01"
+										       value="@ChipAmountFormat.InputValue(_minBet, true)"
+										       @onchange="OnMinBetInput"/>
+									</div>
+								}
+								else
+								{
+									<input type="number" id="dc-minbet" min="1" max="1000" @bind-value="_minBet"
+									       @bind-value:event="oninput"/>
+								}
 							</div>
 						}
 					}
@@ -215,7 +275,16 @@
 
 	[Parameter] public IReadOnlyCollection<string>? AllowedGameCodes { get; set; }
 
+	[Parameter] public int? DefaultSmallBlind { get; set; }
+
+	[Parameter] public int? DefaultBigBlind { get; set; }
+
+	[Parameter] public int? DefaultAnte { get; set; }
+
 	[Parameter] [EditorRequired] public EventCallback<DealerChoiceSelection> OnGameChosen { get; set; }
+
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
 
 	private string? _selectedCode;
 	private string? _selectedName;
@@ -223,6 +292,7 @@
 	private int _minBet = 10;
 	private int _smallBlind = 5;
 	private int _bigBlind = 10;
+	private bool _hasAppliedTableStakeDefaults;
 
 	private bool ShowDcBigBlindError => _selectedCode is not null && IsBlindBasedGame(_selectedCode) && _bigBlind > 0 &&
 	                                    _smallBlind > 0 && _bigBlind <= _smallBlind;
@@ -283,6 +353,7 @@
 	{
 		_isLoading = IsLoading;
 		_allowedGameCodeLookup = NormalizeAllowedGameCodes(AllowedGameCodes);
+		ApplyTableStakeDefaults();
 
 		if (_selectedCode is null)
 		{
@@ -298,6 +369,36 @@
 		}
 	}
 
+	private void ApplyTableStakeDefaults()
+	{
+		if (_hasAppliedTableStakeDefaults)
+		{
+			return;
+		}
+
+		if (DefaultSmallBlind is not > 0 && DefaultBigBlind is not > 0 && DefaultAnte is not > 0)
+		{
+			return;
+		}
+
+		if (DefaultSmallBlind is > 0)
+		{
+			_smallBlind = DefaultSmallBlind.Value;
+		}
+
+		if (DefaultBigBlind is > 0)
+		{
+			_bigBlind = DefaultBigBlind.Value;
+		}
+
+		if (DefaultAnte is > 0)
+		{
+			_ante = DefaultAnte.Value;
+		}
+
+		_hasAppliedTableStakeDefaults = true;
+	}
+
 	private async Task LoadGamePreferencesAsync()
 	{
 		try
@@ -306,9 +407,6 @@
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
 				var prefs = response.Content;
-				if (prefs.DefaultSmallBlind > 0) _smallBlind = prefs.DefaultSmallBlind;
-				if (prefs.DefaultBigBlind > 0) _bigBlind = prefs.DefaultBigBlind;
-				if (prefs.DefaultAnte > 0) _ante = prefs.DefaultAnte;
 				if (prefs.DefaultMinimumBet > 0) _minBet = prefs.DefaultMinimumBet;
 			}
 		}
@@ -556,6 +654,24 @@
 		return string.IsNullOrWhiteSpace(value)
 			? string.Empty
 			: value.Trim().ToUpperInvariant();
+	}
+
+	private void OnSmallBlindInput(ChangeEventArgs args) =>
+		ApplyCurrencyStake(args, value => _smallBlind = value);
+
+	private void OnBigBlindInput(ChangeEventArgs args) =>
+		ApplyCurrencyStake(args, value => _bigBlind = value);
+
+	private void OnAnteInput(ChangeEventArgs args) =>
+		ApplyCurrencyStake(args, value => _ante = value);
+
+	private void OnMinBetInput(ChangeEventArgs args) =>
+		ApplyCurrencyStake(args, value => _minBet = value);
+
+	private static void ApplyCurrencyStake(ChangeEventArgs args, Action<int> assign)
+	{
+		if (ChipAmountFormat.TryParseInput(args.Value?.ToString(), asCurrency: true, out var chips))
+			assign(chips);
 	}
 
 	private async Task ConfirmChoiceAsync()

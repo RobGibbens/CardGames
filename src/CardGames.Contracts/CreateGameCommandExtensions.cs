@@ -16,6 +16,15 @@ public partial record CreateGameCommand
 	[JsonPropertyName("areOddsVisibleToAllPlayers")]
 	public bool AreOddsVisibleToAllPlayers { get; init; } = true;
 
+	[JsonPropertyName("displayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; init; }
+
 	[JsonPropertyName("allowedDealerChoiceGameCodes")]
 	public IReadOnlyList<string>? AllowedDealerChoiceGameCodes { get; init; }
+
+	[JsonPropertyName("defaultSmallBlind")] public int? DefaultSmallBlind { get; init; }
+
+	[JsonPropertyName("defaultBigBlind")] public int? DefaultBigBlind { get; init; }
+
+	[JsonPropertyName("defaultAnte")] public int? DefaultAnte { get; init; }
 }

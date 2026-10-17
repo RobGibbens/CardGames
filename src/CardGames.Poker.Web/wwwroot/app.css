@@ -4161,6 +4161,9 @@ a:hover {
     border-top-left-radius: 1.25rem;
     border-top-right-radius: 1.25rem;
     z-index: 400;
+    background-color: var(--background);
+    color: var(--foreground);
+    border-color: var(--border);
 }
 
 .table-options-status {
@@ -4174,9 +4177,22 @@ a:hover {
 .table-options-drawer button {
     min-height: 3rem;
     font-size: 1rem;
+    color: inherit;
 }
 
-.table-options-end-game {
+.table-options-drawer button:hover,
+.table-options-drawer button:focus-visible {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+
+.table-options-drawer .table-options-end-game {
+    color: #dc2626;
+}
+
+.table-options-drawer .table-options-end-game:hover,
+.table-options-drawer .table-options-end-game:focus-visible {
+    background-color: color-mix(in srgb, #dc2626 16%, transparent);
     color: #dc2626;
 }
 

@@ -32,6 +32,13 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 		builder.Property(t => t.RequiresJoinApproval)
 			.HasDefaultValue(false);
 
+		builder.Property(t => t.DisplayChipsAsCurrency)
+			.HasDefaultValue(false);
+
+		builder.Property(t => t.DefaultSmallBlind);
+		builder.Property(t => t.DefaultBigBlind);
+		builder.Property(t => t.DefaultAnte);
+
 		builder.Property(t => t.TournamentBuyIn);
 
 		builder.Property(t => t.Status)

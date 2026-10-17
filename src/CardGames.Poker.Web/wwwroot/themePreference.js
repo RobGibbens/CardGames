@@ -108,6 +108,8 @@ function getSystemPrefersDark() {
 
 function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
+    // Blueprint components (including the table options drawer) switch tokens from this class.
+    document.documentElement.classList.toggle("dark", theme === "dark");
 }
 
 function persistThemePreference(preference, effectiveTheme) {

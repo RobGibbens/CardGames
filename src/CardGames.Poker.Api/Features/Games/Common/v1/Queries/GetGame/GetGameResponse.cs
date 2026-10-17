@@ -47,4 +47,8 @@ public sealed record GetGameResponse
 	public int? DealersChoiceDealerPosition { get; init; }
 	public bool AreOddsVisibleToAllPlayers { get; init; }
 	public bool RequiresJoinApproval { get; init; }
+	public bool DisplayChipsAsCurrency { get; init; }
+	public int? DefaultSmallBlind { get; init; }
+	public int? DefaultBigBlind { get; init; }
+	public int? DefaultAnte { get; init; }
 }

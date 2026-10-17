@@ -52,7 +52,11 @@ public static partial class GetGameMapper
 			IsDealersChoice = model.IsDealersChoice,
 			DealersChoiceDealerPosition = model.DealersChoiceDealerPosition,
 			AreOddsVisibleToAllPlayers = model.AreOddsVisibleToAllPlayers,
-			RequiresJoinApproval = model.RequiresJoinApproval
+			RequiresJoinApproval = model.RequiresJoinApproval,
+			DisplayChipsAsCurrency = model.DisplayChipsAsCurrency,
+			DefaultSmallBlind = model.DefaultSmallBlind,
+			DefaultBigBlind = model.DefaultBigBlind,
+			DefaultAnte = model.DefaultAnte
 		};
 	}
 

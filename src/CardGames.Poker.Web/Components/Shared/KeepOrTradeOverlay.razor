@@ -12,7 +12,7 @@
 			<span>Keep or Trade?</span>
 		</div>
 		<div class="keep-or-trade-subtitle">
-			Current Pot: @PotAmount.ToString("N0") chips
+			Current Pot: @FormatPot(PotAmount)
 		</div>
 	</div>
 
@@ -71,6 +71,12 @@
 </div>
 
 @code {
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
+	private string FormatPot(int amount) =>
+		DisplayChipsAsCurrency ? ChipAmountFormat.Format(amount, true) : $"{amount:N0} chips";
+
 	private const int DefaultTimerDurationSeconds = 30;
 	private const string PanelStorageKey = "cardGames.panelPosition.keepOrTradeOverlay";
 

@@ -95,7 +95,7 @@
 										}
 										@if (winnerAmount > 0)
 										{
-											<span class="sd-pill sd-pill-gold" data-testid="showdown-amount">+@winnerAmount chips</span>
+											<span class="sd-pill sd-pill-gold" data-testid="showdown-amount">@FormatWon(winnerAmount)</span>
 										}
 									</div>
 								}
@@ -316,7 +316,7 @@
 										}
 										@if (hand.AmountWon.GetValueOrDefault() > 0)
 										{
-											<span class="sd-pill sd-pill-gold">+@hand.AmountWon.GetValueOrDefault() chips</span>
+											<span class="sd-pill sd-pill-gold">@FormatWon(hand.AmountWon.GetValueOrDefault())</span>
 										}
 									</div>
 									@if (handCards.Count > 0)
@@ -356,6 +356,14 @@
 </div>
 
 @code {
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
+	private string FormatWon(int amount) =>
+		DisplayChipsAsCurrency
+			? $"+{ChipAmountFormat.Format(amount, true)}"
+			: $"+{amount} chips";
+
 	[Parameter] public PerformShowdownSuccessful? ShowdownResult { get; set; }
 
 	[Parameter] public bool ShowdownWon { get; set; }

@@ -18,4 +18,13 @@ public partial record GetGameResponse
 
 	[JsonPropertyName("requiresJoinApproval")]
 	public bool RequiresJoinApproval { get; init; }
+
+	[JsonPropertyName("displayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; init; }
+
+	[JsonPropertyName("defaultSmallBlind")] public int? DefaultSmallBlind { get; init; }
+
+	[JsonPropertyName("defaultBigBlind")] public int? DefaultBigBlind { get; init; }
+
+	[JsonPropertyName("defaultAnte")] public int? DefaultAnte { get; init; }
 }

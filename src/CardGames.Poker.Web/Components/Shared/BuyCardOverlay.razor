@@ -8,7 +8,7 @@
 			<i class="fa-solid fa-baseball"></i>
 			<span>Buy Card Option</span>
 		</div>
-		<div class="buy-card-subtitle" data-testid="buy-card-price">Buy price: @BuyCardPrice.ToString("N0") chips</div>
+		<div class="buy-card-subtitle" data-testid="buy-card-price">Buy price: @FormatPrice(BuyCardPrice)</div>
 		@if (PendingOfferCount > 1)
 		{
 			<div class="buy-card-pending">@PendingOfferCount offers remaining</div>
@@ -59,6 +59,12 @@
 </div>
 
 @code {
+	[CascadingParameter(Name = "DisplayChipsAsCurrency")]
+	public bool DisplayChipsAsCurrency { get; set; }
+
+	private string FormatPrice(int amount) =>
+		DisplayChipsAsCurrency ? ChipAmountFormat.Format(amount, true) : $"{amount:N0} chips";
+
 	private const int DefaultTimerDurationSeconds = 30;
 
 	[Parameter] public CardInfo? TriggerCard { get; set; }
